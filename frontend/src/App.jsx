@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import {
+  registerUser,
+  loginUser,
   fetchProjects,
   createProject,
   fetchTasks,
@@ -23,6 +25,10 @@ function App() {
   const [templates, setTemplates] = useState([]);
   const [templateName, setTemplateName] = useState("");
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
+  const [token, setToken] = useState(localStorage.getItem("token"));
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [authMode, setAuthMode] = useState("login");
 
   const loadTasks = async () => {
     if (!selectedProjectId) return;
@@ -75,7 +81,6 @@ function App() {
     }
 
     if (task.id === null) {
-      // 🔥 CREATE NEW TASK
       await createTask(selectedProjectId, {
         name: editingCell.field === "name" ? value : "New Task",
         duration: editingCell.field === "duration" ? value : 1,
@@ -85,7 +90,6 @@ function App() {
           editingCell.field === "manual_start_date" ? value : null,
       });
     } else {
-      // 🔥 UPDATE EXISTING TASK
       await updateTask(selectedProjectId, task.id, {
         ...task,
         [editingCell.field]: value,
@@ -154,9 +158,87 @@ function App() {
     loadTasks();
   };
 
+  const handleRegister = async () => {
+    const data = await registerUser({
+      email,
+      password,
+    });
+
+    if (data.id) {
+      setAuthMode("login");
+      setPassword("");
+    }
+  };
+
+  const handleLogin = async () => {
+    const data = await loginUser(email, password);
+
+    if (data.access_token) {
+      localStorage.setItem("token", data.access_token);
+      setToken(data.access_token);
+      setEmail("");
+      setPassword("");
+      loadProjects();
+      loadTemplates();
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    setToken(null);
+    setProjects([]);
+    setTasks([]);
+    setSelectedProjectId(null);
+  };
+
+  if (!token) {
+    return (
+      <div style={{ padding: "20px" }}>
+        <h1>Construction Scheduler</h1>
+
+        <h2>{authMode === "login" ? "Login" : "Register"}</h2>
+
+        <input
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+
+        <input
+          placeholder="Password"
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+
+        {authMode === "login" ? (
+          <button onClick={handleLogin}>Login</button>
+        ) : (
+          <button onClick={handleRegister}>Register</button>
+        )}
+
+        <button
+          onClick={() =>
+            setAuthMode(authMode === "login" ? "register" : "login")
+          }
+        >
+          {authMode === "login"
+            ? "Need an account? Register"
+            : "Already have an account? Login"}
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div style={{ padding: "20px" }}>
       <h1>Scheduler App</h1>
+      <button
+        onClick={handleLogout}
+        style={{ marginBottom: "15px" }}
+      >
+        Logout
+      </button>
 
       <div style={{ marginBottom: "15px" }}>
         <input

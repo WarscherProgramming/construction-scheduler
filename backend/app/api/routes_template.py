@@ -1,10 +1,11 @@
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-
 from app.db.database import SessionLocal
 from app.models.task import Task
 from app.models.template import ScheduleTemplate, ScheduleTemplateTask
+from app.core.security import get_current_user
+from app.models.project import Project
 
 router = APIRouter()
 
@@ -16,9 +17,26 @@ def get_db():
     finally:
         db.close()
 
+def verify_project_owner(project_id: int, user_id: int, db: Session):
+    project = (
+        db.query(Project)
+        .filter(Project.id == project_id, Project.user_id == user_id)
+        .first()
+    )
+
+    if not project:
+        raise HTTPException(
+            status_code=403,
+            detail="You do not have access to this project"
+        )
+
+    return project
 
 @router.get("/templates")
-def get_templates(db: Session = Depends(get_db)):
+def get_templates(
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
     templates = db.query(ScheduleTemplate).order_by(ScheduleTemplate.id).all()
 
     return {
@@ -34,7 +52,9 @@ def save_project_as_template(
     project_id: int,
     template: dict,
     db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
 ):
+    verify_project_owner(project_id, current_user["id"], db)
     tasks = (
         db.query(Task)
         .filter(Task.project_id == project_id)
@@ -72,7 +92,9 @@ def apply_template_to_project(
     project_id: int,
     template_id: int,
     db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
 ):
+    verify_project_owner(project_id, current_user["id"], db)
     template_tasks = (
         db.query(ScheduleTemplateTask)
         .filter(ScheduleTemplateTask.template_id == template_id)

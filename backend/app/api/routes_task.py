@@ -2,9 +2,11 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 import re
-
 from app.db.database import SessionLocal
 from app.models.task import Task
+from app.core.security import get_current_user
+from fastapi import HTTPException
+from app.models.project import Project
 
 router = APIRouter()
 
@@ -19,6 +21,20 @@ def get_db():
     finally:
         db.close()
 
+def verify_project_owner(project_id: int, user_id: int, db: Session):
+    project = (
+        db.query(Project)
+        .filter(Project.id == project_id, Project.user_id == user_id)
+        .first()
+    )
+
+    if not project:
+        raise HTTPException(
+            status_code=403,
+            detail="You do not have access to this project"
+        )
+
+    return project
 
 def task_to_dict(task):
     return {
@@ -119,7 +135,8 @@ def calculate_schedule(task_list):
 
 
 @router.get("/projects/{project_id}/tasks")
-def get_tasks(project_id: int, db: Session = Depends(get_db)):
+def get_tasks(project_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    verify_project_owner(project_id, current_user["id"], db)
     tasks = (
         db.query(Task)
         .filter(Task.project_id == project_id)
@@ -131,7 +148,8 @@ def get_tasks(project_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/projects/{project_id}/tasks")
-def create_task(project_id: int, task: dict, db: Session = Depends(get_db)):
+def create_task(project_id: int, task: dict, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    verify_project_owner(project_id, current_user["id"], db)
     new_task = Task(
         project_id=project_id,
         name=task["name"],
@@ -163,7 +181,9 @@ def update_task(
     task_id: int,
     updated_task: dict,
     db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
 ):
+    verify_project_owner(project_id, current_user["id"], db)
     task = (
         db.query(Task)
         .filter(Task.id == task_id, Task.project_id == project_id)
@@ -193,7 +213,8 @@ def update_task(
 
 
 @router.delete("/projects/{project_id}/tasks/{task_id}")
-def delete_task(project_id: int, task_id: int, db: Session = Depends(get_db)):
+def delete_task(project_id: int, task_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    verify_project_owner(project_id, current_user["id"], db)
     task = (
         db.query(Task)
         .filter(Task.id == task_id, Task.project_id == project_id)
