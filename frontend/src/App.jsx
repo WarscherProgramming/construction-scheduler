@@ -39,6 +39,12 @@ function App() {
 
   const loadProjects = async () => {
     const data = await fetchProjects();
+
+    if (data.detail === "Not authenticated" || data.detail === "Invalid token") {
+      handleLogout();
+      return;
+    }
+
     setProjects(data.projects);
 
     if (data.projects.length > 0 && !selectedProjectId) {
@@ -47,13 +53,17 @@ function App() {
   };
 
   useEffect(() => {
-    loadProjects();
-    loadTemplates();
-  }, []);
+    if (token) {
+      loadProjects();
+      loadTemplates();
+    }
+  }, [token]);
 
   useEffect(() => {
-    loadTasks();
-  }, [selectedProjectId]);
+    if (token && selectedProjectId) {
+      loadTasks();
+    }
+  }, [token, selectedProjectId]);
     
   const handleCellClick = (task, field) => {
     setEditingCell({ id: task.id ?? "new", field });
@@ -137,6 +147,12 @@ function App() {
 
   const loadTemplates = async () => {
     const data = await fetchTemplates();
+
+    if (data.detail === "Not authenticated" || data.detail === "Invalid token") {
+      handleLogout();
+      return;
+    }
+
     setTemplates(data.templates);
   };
 
@@ -191,6 +207,14 @@ function App() {
     setSelectedProjectId(null);
   };
 
+  const buttonStyle = {
+    padding: "3px 12px",
+    border: "1px solid #bbb",
+    borderRadius: "6px",
+    cursor: "pointer",
+    marginLeft: "8px",
+  };
+
   if (!token) {
     return (
       <div style={{ padding: "20px" }}>
@@ -231,79 +255,237 @@ function App() {
   }
 
   return (
-    <div style={{ padding: "20px" }}>
-      <h1>Scheduler App</h1>
-      <button
-        onClick={handleLogout}
-        style={{ marginBottom: "15px" }}
+    <div
+      style={{
+        display: "flex",
+        minHeight: "100vh",
+        fontFamily: "Arial, sans-serif",
+      }}
+    >
+      {/* SIDEBAR */}
+      <aside
+        style={{
+          width: "200px",
+          minWidth: "200px",
+          padding: "20px",
+          borderRight: "1px solid #ddd",
+          boxSizing: "border-box",
+          display: "flex",
+          flexDirection: "column",
+          height: "100vh",
+          position: "sticky",
+          top: 0,
+        }}
       >
-        Logout
-      </button>
-
-      <div style={{ marginBottom: "15px" }}>
-        <input
-          placeholder="Template name"
-          value={templateName}
-          onChange={(e) => setTemplateName(e.target.value)}
-        />
-
-        <button onClick={handleSaveTemplate}>
-          Save Template
-        </button>
-
-        <select
-          value={selectedTemplateId}
-          onChange={(e) => setSelectedTemplateId(e.target.value)}
-          style={{ marginLeft: "10px" }}
+        {/* PROJECTS */}
+        <div
+          style={{
+            padding: "15px",
+            border: "1px solid #ddd",
+            borderRadius: "8px",
+            marginTop: "20px",
+            marginBottom: "15px",
+          }}
         >
-          <option value="">Select template</option>
-          {templates.map((template) => (
-            <option key={template.id} value={template.id}>
-              {template.name}
-            </option>
-          ))}
-        </select>
+          <h3 style={{ marginTop: 0 }}>Projects</h3>
 
-        <button onClick={handleApplyTemplate}>
-          Apply Template
-        </button>
-      </div>
+          <select
+            value={selectedProjectId || ""}
+            onChange={(e) => setSelectedProjectId(Number(e.target.value))}
+            style={{
+              width: "100%",
+              marginBottom: "8px",
+            }}
+          >
+            {projects.map((project) => (
+              <option key={project.id} value={project.id}>
+                {project.name}
+              </option>
+            ))}
+          </select>
 
-      <div style={{ marginBottom: "15px" }}>
-        <select
-          value={selectedProjectId || ""}
-          onChange={(e) => setSelectedProjectId(Number(e.target.value))}
+          <input
+            placeholder="New project name"
+            value={newProjectName}
+            onChange={(e) => setNewProjectName(e.target.value)}
+            style={{
+              width: "100%",
+              marginBottom: "8px",
+              boxSizing: "border-box",
+            }}
+          />
+
+          <button onClick={handleCreateProject} style={buttonStyle}>
+            Create Project
+          </button>
+        </div>
+
+        {/* TEMPLATES */}
+        <div
+          style={{
+            padding: "15px",
+            border: "1px solid #ddd",
+            borderRadius: "8px",
+            marginBottom: "15px",
+          }}
         >
-          {projects.map((project) => (
-            <option key={project.id} value={project.id}>
-              {project.name}
-            </option>
-          ))}
-        </select>
+          <h3 style={{ marginTop: 0 }}>Templates</h3>
 
-        <input
-          placeholder="New project name"
-          value={newProjectName}
-          onChange={(e) => setNewProjectName(e.target.value)}
-          style={{ marginLeft: "10px" }}
-        />
+          <input
+            placeholder="Template name"
+            value={templateName}
+            onChange={(e) => setTemplateName(e.target.value)}
+            style={{
+              width: "100%",
+              marginBottom: "8px",
+              boxSizing: "border-box",
+            }}
+          />
 
-        <button onClick={handleCreateProject}>
-          Create Project
+          <button onClick={handleSaveTemplate} style={buttonStyle}>
+            Save Template
+          </button>
+
+          <select
+            value={selectedTemplateId}
+            onChange={(e) => setSelectedTemplateId(e.target.value)}
+            style={{
+              width: "100%",
+              marginTop: "8px",
+              marginBottom: "8px",
+            }}
+          >
+            <option value="">Select template</option>
+            {templates.map((template) => (
+              <option key={template.id} value={template.id}>
+                {template.name}
+              </option>
+            ))}
+          </select>
+
+          <button onClick={handleApplyTemplate} style={buttonStyle}>
+            Apply Template
+          </button>
+        </div>
+
+        <button
+          onClick={() => exportProjectPdf(selectedProjectId)}
+          disabled={!selectedProjectId}
+          style={buttonStyle}
+        >
+          Export Schedule as PDF
         </button>
-      </div>
 
-      {/* TASK TABLE */}
-      <table border="1" cellPadding="5" style={{ marginTop: "20px" }}>
+        <div style={{ marginTop: "auto" }}>
+          <button onClick={handleLogout} style={buttonStyle}>
+            Logout
+          </button>
+        </div>
+
+      </aside>
+      
+      <main>
+        <h2
+          style={{
+            textAlign: "center",
+            width: "100%",
+            marginBottom: "20px",
+          }}
+          >
+            Schedule
+          </h2>
+
+        <table
+          style={{
+            width: "100%",
+            minWidth: "1400px",
+            borderCollapse: "collapse",
+            marginTop: "20px",
+            tableLayout: "fixed",
+          }}
+        >
         <thead>
           <tr>
-            <th>Index</th>
-            <th>Task</th>
-            <th>Duration</th>
-            <th>Start</th>
-            <th>End</th>
-            <th>Predecessor</th>
-            <th>Actions</th>
+            <th
+              style={{
+                width: "50px",
+                padding: "3px",
+                background: "#f3f4f6",
+                border: "1px solid #ddd",
+                textAlign: "left",
+              }}
+            >
+              Id
+            </th>
+
+            <th
+              style={{
+                padding: "10px",
+                background: "#f3f4f6",
+                border: "1px solid #ddd",
+                textAlign: "left",
+              }}
+            >
+              Task
+            </th>
+
+            <th style={{
+              width: "95px",
+              padding: "10px",
+              background: "#f3f4f6",
+              border: "1px solid #ddd",
+              textAlign: "left",
+            }}
+            >
+              Duration
+            </th>
+
+            <th style={{
+              width: "125px",
+              padding: "10px",
+              background: "#f3f4f6",
+              border: "1px solid #ddd",
+              textAlign: "left",
+            }}
+            >
+              Start
+            </th>
+
+            <th 
+              style={{
+                width: "125px",
+                padding: "10px",
+                background: "#f3f4f6",
+                border: "1px solid #ddd",
+                textAlign: "left",
+              }}
+            >
+              End
+            </th>
+
+            <th 
+            style={{
+              width: "130px",
+              padding: "10px",
+              background: "#f3f4f6",
+              border: "1px solid #ddd",
+              textAlign: "left",
+            }}
+            >
+              Predecessor
+            </th>
+
+            <th
+              style={{
+                padding: "10px",
+                background: "#f3f4f6",
+                border: "1px solid #ddd",
+                textAlign: "left",
+              }}
+            >
+              Actions
+            </th>
+
           </tr>
         </thead>
 
@@ -317,7 +499,11 @@ function App() {
               onClick={() => !isNew && setSelectedTaskId(task.id)}
               style={{
                 background:
-                  selectedTaskId === task.id ? "#d3e5ff" : "transparent",
+                  selectedTaskId === task.id
+                    ? "#e0f2fe"
+                    : index % 2 === 0
+                    ? "#ffffff"
+                    : "#f9fafb",
                 cursor: "pointer",
               }}
             >
@@ -328,7 +514,10 @@ function App() {
                   e.stopPropagation();
                   handleCellClick(task, "name")
                 }}
-                style={{ cursor: "pointer" }}
+                style={{
+                  padding: "8px",
+                  border: "1px solid #ddd",
+                }}
               >
                 {editingCell?.id === (task.id ?? "new") &&
                 editingCell.field === "name" ? (
@@ -349,7 +538,10 @@ function App() {
                   e.stopPropagation();
                   handleCellClick(task, "duration")
                 }}
-                style={{ cursor: "pointer" }}
+                style={{
+                  padding: "8px",
+                  border: "1px solid #ddd",
+                }}
               >
                 {editingCell?.id === (task.id ?? "new") &&
                 editingCell.field === "duration" ? (
@@ -370,7 +562,10 @@ function App() {
                   e.stopPropagation();
                   handleCellClick(task, "manual_start_date");
                 }}
-                style={{ cursor: "pointer" }}
+                style={{
+                  padding: "8px",
+                  border: "1px solid #ddd",
+                }}
               >
                 {editingCell?.id === (task.id ?? "new") &&
                 editingCell.field === "manual_start_date" ? (
@@ -385,7 +580,14 @@ function App() {
                   formatDate(task.start_date)
                 )}
               </td>
-              <td>{formatDate(task.end_date)}</td>
+              <td
+                style={{
+                  padding: "8px",
+                  border: "1px solid #ddd",
+                }}
+              >
+                {formatDate(task.end_date)}
+              </td>
 
               {/* PREDECESSOR */}
              <td
@@ -393,7 +595,10 @@ function App() {
                     e.stopPropagation();
                     handleCellClick(task, "predecessor");
                   }}
-                  style={{ cursor: "pointer" }}
+                  style={{
+                    padding: "8px",
+                    border: "1px solid #ddd",
+                  }}
                 >
                   {editingCell?.id === (task.id ?? "new") &&
                   editingCell.field === "predecessor" ? (
@@ -409,7 +614,12 @@ function App() {
                   )}
               </td>
               {/* DELETE */}
-              <td>
+              <td
+                style={{
+                  padding: "8px",
+                  border: "1px solid #ddd",
+                }}
+              >
                 {!isNew && (
                 <button 
                   onClick={(e) => {
@@ -417,6 +627,7 @@ function App() {
                     handleDelete(task.id);
                   }}
                   >
+              
                   
                   Delete
                 </button>
@@ -428,15 +639,8 @@ function App() {
         })}
         </tbody>
       </table>
-      <button
-        onClick={() => exportProjectPdf(selectedProjectId)}
-        disabled={!selectedProjectId}
-        style={{ marginLeft: "10px" }}
-      >
-        Export PDF
-      </button>
       <GanttChart tasks={tasks} selectedTaskId={selectedTaskId} />
-      
+      </main>
     </div>
   );
 }
