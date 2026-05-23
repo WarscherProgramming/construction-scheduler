@@ -30,6 +30,7 @@ function App() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [authMode, setAuthMode] = useState("login");
+  const [currentPage, setCurrentPage] = useState("dashboard");
 
   //project and task load
   const loadTasks = async () => {
@@ -255,6 +256,44 @@ function App() {
           {authMode === "login"
             ? "Need an account? Register"
             : "Already have an account? Login"}
+        </button>
+      </div>
+    );
+  }
+
+  //Dashboard page
+  if (currentPage === "dashboard") {
+    return (
+      <div style={{ padding: "24px", fontFamily: "Arial, sans-serif" }}>
+        <h1>Construction Management Dashboard</h1>
+
+        <p style={{ color: "#666", marginBottom: "24px" }}>
+          Manage projects, schedules, templates, and exports.
+        </p>
+
+        <div style={{ display: "flex", gap: "16px", marginBottom: "24px" }}>
+          <div style={{ padding: "20px", border: "1px solid #ddd", borderRadius: "8px", width: "250px" }}>
+            <h3>Projects</h3>
+            <p>{projects.length} active project(s)</p>
+          </div>
+
+          <div style={{ padding: "20px", border: "1px solid #ddd", borderRadius: "8px", width: "250px" }}>
+            <h3>Templates</h3>
+            <p>{templates.length} saved template(s)</p>
+          </div>
+
+          <div style={{ padding: "20px", border: "1px solid #ddd", borderRadius: "8px", width: "250px" }}>
+            <h3>Scheduler</h3>
+            <p>Open your construction scheduling module.</p>
+
+            <button onClick={() => setCurrentPage("scheduler")} style={buttonStyle}>
+              Open Scheduler
+            </button>
+          </div>
+        </div>
+
+        <button onClick={handleLogout} style={buttonStyle}>
+          Logout
         </button>
       </div>
     );
