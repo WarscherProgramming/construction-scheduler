@@ -16,6 +16,7 @@ import {
 import GanttChart from "./components/GanttChart";
 
 function App() {
+  //usestates
   const [tasks, setTasks] = useState([]);
   const [editingCell, setEditingCell] = useState(null);
   const [editValue, setEditValue] = useState("");
@@ -30,6 +31,7 @@ function App() {
   const [password, setPassword] = useState("");
   const [authMode, setAuthMode] = useState("login");
 
+  //project and task load
   const loadTasks = async () => {
     if (!selectedProjectId) return;
     
@@ -64,7 +66,8 @@ function App() {
       loadTasks();
     }
   }, [token, selectedProjectId]);
-    
+
+  //table logic  
   const handleCellClick = (task, field) => {
     setEditingCell({ id: task.id ?? "new", field });
 
@@ -145,6 +148,7 @@ function App() {
     setSelectedProjectId(project.id);
   };
 
+  //save and load templates
   const loadTemplates = async () => {
     const data = await fetchTemplates();
 
@@ -174,6 +178,7 @@ function App() {
     loadTasks();
   };
 
+  //authentaction
   const handleRegister = async () => {
     const data = await registerUser({
       email,
@@ -215,6 +220,7 @@ function App() {
     marginLeft: "8px",
   };
 
+  //login page
   if (!token) {
     return (
       <div style={{ padding: "20px" }}>
@@ -254,6 +260,7 @@ function App() {
     );
   }
 
+  //scheduling page sidebar
   return (
     <div
       style={{
@@ -262,7 +269,6 @@ function App() {
         fontFamily: "Arial, sans-serif",
       }}
     >
-      {/* SIDEBAR */}
       <aside
         style={{
           width: "200px",
@@ -277,7 +283,7 @@ function App() {
           top: 0,
         }}
       >
-        {/* PROJECTS */}
+        {/*Sidebar Project selection and creation*/}
         <div
           style={{
             padding: "15px",
@@ -320,7 +326,7 @@ function App() {
           </button>
         </div>
 
-        {/* TEMPLATES */}
+        {/* Template creation and selection */}
         <div
           style={{
             padding: "15px",
@@ -367,7 +373,8 @@ function App() {
             Apply Template
           </button>
         </div>
-
+        
+        {/* Export schedule as PDF */}
         <button
           onClick={() => exportProjectPdf(selectedProjectId)}
           disabled={!selectedProjectId}
@@ -376,6 +383,7 @@ function App() {
           Export Schedule as PDF
         </button>
 
+        {/* Logout */}
         <div style={{ marginTop: "auto" }}>
           <button onClick={handleLogout} style={buttonStyle}>
             Logout
@@ -384,6 +392,7 @@ function App() {
 
       </aside>
       
+      {/* Main content of scheduling page */}
       <main>
         <h2
           style={{
@@ -395,6 +404,7 @@ function App() {
             Schedule
           </h2>
 
+        {/* Scheduling table */}
         <table
           style={{
             width: "100%",
@@ -406,6 +416,7 @@ function App() {
         >
         <thead>
           <tr>
+            {/* Column Names and styles */}
             <th
               style={{
                 width: "50px",
@@ -490,6 +501,7 @@ function App() {
         </thead>
 
         <tbody>
+          {/* Populate new empty row */}
           {[...tasks, getEmptyRow()].map((task, index) => {
             const isNew = task.id === null;
 
@@ -508,7 +520,9 @@ function App() {
               }}
             >
               <td>{isNew ? "": index + 1}</td>
-              {/* TASK NAME */}
+
+              {/* Task Name */}
+
               <td
                 onClick={(e) => {
                   e.stopPropagation();
@@ -532,7 +546,8 @@ function App() {
                 )}
               </td>
 
-              {/* DURATION */}
+              {/* Duration */}
+
               <td
                 onClick={(e) => {
                   e.stopPropagation();
@@ -556,7 +571,8 @@ function App() {
                 )}
               </td>
 
-              {/* START / END */}
+              {/* Start and End Dates */}
+
               <td
                 onClick={(e) => {
                   e.stopPropagation();
@@ -589,7 +605,8 @@ function App() {
                 {formatDate(task.end_date)}
               </td>
 
-              {/* PREDECESSOR */}
+              {/* Predecessor */}
+
              <td
                   onClick={(e) => {
                     e.stopPropagation();
@@ -613,7 +630,9 @@ function App() {
                     task.predecessor || "-"
                   )}
               </td>
-              {/* DELETE */}
+
+              {/* Delete */}
+
               <td
                 style={{
                   padding: "8px",
@@ -639,7 +658,11 @@ function App() {
         })}
         </tbody>
       </table>
+
+      {/* Gantt Chart */}
+      
       <GanttChart tasks={tasks} selectedTaskId={selectedTaskId} />
+
       </main>
     </div>
   );
