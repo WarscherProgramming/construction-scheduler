@@ -30,6 +30,8 @@ function App() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [authMode, setAuthMode] = useState("login");
+  const [currentPage, setCurrentPage] = useState("home");
+  
 
   //project and task load
   const loadTasks = async () => {
@@ -217,7 +219,7 @@ function App() {
     border: "1px solid #bbb",
     borderRadius: "6px",
     cursor: "pointer",
-    marginLeft: "8px",
+    marginLeft: "1px",
   };
 
   //login page
@@ -260,6 +262,84 @@ function App() {
     );
   }
 
+  //homepage
+  if (currentPage === "home") {
+    return (
+      <div style={{ padding: "24px", fontFamily: "Arial, sans-serif", textAlign: "center" }}>
+        <h1>Construction Management Software</h1>
+
+        <p style={{ color: "#666" }}>
+          Select a project to open its dashboard.
+        </p>
+
+        <select
+          value={selectedProjectId || ""}
+          onChange={(e) => {
+            setSelectedProjectId(Number(e.target.value));
+            setCurrentPage("projectDashboard");
+          }}
+        >
+          <option value="">Select project</option>
+          {projects.map((project) => (
+            <option key={project.id} value={project.id}>
+              {project.name}
+            </option>
+          ))}
+        </select>
+
+        <div style={{ marginTop: "20px" }}>
+          <h3>Active Projects</h3>
+          <p>{projects.length} active project(s)</p>
+
+          <h3>Templates</h3>
+          <p>{templates.length} saved template(s)</p>
+        </div>
+
+        <button onClick={handleLogout} style={buttonStyle}>
+          Logout
+        </button>
+      </div>
+    );
+  }
+
+  //Project Dashboard
+  if (currentPage === "projectDashboard") {
+    const selectedProject = projects.find(
+      (project) => project.id === selectedProjectId
+    );
+
+    return (
+      <div style={{ padding: "24px", fontFamily: "Arial, sans-serif", textAlign: "center" }}>
+        <button onClick={() => setCurrentPage("home")} style={buttonStyle}>
+          Back to Home
+        </button>
+
+        <h1>{selectedProject?.name || "Project"} Dashboard</h1>
+
+        <div style={{ display: "flex", gap: "15px", marginTop: "20px" }}>
+          <div
+            style={{
+              padding: "20px",
+              border: "1px solid #ddd",
+              borderRadius: "8px",
+              width: "250px",
+            }}
+          >
+            <h3>Schedule</h3>
+            <p>Open this project’s schedule.</p>
+
+            <button
+              onClick={() => setCurrentPage("scheduler")}
+              style={buttonStyle}
+            >
+              Open Schedule
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   //scheduling page sidebar
   return (
     <div
@@ -282,49 +362,13 @@ function App() {
           position: "sticky",
           top: 0,
         }}
-      >
-        {/*Sidebar Project selection and creation*/}
-        <div
-          style={{
-            padding: "15px",
-            border: "1px solid #ddd",
-            borderRadius: "8px",
-            marginTop: "20px",
-            marginBottom: "15px",
-          }}
+      > 
+        <button
+          onClick={() => setCurrentPage("projectDashboard")}
+          style={buttonStyle}
         >
-          <h3 style={{ marginTop: 0 }}>Projects</h3>
-
-          <select
-            value={selectedProjectId || ""}
-            onChange={(e) => setSelectedProjectId(Number(e.target.value))}
-            style={{
-              width: "100%",
-              marginBottom: "8px",
-            }}
-          >
-            {projects.map((project) => (
-              <option key={project.id} value={project.id}>
-                {project.name}
-              </option>
-            ))}
-          </select>
-
-          <input
-            placeholder="New project name"
-            value={newProjectName}
-            onChange={(e) => setNewProjectName(e.target.value)}
-            style={{
-              width: "100%",
-              marginBottom: "8px",
-              boxSizing: "border-box",
-            }}
-          />
-
-          <button onClick={handleCreateProject} style={buttonStyle}>
-            Create Project
-          </button>
-        </div>
+          Project Dashboard
+        </button>
 
         {/* Template creation and selection */}
         <div
