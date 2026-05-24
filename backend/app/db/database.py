@@ -17,7 +17,3 @@ SessionLocal = sessionmaker(
 )
 
 Base = declarative_base()
-
-from app.models.task import Task
-
-Base.metadata.create_all(bind=engine)
