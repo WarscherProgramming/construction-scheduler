@@ -12,6 +12,8 @@ import {
   saveTemplate,
   applyTemplate,
   exportProjectPdf,
+  fetchDailyLogs,
+  createDailyLog,
 } from "./services/api";
 import GanttChart from "./components/GanttChart";
 
@@ -31,6 +33,13 @@ function App() {
   const [password, setPassword] = useState("");
   const [authMode, setAuthMode] = useState("login");
   const [currentPage, setCurrentPage] = useState("home");
+  const [dailyLogs, setDailyLogs] = useState([]);
+  const [logDate, setLogDate] = useState("");
+  const [logCompany, setLogCompany] = useState("");
+  const [logManpower, setLogManpower] = useState("");
+  const [logWorkPerformed, setLogWorkPerformed] = useState("");
+  const [logDelays, setLogDelays] = useState("");
+  const [logNotes, setLogNotes] = useState("");
   
 
   //project and task load
@@ -222,6 +231,36 @@ function App() {
     marginLeft: "1px",
   };
 
+  //Daily log logic
+  const loadDailyLogs = async () => {
+    if (!selectedProjectId) return;
+
+    const data = await fetchDailyLogs(selectedProjectId);
+    setDailyLogs(data.daily_logs || []);
+  };
+
+  const handleCreateDailyLog = async () => {
+    if (!selectedProjectId || !logDate || !logCompany || !logManpower) return;
+
+    await createDailyLog(selectedProjectId, {
+      date: logDate,
+      company: logCompany,
+      manpower: Number(logManpower),
+      work_performed: logWorkPerformed,
+      delays: logDelays,
+      notes: logNotes,
+    });
+
+    setLogDate("");
+    setLogCompany("");
+    setLogManpower("");
+    setLogWorkPerformed("");
+    setLogDelays("");
+    setLogNotes("");
+
+    loadDailyLogs();
+  };
+
   //login page
   if (!token) {
     return (
@@ -335,7 +374,98 @@ function App() {
               Open Schedule
             </button>
           </div>
+        <div
+          style={{
+            padding: "20px",
+            border: "1px solid #ddd",
+            borderRadius: "8px",
+            width: "250px",
+          }}
+        >
+          <h3>Daily Logs</h3>
+          <p>Track manpower, work performed, delays, and site notes.</p>
+
+          <button
+            onClick={() => setCurrentPage("dailyLogs")}
+            style={buttonStyle}
+          >
+            Open Daily Logs
+          </button>
         </div>
+        </div>
+      </div>
+    );
+  }
+
+  //Daily log page
+  if (currentPage === "dailyLogs") {
+    const selectedProject = projects.find(
+      (project) => project.id === selectedProjectId
+    );
+
+    return (
+      <div style={{ padding: "24px", fontFamily: "Arial, sans-serif" }}>
+        <button
+          onClick={() => setCurrentPage("projectDashboard")}
+          style={buttonStyle}
+        >
+          Back to Project Dashboard
+        </button>
+
+        <h1>{selectedProject?.name || "Project"} Daily Logs</h1>
+
+        <div style={{ border: "1px solid #ddd", padding: "15px", borderRadius: "8px" }}>
+          <h3>Create Daily Log</h3>
+
+          <input type="date" value={logDate} onChange={(e) => setLogDate(e.target.value)} />
+          <input placeholder="Company" value={logCompany} onChange={(e) => setLogCompany(e.target.value)} />
+          <input placeholder="Manpower" value={logManpower} onChange={(e) => setLogManpower(e.target.value)} />
+
+          <textarea placeholder="Work performed" value={logWorkPerformed} onChange={(e) => setLogWorkPerformed(e.target.value)} />
+          <textarea placeholder="Delays / Issues" value={logDelays} onChange={(e) => setLogDelays(e.target.value)} />
+          <textarea placeholder="Notes" value={logNotes} onChange={(e) => setLogNotes(e.target.value)} />
+
+          <button onClick={handleCreateDailyLog} style={buttonStyle}>
+            Save Daily Log
+          </button>
+        </div>
+
+        <button onClick={loadDailyLogs} style={{ ...buttonStyle, marginTop: "15px" }}>
+          Refresh Logs
+        </button>
+
+        <table style={{ width: "100%", borderCollapse: "collapse", marginTop: "20px" }}>
+          <thead>
+            <tr>
+              {["Date", "Company", "Manpower", "Work Performed", "Delays", "Notes"].map((header) => (
+                <th
+                  key={header}
+                  style={{
+                    padding: "10px",
+                    background: "#f3f4f6",
+                    border: "1px solid #ddd",
+                    textAlign: "left",
+                  }}
+                >
+                  {header}
+                </th>
+              ))}
+            </tr>
+          </thead>
+
+          <tbody>
+            {dailyLogs.map((log) => (
+              <tr key={log.id}>
+                <td style={{ padding: "8px", border: "1px solid #ddd" }}>{formatDate(log.date)}</td>
+                <td style={{ padding: "8px", border: "1px solid #ddd" }}>{log.company}</td>
+                <td style={{ padding: "8px", border: "1px solid #ddd" }}>{log.manpower}</td>
+                <td style={{ padding: "8px", border: "1px solid #ddd" }}>{log.work_performed}</td>
+                <td style={{ padding: "8px", border: "1px solid #ddd" }}>{log.delays}</td>
+                <td style={{ padding: "8px", border: "1px solid #ddd" }}>{log.notes}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     );
   }

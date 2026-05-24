@@ -11,6 +11,8 @@ from app.api.routes_template import router as template_router
 from app.api.routes_export import router as export_router
 from app.models.user import User
 from app.api.routes_auth import router as auth_router
+from app.models.daily_log import DailyLog
+from app.api.routes_daily_log import router as daily_log_router
 
 Base.metadata.create_all(bind=engine)
 app = FastAPI()
@@ -28,6 +30,7 @@ app.include_router(project_router)
 app.include_router(template_router)
 app.include_router(export_router)
 app.include_router(auth_router)
+app.include_router(daily_log_router)
 
 @app.get("/")
 def root():

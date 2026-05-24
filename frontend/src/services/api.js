@@ -131,3 +131,27 @@ export async function exportProjectPdf(projectId) {
 
   window.open(url, "_blank");
 }
+
+export async function fetchDailyLogs(projectId) {
+  const res = await fetch(
+    `${API_URL}/projects/${projectId}/daily-logs`,
+    {
+      headers: getAuthHeaders(),
+    }
+  );
+
+  return res.json();
+}
+
+export async function createDailyLog(projectId, log) {
+  const res = await fetch(
+    `${API_URL}/projects/${projectId}/daily-logs`,
+    {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify(log),
+    }
+  );
+
+  return res.json();
+}
