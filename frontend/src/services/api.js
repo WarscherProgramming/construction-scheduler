@@ -192,3 +192,21 @@ export async function createNoteDelay(projectId, entry) {
 
   return res.json();
 }
+
+export async function fetchChangeOrders(projectId) {
+  const res = await fetch(`${API_URL}/projects/${projectId}/change-orders`, {
+    headers: getAuthHeaders(),
+  });
+
+  return res.json();
+}
+
+export async function createChangeOrder(projectId, changeOrder) {
+  const res = await fetch(`${API_URL}/projects/${projectId}/change-orders`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(changeOrder),
+  });
+
+  return res.json();
+}
