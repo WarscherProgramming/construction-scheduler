@@ -174,3 +174,21 @@ export async function createInspection(projectId, inspection) {
 
   return res.json();
 }
+
+export async function fetchNotesDelays(projectId) {
+  const res = await fetch(`${API_URL}/projects/${projectId}/notes-delays`, {
+    headers: getAuthHeaders(),
+  });
+
+  return res.json();
+}
+
+export async function createNoteDelay(projectId, entry) {
+  const res = await fetch(`${API_URL}/projects/${projectId}/notes-delays`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(entry),
+  });
+
+  return res.json();
+}

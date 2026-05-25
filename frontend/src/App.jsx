@@ -16,6 +16,8 @@ import {
   createDailyLog,
   fetchInspections,
   createInspection,
+  fetchNotesDelays,
+  createNoteDelay,
 } from "./services/api";
 import GanttChart from "./components/GanttChart";
 
@@ -39,13 +41,17 @@ function App() {
   const [logDate, setLogDate] = useState("");
   const [logCompany, setLogCompany] = useState("");
   const [logManpower, setLogManpower] = useState("");
-  const [logWorkPerformed, setLogWorkPerformed] = useState("");
-  const [logDelays, setLogDelays] = useState("");
   const [logNotes, setLogNotes] = useState("");
   const [inspections, setInspections] = useState([]);
   const [inspectionDate, setInspectionDate] = useState("");
   const [inspectionType, setInspectionType] = useState("");
   const [inspectionStatus, setInspectionStatus] = useState("Pending");
+  const [notesDelays, setNotesDelays] = useState([]);
+  const [noteDelayDate, setNoteDelayDate] = useState("");
+  const [noteDelayType, setNoteDelayType] = useState("Note");
+  const [noteDelayCompany, setNoteDelayCompany] = useState("");
+  const [noteDelayDescription, setNoteDelayDescription] = useState("");
+  const [noteDelayImpact, setNoteDelayImpact] = useState("");
   
 
   //project and task load
@@ -292,6 +298,34 @@ function App() {
     loadInspections();
   };
 
+  //Load and create delays and notes
+  const loadNotesDelays = async () => {
+    if (!selectedProjectId) return;
+
+    const data = await fetchNotesDelays(selectedProjectId);
+    setNotesDelays(data.notes_delays || []);
+  };
+
+  const handleCreateNoteDelay = async () => {
+    if (!selectedProjectId || !noteDelayDate || !noteDelayDescription) return;
+
+    await createNoteDelay(selectedProjectId, {
+      date: noteDelayDate,
+      entry_type: noteDelayType,
+      company: noteDelayCompany,
+      description: noteDelayDescription,
+      impact: noteDelayImpact,
+    });
+
+    setNoteDelayDate("");
+    setNoteDelayType("Note");
+    setNoteDelayCompany("");
+    setNoteDelayDescription("");
+    setNoteDelayImpact("");
+
+    loadNotesDelays();
+  };
+
   //login page
   if (!token) {
     return (
@@ -442,6 +476,27 @@ function App() {
             style={buttonStyle}
           >
             Open Inspections
+          </button>
+        </div>
+        <div
+          style={{
+            padding: "20px",
+            border: "1px solid #ddd",
+            borderRadius: "8px",
+            width: "250px",
+          }}
+        >
+          <h3>Notes & Delays</h3>
+          <p>Track project notes, delays, impacts, and company-related issues.</p>
+
+          <button
+            onClick={() => {
+              setCurrentPage("notesDelays");
+              loadNotesDelays();
+            }}
+            style={buttonStyle}
+          >
+            Open Notes & Delays
           </button>
         </div>
         </div>
@@ -617,6 +672,133 @@ function App() {
 
                 <td style={{ padding: "8px", border: "1px solid #ddd" }}>
                   {inspection.status}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+
+  //Notes and delays page
+  if (currentPage === "notesDelays") {
+    const selectedProject = projects.find(
+      (project) => project.id === selectedProjectId
+    );
+
+    return (
+      <div style={{ padding: "24px", fontFamily: "Arial, sans-serif" }}>
+        <button
+          onClick={() => setCurrentPage("projectDashboard")}
+          style={buttonStyle}
+        >
+          Back to Project Dashboard
+        </button>
+
+        <h1>{selectedProject?.name || "Project"} Notes & Delays</h1>
+
+        <div
+          style={{
+            border: "1px solid #ddd",
+            padding: "15px",
+            borderRadius: "8px",
+          }}
+        >
+          <h3>Create Entry</h3>
+
+          <input
+            type="date"
+            value={noteDelayDate}
+            onChange={(e) => setNoteDelayDate(e.target.value)}
+          />
+
+          <select
+            value={noteDelayType}
+            onChange={(e) => setNoteDelayType(e.target.value)}
+          >
+            <option value="Note">Note</option>
+            <option value="Delay">Delay</option>
+          </select>
+
+          <input
+            placeholder="Company"
+            value={noteDelayCompany}
+            onChange={(e) => setNoteDelayCompany(e.target.value)}
+          />
+
+          <textarea
+            placeholder="Description"
+            value={noteDelayDescription}
+            onChange={(e) => setNoteDelayDescription(e.target.value)}
+          />
+
+          <textarea
+            placeholder="Impact"
+            value={noteDelayImpact}
+            onChange={(e) => setNoteDelayImpact(e.target.value)}
+          />
+
+          <button onClick={handleCreateNoteDelay} style={buttonStyle}>
+            Save Entry
+          </button>
+        </div>
+
+        <button
+          onClick={loadNotesDelays}
+          style={{ ...buttonStyle, marginTop: "15px" }}
+        >
+          Refresh Entries
+        </button>
+
+        <table
+          style={{
+            width: "100%",
+            borderCollapse: "collapse",
+            marginTop: "20px",
+          }}
+        >
+          <thead>
+            <tr>
+              {["Date", "Type", "Company", "Description", "Impact"].map(
+                (header) => (
+                  <th
+                    key={header}
+                    style={{
+                      padding: "10px",
+                      background: "#f3f4f6",
+                      border: "1px solid #ddd",
+                      textAlign: "left",
+                    }}
+                  >
+                    {header}
+                  </th>
+                )
+              )}
+            </tr>
+          </thead>
+
+          <tbody>
+            {notesDelays.map((entry) => (
+              <tr key={entry.id}>
+                <td style={{ padding: "8px", border: "1px solid #ddd" }}>
+                  {formatDate(entry.date)}
+                </td>
+
+                <td style={{ padding: "8px", border: "1px solid #ddd" }}>
+                  {entry.entry_type}
+                </td>
+
+                <td style={{ padding: "8px", border: "1px solid #ddd" }}>
+                  {entry.company}
+                </td>
+
+                <td style={{ padding: "8px", border: "1px solid #ddd" }}>
+                  {entry.description}
+                </td>
+
+                <td style={{ padding: "8px", border: "1px solid #ddd" }}>
+                  {entry.impact}
                 </td>
               </tr>
             ))}
