@@ -155,3 +155,22 @@ export async function createDailyLog(projectId, log) {
 
   return res.json();
 }
+
+//fetch and create inspections
+export async function fetchInspections(projectId) {
+  const res = await fetch(`${API_URL}/projects/${projectId}/inspections`, {
+    headers: getAuthHeaders(),
+  });
+
+  return res.json();
+}
+
+export async function createInspection(projectId, inspection) {
+  const res = await fetch(`${API_URL}/projects/${projectId}/inspections`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(inspection),
+  });
+
+  return res.json();
+}

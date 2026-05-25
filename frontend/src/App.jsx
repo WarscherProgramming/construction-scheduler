@@ -14,6 +14,8 @@ import {
   exportProjectPdf,
   fetchDailyLogs,
   createDailyLog,
+  fetchInspections,
+  createInspection,
 } from "./services/api";
 import GanttChart from "./components/GanttChart";
 
@@ -40,6 +42,10 @@ function App() {
   const [logWorkPerformed, setLogWorkPerformed] = useState("");
   const [logDelays, setLogDelays] = useState("");
   const [logNotes, setLogNotes] = useState("");
+  const [inspections, setInspections] = useState([]);
+  const [inspectionDate, setInspectionDate] = useState("");
+  const [inspectionType, setInspectionType] = useState("");
+  const [inspectionStatus, setInspectionStatus] = useState("Pending");
   
 
   //project and task load
@@ -261,6 +267,31 @@ function App() {
     loadDailyLogs();
   };
 
+  //Load and create inspections
+
+  const loadInspections = async () => {
+    if (!selectedProjectId) return;
+
+    const data = await fetchInspections(selectedProjectId);
+    setInspections(data.inspections || []);
+  };
+
+  const handleCreateInspection = async () => {
+    if (!selectedProjectId || !inspectionDate || !inspectionType) return;
+
+    await createInspection(selectedProjectId, {
+      date: inspectionDate,
+      inspection_type: inspectionType,
+      status: inspectionStatus,
+    });
+
+    setInspectionDate("");
+    setInspectionType("");
+    setInspectionStatus("Pending");
+
+    loadInspections();
+  };
+
   //login page
   if (!token) {
     return (
@@ -392,6 +423,27 @@ function App() {
             Open Daily Logs
           </button>
         </div>
+        <div
+          style={{
+            padding: "20px",
+            border: "1px solid #ddd",
+            borderRadius: "8px",
+            width: "250px",
+          }}
+        >
+          <h3>Inspections</h3>
+          <p>Track inspections and results.</p>
+
+          <button
+            onClick={() => {
+              setCurrentPage("inspections");
+              loadInspections();
+            }}
+            style={buttonStyle}
+          >
+            Open Inspections
+          </button>
+        </div>
         </div>
       </div>
     );
@@ -460,6 +512,112 @@ function App() {
                 <td style={{ padding: "8px", border: "1px solid #ddd" }}>{log.work_performed}</td>
                 <td style={{ padding: "8px", border: "1px solid #ddd" }}>{log.delays}</td>
                 <td style={{ padding: "8px", border: "1px solid #ddd" }}>{log.notes}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+
+  //Inspection page
+  if (currentPage === "inspections") {
+    const selectedProject = projects.find(
+      (project) => project.id === selectedProjectId
+    );
+
+    return (
+      <div style={{ padding: "24px", fontFamily: "Arial, sans-serif" }}>
+        <button
+          onClick={() => setCurrentPage("projectDashboard")}
+          style={buttonStyle}
+        >
+          Back to Project Dashboard
+        </button>
+
+        <h1>{selectedProject?.name || "Project"} Inspections</h1>
+
+        <div
+          style={{
+            border: "1px solid #ddd",
+            padding: "15px",
+            borderRadius: "8px",
+          }}
+        >
+          <h3>Create Inspection</h3>
+
+          <input
+            type="date"
+            value={inspectionDate}
+            onChange={(e) => setInspectionDate(e.target.value)}
+          />
+
+          <input
+            placeholder="Inspection"
+            value={inspectionType}
+            onChange={(e) => setInspectionType(e.target.value)}
+          />
+
+          <select
+            value={inspectionStatus}
+            onChange={(e) => setInspectionStatus(e.target.value)}
+          >
+            <option value="Pass">Pass</option>
+            <option value="Partial Pass">Partial Pass</option>
+            <option value="Fail">Fail</option>
+          </select>
+
+          <button onClick={handleCreateInspection} style={buttonStyle}>
+            Save Inspection
+          </button>
+        </div>
+
+        <button
+          onClick={loadInspections}
+          style={{ ...buttonStyle, marginTop: "15px" }}
+        >
+          Refresh Inspections
+        </button>
+
+        <table
+          style={{
+            width: "100%",
+            borderCollapse: "collapse",
+            marginTop: "20px",
+          }}
+        >
+          <thead>
+            <tr>
+              {["Date", "Inspection", "Status"].map((header) => (
+                <th
+                  key={header}
+                  style={{
+                    padding: "10px",
+                    background: "#f3f4f6",
+                    border: "1px solid #ddd",
+                    textAlign: "left",
+                  }}
+                >
+                  {header}
+                </th>
+              ))}
+            </tr>
+          </thead>
+
+          <tbody>
+            {inspections.map((inspection) => (
+              <tr key={inspection.id}>
+                <td style={{ padding: "8px", border: "1px solid #ddd" }}>
+                  {formatDate(inspection.date)}
+                </td>
+
+                <td style={{ padding: "8px", border: "1px solid #ddd" }}>
+                  {inspection.inspection_type}
+                </td>
+
+                <td style={{ padding: "8px", border: "1px solid #ddd" }}>
+                  {inspection.status}
+                </td>
               </tr>
             ))}
           </tbody>
