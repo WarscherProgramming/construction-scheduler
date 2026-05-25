@@ -18,6 +18,8 @@ import {
   createInspection,
   fetchNotesDelays,
   createNoteDelay,
+  fetchChangeOrders,
+  createChangeOrder,
 } from "./services/api";
 import GanttChart from "./components/GanttChart";
 
@@ -52,6 +54,14 @@ function App() {
   const [noteDelayCompany, setNoteDelayCompany] = useState("");
   const [noteDelayDescription, setNoteDelayDescription] = useState("");
   const [noteDelayImpact, setNoteDelayImpact] = useState("");
+  const [changeOrders, setChangeOrders] = useState([]);
+  const [changeOrderDate, setChangeOrderDate] = useState("");
+  const [changeOrderNumber, setChangeOrderNumber] = useState("");
+  const [changeOrderCompany, setChangeOrderCompany] = useState("");
+  const [changeOrderStatus, setChangeOrderStatus] = useState("Pending");
+  const [changeOrderDescription, setChangeOrderDescription] = useState("");
+  const [changeOrderAmount, setChangeOrderAmount] = useState("");
+  const [changeOrderResponsibleParty, setChangeOrderResponsibleParty] = useState("");
   
 
   //project and task load
@@ -326,6 +336,38 @@ function App() {
     loadNotesDelays();
   };
 
+  //create and load change orders
+  const loadChangeOrders = async () => {
+    if (!selectedProjectId) return;
+
+    const data = await fetchChangeOrders(selectedProjectId);
+    setChangeOrders(data.change_orders || []);
+  };
+
+  const handleCreateChangeOrder = async () => {
+    if (!selectedProjectId || !changeOrderDate || !changeOrderNumber) return;
+
+    await createChangeOrder(selectedProjectId, {
+      date: changeOrderDate,
+      co_number: changeOrderNumber,
+      company: changeOrderCompany,
+      status: changeOrderStatus,
+      description: changeOrderDescription,
+      amount: changeOrderAmount,
+      responsible_party: changeOrderResponsibleParty,
+    });
+
+    setChangeOrderDate("");
+    setChangeOrderNumber("");
+    setChangeOrderCompany("");
+    setChangeOrderStatus("Pending");
+    setChangeOrderDescription("");
+    setChangeOrderAmount("");
+    setChangeOrderResponsibleParty("");
+
+    loadChangeOrders();
+  };
+
   //login page
   if (!token) {
     return (
@@ -497,6 +539,27 @@ function App() {
             style={buttonStyle}
           >
             Open Notes & Delays
+          </button>
+        </div>
+        <div
+          style={{
+            padding: "20px",
+            border: "1px solid #ddd",
+            borderRadius: "8px",
+            width: "250px",
+          }}
+        >
+          <h3>Change Orders</h3>
+          <p>Track CO numbers, companies, status, costs, and responsibility.</p>
+
+          <button
+            onClick={() => {
+              setCurrentPage("changeOrders");
+              loadChangeOrders();
+            }}
+            style={buttonStyle}
+          >
+            Open Change Orders
           </button>
         </div>
         </div>
@@ -799,6 +862,161 @@ function App() {
 
                 <td style={{ padding: "8px", border: "1px solid #ddd" }}>
                   {entry.impact}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+
+  //Change orders page
+  if (currentPage === "changeOrders") {
+    const selectedProject = projects.find(
+      (project) => project.id === selectedProjectId
+    );
+
+    return (
+      <div style={{ padding: "24px", fontFamily: "Arial, sans-serif" }}>
+        <button
+          onClick={() => setCurrentPage("projectDashboard")}
+          style={buttonStyle}
+        >
+          Back to Project Dashboard
+        </button>
+
+        <h1>{selectedProject?.name || "Project"} Change Orders</h1>
+
+        <div
+          style={{
+            border: "1px solid #ddd",
+            padding: "15px",
+            borderRadius: "8px",
+          }}
+        >
+          <h3>Create Change Order</h3>
+
+          <input
+            type="date"
+            value={changeOrderDate}
+            onChange={(e) => setChangeOrderDate(e.target.value)}
+          />
+
+          <input
+            placeholder="CO Number"
+            value={changeOrderNumber}
+            onChange={(e) => setChangeOrderNumber(e.target.value)}
+          />
+
+          <input
+            placeholder="Company"
+            value={changeOrderCompany}
+            onChange={(e) => setChangeOrderCompany(e.target.value)}
+          />
+
+          <select
+            value={changeOrderStatus}
+            onChange={(e) => setChangeOrderStatus(e.target.value)}
+          >
+            <option value="Pending">Pending</option>
+            <option value="Approved">Approved</option>
+            <option value="Rejected">Rejected</option>
+            <option value="Void">Void</option>
+          </select>
+
+          <input
+            placeholder="Amount"
+            value={changeOrderAmount}
+            onChange={(e) => setChangeOrderAmount(e.target.value)}
+          />
+
+          <input
+            placeholder="Responsible Party"
+            value={changeOrderResponsibleParty}
+            onChange={(e) => setChangeOrderResponsibleParty(e.target.value)}
+          />
+
+          <textarea
+            placeholder="Description"
+            value={changeOrderDescription}
+            onChange={(e) => setChangeOrderDescription(e.target.value)}
+          />
+
+          <button onClick={handleCreateChangeOrder} style={buttonStyle}>
+            Save Change Order
+          </button>
+        </div>
+
+        <button
+          onClick={loadChangeOrders}
+          style={{ ...buttonStyle, marginTop: "15px" }}
+        >
+          Refresh Change Orders
+        </button>
+
+        <table
+          style={{
+            width: "100%",
+            borderCollapse: "collapse",
+            marginTop: "20px",
+          }}
+        >
+          <thead>
+            <tr>
+              {[
+                "Date",
+                "CO Number",
+                "Company",
+                "Status",
+                "Amount",
+                "Responsible Party",
+                "Description",
+              ].map((header) => (
+                <th
+                  key={header}
+                  style={{
+                    padding: "10px",
+                    background: "#f3f4f6",
+                    border: "1px solid #ddd",
+                    textAlign: "left",
+                  }}
+                >
+                  {header}
+                </th>
+              ))}
+            </tr>
+          </thead>
+
+          <tbody>
+            {changeOrders.map((co) => (
+              <tr key={co.id}>
+                <td style={{ padding: "8px", border: "1px solid #ddd" }}>
+                  {formatDate(co.date)}
+                </td>
+
+                <td style={{ padding: "8px", border: "1px solid #ddd" }}>
+                  {co.co_number}
+                </td>
+
+                <td style={{ padding: "8px", border: "1px solid #ddd" }}>
+                  {co.company}
+                </td>
+
+                <td style={{ padding: "8px", border: "1px solid #ddd" }}>
+                  {co.status}
+                </td>
+
+                <td style={{ padding: "8px", border: "1px solid #ddd" }}>
+                  {co.amount}
+                </td>
+
+                <td style={{ padding: "8px", border: "1px solid #ddd" }}>
+                  {co.responsible_party}
+                </td>
+
+                <td style={{ padding: "8px", border: "1px solid #ddd" }}>
+                  {co.description}
                 </td>
               </tr>
             ))}
