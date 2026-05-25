@@ -488,8 +488,23 @@ function App() {
           <button onClick={() => setCurrentPage("inspections")} style={buttonStyle}>
             Inspections
           </button>
-        </div>
-        </div>
+
+          <button onClick={() => setCurrentPage("notesDelays")} style={buttonStyle}>
+            Notes & Delays
+          </button>
+
+          <button onClick={() => setCurrentPage("changeOrders")} style={buttonStyle}>
+            Change Orders
+          </button>
+        </aside>
+
+        <main style={{ flex: 1, padding: "24px" }}>
+          <h1>{selectedProject?.name || "Project"} Dashboard</h1>
+
+          <p style={{ color: "#666" }}>
+            Select a module from the sidebar to manage this project.
+          </p>
+        </main>
       </div>
     );
   }
