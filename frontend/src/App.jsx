@@ -413,93 +413,56 @@ function App() {
     );
 
     return (
-      <div style={{ padding: "24px", fontFamily: "Arial, sans-serif", textAlign: "center" }}>
-        <button onClick={() => setCurrentPage("home")} style={buttonStyle}>
-          Back to Home
-        </button>
-
-        <h1>{selectedProject?.name || "Project"} Dashboard</h1>
-
-        <div style={{ display: "flex", gap: "15px", marginTop: "20px" }}>
-          <div
-            style={{
-              padding: "20px",
-              border: "1px solid #ddd",
-              borderRadius: "8px",
-              width: "250px",
-            }}
-          >
-            <h3>Schedule</h3>
-            <p>Open this project’s schedule.</p>
-
-            <button
-              onClick={() => setCurrentPage("scheduler")}
-              style={buttonStyle}
-            >
-              Open Schedule
-            </button>
-          </div>
-        <div
+      <div
+        style={{
+          display: "flex",
+          minHeight: "100vh",
+          fontFamily: "Arial, sans-serif",
+        }}
+      >
+        <aside
           style={{
+            width: "220px",
+            minWidth: "220px",
             padding: "20px",
-            border: "1px solid #ddd",
-            borderRadius: "8px",
-            width: "250px",
+            borderRight: "1px solid #ddd",
+            boxSizing: "border-box",
           }}
         >
-          <h3>Daily Logs</h3>
-          <p>Track manpower, work performed, delays, and site notes.</p>
-
-          <button
-            onClick={() => setCurrentPage("dailyLogs")}
-            style={buttonStyle}
-          >
-            Open Daily Logs
+          <button onClick={() => setCurrentPage("home")} style={buttonStyle}>
+            Back to Home
           </button>
-        </div>
-        <div
-          style={{
-            padding: "20px",
-            border: "1px solid #ddd",
-            borderRadius: "8px",
-            width: "250px",
-          }}
-        >
-          <h3>Inspections</h3>
-          <p>Track inspections and results.</p>
 
-          <button
-            onClick={() => {
-              setCurrentPage("inspections");
-              loadInspections();
-            }}
-            style={buttonStyle}
-          >
-            Open Inspections
-          </button>
-        </div>
-        <div
-          style={{
-            padding: "20px",
-            border: "1px solid #ddd",
-            borderRadius: "8px",
-            width: "250px",
-          }}
-        >
-          <h3>Notes & Delays</h3>
-          <p>Track project notes, delays, impacts, and company-related issues.</p>
+          <h3>Modules</h3>
 
-          <button
-            onClick={() => {
-              setCurrentPage("notesDelays");
-              loadNotesDelays();
-            }}
-            style={buttonStyle}
-          >
-            Open Notes & Delays
+          <button onClick={() => setCurrentPage("scheduler")} style={buttonStyle}>
+            Schedule
           </button>
-        </div>
-        </div>
+
+          <button onClick={() => setCurrentPage("dailyLogs")} style={buttonStyle}>
+            Daily Logs
+          </button>
+
+          <button onClick={() => setCurrentPage("inspections")} style={buttonStyle}>
+            Inspections
+          </button>
+
+          <button onClick={() => setCurrentPage("notesDelays")} style={buttonStyle}>
+            Notes & Delays
+          </button>
+
+          <button onClick={() => setCurrentPage("changeOrders")} style={buttonStyle}>
+            Change Orders
+          </button>
+        </aside>
+
+        <main style={{ flex: 1, padding: "24px" }}>
+          <h1>{selectedProject?.name || "Project"} Dashboard</h1>
+
+          <p style={{ color: "#666" }}>
+            Select a module from the sidebar to manage this project.
+          </p>
+        </main>
       </div>
     );
   }
