@@ -421,8 +421,6 @@ function App() {
           <input placeholder="Company" value={logCompany} onChange={(e) => setLogCompany(e.target.value)} />
           <input placeholder="Manpower" value={logManpower} onChange={(e) => setLogManpower(e.target.value)} />
 
-          <textarea placeholder="Work performed" value={logWorkPerformed} onChange={(e) => setLogWorkPerformed(e.target.value)} />
-          <textarea placeholder="Delays / Issues" value={logDelays} onChange={(e) => setLogDelays(e.target.value)} />
           <textarea placeholder="Notes" value={logNotes} onChange={(e) => setLogNotes(e.target.value)} />
 
           <button onClick={handleCreateDailyLog} style={buttonStyle}>
@@ -437,7 +435,7 @@ function App() {
         <table style={{ width: "100%", borderCollapse: "collapse", marginTop: "20px" }}>
           <thead>
             <tr>
-              {["Date", "Company", "Manpower", "Work Performed", "Delays", "Notes"].map((header) => (
+              {["Date", "Company", "Manpower", "Notes"].map((header) => (
                 <th
                   key={header}
                   style={{
