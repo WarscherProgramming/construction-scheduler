@@ -20,7 +20,19 @@ import {
   createNoteDelay,
   fetchChangeOrders,
   createChangeOrder,
+  fetchProjectCompanies,
+  createProjectCompany,
+  deleteChangeOrder,
 } from "./services/api";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
 import GanttChart from "./components/GanttChart";
 
 function App() {
@@ -62,6 +74,9 @@ function App() {
   const [changeOrderDescription, setChangeOrderDescription] = useState("");
   const [changeOrderAmount, setChangeOrderAmount] = useState("");
   const [changeOrderResponsibleParty, setChangeOrderResponsibleParty] = useState("");
+  const [projectCompanies, setProjectCompanies] = useState([]);
+  const [companyName, setCompanyName] = useState("");
+  const [companyTrade, setCompanyTrade] = useState("");
   
 
   //project and task load
@@ -99,6 +114,12 @@ function App() {
       loadTasks();
     }
   }, [token, selectedProjectId]);
+
+  useEffect(() => {
+    if (currentPage === "projectDashboard" && selectedProjectId) {
+      loadChangeOrders();
+    }
+  }, [currentPage, selectedProjectId]);
 
   //table logic  
   const handleCellClick = (task, field) => {
@@ -368,6 +389,79 @@ function App() {
     loadChangeOrders();
   };
 
+  const handleDeleteChangeOrder = async (id) => {
+    await deleteChangeOrder(selectedProjectId, id);
+    loadChangeOrders();
+  };
+
+  //Dashboard pull task current week
+  const getTasksThisWeek = () => {
+    const today = new Date();
+
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - today.getDay());
+
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 6);
+
+    return tasks.filter((task) => {
+      if (!task.start_date) return false;
+
+      const taskStart = new Date(task.start_date);
+
+      return taskStart >= startOfWeek && taskStart <= endOfWeek;
+    });
+  };
+
+  //project delay table
+  const getProjectDelays = () => {
+    return notesDelays.filter(
+      (entry) => entry.entry_type === "Delay"
+    );
+  };
+
+  //Load project companies/subcontractors
+  const loadProjectCompanies = async () => {
+    if (!selectedProjectId) return;
+
+    const data = await fetchProjectCompanies(selectedProjectId);
+    setProjectCompanies(data.companies || []);
+  };
+
+  const handleCreateProjectCompany = async () => {
+    if (!selectedProjectId || !companyName.trim()) return;
+
+    await createProjectCompany(selectedProjectId, {
+      name: companyName,
+      trade: companyTrade,
+    });
+
+    setCompanyName("");
+    setCompanyTrade("");
+
+    loadProjectCompanies();
+  };
+
+  //Change order totals
+  const getChangeOrderTotalsByCompany = () => {
+    const totals = {};
+
+    changeOrders.forEach((co) => {
+      const company = co.company || "Unassigned";
+
+      const amount = Number(
+        String(co.amount || "0").replace(/[$,]/g, "")
+      );
+
+      totals[company] = (totals[company] || 0) + amount;
+    });
+
+    return Object.entries(totals).map(([company, total]) => ({
+      company,
+      total,
+    }));
+  };
+
   //login page
   if (!token) {
     return (
@@ -496,6 +590,16 @@ function App() {
           <button onClick={() => setCurrentPage("changeOrders")} style={buttonStyle}>
             Change Orders
           </button>
+
+          <button
+            onClick={() => {
+              setCurrentPage("projectSettings");
+              loadProjectCompanies();
+            }}
+            style={buttonStyle}
+          >
+            Project Settings
+          </button>
         </aside>
 
         <main style={{ flex: 1, padding: "24px" }}>
@@ -504,6 +608,141 @@ function App() {
           <p style={{ color: "#666" }}>
             Select a module from the sidebar to manage this project.
           </p>
+
+          <div
+            style={{
+              display: "flex",
+              gap: "30px",
+              alignItems: "flex-start",
+              marginTop: "30px",
+              flexWrap: "wrap",
+            }}
+          >
+            <div>
+              <h2 style={{ marginBottom: "15px" }}>Scheduled This Week</h2>
+
+              <table
+                style={{
+                  width: "450px",
+                  borderCollapse: "collapse",
+                  fontSize: "14px",
+                }}
+              >
+                <thead>
+                  <tr>
+                    {["Task", "Start"].map((header) => (
+                      <th
+                        key={header}
+                        style={{
+                          padding: "6px",
+                          background: "#f3f4f6",
+                          border: "1px solid #ddd",
+                          textAlign: "left",
+                        }}
+                      >
+                        {header}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {getTasksThisWeek().map((task) => (
+                    <tr key={task.id}>
+                      <td style={{ padding: "6px", border: "1px solid #ddd" }}>
+                        {task.name}
+                      </td>
+
+                      <td style={{ padding: "6px", border: "1px solid #ddd" }}>
+                        {formatDate(task.start_date)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div>
+              <h2 style={{ marginBottom: "15px" }}>Change Orders by Company</h2>
+
+              <div
+                style={{
+                  width: "700px",
+                  height: "350px",
+                  border: "1px solid #ddd",
+                  borderRadius: "8px",
+                  padding: "15px",
+                  background: "#fff",
+                }}
+              >
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={getChangeOrderTotalsByCompany()}
+                    margin={{
+                      top: 20,
+                      right: 20,
+                      left: 20,
+                      bottom: 20,
+                    }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="company" />
+                    <YAxis />
+                    <Tooltip formatter={(value) => [`$${value}`, "CO Value"]} />
+                    <Bar dataKey="total" fill="#3b82f6" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ marginTop: "30px" }}>
+            <h2 style={{ marginBottom: "15px" }}>Project Delays</h2>
+
+            <table
+              style={{
+                width: "450px",
+                borderCollapse: "collapse",
+                fontSize: "14px",
+              }}
+            >
+              <thead>
+                <tr>
+                  {["Date", "Company", "Description"].map((header) => (
+                    <th
+                      key={header}
+                      style={{
+                        padding: "6px",
+                        background: "#f3f4f6",
+                        border: "1px solid #ddd",
+                        textAlign: "left",
+                      }}
+                    >
+                      {header}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+
+              <tbody>
+                {getProjectDelays().map((entry) => (
+                  <tr key={entry.id}>
+                    <td style={{ padding: "6px", border: "1px solid #ddd" }}>
+                      {formatDate(entry.date)}
+                    </td>
+
+                    <td style={{ padding: "6px", border: "1px solid #ddd" }}>
+                      {entry.company}
+                    </td>
+
+                    <td style={{ padding: "6px", border: "1px solid #ddd" }}>
+                      {entry.description}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </main>
       </div>
     );
@@ -530,8 +769,32 @@ function App() {
           <h3>Create Daily Log</h3>
 
           <input type="date" value={logDate} onChange={(e) => setLogDate(e.target.value)} />
-          <input placeholder="Company" value={logCompany} onChange={(e) => setLogCompany(e.target.value)} />
-          <input placeholder="Manpower" value={logManpower} onChange={(e) => setLogManpower(e.target.value)} />
+
+          <select
+            value={logCompany}
+            onChange={(e) => setLogCompany(e.target.value)}
+          >
+            <option value="">Select Company</option>
+
+            {projectCompanies.map((company) => (
+              <option key={company.id} value={company.name}>
+                {company.name}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={logManpower}
+            onChange={(e) => setLogManpower(e.target.value)}
+          >
+            <option value="">Manpower</option>
+
+            {Array.from({ length: 50 }, (_, i) => i + 1).map((num) => (
+              <option key={num} value={num}>
+                {num}
+              </option>
+            ))}
+          </select>
 
           <textarea placeholder="Notes" value={logNotes} onChange={(e) => setLogNotes(e.target.value)} />
 
@@ -726,11 +989,18 @@ function App() {
             <option value="Delay">Delay</option>
           </select>
 
-          <input
-            placeholder="Company"
-            value={noteDelayCompany}
-            onChange={(e) => setNoteDelayCompany(e.target.value)}
-          />
+          <select
+            value={logCompany}
+            onChange={(e) => setLogCompany(e.target.value)}
+          >
+            <option value="">Select Company</option>
+
+            {projectCompanies.map((company) => (
+              <option key={company.id} value={company.name}>
+                {company.name}
+              </option>
+            ))}
+          </select>
 
           <textarea
             placeholder="Description"
@@ -851,11 +1121,18 @@ function App() {
             onChange={(e) => setChangeOrderNumber(e.target.value)}
           />
 
-          <input
-            placeholder="Company"
+          <select
             value={changeOrderCompany}
             onChange={(e) => setChangeOrderCompany(e.target.value)}
-          />
+          >
+            <option value="">Select Company</option>
+
+            {projectCompanies.map((company) => (
+              <option key={company.id} value={company.name}>
+                {company.name}
+              </option>
+            ))}
+          </select>
 
           <select
             value={changeOrderStatus}
@@ -873,11 +1150,18 @@ function App() {
             onChange={(e) => setChangeOrderAmount(e.target.value)}
           />
 
-          <input
-            placeholder="Responsible Party"
+          <select
             value={changeOrderResponsibleParty}
             onChange={(e) => setChangeOrderResponsibleParty(e.target.value)}
-          />
+          >
+            <option value="">Responsible Party</option>
+
+            {projectCompanies.map((company) => (
+              <option key={company.id} value={company.name}>
+                {company.name}
+              </option>
+            ))}
+          </select>
 
           <textarea
             placeholder="Description"
@@ -914,6 +1198,7 @@ function App() {
                 "Amount",
                 "Responsible Party",
                 "Description",
+                "Actions",
               ].map((header) => (
                 <th
                   key={header}
@@ -959,6 +1244,100 @@ function App() {
 
                 <td style={{ padding: "8px", border: "1px solid #ddd" }}>
                   {co.description}
+                </td>
+
+                <td style={{ padding: "8px", border: "1px solid #ddd" }}>
+                  <button
+                    onClick={() => handleDeleteChangeOrder(co.id)}
+                  >
+                    Delete
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+
+  //project settings page
+  if (currentPage === "projectSettings") {
+    const selectedProject = projects.find(
+      (project) => project.id === selectedProjectId
+    );
+
+    return (
+      <div style={{ padding: "24px", fontFamily: "Arial, sans-serif" }}>
+        <button
+          onClick={() => setCurrentPage("projectDashboard")}
+          style={buttonStyle}
+        >
+          Back to Project Dashboard
+        </button>
+
+        <h1>{selectedProject?.name || "Project"} Settings</h1>
+
+        <div
+          style={{
+            border: "1px solid #ddd",
+            padding: "15px",
+            borderRadius: "8px",
+          }}
+        >
+          <h3>Add Company</h3>
+
+          <input
+            placeholder="Company name"
+            value={companyName}
+            onChange={(e) => setCompanyName(e.target.value)}
+          />
+
+          <input
+            placeholder="Trade"
+            value={companyTrade}
+            onChange={(e) => setCompanyTrade(e.target.value)}
+          />
+
+          <button onClick={handleCreateProjectCompany} style={buttonStyle}>
+            Add Company
+          </button>
+        </div>
+
+        <table
+          style={{
+            width: "100%",
+            borderCollapse: "collapse",
+            marginTop: "20px",
+          }}
+        >
+          <thead>
+            <tr>
+              {["Company", "Trade"].map((header) => (
+                <th
+                  key={header}
+                  style={{
+                    padding: "10px",
+                    background: "#f3f4f6",
+                    border: "1px solid #ddd",
+                    textAlign: "left",
+                  }}
+                >
+                  {header}
+                </th>
+              ))}
+            </tr>
+          </thead>
+
+          <tbody>
+            {projectCompanies.map((company) => (
+              <tr key={company.id}>
+                <td style={{ padding: "8px", border: "1px solid #ddd" }}>
+                  {company.name}
+                </td>
+
+                <td style={{ padding: "8px", border: "1px solid #ddd" }}>
+                  {company.trade}
                 </td>
               </tr>
             ))}

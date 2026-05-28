@@ -88,3 +88,32 @@ def create_change_order(
     db.refresh(new_change_order)
 
     return change_order_to_dict(new_change_order)
+
+@router.delete("/projects/{project_id}/change-orders/{change_order_id}")
+def delete_change_order(
+    project_id: int,
+    change_order_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    verify_project_owner(project_id, current_user["id"], db)
+
+    change_order = (
+        db.query(ChangeOrder)
+        .filter(
+            ChangeOrder.id == change_order_id,
+            ChangeOrder.project_id == project_id,
+        )
+        .first()
+    )
+
+    if not change_order:
+        raise HTTPException(
+            status_code=404,
+            detail="Change order not found"
+        )
+
+    db.delete(change_order)
+    db.commit()
+
+    return {"message": "Change order deleted"}

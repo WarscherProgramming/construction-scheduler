@@ -210,3 +210,31 @@ export async function createChangeOrder(projectId, changeOrder) {
 
   return res.json();
 }
+
+export async function fetchProjectCompanies(projectId) {
+  const res = await fetch(`${API_URL}/projects/${projectId}/companies`, {
+    headers: getAuthHeaders(),
+  });
+
+  return res.json();
+}
+
+export async function createProjectCompany(projectId, company) {
+  const res = await fetch(`${API_URL}/projects/${projectId}/companies`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(company),
+  });
+
+  return res.json();
+}
+
+export async function deleteChangeOrder(projectId, changeOrderId) {
+  await fetch(
+    `${API_URL}/projects/${projectId}/change-orders/${changeOrderId}`,
+    {
+      method: "DELETE",
+      headers: getAuthHeaders(),
+    }
+  );
+}
