@@ -77,6 +77,7 @@ function App() {
   const [projectCompanies, setProjectCompanies] = useState([]);
   const [companyName, setCompanyName] = useState("");
   const [companyTrade, setCompanyTrade] = useState("");
+  const [scheduleView, setScheduleView] = useState("table");
   
 
   //project and task load
@@ -1366,6 +1367,18 @@ function App() {
           Project Dashboard
         </button>
 
+        <div style={{ marginTop: "15px", marginBottom: "15px" }}>
+          <h3>View</h3>
+
+          <button onClick={() => setScheduleView("table")} style={buttonStyle}>
+            Table
+          </button>
+
+          <button onClick={() => setScheduleView("gantt")} style={buttonStyle}>
+            Gantt
+          </button>
+        </div>
+
         {/* Template creation and selection */}
         <div
           style={{
@@ -1445,6 +1458,7 @@ function App() {
           </h2>
 
         {/* Scheduling table */}
+      {scheduleView === "table" && (
         <table
           style={{
             width: "100%",
@@ -1697,11 +1711,19 @@ function App() {
           );
         })}
         </tbody>
+      
       </table>
-
+      )}
       {/* Gantt Chart */}
       
-      <GanttChart tasks={tasks} selectedTaskId={selectedTaskId} />
+      {scheduleView === "gantt" && (
+        <div style={{ marginTop: "20px" }}>
+          <GanttChart
+            tasks={tasks}
+            selectedTaskId={selectedTaskId}
+          />
+        </div>
+      )}
 
       </main>
     </div>
