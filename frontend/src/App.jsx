@@ -523,15 +523,80 @@ function App() {
           ))}
         </select>
 
-        <div style={{ marginTop: "20px" }}>
-          <h3>Active Projects</h3>
-          <p>{projects.length} active project(s)</p>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            gap: "20px",
+            flexWrap: "wrap",
+            marginTop: "20px",
+          }}
+        >
+          {/* Create Project */}
+          <div
+            style={{
+              border: "1px solid #ddd",
+              borderRadius: "8px",
+              padding: "15px",
+              width: "350px",
+            }}
+          >
+            <h3>Create New Project</h3>
 
-          <h3>Templates</h3>
-          <p>{templates.length} saved template(s)</p>
+            <input
+              placeholder="Project Name"
+              value={newProjectName}
+              onChange={(e) => setNewProjectName(e.target.value)}
+              style={{
+                width: "100%",
+                marginBottom: "10px",
+                padding: "8px",
+                boxSizing: "border-box",
+              }}
+            />
+
+            <button
+              onClick={handleCreateProject}
+              style={buttonStyle}
+            >
+              Create Project
+            </button>
+          </div>
+
+          {/* Active Projects */}
+          <div
+            style={{
+              border: "1px solid #ddd",
+              borderRadius: "8px",
+              padding: "15px",
+              width: "350px",
+            }}
+          >
+            <h3>Active Projects</h3>
+            <p>{projects.length} active project(s)</p>
+          </div>
+
+          {/* Templates */}
+          <div
+            style={{
+              border: "1px solid #ddd",
+              borderRadius: "8px",
+              padding: "15px",
+              width: "350px",
+            }}
+          >
+            <h3>Schedule Templates</h3>
+            <p>{templates.length} saved template(s)</p>
+          </div>
         </div>
 
-        <button onClick={handleLogout} style={buttonStyle}>
+        <button
+          onClick={handleLogout}
+          style={{
+            ...buttonStyle,
+            marginTop: "30px",
+          }}
+        >
           Logout
         </button>
       </div>
