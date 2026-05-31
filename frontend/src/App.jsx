@@ -289,21 +289,16 @@ function App() {
       date: logDate,
       company: logCompany,
       manpower: Number(logManpower),
-      work_performed: logWorkPerformed,
-      delays: logDelays,
       notes: logNotes,
     });
 
     setLogDate("");
     setLogCompany("");
     setLogManpower("");
-    setLogWorkPerformed("");
-    setLogDelays("");
     setLogNotes("");
 
     loadDailyLogs();
   };
-
   //Load and create inspections
 
   const loadInspections = async () => {
@@ -605,10 +600,6 @@ function App() {
         <main style={{ flex: 1, padding: "24px" }}>
           <h1>{selectedProject?.name || "Project"} Dashboard</h1>
 
-          <p style={{ color: "#666" }}>
-            Select a module from the sidebar to manage this project.
-          </p>
-
           <div
             style={{
               display: "flex",
@@ -832,8 +823,6 @@ function App() {
                 <td style={{ padding: "8px", border: "1px solid #ddd" }}>{formatDate(log.date)}</td>
                 <td style={{ padding: "8px", border: "1px solid #ddd" }}>{log.company}</td>
                 <td style={{ padding: "8px", border: "1px solid #ddd" }}>{log.manpower}</td>
-                <td style={{ padding: "8px", border: "1px solid #ddd" }}>{log.work_performed}</td>
-                <td style={{ padding: "8px", border: "1px solid #ddd" }}>{log.delays}</td>
                 <td style={{ padding: "8px", border: "1px solid #ddd" }}>{log.notes}</td>
               </tr>
             ))}
@@ -990,8 +979,8 @@ function App() {
           </select>
 
           <select
-            value={logCompany}
-            onChange={(e) => setLogCompany(e.target.value)}
+            value={noteDelayCompany}
+            onChange={(e) => setNoteDelayCompany(e.target.value)}
           >
             <option value="">Select Company</option>
 
