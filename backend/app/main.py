@@ -21,14 +21,23 @@ from app.api.routes_inspection import router as inspection_router
 from app.api.routes_note_delay import router as note_delay_router
 from app.api.routes_change_order import router as change_order_router
 from app.api.routes_project_company import router as project_company_router
+import os
+from dotenv import load_dotenv
 
+load_dotenv()
 
 Base.metadata.create_all(bind=engine)
 app = FastAPI()
 
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        FRONTEND_URL,
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
