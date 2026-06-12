@@ -238,3 +238,15 @@ export async function deleteChangeOrder(projectId, changeOrderId) {
     }
   );
 }
+
+export async function reorderTasks(projectId, taskIds) {
+  const res = await fetch(`${API_URL}/projects/${projectId}/tasks/reorder`, {
+    method: "PUT",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({
+      task_ids: taskIds,
+    }),
+  });
+
+  return res.json();
+}

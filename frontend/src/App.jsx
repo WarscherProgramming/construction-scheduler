@@ -23,6 +23,7 @@ import {
   fetchProjectCompanies,
   createProjectCompany,
   deleteChangeOrder,
+  reorderTasks,
 } from "./services/api";
 import {
   BarChart,
@@ -34,6 +35,167 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import GanttChart from "./components/GanttChart";
+import {
+  DndContext,
+  closestCenter,
+} from "@dnd-kit/core";
+
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+  arrayMove,
+} from "@dnd-kit/sortable";
+
+import { CSS } from "@dnd-kit/utilities";
+
+function SortableTaskRow({
+  task,
+  index,
+  selectedTaskId,
+  setSelectedTaskId,
+  editingCell,
+  editValue,
+  setEditValue,
+  handleCellClick,
+  handleCellSave,
+  handleDelete,
+  formatDate,
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+  } = useSortable({ id: task.id });
+
+  const rowStyle = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    background:
+      selectedTaskId === task.id
+        ? "#e0f2fe"
+        : index % 2 === 0
+        ? "#ffffff"
+        : "#f9fafb",
+    cursor: "pointer",
+  };
+
+  return (
+    <tr
+      ref={setNodeRef}
+      style={rowStyle}
+      onClick={() => setSelectedTaskId(task.id)}
+    >
+      <td
+        style={{
+          padding: "8px",
+          border: "1px solid #ddd",
+          cursor: "grab",
+        }}
+        {...attributes}
+        {...listeners}
+      >
+        ☰ {index + 1}
+      </td>
+
+      <td
+        onClick={(e) => {
+          e.stopPropagation();
+          handleCellClick(task, "name");
+        }}
+        style={{ padding: "8px", border: "1px solid #ddd" }}
+      >
+        {editingCell?.id === task.id && editingCell.field === "name" ? (
+          <input
+            autoFocus
+            value={editValue}
+            onChange={(e) => setEditValue(e.target.value)}
+            onBlur={() => handleCellSave(task)}
+          />
+        ) : (
+          task.name
+        )}
+      </td>
+
+      <td
+        onClick={(e) => {
+          e.stopPropagation();
+          handleCellClick(task, "duration");
+        }}
+        style={{ padding: "8px", border: "1px solid #ddd" }}
+      >
+        {editingCell?.id === task.id && editingCell.field === "duration" ? (
+          <input
+            autoFocus
+            value={editValue}
+            onChange={(e) => setEditValue(e.target.value)}
+            onBlur={() => handleCellSave(task)}
+          />
+        ) : (
+          task.duration
+        )}
+      </td>
+
+      <td
+        onClick={(e) => {
+          e.stopPropagation();
+          handleCellClick(task, "manual_start_date");
+        }}
+        style={{ padding: "8px", border: "1px solid #ddd" }}
+      >
+        {editingCell?.id === task.id &&
+        editingCell.field === "manual_start_date" ? (
+          <input
+            autoFocus
+            type="date"
+            value={editValue || ""}
+            onChange={(e) => setEditValue(e.target.value)}
+            onBlur={() => handleCellSave(task)}
+          />
+        ) : (
+          formatDate(task.start_date)
+        )}
+      </td>
+
+      <td style={{ padding: "8px", border: "1px solid #ddd" }}>
+        {formatDate(task.end_date)}
+      </td>
+
+      <td
+        onClick={(e) => {
+          e.stopPropagation();
+          handleCellClick(task, "predecessor");
+        }}
+        style={{ padding: "8px", border: "1px solid #ddd" }}
+      >
+        {editingCell?.id === task.id && editingCell.field === "predecessor" ? (
+          <input
+            autoFocus
+            placeholder="1, 1+3, 1SS, 1SS+4"
+            value={editValue}
+            onChange={(e) => setEditValue(e.target.value)}
+            onBlur={() => handleCellSave(task)}
+          />
+        ) : (
+          task.predecessor || "-"
+        )}
+      </td>
+
+      <td style={{ padding: "8px", border: "1px solid #ddd" }}>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            handleDelete(task.id);
+          }}
+        >
+          Delete
+        </button>
+      </td>
+    </tr>
+  );
+}
 
 function App() {
   //usestates
@@ -456,6 +618,24 @@ function App() {
       company,
       total,
     }));
+  };
+
+  const handleDragEnd = async (event) => {
+    const { active, over } = event;
+
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = tasks.findIndex((task) => task.id === active.id);
+    const newIndex = tasks.findIndex((task) => task.id === over.id);
+
+    const reorderedTasks = arrayMove(tasks, oldIndex, newIndex);
+
+    setTasks(reorderedTasks);
+
+    await reorderTasks(
+      selectedProjectId,
+      reorderedTasks.map((task) => task.id)
+    );
   };
 
   //login page
@@ -1524,260 +1704,101 @@ function App() {
 
         {/* Scheduling table */}
       {scheduleView === "table" && (
-        <table
-          style={{
-            width: "100%",
-            minWidth: "1400px",
-            borderCollapse: "collapse",
-            marginTop: "20px",
-            tableLayout: "fixed",
-          }}
-        >
-        <thead>
-          <tr>
-            {/* Column Names and styles */}
-            <th
-              style={{
-                width: "50px",
-                padding: "3px",
-                background: "#f3f4f6",
-                border: "1px solid #ddd",
-                textAlign: "left",
-              }}
-            >
-              Id
-            </th>
-
-            <th
-              style={{
-                padding: "10px",
-                background: "#f3f4f6",
-                border: "1px solid #ddd",
-                textAlign: "left",
-              }}
-            >
-              Task
-            </th>
-
-            <th style={{
-              width: "95px",
-              padding: "10px",
-              background: "#f3f4f6",
-              border: "1px solid #ddd",
-              textAlign: "left",
-            }}
-            >
-              Duration
-            </th>
-
-            <th style={{
-              width: "125px",
-              padding: "10px",
-              background: "#f3f4f6",
-              border: "1px solid #ddd",
-              textAlign: "left",
-            }}
-            >
-              Start
-            </th>
-
-            <th 
-              style={{
-                width: "125px",
-                padding: "10px",
-                background: "#f3f4f6",
-                border: "1px solid #ddd",
-                textAlign: "left",
-              }}
-            >
-              End
-            </th>
-
-            <th 
+        <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <table
             style={{
-              width: "130px",
-              padding: "10px",
-              background: "#f3f4f6",
-              border: "1px solid #ddd",
-              textAlign: "left",
+              width: "100%",
+              minWidth: "1400px",
+              borderCollapse: "collapse",
+              marginTop: "20px",
+              tableLayout: "fixed",
             }}
-            >
-              Predecessor
-            </th>
-
-            <th
-              style={{
-                padding: "10px",
-                background: "#f3f4f6",
-                border: "1px solid #ddd",
-                textAlign: "left",
-              }}
-            >
-              Actions
-            </th>
-
-          </tr>
-        </thead>
-
-        <tbody>
-          {/* Populate new empty row */}
-          {[...tasks, getEmptyRow()].map((task, index) => {
-            const isNew = task.id === null;
-
-            return (
-            <tr 
-              key={task.id ?? "new"}
-              onClick={() => !isNew && setSelectedTaskId(task.id)}
-              style={{
-                background:
-                  selectedTaskId === task.id
-                    ? "#e0f2fe"
-                    : index % 2 === 0
-                    ? "#ffffff"
-                    : "#f9fafb",
-                cursor: "pointer",
-              }}
-            >
-              <td>{isNew ? "": index + 1}</td>
-
-              {/* Task Name */}
-
-              <td
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleCellClick(task, "name")
-                }}
-                style={{
-                  padding: "8px",
-                  border: "1px solid #ddd",
-                }}
-              >
-                {editingCell?.id === (task.id ?? "new") &&
-                editingCell.field === "name" ? (
-                  <input
-                    autoFocus
-                    value={editValue}
-                    onChange={(e) => setEditValue(e.target.value)}
-                    onBlur={() => handleCellSave(task)}
-                  />
-                ) : (
-                  task.name
+          >
+            <thead>
+              <tr>
+                {["Id", "Task", "Duration", "Start", "End", "Predecessor", "Actions"].map(
+                  (header) => (
+                    <th
+                      key={header}
+                      style={{
+                        padding: "10px",
+                        background: "#f3f4f6",
+                        border: "1px solid #ddd",
+                        textAlign: "left",
+                      }}
+                    >
+                      {header}
+                    </th>
+                  )
                 )}
-              </td>
+              </tr>
+            </thead>
 
-              {/* Duration */}
-
-              <td
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleCellClick(task, "duration")
-                }}
-                style={{
-                  padding: "8px",
-                  border: "1px solid #ddd",
-                }}
-              >
-                {editingCell?.id === (task.id ?? "new") &&
-                editingCell.field === "duration" ? (
-                  <input
-                    autoFocus
-                    value={editValue}
-                    onChange={(e) => setEditValue(e.target.value)}
-                    onBlur={() => handleCellSave(task)}
+            <SortableContext
+              items={tasks.map((task) => task.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              <tbody>
+                {tasks.map((task, index) => (
+                  <SortableTaskRow
+                    key={task.id}
+                    task={task}
+                    index={index}
+                    selectedTaskId={selectedTaskId}
+                    setSelectedTaskId={setSelectedTaskId}
+                    editingCell={editingCell}
+                    editValue={editValue}
+                    setEditValue={setEditValue}
+                    handleCellClick={handleCellClick}
+                    handleCellSave={handleCellSave}
+                    handleDelete={handleDelete}
+                    formatDate={formatDate}
                   />
-                ) : (
-                  task.duration
-                )}
-              </td>
+                ))}
 
-              {/* Start and End Dates */}
+                {/* Blank row for creating new task */}
+                <tr>
+                  <td></td>
 
-              <td
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleCellClick(task, "manual_start_date");
-                }}
-                style={{
-                  padding: "8px",
-                  border: "1px solid #ddd",
-                }}
-              >
-                {editingCell?.id === (task.id ?? "new") &&
-                editingCell.field === "manual_start_date" ? (
-                  <input
-                    autoFocus
-                    type="date"
-                    value={editValue || ""}
-                    onChange={(e) => setEditValue(e.target.value)}
-                    onBlur={() => handleCellSave(task)}
-                  />
-                ) : (
-                  formatDate(task.start_date)
-                )}
-              </td>
-              <td
-                style={{
-                  padding: "8px",
-                  border: "1px solid #ddd",
-                }}
-              >
-                {formatDate(task.end_date)}
-              </td>
-
-              {/* Predecessor */}
-
-             <td
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleCellClick(task, "predecessor");
-                  }}
-                  style={{
-                    padding: "8px",
-                    border: "1px solid #ddd",
-                  }}
-                >
-                  {editingCell?.id === (task.id ?? "new") &&
-                  editingCell.field === "predecessor" ? (
-                    <input
-                      autoFocus
-                      placeholder="1, 1+3, 1SS, 1SS+4"
-                      value={editValue}
-                      onChange={(e) => setEditValue(e.target.value)}
-                      onBlur={() => handleCellSave(task)}
-                    />
-                  ) : (
-                    task.predecessor || "-"
-                  )}
-              </td>
-
-              {/* Delete */}
-
-              <td
-                style={{
-                  padding: "8px",
-                  border: "1px solid #ddd",
-                }}
-              >
-                {!isNew && (
-                <button 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDelete(task.id);
-                  }}
+                  <td
+                    onClick={() => handleCellClick(getEmptyRow(), "name")}
+                    style={{ padding: "8px", border: "1px solid #ddd" }}
                   >
-              
-                  
-                  Delete
-                </button>
-                )}
-              </td>
+                    {editingCell?.id === "new" && editingCell.field === "name" ? (
+                      <input
+                        autoFocus
+                        value={editValue}
+                        onChange={(e) => setEditValue(e.target.value)}
+                        onBlur={() => handleCellSave(getEmptyRow())}
+                      />
+                    ) : (
+                      ""
+                    )}
+                  </td>
 
-            </tr>
-          );
-        })}
-        </tbody>
-      
-      </table>
+                  <td
+                    onClick={() => handleCellClick(getEmptyRow(), "duration")}
+                    style={{ padding: "8px", border: "1px solid #ddd" }}
+                  ></td>
+
+                  <td
+                    onClick={() => handleCellClick(getEmptyRow(), "manual_start_date")}
+                    style={{ padding: "8px", border: "1px solid #ddd" }}
+                  ></td>
+
+                  <td style={{ padding: "8px", border: "1px solid #ddd" }}></td>
+
+                  <td
+                    onClick={() => handleCellClick(getEmptyRow(), "predecessor")}
+                    style={{ padding: "8px", border: "1px solid #ddd" }}
+                  ></td>
+
+                  <td style={{ padding: "8px", border: "1px solid #ddd" }}></td>
+                </tr>
+              </tbody>
+            </SortableContext>
+          </table>
+        </DndContext>
       )}
       {/* Gantt Chart */}
       

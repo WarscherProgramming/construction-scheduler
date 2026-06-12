@@ -17,4 +17,11 @@ class Task(Base):
     end_date = Column(String, nullable=True)
 
     manual_start_date = Column(String, nullable=True)
-    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False)
+
+    project_id = Column(
+        Integer,
+        ForeignKey("projects.id"),
+        nullable=False,
+    )
+
+    order_index = Column(Integer, nullable=True)

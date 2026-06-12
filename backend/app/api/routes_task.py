@@ -140,7 +140,7 @@ def get_tasks(project_id: int, db: Session = Depends(get_db), current_user: dict
     tasks = (
         db.query(Task)
         .filter(Task.project_id == project_id)
-        .order_by(Task.id)
+        .order_by(Task.order_index, Task.id)
         .all()
     )
 
@@ -174,6 +174,30 @@ def create_task(project_id: int, task: dict, db: Session = Depends(get_db), curr
 
     return {"tasks": [task_to_dict(task) for task in tasks]}
 
+@router.put("/projects/{project_id}/tasks/reorder")
+def reorder_tasks(
+    project_id: int,
+    payload: dict,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    verify_project_owner(project_id, current_user["id"], db)
+
+    task_ids = payload["task_ids"]
+
+    for index, task_id in enumerate(task_ids, start=1):
+        task = (
+            db.query(Task)
+            .filter(Task.id == task_id, Task.project_id == project_id)
+            .first()
+        )
+
+        if task:
+            task.order_index = index
+
+    db.commit()
+
+    return {"message": "Tasks reordered"}
 
 @router.put("/projects/{project_id}/tasks/{task_id}")
 def update_task(
@@ -237,3 +261,4 @@ def delete_task(project_id: int, task_id: int, db: Session = Depends(get_db), cu
     db.commit()
 
     return {"tasks": [task_to_dict(task) for task in tasks]}
+
