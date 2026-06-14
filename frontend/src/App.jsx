@@ -60,7 +60,11 @@ function SortableTaskRow({
   handleCellClick,
   handleCellSave,
   handleDelete,
+  handleIndentTask,
+  handleOutdentTask,
+  handleToggleCollapse,
   formatDate,
+  hasChildren,
 }) {
   const {
     attributes,
@@ -105,17 +109,65 @@ function SortableTaskRow({
           e.stopPropagation();
           handleCellClick(task, "name");
         }}
-        style={{ padding: "8px", border: "1px solid #ddd" }}
+        style={{
+          padding: "8px",
+          border: "1px solid #ddd",
+          whiteSpace: "pre",
+        }}
       >
-        {editingCell?.id === task.id && editingCell.field === "name" ? (
+        {editingCell?.id === task.id &&
+        editingCell.field === "name" ? (
           <input
             autoFocus
             value={editValue}
             onChange={(e) => setEditValue(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Tab" && !e.shiftKey) {
+                e.preventDefault();
+                setEditValue((prev) => "    " + prev);
+              }
+
+              if (e.key === "Backspace" && editValue.startsWith("    ")) {
+                e.preventDefault();
+                setEditValue((prev) => prev.substring(4));
+              }
+            }}
             onBlur={() => handleCellSave(task)}
           />
         ) : (
-          task.name
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}
+          >
+            <span
+              style={{
+                fontWeight: hasChildren ? "600" : "400",
+              }}
+            >
+              {task.name}
+            </span>
+
+            {hasChildren && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleToggleCollapse(task);
+                }}
+                style={{
+                  border: "none",
+                  background: "transparent",
+                  cursor: "pointer",
+                  fontSize: "12px",
+                  padding: "0",
+                }}
+              >
+                {task.is_collapsed ? "▶" : "▼"}
+              </button>
+            )}
+          </div>
         )}
       </td>
 
@@ -638,6 +690,73 @@ function App() {
     );
   };
 
+  const handleIndentTask = async (task, index) => {
+    if (index === 0) return;
+
+    const parentTask = tasks[index - 1];
+
+    const updatedTask = {
+      ...task,
+      parent_task_id: parentTask.id,
+      indent_level: (parentTask.indent_level || 0) + 1,
+    };
+
+    await updateTask(selectedProjectId, task.id, updatedTask);
+    loadTasks();
+  };
+
+  const handleOutdentTask = async (task) => {
+    const updatedTask = {
+      ...task,
+      parent_task_id: null,
+      indent_level: 0,
+    };
+
+    await updateTask(selectedProjectId, task.id, updatedTask);
+    loadTasks();
+  };
+
+  const handleToggleCollapse = async (task) => {
+    const updatedTask = {
+      ...task,
+      is_collapsed: task.is_collapsed ? 0 : 1,
+    };
+
+    await updateTask(selectedProjectId, task.id, updatedTask);
+    loadTasks();
+  };
+
+  const getIndentLevel = (name = "") => {
+    const match = name.match(/^ */);
+    return Math.floor((match ? match[0].length : 0) / 4);
+  };
+
+  const taskHasChildren = (taskIndex) => {
+    const currentTask = tasks[taskIndex];
+    const currentLevel = getIndentLevel(currentTask.name);
+
+    const nextTask = tasks[taskIndex + 1];
+
+    if (!nextTask) return false;
+
+    return getIndentLevel(nextTask.name) > currentLevel;
+  };
+
+  const isTaskHiddenByCollapsedParent = (taskIndex) => {
+    const currentLevel = getIndentLevel(tasks[taskIndex].name);
+
+    for (let i = taskIndex - 1; i >= 0; i--) {
+      const possibleParent = tasks[i];
+      const parentLevel = getIndentLevel(possibleParent.name);
+
+      if (parentLevel < currentLevel && possibleParent.is_collapsed) {
+        return true;
+      }
+    }
+
+    return false;
+  };
+
   //login page
   if (!token) {
     return (
@@ -886,7 +1005,7 @@ function App() {
                 <tbody>
                   {getTasksThisWeek().map((task) => (
                     <tr key={task.id}>
-                      <td style={{ padding: "6px", border: "1px solid #ddd" }}>
+                      <td style={{ padding: "6px", border: "1px solid #ddd", whiteSpace: "pre" }}>
                         {task.name}
                       </td>
 
@@ -1716,21 +1835,28 @@ function App() {
           >
             <thead>
               <tr>
-                {["Id", "Task", "Duration", "Start", "End", "Predecessor", "Actions"].map(
-                  (header) => (
-                    <th
-                      key={header}
-                      style={{
-                        padding: "10px",
-                        background: "#f3f4f6",
-                        border: "1px solid #ddd",
-                        textAlign: "left",
-                      }}
-                    >
-                      {header}
-                    </th>
-                  )
-                )}
+                {[
+                  { label: "Id", width: "50px", align: "center" },
+                  { label: "Task", width: "500px", align: "left" },
+                  { label: "Duration", width: "90px", align: "center" },
+                  { label: "Start", width: "120px", align: "center" },
+                  { label: "End", width: "120px", align: "center" },
+                  { label: "Predecessor", width: "130px", align: "center" },
+                  { label: "Actions", width: "100px", align: "center" },
+                ].map((column) => (
+                  <th
+                    key={column.label}
+                    style={{
+                      width: column.width,
+                      padding: "10px",
+                      background: "#f3f4f6",
+                      border: "1px solid #ddd",
+                      textAlign: column.align,
+                    }}
+                  >
+                    {column.label}
+                  </th>
+                ))}
               </tr>
             </thead>
 
@@ -1739,7 +1865,9 @@ function App() {
               strategy={verticalListSortingStrategy}
             >
               <tbody>
-                {tasks.map((task, index) => (
+                {tasks
+                  .filter((task, index) => !isTaskHiddenByCollapsedParent(index))
+                  .map((task, index) => (
                   <SortableTaskRow
                     key={task.id}
                     task={task}
@@ -1752,7 +1880,11 @@ function App() {
                     handleCellClick={handleCellClick}
                     handleCellSave={handleCellSave}
                     handleDelete={handleDelete}
+                    handleIndentTask={handleIndentTask}
+                    handleOutdentTask={handleOutdentTask}
+                    handleToggleCollapse={handleToggleCollapse}
                     formatDate={formatDate}
+                    hasChildren={taskHasChildren(index)}
                   />
                 ))}
 
@@ -1762,13 +1894,29 @@ function App() {
 
                   <td
                     onClick={() => handleCellClick(getEmptyRow(), "name")}
-                    style={{ padding: "8px", border: "1px solid #ddd" }}
+                    style={{ padding: "8px", border: "1px solid #ddd", whiteSpace: "pre", }}
                   >
                     {editingCell?.id === "new" && editingCell.field === "name" ? (
                       <input
                         autoFocus
                         value={editValue}
                         onChange={(e) => setEditValue(e.target.value)}
+                        onKeyDown={(e) => {
+                          // TAB = indent
+                          if (e.key === "Tab" && !e.shiftKey) {
+                            e.preventDefault();
+                            setEditValue((prev) => "    " + prev);
+                          }
+
+                          // Backspace removes one indent level
+                          if (
+                            e.key === "Backspace" &&
+                            editValue.startsWith("    ")
+                          ) {
+                            e.preventDefault();
+                            setEditValue((prev) => prev.substring(4));
+                          }
+                        }}
                         onBlur={() => handleCellSave(getEmptyRow())}
                       />
                     ) : (

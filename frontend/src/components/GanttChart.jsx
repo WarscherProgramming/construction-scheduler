@@ -42,10 +42,25 @@ function GanttChart({ tasks, selectedTaskId }) {
     };
   };
 
-  const scheduledTasks = tasks.filter(
-    (task) => task.start_date && task.end_date
-  );
+  const getIndentLevel = (name = "") => {
+    const match = name.match(/^ */);
+    return Math.floor((match ? match[0].length : 0) / 4);
+  };
 
+  const scheduledTasks = tasks
+    .filter((task) => task.start_date && task.end_date)
+    .filter((task, index) => {
+      const currentLevel = getIndentLevel(task.name);
+
+      // Hide child/sub tasks
+      if (currentLevel > 0) {
+        return false;
+      }
+
+      // Keep parent tasks and standalone top-level tasks
+      return true;
+    });
+    
   if (!scheduledTasks.length) {
     return <p>No scheduled tasks yet</p>;
   }

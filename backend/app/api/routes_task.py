@@ -46,6 +46,10 @@ def task_to_dict(task):
         "start_date": task.start_date,
         "end_date": task.end_date,
         "project_id": task.project_id,
+        "order_index": task.order_index,
+        "parent_task_id": task.parent_task_id,
+        "indent_level": task.indent_level,
+        "is_collapsed": task.is_collapsed,
     }
 
 
@@ -86,6 +90,11 @@ def add_workdays(start_date, duration):
             days_added += 1
 
     return current_date
+
+def get_indent_level(task):
+    name = task.name or ""
+    leading_spaces = len(name) - len(name.lstrip(" "))
+    return leading_spaces // 4
 
 def calculate_schedule(task_list):
     index_map = {
@@ -133,6 +142,39 @@ def calculate_schedule(task_list):
 
     return task_list
 
+def rollup_parent_tasks(task_list):
+    for index, task in enumerate(task_list):
+        current_level = get_indent_level(task)
+
+        child_tasks = []
+
+        for next_task in task_list[index + 1:]:
+            next_level = get_indent_level(next_task)
+
+            if next_level <= current_level:
+                break
+
+            if next_level == current_level + 1:
+                child_tasks.append(next_task)
+
+        if child_tasks:
+            child_start_dates = [
+                datetime.strptime(child.start_date, "%Y-%m-%d")
+                for child in child_tasks
+                if child.start_date
+            ]
+
+            child_end_dates = [
+                datetime.strptime(child.end_date, "%Y-%m-%d")
+                for child in child_tasks
+                if child.end_date
+            ]
+
+            if child_start_dates and child_end_dates:
+                task.start_date = min(child_start_dates).strftime("%Y-%m-%d")
+                task.end_date = max(child_end_dates).strftime("%Y-%m-%d")
+                task.duration = len(child_end_dates)
+
 
 @router.get("/projects/{project_id}/tasks")
 def get_tasks(project_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
@@ -148,14 +190,24 @@ def get_tasks(project_id: int, db: Session = Depends(get_db), current_user: dict
 
 
 @router.post("/projects/{project_id}/tasks")
-def create_task(project_id: int, task: dict, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+def create_task(
+    project_id: int,
+    task: dict,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
     verify_project_owner(project_id, current_user["id"], db)
+
     new_task = Task(
         project_id=project_id,
         name=task["name"],
         duration=task["duration"],
         manual_start_date=task.get("manual_start_date"),
         predecessor=task.get("predecessor"),
+        order_index=task.get("order_index"),
+        parent_task_id=task.get("parent_task_id"),
+        indent_level=task.get("indent_level", 0),
+        is_collapsed=task.get("is_collapsed", 0),
     )
 
     db.add(new_task)
@@ -164,11 +216,12 @@ def create_task(project_id: int, task: dict, db: Session = Depends(get_db), curr
     tasks = (
         db.query(Task)
         .filter(Task.project_id == project_id)
-        .order_by(Task.id)
+        .order_by(Task.order_index, Task.id)
         .all()
     )
 
     calculate_schedule(tasks)
+    rollup_parent_tasks(tasks)
 
     db.commit()
 
@@ -222,14 +275,20 @@ def update_task(
         )
         task.predecessor = updated_task.get("predecessor", task.predecessor)
 
+        task.order_index = updated_task.get("order_index", task.order_index)
+        task.parent_task_id = updated_task.get("parent_task_id", task.parent_task_id)
+        task.indent_level = updated_task.get("indent_level", task.indent_level)
+        task.is_collapsed = updated_task.get("is_collapsed", task.is_collapsed)
+
     tasks = (
         db.query(Task)
         .filter(Task.project_id == project_id)
-        .order_by(Task.id)
+        .order_by(Task.order_index, Task.id)
         .all()
     )
 
     calculate_schedule(tasks)
+    rollup_parent_tasks(tasks)
 
     db.commit()
 
@@ -252,11 +311,12 @@ def delete_task(project_id: int, task_id: int, db: Session = Depends(get_db), cu
     tasks = (
         db.query(Task)
         .filter(Task.project_id == project_id)
-        .order_by(Task.id)
+        .order_by(Task.order_index, Task.id)
         .all()
     )
 
     calculate_schedule(tasks)
+    rollup_parent_tasks(tasks)
 
     db.commit()
 

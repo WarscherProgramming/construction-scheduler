@@ -25,3 +25,7 @@ class Task(Base):
     )
 
     order_index = Column(Integer, nullable=True)
+
+    parent_task_id = Column(Integer, nullable=True)
+    indent_level = Column(Integer, default=0)
+    is_collapsed = Column(Integer, default=0)
