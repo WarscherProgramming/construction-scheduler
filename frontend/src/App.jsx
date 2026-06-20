@@ -804,7 +804,7 @@ function App() {
         <h1>Construction Management Software</h1>
 
         <p style={{ color: "#666" }}>
-          Select a project to open its dashboard.
+          Select a Community to open its dashboard.
         </p>
 
         <select
@@ -840,10 +840,10 @@ function App() {
               width: "350px",
             }}
           >
-            <h3>Create New Project</h3>
+            <h3>Add New Community</h3>
 
             <input
-              placeholder="Project Name"
+              placeholder="Community Name"
               value={newProjectName}
               onChange={(e) => setNewProjectName(e.target.value)}
               style={{
@@ -858,7 +858,7 @@ function App() {
               onClick={handleCreateProject}
               style={buttonStyle}
             >
-              Create Project
+              Add Community
             </button>
           </div>
 
@@ -871,7 +871,7 @@ function App() {
               width: "350px",
             }}
           >
-            <h3>Active Projects</h3>
+            <h3>Active Communities</h3>
             <p>{projects.length} active project(s)</p>
           </div>
 
