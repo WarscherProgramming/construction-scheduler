@@ -26,12 +26,12 @@ describe("HomePage", () => {
       />
     );
 
-    await user.selectOptions(screen.getByLabelText("Community"), "20");
+    await user.selectOptions(screen.getByLabelText("Project"), "20");
 
     expect(onProjectSelect).toHaveBeenCalledWith(20);
   });
 
-  it("creates a community and supports logout", async () => {
+  it("creates a project and supports logout", async () => {
     const user = userEvent.setup();
     const onNameChange = vi.fn();
     const onCreateProject = vi.fn();
@@ -51,7 +51,7 @@ describe("HomePage", () => {
     );
 
     await user.type(
-      screen.getByLabelText("Community name *"),
+      screen.getByLabelText("Project name *"),
       "Canyon Estates"
     );
 
@@ -68,7 +68,7 @@ describe("HomePage", () => {
       />
     );
 
-    await user.type(screen.getByLabelText("Community name *"), "{enter}");
+    await user.type(screen.getByLabelText("Project name *"), "{enter}");
     await user.click(screen.getByRole("button", { name: "Logout" }));
 
     expect(onNameChange).toHaveBeenCalled();

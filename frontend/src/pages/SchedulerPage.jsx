@@ -101,7 +101,7 @@ function SchedulerPage({
                 onChange={(event) => setTemplateName(event.target.value)}
               />
             </FormField>
-            <button type="submit" style={buttonStyle}>
+            <button type="submit" className="button-primary" style={buttonStyle}>
               Save Template
             </button>
           </form>
@@ -130,7 +130,7 @@ function SchedulerPage({
                 ))}
               </select>
             </FormField>
-            <button type="submit" style={buttonStyle}>
+            <button type="submit" className="button-primary" style={buttonStyle}>
               Apply Template
             </button>
           </form>

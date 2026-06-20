@@ -16,15 +16,10 @@ function ProjectSettingsPage({
   return (
     <ProjectPageLayout title={`${projectName} Settings`} onBack={onBack}>
       <form
-        className="form-stack"
+        className="form-stack form-card"
         onSubmit={(event) => {
           event.preventDefault();
           onCreate();
-        }}
-        style={{
-          border: "1px solid #ddd",
-          padding: "15px",
-          borderRadius: "8px",
         }}
       >
         <h3>Add Company</h3>
@@ -47,12 +42,16 @@ function ProjectSettingsPage({
             onChange={(event) => onTradeChange(event.target.value)}
           />
         </FormField>
-        <button type="submit" style={buttonStyle}>
+        <button type="submit" className="button-primary" style={buttonStyle}>
           Add Company
         </button>
       </form>
 
-      <RecordTable label="Project companies" headers={["Company", "Trade"]}>
+      <RecordTable
+        label="Project companies"
+        emptyMessage="No companies yet. Add the first project company above."
+        headers={["Company", "Trade"]}
+      >
         {projectCompanies.map((company) => (
           <tr key={company.id}>
             <td style={tableCellStyle}>{company.name}</td>

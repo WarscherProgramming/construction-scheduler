@@ -23,7 +23,7 @@ function AuthPage({
 
   return (
     <div style={{ padding: "20px" }}>
-      <h1>Construction Scheduler</h1>
+      <h1>FieldFlow</h1>
 
       <h2>{authMode === "login" ? "Login" : "Register"}</h2>
 
@@ -58,7 +58,7 @@ function AuthPage({
           />
         </FormField>
 
-        <button type="submit" style={buttonStyle}>
+        <button type="submit" className="button-primary" style={buttonStyle}>
           {authMode === "login" ? "Login" : "Register"}
         </button>
       </form>

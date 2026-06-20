@@ -1,6 +1,7 @@
 import FormField from "../components/FormField";
 import ProjectPageLayout from "../components/ProjectPageLayout";
 import RecordTable from "../components/RecordTable";
+import StatusBadge from "../components/StatusBadge";
 import { buttonStyle, tableCellStyle } from "../styles";
 
 function NotesDelaysPage({
@@ -25,15 +26,10 @@ function NotesDelaysPage({
   return (
     <ProjectPageLayout title={`${projectName} Notes & Delays`} onBack={onBack}>
       <form
-        className="form-stack"
+        className="form-stack form-card"
         onSubmit={(event) => {
           event.preventDefault();
           onCreate();
-        }}
-        style={{
-          border: "1px solid #ddd",
-          padding: "15px",
-          borderRadius: "8px",
         }}
       >
         <h3>Create Entry</h3>
@@ -92,7 +88,7 @@ function NotesDelaysPage({
           />
         </FormField>
 
-        <button type="submit" style={buttonStyle}>
+        <button type="submit" className="button-primary" style={buttonStyle}>
           Save Entry
         </button>
       </form>
@@ -106,12 +102,15 @@ function NotesDelaysPage({
 
       <RecordTable
         label="Notes and delays"
+        emptyMessage="No notes or delays yet. Create the first entry above."
         headers={["Date", "Type", "Company", "Description", "Impact"]}
       >
         {notesDelays.map((entry) => (
           <tr key={entry.id}>
             <td style={tableCellStyle}>{formatDate(entry.date)}</td>
-            <td style={tableCellStyle}>{entry.entry_type}</td>
+            <td style={tableCellStyle}>
+              <StatusBadge value={entry.entry_type} />
+            </td>
             <td style={tableCellStyle}>{entry.company}</td>
             <td style={tableCellStyle}>{entry.description}</td>
             <td style={tableCellStyle}>{entry.impact}</td>

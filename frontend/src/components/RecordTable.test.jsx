@@ -22,4 +22,16 @@ describe("RecordTable", () => {
       screen.getByRole("columnheader", { name: "Date" })
     ).toHaveAttribute("scope", "col");
   });
+
+  it("shows a useful empty state when no rows exist", () => {
+    render(
+      <RecordTable
+        label="Inspections"
+        headers={["Date", "Status"]}
+        emptyMessage="No inspections yet."
+      />
+    );
+
+    expect(screen.getByText("No inspections yet.")).toBeInTheDocument();
+  });
 });

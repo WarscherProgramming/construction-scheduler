@@ -409,7 +409,7 @@ function App() {
 
   const handleCreateProject = async () => {
     if (!newProjectName.trim()) {
-      reportValidationError("Enter a community name before adding it.");
+      reportValidationError("Enter a project name before adding it.");
       return;
     }
 

@@ -1,6 +1,7 @@
 import FormField from "../components/FormField";
 import ProjectPageLayout from "../components/ProjectPageLayout";
 import RecordTable from "../components/RecordTable";
+import StatusBadge from "../components/StatusBadge";
 import { buttonStyle, tableCellStyle } from "../styles";
 
 function CompanyOptions({ companies }) {
@@ -38,15 +39,10 @@ function ChangeOrdersPage({
   return (
     <ProjectPageLayout title={`${projectName} Change Orders`} onBack={onBack}>
       <form
-        className="form-stack"
+        className="form-stack form-card"
         onSubmit={(event) => {
           event.preventDefault();
           onCreate();
-        }}
-        style={{
-          border: "1px solid #ddd",
-          padding: "15px",
-          borderRadius: "8px",
         }}
       >
         <h3>Create Change Order</h3>
@@ -126,7 +122,7 @@ function ChangeOrdersPage({
           />
         </FormField>
 
-        <button type="submit" style={buttonStyle}>
+        <button type="submit" className="button-primary" style={buttonStyle}>
           Save Change Order
         </button>
       </form>
@@ -140,6 +136,7 @@ function ChangeOrdersPage({
 
       <RecordTable
         label="Change orders"
+        emptyMessage="No change orders yet. Create the first change order above."
         headers={[
           "Date",
           "CO Number",
@@ -156,13 +153,16 @@ function ChangeOrdersPage({
             <td style={tableCellStyle}>{formatDate(changeOrder.date)}</td>
             <td style={tableCellStyle}>{changeOrder.co_number}</td>
             <td style={tableCellStyle}>{changeOrder.company}</td>
-            <td style={tableCellStyle}>{changeOrder.status}</td>
+            <td style={tableCellStyle}>
+              <StatusBadge value={changeOrder.status} />
+            </td>
             <td style={tableCellStyle}>{changeOrder.amount}</td>
             <td style={tableCellStyle}>{changeOrder.responsible_party}</td>
             <td style={tableCellStyle}>{changeOrder.description}</td>
             <td style={tableCellStyle}>
               <button
                 type="button"
+                className="button-danger"
                 onClick={() => onDelete(changeOrder.id)}
                 aria-label={`Delete change order ${changeOrder.co_number}`}
               >

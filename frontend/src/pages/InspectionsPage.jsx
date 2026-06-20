@@ -1,6 +1,7 @@
 import FormField from "../components/FormField";
 import ProjectPageLayout from "../components/ProjectPageLayout";
 import RecordTable from "../components/RecordTable";
+import StatusBadge from "../components/StatusBadge";
 import { buttonStyle, tableCellStyle } from "../styles";
 
 function InspectionsPage({
@@ -20,15 +21,10 @@ function InspectionsPage({
   return (
     <ProjectPageLayout title={`${projectName} Inspections`} onBack={onBack}>
       <form
-        className="form-stack"
+        className="form-stack form-card"
         onSubmit={(event) => {
           event.preventDefault();
           onCreate();
-        }}
-        style={{
-          border: "1px solid #ddd",
-          padding: "15px",
-          borderRadius: "8px",
         }}
       >
         <h3>Create Inspection</h3>
@@ -66,7 +62,7 @@ function InspectionsPage({
           </select>
         </FormField>
 
-        <button type="submit" style={buttonStyle}>
+        <button type="submit" className="button-primary" style={buttonStyle}>
           Save Inspection
         </button>
       </form>
@@ -80,13 +76,16 @@ function InspectionsPage({
 
       <RecordTable
         label="Inspections"
+        emptyMessage="No inspections yet. Create the first inspection above."
         headers={["Date", "Inspection", "Status"]}
       >
         {inspections.map((inspection) => (
           <tr key={inspection.id}>
             <td style={tableCellStyle}>{formatDate(inspection.date)}</td>
             <td style={tableCellStyle}>{inspection.inspection_type}</td>
-            <td style={tableCellStyle}>{inspection.status}</td>
+            <td style={tableCellStyle}>
+              <StatusBadge value={inspection.status} />
+            </td>
           </tr>
         ))}
       </RecordTable>

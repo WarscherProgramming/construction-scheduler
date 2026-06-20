@@ -8,6 +8,7 @@ import {
   YAxis,
 } from "recharts";
 
+import EmptyState from "../components/EmptyState";
 import { buttonStyle } from "../styles";
 
 function ProjectDashboardPage({
@@ -59,13 +60,14 @@ function ProjectDashboardPage({
           <section className="dashboard-panel">
             <h2 style={{ marginBottom: "15px" }}>Scheduled This Week</h2>
 
-            <div
-              className="table-scroll-region"
-              role="region"
-              aria-label="Tasks scheduled this week"
-              tabIndex={0}
-            >
-              <table className="dashboard-table">
+            {tasksThisWeek.length ? (
+              <div
+                className="table-scroll-region"
+                role="region"
+                aria-label="Tasks scheduled this week"
+                tabIndex={0}
+              >
+                <table className="dashboard-table">
                 <thead>
                   <tr>
                     {["Task", "Start"].map((header) => (
@@ -103,8 +105,14 @@ function ProjectDashboardPage({
                     </tr>
                   ))}
                 </tbody>
-              </table>
-            </div>
+                </table>
+              </div>
+            ) : (
+              <EmptyState
+                title="No tasks scheduled this week"
+                description="Tasks with start dates in the current week will appear here."
+              />
+            )}
           </section>
 
           <section className="dashboard-panel dashboard-chart-panel">
@@ -112,33 +120,41 @@ function ProjectDashboardPage({
               Change Orders by Company
             </h2>
 
-            <div className="dashboard-chart">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={changeOrderTotals}
-                  margin={{ top: 20, right: 20, left: 20, bottom: 20 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="company" />
-                  <YAxis />
-                  <Tooltip formatter={(value) => [`$${value}`, "CO Value"]} />
-                  <Bar dataKey="total" fill="#3b82f6" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+            {changeOrderTotals.length ? (
+              <div className="dashboard-chart">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={changeOrderTotals}
+                    margin={{ top: 20, right: 20, left: 20, bottom: 20 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="company" />
+                    <YAxis />
+                    <Tooltip formatter={(value) => [`$${value}`, "CO Value"]} />
+                    <Bar dataKey="total" fill="#2563eb" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <EmptyState
+                title="No change order value to chart"
+                description="Change order totals will appear after records are added."
+              />
+            )}
           </section>
         </div>
 
         <section className="dashboard-panel dashboard-delays">
           <h2 style={{ marginBottom: "15px" }}>Project Delays</h2>
 
-          <div
-            className="table-scroll-region"
-            role="region"
-            aria-label="Project delays"
-            tabIndex={0}
-          >
-            <table className="dashboard-table">
+          {projectDelays.length ? (
+            <div
+              className="table-scroll-region"
+              role="region"
+              aria-label="Project delays"
+              tabIndex={0}
+            >
+              <table className="dashboard-table">
               <thead>
                 <tr>
                   {["Date", "Company", "Description"].map((header) => (
@@ -173,8 +189,14 @@ function ProjectDashboardPage({
                   </tr>
                 ))}
               </tbody>
-            </table>
-          </div>
+              </table>
+            </div>
+          ) : (
+            <EmptyState
+              title="No project delays recorded"
+              description="Delay entries from Notes & Delays will appear here."
+            />
+          )}
         </section>
       </main>
     </div>

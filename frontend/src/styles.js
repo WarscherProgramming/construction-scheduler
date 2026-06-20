@@ -9,5 +9,6 @@ export const buttonStyle = {
 
 export const tableCellStyle = {
   padding: "8px",
-  border: "1px solid #ddd",
+  border: "1px solid var(--border)",
+  background: "var(--surface)",
 };

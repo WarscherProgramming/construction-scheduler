@@ -1,3 +1,6 @@
+import { Children } from "react";
+
+
 const tableStyle = {
   width: "100%",
   borderCollapse: "collapse",
@@ -6,12 +9,20 @@ const tableStyle = {
 
 const headerStyle = {
   padding: "10px",
-  background: "#f3f4f6",
-  border: "1px solid #ddd",
+  background: "var(--surface-muted)",
+  border: "1px solid var(--border)",
+  color: "var(--text-h)",
   textAlign: "left",
 };
 
-function RecordTable({ headers, children, label = "Project records" }) {
+function RecordTable({
+  headers,
+  children,
+  label = "Project records",
+  emptyMessage = "No records yet.",
+}) {
+  const hasRows = Children.count(children) > 0;
+
   return (
     <div
       className="table-scroll-region"
@@ -29,7 +40,17 @@ function RecordTable({ headers, children, label = "Project records" }) {
             ))}
           </tr>
         </thead>
-        <tbody>{children}</tbody>
+        <tbody>
+          {hasRows ? (
+            children
+          ) : (
+            <tr>
+              <td className="table-empty-cell" colSpan={headers.length}>
+                {emptyMessage}
+              </td>
+            </tr>
+          )}
+        </tbody>
       </table>
     </div>
   );

@@ -23,15 +23,10 @@ function DailyLogsPage({
   return (
     <ProjectPageLayout title={`${projectName} Daily Logs`} onBack={onBack}>
       <form
-        className="form-stack"
+        className="form-stack form-card"
         onSubmit={(event) => {
           event.preventDefault();
           onCreate();
-        }}
-        style={{
-          border: "1px solid #ddd",
-          padding: "15px",
-          borderRadius: "8px",
         }}
       >
         <h3>Create Daily Log</h3>
@@ -90,7 +85,7 @@ function DailyLogsPage({
           />
         </FormField>
 
-        <button type="submit" style={buttonStyle}>
+        <button type="submit" className="button-primary" style={buttonStyle}>
           Save Daily Log
         </button>
       </form>
@@ -104,6 +99,7 @@ function DailyLogsPage({
 
       <RecordTable
         label="Daily logs"
+        emptyMessage="No daily logs yet. Create the first log above."
         headers={["Date", "Company", "Manpower", "Notes"]}
       >
         {dailyLogs.map((log) => (
