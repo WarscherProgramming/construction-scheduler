@@ -41,6 +41,8 @@ function ChangeOrdersPage({
   onResponsiblePartyChange,
   isCreating = false,
   isRefreshing = false,
+  isLoading = false,
+  isLoadingCompanies = false,
 }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -103,9 +105,12 @@ function ChangeOrdersPage({
             id="change-order-company"
             className="field-control"
             value={changeOrderCompany}
+            disabled={isLoadingCompanies}
             onChange={(event) => onCompanyChange(event.target.value)}
           >
-            <option value="">Select company</option>
+            <option value="">
+              {isLoadingCompanies ? "Loading companies…" : "Select company"}
+            </option>
             <CompanyOptions companies={projectCompanies} />
           </select>
         </FormField>
@@ -139,6 +144,7 @@ function ChangeOrdersPage({
             id="change-order-responsible-party"
             className="field-control"
             value={changeOrderResponsibleParty}
+            disabled={isLoadingCompanies}
             onChange={(event) => onResponsiblePartyChange(event.target.value)}
           >
             <option value="">Select responsible party</option>
@@ -206,6 +212,7 @@ function ChangeOrdersPage({
             id="change-order-company-filter"
             className="field-control"
             value={companyFilter}
+            disabled={isLoadingCompanies}
             onChange={(event) => setCompanyFilter(event.target.value)}
           >
             <option value="">All companies</option>
@@ -216,6 +223,8 @@ function ChangeOrdersPage({
 
       <RecordTable
         label="Change orders"
+        isLoading={isLoading}
+        loadingMessage="Loading change orders…"
         emptyMessage={
           changeOrders.length
             ? "No change orders match the current filters."

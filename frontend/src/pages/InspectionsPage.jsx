@@ -23,6 +23,7 @@ function InspectionsPage({
   onStatusChange,
   isCreating = false,
   isRefreshing = false,
+  isLoading = false,
 }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -136,6 +137,8 @@ function InspectionsPage({
 
       <RecordTable
         label="Inspections"
+        isLoading={isLoading}
+        loadingMessage="Loading inspections…"
         emptyMessage={
           inspections.length
             ? "No inspections match the current filters."

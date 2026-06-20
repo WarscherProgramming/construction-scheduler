@@ -39,4 +39,21 @@ describe("RecordTable", () => {
 
     expect(screen.getByText("No inspections yet.")).toBeInTheDocument();
   });
+
+  it("shows loading instead of an empty-state message while fetching", () => {
+    render(
+      <RecordTable
+        label="Change orders"
+        headers={["Date", "Status"]}
+        emptyMessage="No change orders yet."
+        isLoading
+        loadingMessage="Loading change orders…"
+      />
+    );
+
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Loading change orders…"
+    );
+    expect(screen.queryByText("No change orders yet.")).not.toBeInTheDocument();
+  });
 });

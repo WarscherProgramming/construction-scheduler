@@ -1,5 +1,7 @@
 import { Children } from "react";
 
+import LoadingState from "./LoadingState";
+
 
 const tableStyle = {
   width: "100%",
@@ -20,6 +22,8 @@ function RecordTable({
   children,
   label = "Project records",
   emptyMessage = "No records yet.",
+  isLoading = false,
+  loadingMessage = "Loading records…",
 }) {
   const hasRows = Children.count(children) > 0;
 
@@ -30,6 +34,7 @@ function RecordTable({
       aria-label={label}
       tabIndex={0}
     >
+      {isLoading && <LoadingState message={loadingMessage} />}
       <table className="record-table" style={tableStyle}>
         <thead>
           <tr>
@@ -43,6 +48,8 @@ function RecordTable({
         <tbody>
           {hasRows ? (
             children
+          ) : isLoading ? (
+            null
           ) : (
             <tr>
               <td

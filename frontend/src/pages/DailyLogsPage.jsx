@@ -25,6 +25,8 @@ function DailyLogsPage({
   onNotesChange,
   isCreating = false,
   isRefreshing = false,
+  isLoading = false,
+  isLoadingCompanies = false,
 }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [companyFilter, setCompanyFilter] = useState("");
@@ -72,10 +74,13 @@ function DailyLogsPage({
             id="daily-log-company"
             className="field-control"
             required
+            disabled={isLoadingCompanies}
             value={logCompany}
             onChange={(event) => onCompanyChange(event.target.value)}
           >
-            <option value="">Select company</option>
+            <option value="">
+              {isLoadingCompanies ? "Loading companies…" : "Select company"}
+            </option>
             {projectCompanies.map((company) => (
               <option key={company.id} value={company.name}>
                 {company.name}
@@ -146,6 +151,7 @@ function DailyLogsPage({
             id="daily-log-company-filter"
             className="field-control"
             value={companyFilter}
+            disabled={isLoadingCompanies}
             onChange={(event) => setCompanyFilter(event.target.value)}
           >
             <option value="">All companies</option>
@@ -160,6 +166,8 @@ function DailyLogsPage({
 
       <RecordTable
         label="Daily logs"
+        isLoading={isLoading}
+        loadingMessage="Loading daily logs…"
         emptyMessage={
           dailyLogs.length
             ? "No daily logs match the current filters."

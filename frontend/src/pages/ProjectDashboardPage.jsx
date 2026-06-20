@@ -9,6 +9,7 @@ import {
 } from "recharts";
 
 import EmptyState from "../components/EmptyState";
+import LoadingState from "../components/LoadingState";
 import { buttonStyle } from "../styles";
 
 function ProjectDashboardPage({
@@ -16,6 +17,9 @@ function ProjectDashboardPage({
   tasksThisWeek,
   changeOrderTotals,
   projectDelays,
+  isLoadingTasks = false,
+  isLoadingChangeOrders = false,
+  isLoadingDelays = false,
   formatDate,
   onNavigate,
 }) {
@@ -98,7 +102,9 @@ function ProjectDashboardPage({
           <section className="dashboard-panel">
             <h2 style={{ marginBottom: "15px" }}>Scheduled This Week</h2>
 
-            {tasksThisWeek.length ? (
+            {isLoadingTasks ? (
+              <LoadingState message="Loading schedule…" />
+            ) : tasksThisWeek.length ? (
               <div
                 className="table-scroll-region"
                 role="region"
@@ -158,7 +164,9 @@ function ProjectDashboardPage({
               Change Orders by Company
             </h2>
 
-            {changeOrderTotals.length ? (
+            {isLoadingChangeOrders ? (
+              <LoadingState message="Loading change orders…" />
+            ) : changeOrderTotals.length ? (
               <div className="dashboard-chart">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
@@ -185,7 +193,9 @@ function ProjectDashboardPage({
         <section className="dashboard-panel dashboard-delays">
           <h2 style={{ marginBottom: "15px" }}>Project Delays</h2>
 
-          {projectDelays.length ? (
+          {isLoadingDelays ? (
+            <LoadingState message="Loading project delays…" />
+          ) : projectDelays.length ? (
             <div
               className="table-scroll-region"
               role="region"

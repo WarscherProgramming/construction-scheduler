@@ -28,6 +28,8 @@ function NotesDelaysPage({
   onImpactChange,
   isCreating = false,
   isRefreshing = false,
+  isLoading = false,
+  isLoadingCompanies = false,
 }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
@@ -87,9 +89,12 @@ function NotesDelaysPage({
             id="note-delay-company"
             className="field-control"
             value={noteDelayCompany}
+            disabled={isLoadingCompanies}
             onChange={(event) => onCompanyChange(event.target.value)}
           >
-            <option value="">Select company</option>
+            <option value="">
+              {isLoadingCompanies ? "Loading companies…" : "Select company"}
+            </option>
             {projectCompanies.map((company) => (
               <option key={company.id} value={company.name}>
                 {company.name}
@@ -163,6 +168,7 @@ function NotesDelaysPage({
             id="notes-delays-company-filter"
             className="field-control"
             value={companyFilter}
+            disabled={isLoadingCompanies}
             onChange={(event) => setCompanyFilter(event.target.value)}
           >
             <option value="">All companies</option>
@@ -177,6 +183,8 @@ function NotesDelaysPage({
 
       <RecordTable
         label="Notes and delays"
+        isLoading={isLoading}
+        loadingMessage="Loading notes and delays…"
         emptyMessage={
           notesDelays.length
             ? "No notes or delays match the current filters."

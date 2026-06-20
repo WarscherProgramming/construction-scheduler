@@ -1,4 +1,5 @@
 import FormField from "../components/FormField";
+import LoadingState from "../components/LoadingState";
 import { buttonStyle } from "../styles";
 
 function HomePage({
@@ -11,6 +12,8 @@ function HomePage({
   onCreateProject,
   onLogout,
   isCreating = false,
+  isLoadingProjects = false,
+  isLoadingTemplates = false,
 }) {
   return (
     <div className="home-page">
@@ -23,10 +26,13 @@ function HomePage({
           <select
             id="project-select"
             className="field-control"
+            disabled={isLoadingProjects}
             value={selectedProjectId || ""}
             onChange={(event) => onProjectSelect(Number(event.target.value))}
           >
-            <option value="">Select project</option>
+            <option value="">
+              {isLoadingProjects ? "Loading projects…" : "Select project"}
+            </option>
             {projects.map((project) => (
               <option key={project.id} value={project.id}>
                 {project.name}
@@ -74,12 +80,20 @@ function HomePage({
 
         <div className="home-card">
           <h3>Active Projects</h3>
-          <p>{projects.length} active project(s)</p>
+          {isLoadingProjects ? (
+            <LoadingState message="Loading projects…" />
+          ) : (
+            <p>{projects.length} active project(s)</p>
+          )}
         </div>
 
         <div className="home-card">
           <h3>Schedule Templates</h3>
-          <p>{templates.length} saved template(s)</p>
+          {isLoadingTemplates ? (
+            <LoadingState message="Loading templates…" />
+          ) : (
+            <p>{templates.length} saved template(s)</p>
+          )}
         </div>
       </div>
 

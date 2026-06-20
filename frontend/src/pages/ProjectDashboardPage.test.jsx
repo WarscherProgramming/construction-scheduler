@@ -33,4 +33,27 @@ describe("ProjectDashboardPage", () => {
       ["changeOrders"],
     ]);
   });
+
+  it("distinguishes loading dashboard data from empty data", () => {
+    render(
+      <ProjectDashboardPage
+        projectName="North Ridge"
+        tasksThisWeek={[]}
+        changeOrderTotals={[]}
+        projectDelays={[]}
+        isLoadingTasks
+        isLoadingChangeOrders
+        isLoadingDelays
+        formatDate={(value) => value}
+        onNavigate={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText("Loading schedule…")).toBeInTheDocument();
+    expect(screen.getByText("Loading change orders…")).toBeInTheDocument();
+    expect(screen.getByText("Loading project delays…")).toBeInTheDocument();
+    expect(
+      screen.queryByText("No tasks scheduled this week")
+    ).not.toBeInTheDocument();
+  });
 });

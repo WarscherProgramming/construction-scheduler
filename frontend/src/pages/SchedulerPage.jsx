@@ -6,6 +6,7 @@ import {
 
 import GanttChart from "../components/GanttChart";
 import FormField from "../components/FormField";
+import LoadingState from "../components/LoadingState";
 import SortableTaskRow from "../components/SortableTaskRow";
 import { buttonStyle } from "../styles";
 
@@ -31,6 +32,8 @@ function SchedulerPage({
   isSavingTemplate = false,
   isApplyingTemplate = false,
   isExporting = false,
+  isLoadingTasks = false,
+  isLoadingTemplates = false,
   onLogout,
   onDragEnd,
   onCellClick,
@@ -128,10 +131,13 @@ function SchedulerPage({
                 id="saved-template"
                 className="field-control"
                 required
+                disabled={isLoadingTemplates}
                 value={selectedTemplateId}
                 onChange={(event) => setSelectedTemplateId(event.target.value)}
               >
-                <option value="">Select template</option>
+                <option value="">
+                  {isLoadingTemplates ? "Loading templates…" : "Select template"}
+                </option>
                 {templates.map((template) => (
                   <option key={template.id} value={template.id}>
                     {template.name}
@@ -178,7 +184,9 @@ function SchedulerPage({
           Schedule
         </h2>
 
-        {scheduleView === "table" && (
+        {isLoadingTasks ? (
+          <LoadingState message="Loading project schedule…" />
+        ) : scheduleView === "table" ? (
           <DndContext collisionDetection={closestCenter} onDragEnd={onDragEnd}>
             <div
               className="table-scroll-region schedule-table-region"
@@ -305,9 +313,7 @@ function SchedulerPage({
             </table>
             </div>
           </DndContext>
-        )}
-
-        {scheduleView === "gantt" && (
+        ) : (
           <div
             className="gantt-scroll-region"
             role="region"

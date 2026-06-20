@@ -14,6 +14,7 @@ function ProjectSettingsPage({
   onNameChange,
   onTradeChange,
   isCreating = false,
+  isLoading = false,
 }) {
   return (
     <ProjectPageLayout title={`${projectName} Settings`} onBack={onBack}>
@@ -57,6 +58,8 @@ function ProjectSettingsPage({
 
       <RecordTable
         label="Project companies"
+        isLoading={isLoading}
+        loadingMessage="Loading project companies…"
         emptyMessage="No companies yet. Add the first project company above."
         headers={["Company", "Trade"]}
       >

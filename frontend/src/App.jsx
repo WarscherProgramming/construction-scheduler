@@ -88,6 +88,8 @@ function App() {
   const [notice, setNotice] = useState(null);
   const [activeOperations, setActiveOperations] = useState([]);
   const activeOperationsRef = useRef(new Set());
+  const [loadingResources, setLoadingResources] = useState([]);
+  const resourceLoadCountsRef = useRef(new Map());
   const selectedProjectIdRef = useRef(selectedProjectId);
 
   useEffect(() => {
@@ -146,6 +148,32 @@ function App() {
     [activeOperations]
   );
 
+  const runResourceLoad = useCallback(async (key, operation) => {
+    const currentCount = resourceLoadCountsRef.current.get(key) || 0;
+    resourceLoadCountsRef.current.set(key, currentCount + 1);
+    setLoadingResources(Array.from(resourceLoadCountsRef.current.keys()));
+
+    try {
+      return await operation();
+    } finally {
+      const remainingCount =
+        (resourceLoadCountsRef.current.get(key) || 1) - 1;
+
+      if (remainingCount > 0) {
+        resourceLoadCountsRef.current.set(key, remainingCount);
+      } else {
+        resourceLoadCountsRef.current.delete(key);
+      }
+
+      setLoadingResources(Array.from(resourceLoadCountsRef.current.keys()));
+    }
+  }, []);
+
+  const isResourceLoading = useCallback(
+    (key) => loadingResources.includes(key),
+    [loadingResources]
+  );
+
   const reportRequestError = useCallback((context, error) => {
     const message =
       error instanceof ApiError ? error.message : "Unexpected application error";
@@ -159,115 +187,131 @@ function App() {
   }, [showNotice]);
 
   const loadProjects = useCallback(async () => {
-    try {
-      const data = await fetchProjects();
-      setProjects(data.projects);
-      selectProject(
-        selectedProjectIdRef.current ?? data.projects[0]?.id ?? null
-      );
-    } catch (error) {
-      reportRequestError("Unable to load projects", error);
-    }
-  }, [reportRequestError, selectProject]);
+    return runResourceLoad("projects", async () => {
+      try {
+        const data = await fetchProjects();
+        setProjects(data.projects);
+        selectProject(
+          selectedProjectIdRef.current ?? data.projects[0]?.id ?? null
+        );
+      } catch (error) {
+        reportRequestError("Unable to load projects", error);
+      }
+    });
+  }, [reportRequestError, runResourceLoad, selectProject]);
 
   const loadTemplates = useCallback(async () => {
-    try {
-      const data = await fetchTemplates();
-      setTemplates(data.templates);
-    } catch (error) {
-      reportRequestError("Unable to load templates", error);
-    }
-  }, [reportRequestError]);
+    return runResourceLoad("templates", async () => {
+      try {
+        const data = await fetchTemplates();
+        setTemplates(data.templates);
+      } catch (error) {
+        reportRequestError("Unable to load templates", error);
+      }
+    });
+  }, [reportRequestError, runResourceLoad]);
 
   const loadTasks = useCallback(async () => {
     const projectId = selectedProjectId;
     if (!projectId) return;
 
-    try {
-      const data = await fetchTasks(projectId);
+    return runResourceLoad("tasks", async () => {
+      try {
+        const data = await fetchTasks(projectId);
 
-      if (selectedProjectIdRef.current === projectId) {
-        setTasks(data.tasks);
+        if (selectedProjectIdRef.current === projectId) {
+          setTasks(data.tasks);
+        }
+      } catch (error) {
+        reportRequestError("Unable to load tasks", error);
       }
-    } catch (error) {
-      reportRequestError("Unable to load tasks", error);
-    }
-  }, [reportRequestError, selectedProjectId]);
+    });
+  }, [reportRequestError, runResourceLoad, selectedProjectId]);
 
   const loadDailyLogs = useCallback(async () => {
     const projectId = selectedProjectId;
     if (!projectId) return;
 
-    try {
-      const data = await fetchDailyLogs(projectId);
+    return runResourceLoad("dailyLogs", async () => {
+      try {
+        const data = await fetchDailyLogs(projectId);
 
-      if (selectedProjectIdRef.current === projectId) {
-        setDailyLogs(sortByDateDescending(data.daily_logs || []));
+        if (selectedProjectIdRef.current === projectId) {
+          setDailyLogs(sortByDateDescending(data.daily_logs || []));
+        }
+      } catch (error) {
+        reportRequestError("Unable to load daily logs", error);
       }
-    } catch (error) {
-      reportRequestError("Unable to load daily logs", error);
-    }
-  }, [reportRequestError, selectedProjectId]);
+    });
+  }, [reportRequestError, runResourceLoad, selectedProjectId]);
 
   const loadInspections = useCallback(async () => {
     const projectId = selectedProjectId;
     if (!projectId) return;
 
-    try {
-      const data = await fetchInspections(projectId);
+    return runResourceLoad("inspections", async () => {
+      try {
+        const data = await fetchInspections(projectId);
 
-      if (selectedProjectIdRef.current === projectId) {
-        setInspections(sortByDateDescending(data.inspections || []));
+        if (selectedProjectIdRef.current === projectId) {
+          setInspections(sortByDateDescending(data.inspections || []));
+        }
+      } catch (error) {
+        reportRequestError("Unable to load inspections", error);
       }
-    } catch (error) {
-      reportRequestError("Unable to load inspections", error);
-    }
-  }, [reportRequestError, selectedProjectId]);
+    });
+  }, [reportRequestError, runResourceLoad, selectedProjectId]);
 
   const loadNotesDelays = useCallback(async () => {
     const projectId = selectedProjectId;
     if (!projectId) return;
 
-    try {
-      const data = await fetchNotesDelays(projectId);
+    return runResourceLoad("notesDelays", async () => {
+      try {
+        const data = await fetchNotesDelays(projectId);
 
-      if (selectedProjectIdRef.current === projectId) {
-        setNotesDelays(sortByDateDescending(data.notes_delays || []));
+        if (selectedProjectIdRef.current === projectId) {
+          setNotesDelays(sortByDateDescending(data.notes_delays || []));
+        }
+      } catch (error) {
+        reportRequestError("Unable to load notes and delays", error);
       }
-    } catch (error) {
-      reportRequestError("Unable to load notes and delays", error);
-    }
-  }, [reportRequestError, selectedProjectId]);
+    });
+  }, [reportRequestError, runResourceLoad, selectedProjectId]);
 
   const loadChangeOrders = useCallback(async () => {
     const projectId = selectedProjectId;
     if (!projectId) return;
 
-    try {
-      const data = await fetchChangeOrders(projectId);
+    return runResourceLoad("changeOrders", async () => {
+      try {
+        const data = await fetchChangeOrders(projectId);
 
-      if (selectedProjectIdRef.current === projectId) {
-        setChangeOrders(sortByDateDescending(data.change_orders || []));
+        if (selectedProjectIdRef.current === projectId) {
+          setChangeOrders(sortByDateDescending(data.change_orders || []));
+        }
+      } catch (error) {
+        reportRequestError("Unable to load change orders", error);
       }
-    } catch (error) {
-      reportRequestError("Unable to load change orders", error);
-    }
-  }, [reportRequestError, selectedProjectId]);
+    });
+  }, [reportRequestError, runResourceLoad, selectedProjectId]);
 
   const loadProjectCompanies = useCallback(async () => {
     const projectId = selectedProjectId;
     if (!projectId) return;
 
-    try {
-      const data = await fetchProjectCompanies(projectId);
+    return runResourceLoad("companies", async () => {
+      try {
+        const data = await fetchProjectCompanies(projectId);
 
-      if (selectedProjectIdRef.current === projectId) {
-        setProjectCompanies(data.companies || []);
+        if (selectedProjectIdRef.current === projectId) {
+          setProjectCompanies(data.companies || []);
+        }
+      } catch (error) {
+        reportRequestError("Unable to load project companies", error);
       }
-    } catch (error) {
-      reportRequestError("Unable to load project companies", error);
-    }
-  }, [reportRequestError, selectedProjectId]);
+    });
+  }, [reportRequestError, runResourceLoad, selectedProjectId]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -910,6 +954,8 @@ function App() {
         onNewProjectNameChange={setNewProjectName}
         onCreateProject={handleCreateProject}
         isCreating={isOperationActive("createProject")}
+        isLoadingProjects={isResourceLoading("projects")}
+        isLoadingTemplates={isResourceLoading("templates")}
         onLogout={handleLogout}
       />
     );
@@ -926,6 +972,9 @@ function App() {
         tasksThisWeek={getTasksThisWeek()}
         changeOrderTotals={getChangeOrderTotalsByCompany()}
         projectDelays={getProjectDelays()}
+        isLoadingTasks={isResourceLoading("tasks")}
+        isLoadingChangeOrders={isResourceLoading("changeOrders")}
+        isLoadingDelays={isResourceLoading("notesDelays")}
         formatDate={formatDate}
         onNavigate={setCurrentPage}
       />
@@ -952,6 +1001,8 @@ function App() {
         onCreate={handleCreateDailyLog}
         isCreating={isOperationActive("createDailyLog")}
         isRefreshing={isOperationActive("refreshDailyLogs")}
+        isLoading={isResourceLoading("dailyLogs")}
+        isLoadingCompanies={isResourceLoading("companies")}
         onDateChange={setLogDate}
         onCompanyChange={setLogCompany}
         onManpowerChange={setLogManpower}
@@ -978,6 +1029,7 @@ function App() {
         onCreate={handleCreateInspection}
         isCreating={isOperationActive("createInspection")}
         isRefreshing={isOperationActive("refreshInspections")}
+        isLoading={isResourceLoading("inspections")}
         onDateChange={setInspectionDate}
         onTypeChange={setInspectionType}
         onStatusChange={setInspectionStatus}
@@ -1006,6 +1058,8 @@ function App() {
         onCreate={handleCreateNoteDelay}
         isCreating={isOperationActive("createNoteDelay")}
         isRefreshing={isOperationActive("refreshNotesDelays")}
+        isLoading={isResourceLoading("notesDelays")}
+        isLoadingCompanies={isResourceLoading("companies")}
         onDateChange={setNoteDelayDate}
         onTypeChange={setNoteDelayType}
         onCompanyChange={setNoteDelayCompany}
@@ -1038,6 +1092,8 @@ function App() {
         onCreate={handleCreateChangeOrder}
         isCreating={isOperationActive("createChangeOrder")}
         isRefreshing={isOperationActive("refreshChangeOrders")}
+        isLoading={isResourceLoading("changeOrders")}
+        isLoadingCompanies={isResourceLoading("companies")}
         onDelete={handleDeleteChangeOrder}
         onDateChange={setChangeOrderDate}
         onNumberChange={setChangeOrderNumber}
@@ -1064,6 +1120,7 @@ function App() {
         onBack={() => setCurrentPage("projectDashboard")}
         onCreate={handleCreateProjectCompany}
         isCreating={isOperationActive("createCompany")}
+        isLoading={isResourceLoading("companies")}
         onNameChange={setCompanyName}
         onTradeChange={setCompanyTrade}
       />
@@ -1093,6 +1150,8 @@ function App() {
       isSavingTemplate={isOperationActive("saveTemplate")}
       isApplyingTemplate={isOperationActive("applyTemplate")}
       isExporting={isOperationActive("exportPdf")}
+      isLoadingTasks={isResourceLoading("tasks")}
+      isLoadingTemplates={isResourceLoading("templates")}
       onLogout={handleLogout}
       onDragEnd={handleDragEnd}
       onCellClick={handleCellClick}
