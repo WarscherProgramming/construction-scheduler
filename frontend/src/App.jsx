@@ -29,6 +29,10 @@ import {
   sortByDateDescending,
   toLocalDateInputValue,
 } from "./utils/date";
+import {
+  parseAppHash,
+  updateBrowserRoute,
+} from "./utils/navigation";
 
 import { useAuth } from "./auth/authContext";
 import AuthPage from "./pages/AuthPage";
@@ -49,7 +53,10 @@ function App() {
   const [editingCell, setEditingCell] = useState(null);
   const [editValue, setEditValue] = useState("");
   const [projects, setProjects] = useState([]);
-  const [selectedProjectId, setSelectedProjectId] = useState(null);
+  const [hasLoadedProjects, setHasLoadedProjects] = useState(false);
+  const [selectedProjectId, setSelectedProjectId] = useState(
+    () => parseAppHash(window.location.hash).projectId
+  );
   const [newProjectName, setNewProjectName] = useState("");
   const [templates, setTemplates] = useState([]);
   const [templateName, setTemplateName] = useState("");
@@ -57,7 +64,9 @@ function App() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [authMode, setAuthMode] = useState("login");
-  const [currentPage, setCurrentPage] = useState("home");
+  const [currentPage, setCurrentPage] = useState(
+    () => parseAppHash(window.location.hash).page
+  );
   const [dailyLogs, setDailyLogs] = useState([]);
   const [logDate, setLogDate] = useState(toLocalDateInputValue);
   const [logCompany, setLogCompany] = useState("");
@@ -101,9 +110,32 @@ function App() {
     setSelectedProjectId(projectId);
   }, []);
 
+  const navigateTo = useCallback(
+    (page, projectId = selectedProjectIdRef.current, options) => {
+      if (page === "home") {
+        selectProject(null);
+        setCurrentPage("home");
+        updateBrowserRoute("home", null, options);
+        return;
+      }
+
+      if (page !== "home" && !projectId) {
+        setCurrentPage("home");
+        updateBrowserRoute("home", null, options);
+        return;
+      }
+
+      if (projectId) selectProject(projectId);
+      setCurrentPage(page);
+      updateBrowserRoute(page, projectId, options);
+    },
+    [selectProject]
+  );
+
   const resetApplicationState = useCallback(() => {
     selectedProjectIdRef.current = null;
     setProjects([]);
+    setHasLoadedProjects(false);
     setTasks([]);
     setTemplates([]);
     setDailyLogs([]);
@@ -113,6 +145,29 @@ function App() {
     setProjectCompanies([]);
     setSelectedProjectId(null);
     setCurrentPage("home");
+    updateBrowserRoute("home", null, { replace: true });
+  }, []);
+
+  useEffect(() => {
+    const handleBrowserNavigation = () => {
+      const route = parseAppHash(window.location.hash);
+
+      selectProject(route.projectId);
+      setCurrentPage(route.page);
+    };
+
+    window.addEventListener("popstate", handleBrowserNavigation);
+    window.addEventListener("hashchange", handleBrowserNavigation);
+
+    return () => {
+      window.removeEventListener("popstate", handleBrowserNavigation);
+      window.removeEventListener("hashchange", handleBrowserNavigation);
+    };
+  }, [selectProject]);
+
+  useEffect(() => {
+    const route = parseAppHash(window.location.hash);
+    updateBrowserRoute(route.page, route.projectId, { replace: true });
   }, []);
 
   const handleLogout = useCallback(() => {
@@ -191,14 +246,39 @@ function App() {
       try {
         const data = await fetchProjects();
         setProjects(data.projects);
-        selectProject(
-          selectedProjectIdRef.current ?? data.projects[0]?.id ?? null
+        const route = parseAppHash(window.location.hash);
+        const requestedProjectId = route.projectId;
+        const requestedProjectExists = data.projects.some(
+          (project) => project.id === requestedProjectId
         );
+        const nextProjectId =
+          route.page === "home"
+            ? null
+            : requestedProjectExists
+              ? requestedProjectId
+              : data.projects[0]?.id ?? null;
+
+        selectProject(nextProjectId);
+
+        if (route.page !== "home" && !requestedProjectExists) {
+          navigateTo(
+            nextProjectId ? "projectDashboard" : "home",
+            nextProjectId,
+            { replace: true }
+          );
+        }
       } catch (error) {
         reportRequestError("Unable to load projects", error);
+      } finally {
+        setHasLoadedProjects(true);
       }
     });
-  }, [reportRequestError, runResourceLoad, selectProject]);
+  }, [
+    navigateTo,
+    reportRequestError,
+    runResourceLoad,
+    selectProject,
+  ]);
 
   const loadTemplates = useCallback(async () => {
     return runResourceLoad("templates", async () => {
@@ -324,7 +404,7 @@ function App() {
   }, [isAuthenticated, loadProjects, loadTemplates]);
 
   useEffect(() => {
-    if (!isAuthenticated || !selectedProjectId) return;
+    if (!isAuthenticated || !hasLoadedProjects || !selectedProjectId) return;
 
     const timeoutId = window.setTimeout(() => {
       setTasks([]);
@@ -340,13 +420,14 @@ function App() {
     return () => window.clearTimeout(timeoutId);
   }, [
     isAuthenticated,
+    hasLoadedProjects,
     loadProjectCompanies,
     loadTasks,
     selectedProjectId,
   ]);
 
   useEffect(() => {
-    if (!isAuthenticated || !selectedProjectId) return;
+    if (!isAuthenticated || !hasLoadedProjects || !selectedProjectId) return;
 
     const pageLoaders = {
       projectDashboard: [loadChangeOrders, loadNotesDelays],
@@ -365,6 +446,7 @@ function App() {
     return () => window.clearTimeout(timeoutId);
   }, [
     currentPage,
+    hasLoadedProjects,
     isAuthenticated,
     loadChangeOrders,
     loadDailyLogs,
@@ -380,6 +462,28 @@ function App() {
     const timeoutId = window.setTimeout(resetApplicationState, 0);
     return () => window.clearTimeout(timeoutId);
   }, [isAuthenticated, resetApplicationState]);
+
+  useEffect(() => {
+    const pageTitles = {
+      home: "Projects",
+      projectDashboard: "Dashboard",
+      scheduler: "Schedule",
+      dailyLogs: "Daily Logs",
+      inspections: "Inspections",
+      notesDelays: "Notes & Delays",
+      changeOrders: "Change Orders",
+      projectSettings: "Settings",
+    };
+    const selectedProject = projects.find(
+      (project) => project.id === selectedProjectId
+    );
+    const context =
+      currentPage === "home"
+        ? pageTitles[currentPage]
+        : `${selectedProject?.name || "Project"} · ${pageTitles[currentPage]}`;
+
+    document.title = `${context} | FieldFlow`;
+  }, [currentPage, projects, selectedProjectId]);
 
   //table logic  
   const handleCellClick = (task, field) => {
@@ -490,7 +594,7 @@ function App() {
 
         setProjects((currentProjects) => [...currentProjects, project]);
         setNewProjectName("");
-        selectProject(project.id);
+        navigateTo("projectDashboard", project.id);
         showNotice("success", `${project.name} was added.`);
       } catch (error) {
         reportRequestError("Unable to create project", error);
@@ -948,13 +1052,14 @@ function App() {
         selectedProjectId={selectedProjectId}
         newProjectName={newProjectName}
         onProjectSelect={(projectId) => {
-          selectProject(projectId);
-          setCurrentPage("projectDashboard");
+          navigateTo("projectDashboard", projectId);
         }}
         onNewProjectNameChange={setNewProjectName}
         onCreateProject={handleCreateProject}
         isCreating={isOperationActive("createProject")}
-        isLoadingProjects={isResourceLoading("projects")}
+        isLoadingProjects={
+          !hasLoadedProjects || isResourceLoading("projects")
+        }
         isLoadingTemplates={isResourceLoading("templates")}
         onLogout={handleLogout}
       />
@@ -972,11 +1077,17 @@ function App() {
         tasksThisWeek={getTasksThisWeek()}
         changeOrderTotals={getChangeOrderTotalsByCompany()}
         projectDelays={getProjectDelays()}
-        isLoadingTasks={isResourceLoading("tasks")}
-        isLoadingChangeOrders={isResourceLoading("changeOrders")}
-        isLoadingDelays={isResourceLoading("notesDelays")}
+        isLoadingTasks={
+          !hasLoadedProjects || isResourceLoading("tasks")
+        }
+        isLoadingChangeOrders={
+          !hasLoadedProjects || isResourceLoading("changeOrders")
+        }
+        isLoadingDelays={
+          !hasLoadedProjects || isResourceLoading("notesDelays")
+        }
         formatDate={formatDate}
-        onNavigate={setCurrentPage}
+        onNavigate={navigateTo}
       />
     );
   }
@@ -996,13 +1107,15 @@ function App() {
         logManpower={logManpower}
         logNotes={logNotes}
         formatDate={formatDate}
-        onBack={() => setCurrentPage("projectDashboard")}
+        onBack={() => navigateTo("projectDashboard")}
         onRefresh={handleRefreshDailyLogs}
         onCreate={handleCreateDailyLog}
         isCreating={isOperationActive("createDailyLog")}
         isRefreshing={isOperationActive("refreshDailyLogs")}
-        isLoading={isResourceLoading("dailyLogs")}
-        isLoadingCompanies={isResourceLoading("companies")}
+        isLoading={!hasLoadedProjects || isResourceLoading("dailyLogs")}
+        isLoadingCompanies={
+          !hasLoadedProjects || isResourceLoading("companies")
+        }
         onDateChange={setLogDate}
         onCompanyChange={setLogCompany}
         onManpowerChange={setLogManpower}
@@ -1024,12 +1137,12 @@ function App() {
         inspectionType={inspectionType}
         inspectionStatus={inspectionStatus}
         formatDate={formatDate}
-        onBack={() => setCurrentPage("projectDashboard")}
+        onBack={() => navigateTo("projectDashboard")}
         onRefresh={handleRefreshInspections}
         onCreate={handleCreateInspection}
         isCreating={isOperationActive("createInspection")}
         isRefreshing={isOperationActive("refreshInspections")}
-        isLoading={isResourceLoading("inspections")}
+        isLoading={!hasLoadedProjects || isResourceLoading("inspections")}
         onDateChange={setInspectionDate}
         onTypeChange={setInspectionType}
         onStatusChange={setInspectionStatus}
@@ -1053,13 +1166,15 @@ function App() {
         noteDelayDescription={noteDelayDescription}
         noteDelayImpact={noteDelayImpact}
         formatDate={formatDate}
-        onBack={() => setCurrentPage("projectDashboard")}
+        onBack={() => navigateTo("projectDashboard")}
         onRefresh={handleRefreshNotesDelays}
         onCreate={handleCreateNoteDelay}
         isCreating={isOperationActive("createNoteDelay")}
         isRefreshing={isOperationActive("refreshNotesDelays")}
-        isLoading={isResourceLoading("notesDelays")}
-        isLoadingCompanies={isResourceLoading("companies")}
+        isLoading={!hasLoadedProjects || isResourceLoading("notesDelays")}
+        isLoadingCompanies={
+          !hasLoadedProjects || isResourceLoading("companies")
+        }
         onDateChange={setNoteDelayDate}
         onTypeChange={setNoteDelayType}
         onCompanyChange={setNoteDelayCompany}
@@ -1087,13 +1202,15 @@ function App() {
         changeOrderAmount={changeOrderAmount}
         changeOrderResponsibleParty={changeOrderResponsibleParty}
         formatDate={formatDate}
-        onBack={() => setCurrentPage("projectDashboard")}
+        onBack={() => navigateTo("projectDashboard")}
         onRefresh={handleRefreshChangeOrders}
         onCreate={handleCreateChangeOrder}
         isCreating={isOperationActive("createChangeOrder")}
         isRefreshing={isOperationActive("refreshChangeOrders")}
-        isLoading={isResourceLoading("changeOrders")}
-        isLoadingCompanies={isResourceLoading("companies")}
+        isLoading={!hasLoadedProjects || isResourceLoading("changeOrders")}
+        isLoadingCompanies={
+          !hasLoadedProjects || isResourceLoading("companies")
+        }
         onDelete={handleDeleteChangeOrder}
         onDateChange={setChangeOrderDate}
         onNumberChange={setChangeOrderNumber}
@@ -1117,10 +1234,10 @@ function App() {
         projectCompanies={projectCompanies}
         companyName={companyName}
         companyTrade={companyTrade}
-        onBack={() => setCurrentPage("projectDashboard")}
+        onBack={() => navigateTo("projectDashboard")}
         onCreate={handleCreateProjectCompany}
         isCreating={isOperationActive("createCompany")}
-        isLoading={isResourceLoading("companies")}
+        isLoading={!hasLoadedProjects || isResourceLoading("companies")}
         onNameChange={setCompanyName}
         onTradeChange={setCompanyTrade}
       />
@@ -1143,14 +1260,14 @@ function App() {
       setTemplateName={setTemplateName}
       setSelectedTemplateId={setSelectedTemplateId}
       setScheduleView={setScheduleView}
-      onNavigate={setCurrentPage}
+      onNavigate={navigateTo}
       onSaveTemplate={handleSaveTemplate}
       onApplyTemplate={handleApplyTemplate}
       onExport={handleExportProjectPdf}
       isSavingTemplate={isOperationActive("saveTemplate")}
       isApplyingTemplate={isOperationActive("applyTemplate")}
       isExporting={isOperationActive("exportPdf")}
-      isLoadingTasks={isResourceLoading("tasks")}
+      isLoadingTasks={!hasLoadedProjects || isResourceLoading("tasks")}
       isLoadingTemplates={isResourceLoading("templates")}
       onLogout={handleLogout}
       onDragEnd={handleDragEnd}
