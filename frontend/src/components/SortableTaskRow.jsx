@@ -18,9 +18,7 @@ function CellEditor({
     if (event.key === "Enter") {
       event.preventDefault();
       skipBlurSave.current = true;
-      Promise.resolve(onSave()).finally(() => {
-        skipBlurSave.current = false;
-      });
+      onSave();
     }
 
     if (event.key === "Escape") {
@@ -38,7 +36,10 @@ function CellEditor({
       type={type}
       placeholder={placeholder}
       value={value}
-      onChange={(event) => onChange(event.target.value)}
+      onChange={(event) => {
+        skipBlurSave.current = false;
+        onChange(event.target.value);
+      }}
       onKeyDown={handleKeyDown}
       onBlur={() => {
         if (!skipBlurSave.current) onSave();
@@ -96,12 +97,13 @@ function SortableTaskRow({
   const rowStyle = {
     transform: CSS.Transform.toString(transform),
     transition,
-    background:
+    "--schedule-row-bg":
       selectedTaskId === task.id
         ? "#e0f2fe"
         : index % 2 === 0
           ? "#ffffff"
           : "#f9fafb",
+    background: "var(--schedule-row-bg)",
   };
 
   const isEditing = (field) =>
@@ -113,7 +115,10 @@ function SortableTaskRow({
       style={rowStyle}
       onClick={() => setSelectedTaskId(task.id)}
     >
-      <td style={{ padding: "4px", border: "1px solid #ddd" }}>
+      <td
+        className="schedule-sticky-column schedule-sticky-0"
+        style={{ padding: "4px", border: "1px solid #ddd" }}
+      >
         <button
           type="button"
           className="schedule-icon-button"
@@ -128,7 +133,10 @@ function SortableTaskRow({
         </button>
       </td>
 
-      <td style={{ padding: "4px", border: "1px solid #ddd" }}>
+      <td
+        className="schedule-sticky-column schedule-sticky-1"
+        style={{ padding: "4px", border: "1px solid #ddd" }}
+      >
         {isEditing("name") ? (
           <CellEditor
             label={`Task ${task.id} name`}

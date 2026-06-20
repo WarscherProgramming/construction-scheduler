@@ -7,6 +7,7 @@ import {
 import GanttChart from "../components/GanttChart";
 import FormField from "../components/FormField";
 import LoadingState from "../components/LoadingState";
+import NewTaskInput from "../components/NewTaskInput";
 import SkipLink from "../components/SkipLink";
 import SortableTaskRow from "../components/SortableTaskRow";
 import { buttonStyle } from "../styles";
@@ -192,6 +193,27 @@ function SchedulerPage({
           Schedule
         </h1>
 
+        <div className="schedule-toolbar">
+          <p>
+            {tasks.length} {tasks.length === 1 ? "task" : "tasks"}
+            {visibleTasks.length !== tasks.length &&
+              ` · ${visibleTasks.length} visible`}
+          </p>
+          <details className="dependency-help">
+            <summary>Dependency format help</summary>
+            <div>
+              <p>
+                Enter a task ID for Finish-to-Start. Add <code>SS</code> for
+                Start-to-Start and <code>+days</code> for lag.
+              </p>
+              <p>
+                Examples: <code>12</code>, <code>12+3</code>,{" "}
+                <code>12SS</code>, <code>12SS+4</code>.
+              </p>
+            </div>
+          </details>
+        </div>
+
         {isLoadingTasks ? (
           <LoadingState message="Loading project schedule…" />
         ) : scheduleView === "table" ? (
@@ -202,11 +224,19 @@ function SchedulerPage({
               aria-label="Project schedule"
               tabIndex={0}
             >
+            {tasks.length === 0 && (
+              <div className="schedule-empty-state" role="status">
+                No tasks yet. Use Add task below to create the first schedule
+                item.
+              </div>
+            )}
             <table
+              className="schedule-table"
               style={{
                 width: "100%",
                 minWidth: "1400px",
-                borderCollapse: "collapse",
+                borderCollapse: "separate",
+                borderSpacing: 0,
                 marginTop: "20px",
                 tableLayout: "fixed",
               }}
@@ -217,8 +247,8 @@ function SchedulerPage({
               <thead>
                 <tr>
                   {[
-                    { label: "Id", width: "50px", align: "center" },
-                    { label: "Task", width: "500px", align: "left" },
+                    { label: "Id", width: "80px", align: "center" },
+                    { label: "Task", width: "470px", align: "left" },
                     { label: "Duration", width: "90px", align: "center" },
                     { label: "Start", width: "120px", align: "center" },
                     { label: "End", width: "120px", align: "center" },
@@ -228,9 +258,15 @@ function SchedulerPage({
                       align: "center",
                     },
                     { label: "Actions", width: "190px", align: "center" },
-                  ].map((column) => (
+                  ].map((column, columnIndex) => (
                     <th
                       key={column.label}
+                      scope="col"
+                      className={
+                        columnIndex < 2
+                          ? `schedule-sticky-column schedule-sticky-${columnIndex}`
+                          : undefined
+                      }
                       style={{
                         width: column.width,
                         padding: "10px",
@@ -279,29 +315,22 @@ function SchedulerPage({
                       />
                     ))}
 
-                  <tr>
-                    <td style={{ border: "1px solid #ddd" }}></td>
-                    <td style={{ padding: "8px", border: "1px solid #ddd" }}>
+                  <tr className="schedule-new-row">
+                    <td
+                      className="schedule-sticky-column schedule-sticky-0"
+                      style={{ border: "1px solid #ddd" }}
+                    ></td>
+                    <td
+                      className="schedule-sticky-column schedule-sticky-1"
+                      style={{ padding: "8px", border: "1px solid #ddd" }}
+                    >
                       {editingCell?.id === "new" &&
                       editingCell.field === "name" ? (
-                        <input
-                          autoFocus
-                          aria-label="New task name"
-                          className="schedule-cell-input"
+                        <NewTaskInput
                           value={editValue}
-                          onChange={(event) => setEditValue(event.target.value)}
-                          onBlur={() => onCellSave(getEmptyRow())}
-                          onKeyDown={(event) => {
-                            if (event.key === "Enter") {
-                              event.preventDefault();
-                              onCellSave(getEmptyRow());
-                            }
-
-                            if (event.key === "Escape") {
-                              event.preventDefault();
-                              onCellCancel();
-                            }
-                          }}
+                          onChange={setEditValue}
+                          onSave={() => onCellSave(getEmptyRow())}
+                          onCancel={onCellCancel}
                         />
                       ) : (
                         <button
