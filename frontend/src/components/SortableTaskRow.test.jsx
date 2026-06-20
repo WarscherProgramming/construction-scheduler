@@ -13,7 +13,7 @@ const task = {
   duration: 2,
   start_date: "2026-06-22",
   end_date: "2026-06-23",
-  predecessor: "10FS+1",
+  predecessor: "10+1",
   parent_task_id: 10,
   is_collapsed: 0,
 };
@@ -23,6 +23,8 @@ function renderRow(overrides = {}) {
   const props = {
     task,
     index: 0,
+    displayId: 1,
+    displayPredecessor: "2+1",
     selectedTaskId: null,
     setSelectedTaskId: vi.fn(),
     editingCell: null,
@@ -32,14 +34,10 @@ function renderRow(overrides = {}) {
     handleCellSave: vi.fn(),
     handleCellCancel: vi.fn(),
     handleDelete: vi.fn(),
-    handleIndent: vi.fn(),
-    handleOutdent: vi.fn(),
     handleToggleCollapse: vi.fn(),
     formatDate: (value) => value,
     hasChildren: true,
     depth: 1,
-    canIndent: true,
-    canOutdent: true,
     ...overrides,
   };
 
@@ -66,27 +64,25 @@ describe("SortableTaskRow", () => {
 
     expect(
       screen.getByRole("button", {
-        name: "Reorder task 42: Footings",
+        name: "Reorder schedule task 1: Footings",
       })
     ).toBeInTheDocument();
+    expect(screen.queryByText("Move")).not.toBeInTheDocument();
 
     await user.click(
-      screen.getByRole("button", { name: "Edit task 42 name" })
+      screen.getByRole("button", { name: "Edit task 1 name" })
     );
 
+    expect(props.setSelectedTaskId).toHaveBeenCalledWith(42);
     expect(props.handleCellClick).toHaveBeenCalledWith(task, "name");
   });
 
-  it("dispatches hierarchy and deletion actions", async () => {
+  it("dispatches deletion from the row action", async () => {
     const user = userEvent.setup();
     const props = renderRow();
 
-    await user.click(screen.getByRole("button", { name: "Indent" }));
-    await user.click(screen.getByRole("button", { name: "Outdent" }));
     await user.click(screen.getByRole("button", { name: "Delete" }));
 
-    expect(props.handleIndent).toHaveBeenCalledWith(task);
-    expect(props.handleOutdent).toHaveBeenCalledWith(task);
     expect(props.handleDelete).toHaveBeenCalledWith(42);
   });
 
@@ -103,7 +99,7 @@ describe("SortableTaskRow", () => {
     });
 
     const input = screen.getByPlaceholderText(
-      "Task ID: 12, 12+3, 12SS+4"
+      "Schedule ID: 1, 1+3, 1SS+4"
     );
     await user.clear(input);
     await user.type(input, "15");
@@ -123,7 +119,7 @@ describe("SortableTaskRow", () => {
       handleCellSave,
     });
 
-    await user.type(screen.getByLabelText("Task 42 duration"), "{enter}");
+    await user.type(screen.getByLabelText("Task 1 duration"), "{enter}");
 
     expect(handleCellSave).toHaveBeenCalledOnce();
     expect(handleCellSave).toHaveBeenCalledWith(task);
@@ -141,7 +137,7 @@ describe("SortableTaskRow", () => {
       handleCellCancel,
     });
 
-    await user.type(screen.getByLabelText("Task 42 name"), "{escape}");
+    await user.type(screen.getByLabelText("Task 1 name"), "{escape}");
 
     expect(handleCellCancel).toHaveBeenCalledOnce();
     expect(handleCellSave).not.toHaveBeenCalled();

@@ -54,10 +54,7 @@ function EditButton({ label, children, onEdit, style }) {
       type="button"
       className="schedule-cell-button"
       aria-label={`Edit ${label}`}
-      onClick={(event) => {
-        event.stopPropagation();
-        onEdit();
-      }}
+      onClick={onEdit}
       style={style}
     >
       {children}
@@ -68,6 +65,8 @@ function EditButton({ label, children, onEdit, style }) {
 function SortableTaskRow({
   task,
   index,
+  displayId,
+  displayPredecessor,
   selectedTaskId,
   setSelectedTaskId,
   editingCell,
@@ -77,14 +76,10 @@ function SortableTaskRow({
   handleCellSave,
   handleCellCancel,
   handleDelete,
-  handleIndent,
-  handleOutdent,
   handleToggleCollapse,
   formatDate,
   hasChildren,
   depth,
-  canIndent,
-  canOutdent,
 }) {
   const {
     attributes,
@@ -121,15 +116,19 @@ function SortableTaskRow({
       >
         <button
           type="button"
-          className="schedule-icon-button"
-          aria-label={`Reorder task ${task.id}: ${task.name}`}
+          className="schedule-icon-button schedule-drag-handle"
+          aria-label={`Reorder schedule task ${displayId}: ${task.name}`}
           title="Drag to reorder. Use Space and arrow keys with a keyboard."
           onClick={(event) => event.stopPropagation()}
           {...attributes}
           {...listeners}
         >
-          <span aria-hidden="true">Move</span>
-          <span style={{ marginLeft: "4px" }}>{task.id}</span>
+          <span className="schedule-drag-lines" aria-hidden="true">
+            <span />
+            <span />
+            <span />
+          </span>
+          <span>{displayId}</span>
         </button>
       </td>
 
@@ -139,7 +138,7 @@ function SortableTaskRow({
       >
         {isEditing("name") ? (
           <CellEditor
-            label={`Task ${task.id} name`}
+            label={`Task ${displayId} name`}
             value={editValue}
             onChange={setEditValue}
             onSave={() => handleCellSave(task)}
@@ -154,7 +153,7 @@ function SortableTaskRow({
             }}
           >
             <EditButton
-              label={`task ${task.id} name`}
+              label={`task ${displayId} name`}
               onEdit={() => handleCellClick(task, "name")}
               style={{
                 flex: 1,
@@ -189,7 +188,7 @@ function SortableTaskRow({
       <td style={{ padding: "4px", border: "1px solid #ddd" }}>
         {isEditing("duration") ? (
           <CellEditor
-            label={`Task ${task.id} duration`}
+            label={`Task ${displayId} duration`}
             type="number"
             value={editValue}
             onChange={setEditValue}
@@ -198,7 +197,7 @@ function SortableTaskRow({
           />
         ) : (
           <EditButton
-            label={`task ${task.id} duration`}
+            label={`task ${displayId} duration`}
             onEdit={() => handleCellClick(task, "duration")}
           >
             {task.duration}
@@ -209,7 +208,7 @@ function SortableTaskRow({
       <td style={{ padding: "4px", border: "1px solid #ddd" }}>
         {isEditing("manual_start_date") ? (
           <CellEditor
-            label={`Task ${task.id} start date`}
+            label={`Task ${displayId} start date`}
             type="date"
             value={editValue || ""}
             onChange={setEditValue}
@@ -218,7 +217,7 @@ function SortableTaskRow({
           />
         ) : (
           <EditButton
-            label={`task ${task.id} start date`}
+            label={`task ${displayId} start date`}
             onEdit={() => handleCellClick(task, "manual_start_date")}
           >
             {formatDate(task.start_date)}
@@ -233,8 +232,8 @@ function SortableTaskRow({
       <td style={{ padding: "4px", border: "1px solid #ddd" }}>
         {isEditing("predecessor") ? (
           <CellEditor
-            label={`Task ${task.id} predecessor`}
-            placeholder="Task ID: 12, 12+3, 12SS+4"
+            label={`Task ${displayId} predecessor`}
+            placeholder="Schedule ID: 1, 1+3, 1SS+4"
             value={editValue}
             onChange={setEditValue}
             onSave={() => handleCellSave(task)}
@@ -242,37 +241,15 @@ function SortableTaskRow({
           />
         ) : (
           <EditButton
-            label={`task ${task.id} predecessor`}
+            label={`task ${displayId} predecessor`}
             onEdit={() => handleCellClick(task, "predecessor")}
           >
-            {task.predecessor || "-"}
+            {displayPredecessor || "-"}
           </EditButton>
         )}
       </td>
 
       <td style={{ padding: "8px", border: "1px solid #ddd" }}>
-        <button
-          type="button"
-          onClick={(event) => {
-            event.stopPropagation();
-            handleIndent(task);
-          }}
-          disabled={!canIndent}
-          title="Indent under previous task"
-        >
-          Indent
-        </button>
-        <button
-          type="button"
-          onClick={(event) => {
-            event.stopPropagation();
-            handleOutdent(task);
-          }}
-          disabled={!canOutdent}
-          title="Move up one hierarchy level"
-        >
-          Outdent
-        </button>
         <button
           type="button"
           onClick={(event) => {

@@ -11,6 +11,11 @@ import NewTaskInput from "../components/NewTaskInput";
 import SkipLink from "../components/SkipLink";
 import SortableTaskRow from "../components/SortableTaskRow";
 import { buttonStyle } from "../styles";
+import {
+  formatPredecessorForSchedule,
+  getScheduleTaskNumber,
+} from "../utils/taskReferences";
+import { findIndentParent } from "../utils/taskHierarchy";
 
 function SchedulerPage({
   tasks,
@@ -54,6 +59,14 @@ function SchedulerPage({
   const visibleTasks = tasks.filter(
     (task) => !isTaskHiddenByCollapsedParent(task)
   );
+  const selectedTask = tasks.find((task) => task.id === selectedTaskId);
+  const selectedDisplayId = selectedTask
+    ? getScheduleTaskNumber(tasks, selectedTask.id)
+    : null;
+  const canIndentSelectedTask = Boolean(
+    selectedTask && findIndentParent(tasks, selectedTask.id)
+  );
+  const canOutdentSelectedTask = Boolean(selectedTask?.parent_task_id);
 
   return (
     <div className="app-shell scheduler-shell">
@@ -194,11 +207,39 @@ function SchedulerPage({
         </h1>
 
         <div className="schedule-toolbar">
-          <p>
-            {tasks.length} {tasks.length === 1 ? "task" : "tasks"}
-            {visibleTasks.length !== tasks.length &&
-              ` · ${visibleTasks.length} visible`}
-          </p>
+          <div className="schedule-toolbar-selection">
+            <p>
+              {selectedTask
+                ? `Task ${selectedDisplayId} selected`
+                : "Select a task to change its hierarchy"}
+            </p>
+            <div
+              className="schedule-hierarchy-actions"
+              aria-label="Selected task hierarchy"
+            >
+              <button
+                type="button"
+                onClick={() => onIndent(selectedTask)}
+                disabled={!canIndentSelectedTask}
+                title="Move selected task one level deeper"
+              >
+                Indent
+              </button>
+              <button
+                type="button"
+                onClick={() => onOutdent(selectedTask)}
+                disabled={!canOutdentSelectedTask}
+                title="Move selected task one level up"
+              >
+                Outdent
+              </button>
+            </div>
+            <span className="schedule-task-count">
+              {tasks.length} {tasks.length === 1 ? "task" : "tasks"}
+              {visibleTasks.length !== tasks.length &&
+                ` · ${visibleTasks.length} visible`}
+            </span>
+          </div>
           <details className="dependency-help">
             <summary>Dependency format help</summary>
             <div>
@@ -247,7 +288,7 @@ function SchedulerPage({
               <thead>
                 <tr>
                   {[
-                    { label: "Id", width: "80px", align: "center" },
+                    { label: "ID", width: "80px", align: "center" },
                     { label: "Task", width: "470px", align: "left" },
                     { label: "Duration", width: "90px", align: "center" },
                     { label: "Start", width: "120px", align: "center" },
@@ -257,7 +298,7 @@ function SchedulerPage({
                       width: "130px",
                       align: "center",
                     },
-                    { label: "Actions", width: "190px", align: "center" },
+                    { label: "Actions", width: "90px", align: "center" },
                   ].map((column, columnIndex) => (
                     <th
                       key={column.label}
@@ -291,6 +332,11 @@ function SchedulerPage({
                         key={task.id}
                         task={task}
                         index={index}
+                        displayId={getScheduleTaskNumber(tasks, task.id)}
+                        displayPredecessor={formatPredecessorForSchedule(
+                          task.predecessor,
+                          tasks
+                        )}
                         selectedTaskId={selectedTaskId}
                         setSelectedTaskId={setSelectedTaskId}
                         editingCell={editingCell}
@@ -300,18 +346,10 @@ function SchedulerPage({
                         handleCellSave={onCellSave}
                         handleCellCancel={onCellCancel}
                         handleDelete={onDelete}
-                        handleIndent={onIndent}
-                        handleOutdent={onOutdent}
                         handleToggleCollapse={onToggleCollapse}
                         formatDate={formatDate}
                         hasChildren={taskHasChildren(task.id)}
                         depth={getTaskDepth(task)}
-                        canIndent={
-                          tasks.findIndex(
-                            (candidate) => candidate.id === task.id
-                          ) > 0
-                        }
-                        canOutdent={Boolean(task.parent_task_id)}
                       />
                     ))}
 

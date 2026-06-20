@@ -43,6 +43,14 @@ import {
   parseAppHash,
   updateBrowserRoute,
 } from "./utils/navigation";
+import {
+  formatPredecessorForApi,
+  formatPredecessorForSchedule,
+} from "./utils/taskReferences";
+import {
+  findIndentParent,
+  getTaskDepthFromList,
+} from "./utils/taskHierarchy";
 
 import { useAuth } from "./auth/authContext";
 import AuthPage from "./pages/AuthPage";
@@ -507,7 +515,7 @@ function App() {
     setEditingCell({ id: task.id ?? "new", field });
 
     if (field === "predecessor") {
-      setEditValue(task.predecessor || "");
+      setEditValue(formatPredecessorForSchedule(task.predecessor, tasks));
     } else if (field === "manual_start_date") {
       setEditValue(task.manual_start_date || task.start_date || "");
     } else {
@@ -525,7 +533,14 @@ function App() {
     }
 
     if (editingCell.field === "predecessor") {
-      value = editValue === "" ? null : editValue;
+      const predecessor = formatPredecessorForApi(editValue, tasks);
+
+      if (predecessor.error) {
+        reportValidationError(predecessor.error);
+        return;
+      }
+
+      value = predecessor.value;
     }
 
     if (
@@ -962,22 +977,7 @@ function App() {
 
   const taskMap = new Map(tasks.map((task) => [task.id, task]));
 
-  const getTaskDepth = (task) => {
-    let depth = 0;
-    let parentId = task.parent_task_id;
-    const visited = new Set();
-
-    while (parentId && !visited.has(parentId)) {
-      visited.add(parentId);
-      const parent = taskMap.get(parentId);
-      if (!parent) break;
-
-      depth += 1;
-      parentId = parent.parent_task_id;
-    }
-
-    return depth;
-  };
+  const getTaskDepth = (task) => getTaskDepthFromList(tasks, task);
 
   const taskHasChildren = (taskId) =>
     tasks.some((task) => task.parent_task_id === taskId);
@@ -998,10 +998,8 @@ function App() {
   };
 
   const handleIndentTask = async (task) => {
-    const taskIndex = tasks.findIndex((candidate) => candidate.id === task.id);
-    if (taskIndex <= 0) return;
-
-    const parent = tasks[taskIndex - 1];
+    const parent = findIndentParent(tasks, task.id);
+    if (!parent) return;
 
     try {
       const data = await updateTask(selectedProjectId, task.id, {

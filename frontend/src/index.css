@@ -362,6 +362,9 @@ button:disabled {
 }
 
 .schedule-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 8;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -370,12 +373,27 @@ button:disabled {
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--surface);
+  box-shadow: var(--shadow);
 }
 
-.schedule-toolbar > p {
-  padding-top: 4px;
+.schedule-toolbar-selection {
+  display: grid;
+  gap: 8px;
+}
+
+.schedule-toolbar-selection > p {
   color: var(--text-h);
   font-weight: 700;
+}
+
+.schedule-hierarchy-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.schedule-task-count {
+  color: var(--text);
+  font-size: 0.85rem;
 }
 
 .dependency-help {
@@ -574,6 +592,23 @@ textarea.field-control {
 .schedule-icon-button:hover {
   border-color: #93c5fd;
   background: #eff6ff;
+}
+
+.schedule-drag-handle {
+  grid-auto-flow: column;
+  gap: 7px;
+}
+
+.schedule-drag-lines {
+  display: grid;
+  gap: 3px;
+  width: 14px;
+}
+
+.schedule-drag-lines span {
+  height: 2px;
+  border-radius: 999px;
+  background: currentColor;
 }
 
 .field-hint {
