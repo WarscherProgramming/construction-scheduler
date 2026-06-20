@@ -1,5 +1,8 @@
+import { useMemo, useState } from "react";
+
 import FormField from "../components/FormField";
 import ProjectPageLayout from "../components/ProjectPageLayout";
+import RecordFilters from "../components/RecordFilters";
 import RecordTable from "../components/RecordTable";
 import StatusBadge from "../components/StatusBadge";
 import { buttonStyle, tableCellStyle } from "../styles";
@@ -23,6 +26,27 @@ function NotesDelaysPage({
   onDescriptionChange,
   onImpactChange,
 }) {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [typeFilter, setTypeFilter] = useState("");
+  const [companyFilter, setCompanyFilter] = useState("");
+
+  const filteredEntries = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+
+    return notesDelays.filter((entry) => {
+      const matchesType = !typeFilter || entry.entry_type === typeFilter;
+      const matchesCompany =
+        !companyFilter || entry.company === companyFilter;
+      const matchesQuery =
+        !query ||
+        [entry.company, entry.description, entry.impact].some((value) =>
+          String(value || "").toLowerCase().includes(query)
+        );
+
+      return matchesType && matchesCompany && matchesQuery;
+    });
+  }, [companyFilter, notesDelays, searchQuery, typeFilter]);
+
   return (
     <ProjectPageLayout title={`${projectName} Notes & Delays`} onBack={onBack}>
       <form
@@ -100,12 +124,56 @@ function NotesDelaysPage({
         Refresh Entries
       </button>
 
+      <RecordFilters resultCount={filteredEntries.length}>
+        <FormField label="Search" htmlFor="notes-delays-search">
+          <input
+            id="notes-delays-search"
+            className="field-control"
+            type="search"
+            placeholder="Company, description, or impact"
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+          />
+        </FormField>
+        <FormField label="Type" htmlFor="notes-delays-type-filter">
+          <select
+            id="notes-delays-type-filter"
+            className="field-control"
+            value={typeFilter}
+            onChange={(event) => setTypeFilter(event.target.value)}
+          >
+            <option value="">All types</option>
+            <option value="Note">Notes</option>
+            <option value="Delay">Delays</option>
+          </select>
+        </FormField>
+        <FormField label="Company" htmlFor="notes-delays-company-filter">
+          <select
+            id="notes-delays-company-filter"
+            className="field-control"
+            value={companyFilter}
+            onChange={(event) => setCompanyFilter(event.target.value)}
+          >
+            <option value="">All companies</option>
+            {projectCompanies.map((company) => (
+              <option key={company.id} value={company.name}>
+                {company.name}
+              </option>
+            ))}
+          </select>
+        </FormField>
+      </RecordFilters>
+
       <RecordTable
         label="Notes and delays"
-        emptyMessage="No notes or delays yet. Create the first entry above."
+        emptyMessage={
+          notesDelays.length
+            ? "No notes or delays match the current filters."
+            : "No notes or delays yet. Create the first entry above."
+        }
         headers={["Date", "Type", "Company", "Description", "Impact"]}
       >
-        {notesDelays.map((entry) => (
+        {filteredEntries.map((entry) => (
           <tr key={entry.id}>
             <td style={tableCellStyle}>{formatDate(entry.date)}</td>
             <td style={tableCellStyle}>

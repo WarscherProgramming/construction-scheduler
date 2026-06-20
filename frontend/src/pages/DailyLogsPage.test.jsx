@@ -38,4 +38,52 @@ describe("DailyLogsPage", () => {
 
     expect(onCreate).toHaveBeenCalledOnce();
   });
+
+  it("filters records by search text and announces the result count", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <DailyLogsPage
+        projectName="North Ridge"
+        dailyLogs={[
+          {
+            id: 1,
+            date: "2026-06-20",
+            company: "Desert Concrete",
+            manpower: 8,
+            notes: "North pour complete",
+          },
+          {
+            id: 2,
+            date: "2026-06-19",
+            company: "Valley Electric",
+            manpower: 4,
+            notes: "Panel work underway",
+          },
+        ]}
+        projectCompanies={[
+          { id: 1, name: "Desert Concrete" },
+          { id: 2, name: "Valley Electric" },
+        ]}
+        logDate="2026-06-20"
+        logCompany=""
+        logManpower=""
+        logNotes=""
+        formatDate={(value) => value}
+        onBack={vi.fn()}
+        onRefresh={vi.fn()}
+        onCreate={vi.fn()}
+        onDateChange={vi.fn()}
+        onCompanyChange={vi.fn()}
+        onManpowerChange={vi.fn()}
+        onNotesChange={vi.fn()}
+      />
+    );
+
+    await user.type(screen.getByLabelText("Search"), "panel");
+
+    expect(screen.getByText("Panel work underway")).toBeInTheDocument();
+    expect(screen.queryByText("North pour complete")).not.toBeInTheDocument();
+    expect(screen.getByText("1 record")).toBeInTheDocument();
+  });
 });

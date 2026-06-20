@@ -1,5 +1,8 @@
+import { useMemo, useState } from "react";
+
 import FormField from "../components/FormField";
 import ProjectPageLayout from "../components/ProjectPageLayout";
+import RecordFilters from "../components/RecordFilters";
 import RecordTable from "../components/RecordTable";
 import { buttonStyle, tableCellStyle } from "../styles";
 
@@ -20,6 +23,25 @@ function DailyLogsPage({
   onManpowerChange,
   onNotesChange,
 }) {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [companyFilter, setCompanyFilter] = useState("");
+
+  const filteredLogs = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+
+    return dailyLogs.filter((log) => {
+      const matchesCompany =
+        !companyFilter || log.company === companyFilter;
+      const matchesQuery =
+        !query ||
+        [log.company, log.notes, log.manpower].some((value) =>
+          String(value || "").toLowerCase().includes(query)
+        );
+
+      return matchesCompany && matchesQuery;
+    });
+  }, [companyFilter, dailyLogs, searchQuery]);
+
   return (
     <ProjectPageLayout title={`${projectName} Daily Logs`} onBack={onBack}>
       <form
@@ -97,12 +119,44 @@ function DailyLogsPage({
         Refresh Logs
       </button>
 
+      <RecordFilters resultCount={filteredLogs.length}>
+        <FormField label="Search" htmlFor="daily-log-search">
+          <input
+            id="daily-log-search"
+            className="field-control"
+            type="search"
+            placeholder="Company, notes, or manpower"
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+          />
+        </FormField>
+        <FormField label="Company" htmlFor="daily-log-company-filter">
+          <select
+            id="daily-log-company-filter"
+            className="field-control"
+            value={companyFilter}
+            onChange={(event) => setCompanyFilter(event.target.value)}
+          >
+            <option value="">All companies</option>
+            {projectCompanies.map((company) => (
+              <option key={company.id} value={company.name}>
+                {company.name}
+              </option>
+            ))}
+          </select>
+        </FormField>
+      </RecordFilters>
+
       <RecordTable
         label="Daily logs"
-        emptyMessage="No daily logs yet. Create the first log above."
+        emptyMessage={
+          dailyLogs.length
+            ? "No daily logs match the current filters."
+            : "No daily logs yet. Create the first log above."
+        }
         headers={["Date", "Company", "Manpower", "Notes"]}
       >
-        {dailyLogs.map((log) => (
+        {filteredLogs.map((log) => (
           <tr key={log.id}>
             <td style={tableCellStyle}>{formatDate(log.date)}</td>
             <td style={tableCellStyle}>{log.company}</td>

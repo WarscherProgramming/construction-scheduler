@@ -1,5 +1,8 @@
+import { useMemo, useState } from "react";
+
 import FormField from "../components/FormField";
 import ProjectPageLayout from "../components/ProjectPageLayout";
+import RecordFilters from "../components/RecordFilters";
 import RecordTable from "../components/RecordTable";
 import StatusBadge from "../components/StatusBadge";
 import { buttonStyle, tableCellStyle } from "../styles";
@@ -18,6 +21,25 @@ function InspectionsPage({
   onTypeChange,
   onStatusChange,
 }) {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+
+  const filteredInspections = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+
+    return inspections.filter((inspection) => {
+      const matchesStatus =
+        !statusFilter || inspection.status === statusFilter;
+      const matchesQuery =
+        !query ||
+        String(inspection.inspection_type || "")
+          .toLowerCase()
+          .includes(query);
+
+      return matchesStatus && matchesQuery;
+    });
+  }, [inspections, searchQuery, statusFilter]);
+
   return (
     <ProjectPageLayout title={`${projectName} Inspections`} onBack={onBack}>
       <form
@@ -74,12 +96,43 @@ function InspectionsPage({
         Refresh Inspections
       </button>
 
+      <RecordFilters resultCount={filteredInspections.length}>
+        <FormField label="Search" htmlFor="inspection-search">
+          <input
+            id="inspection-search"
+            className="field-control"
+            type="search"
+            placeholder="Inspection name"
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+          />
+        </FormField>
+        <FormField label="Status" htmlFor="inspection-status-filter">
+          <select
+            id="inspection-status-filter"
+            className="field-control"
+            value={statusFilter}
+            onChange={(event) => setStatusFilter(event.target.value)}
+          >
+            <option value="">All statuses</option>
+            <option value="Pending">Pending</option>
+            <option value="Pass">Pass</option>
+            <option value="Partial Pass">Partial Pass</option>
+            <option value="Fail">Fail</option>
+          </select>
+        </FormField>
+      </RecordFilters>
+
       <RecordTable
         label="Inspections"
-        emptyMessage="No inspections yet. Create the first inspection above."
+        emptyMessage={
+          inspections.length
+            ? "No inspections match the current filters."
+            : "No inspections yet. Create the first inspection above."
+        }
         headers={["Date", "Inspection", "Status"]}
       >
-        {inspections.map((inspection) => (
+        {filteredInspections.map((inspection) => (
           <tr key={inspection.id}>
             <td style={tableCellStyle}>{formatDate(inspection.date)}</td>
             <td style={tableCellStyle}>{inspection.inspection_type}</td>

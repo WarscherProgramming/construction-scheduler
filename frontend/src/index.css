@@ -296,6 +296,41 @@ button:disabled {
   color: var(--text-h);
 }
 
+.record-filters {
+  display: grid;
+  gap: 14px;
+  margin-top: 20px;
+  padding: 16px 20px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.record-filters-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.record-filters-heading h2 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.record-filters-heading span {
+  color: var(--text);
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.record-filter-controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
+  gap: 12px;
+}
+
 .field-group {
   display: grid;
   gap: 6px;
