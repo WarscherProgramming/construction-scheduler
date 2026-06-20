@@ -1,9 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  AUTH_UNAUTHORIZED_EVENT,
-  ApiError,
-  registerUser,
-  loginUser,
   fetchProjects,
   createProject,
   fetchTasks,
@@ -27,8 +23,10 @@ import {
   deleteChangeOrder,
   reorderTasks,
 } from "./services/api";
+import { ApiError } from "./services/httpClient";
 import { arrayMove } from "@dnd-kit/sortable";
 
+import { useAuth } from "./auth/authContext";
 import AuthPage from "./pages/AuthPage";
 import ChangeOrdersPage from "./pages/ChangeOrdersPage";
 import DailyLogsPage from "./pages/DailyLogsPage";
@@ -39,6 +37,8 @@ import ProjectDashboardPage from "./pages/ProjectDashboardPage";
 import ProjectSettingsPage from "./pages/ProjectSettingsPage";
 import SchedulerPage from "./pages/SchedulerPage";
 function App() {
+  const { isAuthenticated, login, logout, register } = useAuth();
+
   //usestates
   const [tasks, setTasks] = useState([]);
   const [editingCell, setEditingCell] = useState(null);
@@ -49,7 +49,6 @@ function App() {
   const [templates, setTemplates] = useState([]);
   const [templateName, setTemplateName] = useState("");
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
-  const [token, setToken] = useState(localStorage.getItem("token"));
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [authMode, setAuthMode] = useState("login");
@@ -92,10 +91,8 @@ function App() {
     setSelectedProjectId(projectId);
   }, []);
 
-  const handleLogout = useCallback(() => {
-    localStorage.removeItem("token");
+  const resetApplicationState = useCallback(() => {
     selectedProjectIdRef.current = null;
-    setToken(null);
     setProjects([]);
     setTasks([]);
     setTemplates([]);
@@ -107,6 +104,11 @@ function App() {
     setSelectedProjectId(null);
     setCurrentPage("home");
   }, []);
+
+  const handleLogout = useCallback(() => {
+    logout();
+    resetApplicationState();
+  }, [logout, resetApplicationState]);
 
   const reportRequestError = useCallback((context, error) => {
     const message =
@@ -227,25 +229,17 @@ function App() {
   }, [reportRequestError, selectedProjectId]);
 
   useEffect(() => {
-    window.addEventListener(AUTH_UNAUTHORIZED_EVENT, handleLogout);
-
-    return () => {
-      window.removeEventListener(AUTH_UNAUTHORIZED_EVENT, handleLogout);
-    };
-  }, [handleLogout]);
-
-  useEffect(() => {
-    if (!token) return;
+    if (!isAuthenticated) return;
 
     const timeoutId = window.setTimeout(() => {
       void Promise.all([loadProjects(), loadTemplates()]);
     }, 0);
 
     return () => window.clearTimeout(timeoutId);
-  }, [loadProjects, loadTemplates, token]);
+  }, [isAuthenticated, loadProjects, loadTemplates]);
 
   useEffect(() => {
-    if (!token || !selectedProjectId) return;
+    if (!isAuthenticated || !selectedProjectId) return;
 
     const timeoutId = window.setTimeout(() => {
       setTasks([]);
@@ -259,10 +253,15 @@ function App() {
     }, 0);
 
     return () => window.clearTimeout(timeoutId);
-  }, [loadProjectCompanies, loadTasks, selectedProjectId, token]);
+  }, [
+    isAuthenticated,
+    loadProjectCompanies,
+    loadTasks,
+    selectedProjectId,
+  ]);
 
   useEffect(() => {
-    if (!token || !selectedProjectId) return;
+    if (!isAuthenticated || !selectedProjectId) return;
 
     const pageLoaders = {
       projectDashboard: [loadChangeOrders, loadNotesDelays],
@@ -281,14 +280,21 @@ function App() {
     return () => window.clearTimeout(timeoutId);
   }, [
     currentPage,
+    isAuthenticated,
     loadChangeOrders,
     loadDailyLogs,
     loadInspections,
     loadNotesDelays,
     loadProjectCompanies,
     selectedProjectId,
-    token,
   ]);
+
+  useEffect(() => {
+    if (isAuthenticated) return;
+
+    const timeoutId = window.setTimeout(resetApplicationState, 0);
+    return () => window.clearTimeout(timeoutId);
+  }, [isAuthenticated, resetApplicationState]);
 
   //table logic  
   const handleCellClick = (task, field) => {
@@ -411,7 +417,7 @@ function App() {
   //authentaction
   const handleRegister = async () => {
     try {
-      await registerUser({
+      await register({
         email,
         password,
       });
@@ -424,9 +430,7 @@ function App() {
 
   const handleLogin = async () => {
     try {
-      const data = await loginUser(email, password);
-      localStorage.setItem("token", data.access_token);
-      setToken(data.access_token);
+      await login(email, password);
       setEmail("");
       setPassword("");
     } catch (error) {
@@ -674,7 +678,7 @@ function App() {
     return false;
   };
 
-  if (!token) {
+  if (!isAuthenticated) {
     return (
       <AuthPage
         authMode={authMode}

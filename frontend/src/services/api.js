@@ -1,101 +1,9 @@
-const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
-
-export const AUTH_UNAUTHORIZED_EVENT = "auth:unauthorized";
-
-export class ApiError extends Error {
-  constructor(message, status, details = null) {
-    super(message);
-    this.name = "ApiError";
-    this.status = status;
-    this.details = details;
-  }
-}
-
-function getAuthHeaders() {
-  const token = localStorage.getItem("token");
-
-  return {
-    "Content-Type": "application/json",
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
-}
-
-async function parseResponseBody(response) {
-  if (response.status === 204) return null;
-
-  const text = await response.text();
-  if (!text) return null;
-
-  const contentType = response.headers.get("content-type") || "";
-
-  if (contentType.includes("application/json")) {
-    try {
-      return JSON.parse(text);
-    } catch {
-      return text;
-    }
-  }
-
-  return text;
-}
-
-function getErrorMessage(body, status) {
-  if (typeof body?.detail === "string") {
-    return body.detail;
-  }
-
-  if (Array.isArray(body?.detail)) {
-    return body.detail
-      .map((error) => error.msg)
-      .filter(Boolean)
-      .join(", ");
-  }
-
-  return `Request failed with status ${status}`;
-}
-
-async function request(path, options = {}) {
-  let response;
-
-  try {
-    response = await fetch(`${API_URL}${path}`, options);
-  } catch (error) {
-    throw new ApiError("Unable to connect to the API", 0, error);
-  }
-
-  const body = await parseResponseBody(response);
-
-  if (!response.ok) {
-    if (response.status === 401) {
-      window.dispatchEvent(new Event(AUTH_UNAUTHORIZED_EVENT));
-    }
-
-    throw new ApiError(
-      getErrorMessage(body, response.status),
-      response.status,
-      body
-    );
-  }
-
-  return body;
-}
-
-function authenticatedRequest(path, options = {}) {
-  return request(path, {
-    ...options,
-    headers: {
-      ...getAuthHeaders(),
-      ...options.headers,
-    },
-  });
-}
-
-function jsonRequest(path, method, body) {
-  return authenticatedRequest(path, {
-    method,
-    body: JSON.stringify(body),
-  });
-}
+import {
+  authenticatedRequest,
+  downloadAuthenticatedFile,
+  jsonRequest,
+  request,
+} from "./httpClient";
 
 export function registerUser(user) {
   return request("/auth/register", {
@@ -163,31 +71,9 @@ export function applyTemplate(projectId, templateId) {
 }
 
 export async function exportProjectPdf(projectId) {
-  let response;
-
-  try {
-    response = await fetch(`${API_URL}/projects/${projectId}/export/pdf`, {
-      headers: getAuthHeaders(),
-    });
-  } catch (error) {
-    throw new ApiError("Unable to connect to the API", 0, error);
-  }
-
-  if (!response.ok) {
-    const body = await parseResponseBody(response);
-
-    if (response.status === 401) {
-      window.dispatchEvent(new Event(AUTH_UNAUTHORIZED_EVENT));
-    }
-
-    throw new ApiError(
-      getErrorMessage(body, response.status),
-      response.status,
-      body
-    );
-  }
-
-  const blob = await response.blob();
+  const blob = await downloadAuthenticatedFile(
+    `/projects/${projectId}/export/pdf`
+  );
   const url = window.URL.createObjectURL(blob);
 
   window.open(url, "_blank");
