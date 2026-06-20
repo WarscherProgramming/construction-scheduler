@@ -1,5 +1,7 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  AUTH_UNAUTHORIZED_EVENT,
+  ApiError,
   registerUser,
   loginUser,
   fetchProjects,
@@ -60,8 +62,6 @@ function SortableTaskRow({
   handleCellClick,
   handleCellSave,
   handleDelete,
-  handleIndentTask,
-  handleOutdentTask,
   handleToggleCollapse,
   formatDate,
   hasChildren,
@@ -292,49 +292,214 @@ function App() {
   const [companyName, setCompanyName] = useState("");
   const [companyTrade, setCompanyTrade] = useState("");
   const [scheduleView, setScheduleView] = useState("table");
-  
-
-  //project and task load
-  const loadTasks = async () => {
-    if (!selectedProjectId) return;
-    
-    const data = await fetchTasks(selectedProjectId);
-    setTasks(data.tasks);
-  };
-
-  const loadProjects = async () => {
-    const data = await fetchProjects();
-
-    if (data.detail === "Not authenticated" || data.detail === "Invalid token") {
-      handleLogout();
-      return;
-    }
-
-    setProjects(data.projects);
-
-    if (data.projects.length > 0 && !selectedProjectId) {
-      setSelectedProjectId(data.projects[0].id);
-    }
-  };
+  const selectedProjectIdRef = useRef(selectedProjectId);
 
   useEffect(() => {
-    if (token) {
-      loadProjects();
-      loadTemplates();
+    selectedProjectIdRef.current = selectedProjectId;
+  }, [selectedProjectId]);
+
+  const selectProject = useCallback((projectId) => {
+    selectedProjectIdRef.current = projectId;
+    setSelectedProjectId(projectId);
+  }, []);
+
+  const handleLogout = useCallback(() => {
+    localStorage.removeItem("token");
+    selectedProjectIdRef.current = null;
+    setToken(null);
+    setProjects([]);
+    setTasks([]);
+    setTemplates([]);
+    setDailyLogs([]);
+    setInspections([]);
+    setNotesDelays([]);
+    setChangeOrders([]);
+    setProjectCompanies([]);
+    setSelectedProjectId(null);
+    setCurrentPage("home");
+  }, []);
+
+  const reportRequestError = useCallback((context, error) => {
+    const message =
+      error instanceof ApiError ? error.message : "Unexpected application error";
+
+    console.error(`${context}: ${message}`, error);
+  }, []);
+
+  const loadProjects = useCallback(async () => {
+    try {
+      const data = await fetchProjects();
+      setProjects(data.projects);
+      selectProject(
+        selectedProjectIdRef.current ?? data.projects[0]?.id ?? null
+      );
+    } catch (error) {
+      reportRequestError("Unable to load projects", error);
     }
-  }, [token]);
+  }, [reportRequestError, selectProject]);
+
+  const loadTemplates = useCallback(async () => {
+    try {
+      const data = await fetchTemplates();
+      setTemplates(data.templates);
+    } catch (error) {
+      reportRequestError("Unable to load templates", error);
+    }
+  }, [reportRequestError]);
+
+  const loadTasks = useCallback(async () => {
+    const projectId = selectedProjectId;
+    if (!projectId) return;
+
+    try {
+      const data = await fetchTasks(projectId);
+
+      if (selectedProjectIdRef.current === projectId) {
+        setTasks(data.tasks);
+      }
+    } catch (error) {
+      reportRequestError("Unable to load tasks", error);
+    }
+  }, [reportRequestError, selectedProjectId]);
+
+  const loadDailyLogs = useCallback(async () => {
+    const projectId = selectedProjectId;
+    if (!projectId) return;
+
+    try {
+      const data = await fetchDailyLogs(projectId);
+
+      if (selectedProjectIdRef.current === projectId) {
+        setDailyLogs(data.daily_logs || []);
+      }
+    } catch (error) {
+      reportRequestError("Unable to load daily logs", error);
+    }
+  }, [reportRequestError, selectedProjectId]);
+
+  const loadInspections = useCallback(async () => {
+    const projectId = selectedProjectId;
+    if (!projectId) return;
+
+    try {
+      const data = await fetchInspections(projectId);
+
+      if (selectedProjectIdRef.current === projectId) {
+        setInspections(data.inspections || []);
+      }
+    } catch (error) {
+      reportRequestError("Unable to load inspections", error);
+    }
+  }, [reportRequestError, selectedProjectId]);
+
+  const loadNotesDelays = useCallback(async () => {
+    const projectId = selectedProjectId;
+    if (!projectId) return;
+
+    try {
+      const data = await fetchNotesDelays(projectId);
+
+      if (selectedProjectIdRef.current === projectId) {
+        setNotesDelays(data.notes_delays || []);
+      }
+    } catch (error) {
+      reportRequestError("Unable to load notes and delays", error);
+    }
+  }, [reportRequestError, selectedProjectId]);
+
+  const loadChangeOrders = useCallback(async () => {
+    const projectId = selectedProjectId;
+    if (!projectId) return;
+
+    try {
+      const data = await fetchChangeOrders(projectId);
+
+      if (selectedProjectIdRef.current === projectId) {
+        setChangeOrders(data.change_orders || []);
+      }
+    } catch (error) {
+      reportRequestError("Unable to load change orders", error);
+    }
+  }, [reportRequestError, selectedProjectId]);
+
+  const loadProjectCompanies = useCallback(async () => {
+    const projectId = selectedProjectId;
+    if (!projectId) return;
+
+    try {
+      const data = await fetchProjectCompanies(projectId);
+
+      if (selectedProjectIdRef.current === projectId) {
+        setProjectCompanies(data.companies || []);
+      }
+    } catch (error) {
+      reportRequestError("Unable to load project companies", error);
+    }
+  }, [reportRequestError, selectedProjectId]);
 
   useEffect(() => {
-    if (token && selectedProjectId) {
-      loadTasks();
-    }
-  }, [token, selectedProjectId]);
+    window.addEventListener(AUTH_UNAUTHORIZED_EVENT, handleLogout);
+
+    return () => {
+      window.removeEventListener(AUTH_UNAUTHORIZED_EVENT, handleLogout);
+    };
+  }, [handleLogout]);
 
   useEffect(() => {
-    if (currentPage === "projectDashboard" && selectedProjectId) {
-      loadChangeOrders();
-    }
-  }, [currentPage, selectedProjectId]);
+    if (!token) return;
+
+    const timeoutId = window.setTimeout(() => {
+      void Promise.all([loadProjects(), loadTemplates()]);
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [loadProjects, loadTemplates, token]);
+
+  useEffect(() => {
+    if (!token || !selectedProjectId) return;
+
+    const timeoutId = window.setTimeout(() => {
+      setTasks([]);
+      setDailyLogs([]);
+      setInspections([]);
+      setNotesDelays([]);
+      setChangeOrders([]);
+      setProjectCompanies([]);
+
+      void Promise.all([loadTasks(), loadProjectCompanies()]);
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [loadProjectCompanies, loadTasks, selectedProjectId, token]);
+
+  useEffect(() => {
+    if (!token || !selectedProjectId) return;
+
+    const pageLoaders = {
+      projectDashboard: [loadChangeOrders, loadNotesDelays],
+      dailyLogs: [loadDailyLogs],
+      inspections: [loadInspections],
+      notesDelays: [loadNotesDelays],
+      changeOrders: [loadChangeOrders],
+      projectSettings: [loadProjectCompanies],
+    };
+
+    const loaders = pageLoaders[currentPage] || [];
+    const timeoutId = window.setTimeout(() => {
+      void Promise.all(loaders.map((load) => load()));
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [
+    currentPage,
+    loadChangeOrders,
+    loadDailyLogs,
+    loadInspections,
+    loadNotesDelays,
+    loadProjectCompanies,
+    selectedProjectId,
+    token,
+  ]);
 
   //table logic  
   const handleCellClick = (task, field) => {
@@ -362,30 +527,37 @@ function App() {
       value = editValue === "" ? null : editValue;
     }
 
-    if (task.id === null) {
-      await createTask(selectedProjectId, {
-        name: editingCell.field === "name" ? value : "New Task",
-        duration: editingCell.field === "duration" ? value : 1,
-        predecessor:
-          editingCell.field === "predecessor" ? value : null,
-        manual_start_date:
-          editingCell.field === "manual_start_date" ? value : null,
-      });
-    } else {
-      await updateTask(selectedProjectId, task.id, {
-        ...task,
-        [editingCell.field]: value,
-      });
-    }
+    try {
+      const data =
+        task.id === null
+          ? await createTask(selectedProjectId, {
+              name: editingCell.field === "name" ? value : "New Task",
+              duration: editingCell.field === "duration" ? value : 1,
+              predecessor:
+                editingCell.field === "predecessor" ? value : null,
+              manual_start_date:
+                editingCell.field === "manual_start_date" ? value : null,
+            })
+          : await updateTask(selectedProjectId, task.id, {
+              ...task,
+              [editingCell.field]: value,
+            });
 
-    setEditingCell(null);
-    loadTasks();
+      setTasks(data.tasks);
+      setEditingCell(null);
+    } catch (error) {
+      reportRequestError("Unable to save task", error);
+    }
   };
 
 
   const handleDelete = async (id) => {
-    await deleteTask(selectedProjectId, id);
-    loadTasks();
+    try {
+      const data = await deleteTask(selectedProjectId, id);
+      setTasks(data.tasks);
+    } catch (error) {
+      reportRequestError("Unable to delete task", error);
+    }
   };
 
   const [selectedTaskId, setSelectedTaskId] = useState(null);
@@ -408,77 +580,69 @@ function App() {
   const handleCreateProject = async () => {
     if (!newProjectName.trim()) return;
 
-    const project = await createProject({
-      name: newProjectName,
-    });
+    try {
+      const project = await createProject({
+        name: newProjectName,
+      });
 
-    setNewProjectName("");
-    await loadProjects();
-    setSelectedProjectId(project.id);
-  };
-
-  //save and load templates
-  const loadTemplates = async () => {
-    const data = await fetchTemplates();
-
-    if (data.detail === "Not authenticated" || data.detail === "Invalid token") {
-      handleLogout();
-      return;
+      setProjects((currentProjects) => [...currentProjects, project]);
+      setNewProjectName("");
+      selectProject(project.id);
+    } catch (error) {
+      reportRequestError("Unable to create project", error);
     }
-
-    setTemplates(data.templates);
   };
 
   const handleSaveTemplate = async () => {
     if (!selectedProjectId || !templateName.trim()) return;
 
-    await saveTemplate(selectedProjectId, {
-      name: templateName,
-    });
+    try {
+      const template = await saveTemplate(selectedProjectId, {
+        name: templateName,
+      });
 
-    setTemplateName("");
-    loadTemplates();
+      setTemplates((currentTemplates) => [...currentTemplates, template]);
+      setTemplateName("");
+    } catch (error) {
+      reportRequestError("Unable to save template", error);
+    }
   };
 
   const handleApplyTemplate = async () => {
     if (!selectedProjectId || !selectedTemplateId) return;
 
-    await applyTemplate(selectedProjectId, selectedTemplateId);
-    loadTasks();
+    try {
+      await applyTemplate(selectedProjectId, selectedTemplateId);
+      await loadTasks();
+    } catch (error) {
+      reportRequestError("Unable to apply template", error);
+    }
   };
 
   //authentaction
   const handleRegister = async () => {
-    const data = await registerUser({
-      email,
-      password,
-    });
-
-    if (data.id) {
+    try {
+      await registerUser({
+        email,
+        password,
+      });
       setAuthMode("login");
       setPassword("");
+    } catch (error) {
+      reportRequestError("Unable to register", error);
     }
   };
 
   const handleLogin = async () => {
-    const data = await loginUser(email, password);
-
-    if (data.access_token) {
+    try {
+      const data = await loginUser(email, password);
       localStorage.setItem("token", data.access_token);
       setToken(data.access_token);
       setEmail("");
       setPassword("");
-      loadProjects();
-      loadTemplates();
+    } catch (error) {
+      reportRequestError("Unable to log in", error);
     }
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    setToken(null);
-    setProjects([]);
-    setTasks([]);
-    setSelectedProjectId(null);
   };
 
   const buttonStyle = {
@@ -489,119 +653,113 @@ function App() {
     marginLeft: "1px",
   };
 
-  //Daily log logic
-  const loadDailyLogs = async () => {
+  const handleExportProjectPdf = async () => {
     if (!selectedProjectId) return;
 
-    const data = await fetchDailyLogs(selectedProjectId);
-    setDailyLogs(data.daily_logs || []);
+    try {
+      await exportProjectPdf(selectedProjectId);
+    } catch (error) {
+      reportRequestError("Unable to export project PDF", error);
+    }
   };
 
   const handleCreateDailyLog = async () => {
     if (!selectedProjectId || !logDate || !logCompany || !logManpower) return;
 
-    await createDailyLog(selectedProjectId, {
-      date: logDate,
-      company: logCompany,
-      manpower: Number(logManpower),
-      notes: logNotes,
-    });
+    try {
+      await createDailyLog(selectedProjectId, {
+        date: logDate,
+        company: logCompany,
+        manpower: Number(logManpower),
+        notes: logNotes,
+      });
 
-    setLogDate("");
-    setLogCompany("");
-    setLogManpower("");
-    setLogNotes("");
-
-    loadDailyLogs();
-  };
-  //Load and create inspections
-
-  const loadInspections = async () => {
-    if (!selectedProjectId) return;
-
-    const data = await fetchInspections(selectedProjectId);
-    setInspections(data.inspections || []);
+      setLogDate("");
+      setLogCompany("");
+      setLogManpower("");
+      setLogNotes("");
+      await loadDailyLogs();
+    } catch (error) {
+      reportRequestError("Unable to create daily log", error);
+    }
   };
 
   const handleCreateInspection = async () => {
     if (!selectedProjectId || !inspectionDate || !inspectionType) return;
 
-    await createInspection(selectedProjectId, {
-      date: inspectionDate,
-      inspection_type: inspectionType,
-      status: inspectionStatus,
-    });
+    try {
+      await createInspection(selectedProjectId, {
+        date: inspectionDate,
+        inspection_type: inspectionType,
+        status: inspectionStatus,
+      });
 
-    setInspectionDate("");
-    setInspectionType("");
-    setInspectionStatus("Pending");
-
-    loadInspections();
-  };
-
-  //Load and create delays and notes
-  const loadNotesDelays = async () => {
-    if (!selectedProjectId) return;
-
-    const data = await fetchNotesDelays(selectedProjectId);
-    setNotesDelays(data.notes_delays || []);
+      setInspectionDate("");
+      setInspectionType("");
+      setInspectionStatus("Pending");
+      await loadInspections();
+    } catch (error) {
+      reportRequestError("Unable to create inspection", error);
+    }
   };
 
   const handleCreateNoteDelay = async () => {
     if (!selectedProjectId || !noteDelayDate || !noteDelayDescription) return;
 
-    await createNoteDelay(selectedProjectId, {
-      date: noteDelayDate,
-      entry_type: noteDelayType,
-      company: noteDelayCompany,
-      description: noteDelayDescription,
-      impact: noteDelayImpact,
-    });
+    try {
+      await createNoteDelay(selectedProjectId, {
+        date: noteDelayDate,
+        entry_type: noteDelayType,
+        company: noteDelayCompany,
+        description: noteDelayDescription,
+        impact: noteDelayImpact,
+      });
 
-    setNoteDelayDate("");
-    setNoteDelayType("Note");
-    setNoteDelayCompany("");
-    setNoteDelayDescription("");
-    setNoteDelayImpact("");
-
-    loadNotesDelays();
-  };
-
-  //create and load change orders
-  const loadChangeOrders = async () => {
-    if (!selectedProjectId) return;
-
-    const data = await fetchChangeOrders(selectedProjectId);
-    setChangeOrders(data.change_orders || []);
+      setNoteDelayDate("");
+      setNoteDelayType("Note");
+      setNoteDelayCompany("");
+      setNoteDelayDescription("");
+      setNoteDelayImpact("");
+      await loadNotesDelays();
+    } catch (error) {
+      reportRequestError("Unable to create note or delay", error);
+    }
   };
 
   const handleCreateChangeOrder = async () => {
     if (!selectedProjectId || !changeOrderDate || !changeOrderNumber) return;
 
-    await createChangeOrder(selectedProjectId, {
-      date: changeOrderDate,
-      co_number: changeOrderNumber,
-      company: changeOrderCompany,
-      status: changeOrderStatus,
-      description: changeOrderDescription,
-      amount: changeOrderAmount,
-      responsible_party: changeOrderResponsibleParty,
-    });
+    try {
+      await createChangeOrder(selectedProjectId, {
+        date: changeOrderDate,
+        co_number: changeOrderNumber,
+        company: changeOrderCompany,
+        status: changeOrderStatus,
+        description: changeOrderDescription,
+        amount: changeOrderAmount,
+        responsible_party: changeOrderResponsibleParty,
+      });
 
-    setChangeOrderDate("");
-    setChangeOrderNumber("");
-    setChangeOrderCompany("");
-    setChangeOrderStatus("Pending");
-    setChangeOrderDescription("");
-    setChangeOrderAmount("");
-    setChangeOrderResponsibleParty("");
-
-    loadChangeOrders();
+      setChangeOrderDate("");
+      setChangeOrderNumber("");
+      setChangeOrderCompany("");
+      setChangeOrderStatus("Pending");
+      setChangeOrderDescription("");
+      setChangeOrderAmount("");
+      setChangeOrderResponsibleParty("");
+      await loadChangeOrders();
+    } catch (error) {
+      reportRequestError("Unable to create change order", error);
+    }
   };
 
   const handleDeleteChangeOrder = async (id) => {
-    await deleteChangeOrder(selectedProjectId, id);
-    loadChangeOrders();
+    try {
+      await deleteChangeOrder(selectedProjectId, id);
+      await loadChangeOrders();
+    } catch (error) {
+      reportRequestError("Unable to delete change order", error);
+    }
   };
 
   //Dashboard pull task current week
@@ -630,26 +788,21 @@ function App() {
     );
   };
 
-  //Load project companies/subcontractors
-  const loadProjectCompanies = async () => {
-    if (!selectedProjectId) return;
-
-    const data = await fetchProjectCompanies(selectedProjectId);
-    setProjectCompanies(data.companies || []);
-  };
-
   const handleCreateProjectCompany = async () => {
     if (!selectedProjectId || !companyName.trim()) return;
 
-    await createProjectCompany(selectedProjectId, {
-      name: companyName,
-      trade: companyTrade,
-    });
+    try {
+      await createProjectCompany(selectedProjectId, {
+        name: companyName,
+        trade: companyTrade,
+      });
 
-    setCompanyName("");
-    setCompanyTrade("");
-
-    loadProjectCompanies();
+      setCompanyName("");
+      setCompanyTrade("");
+      await loadProjectCompanies();
+    } catch (error) {
+      reportRequestError("Unable to add project company", error);
+    }
   };
 
   //Change order totals
@@ -684,36 +837,15 @@ function App() {
 
     setTasks(reorderedTasks);
 
-    await reorderTasks(
-      selectedProjectId,
-      reorderedTasks.map((task) => task.id)
-    );
-  };
-
-  const handleIndentTask = async (task, index) => {
-    if (index === 0) return;
-
-    const parentTask = tasks[index - 1];
-
-    const updatedTask = {
-      ...task,
-      parent_task_id: parentTask.id,
-      indent_level: (parentTask.indent_level || 0) + 1,
-    };
-
-    await updateTask(selectedProjectId, task.id, updatedTask);
-    loadTasks();
-  };
-
-  const handleOutdentTask = async (task) => {
-    const updatedTask = {
-      ...task,
-      parent_task_id: null,
-      indent_level: 0,
-    };
-
-    await updateTask(selectedProjectId, task.id, updatedTask);
-    loadTasks();
+    try {
+      await reorderTasks(
+        selectedProjectId,
+        reorderedTasks.map((task) => task.id)
+      );
+    } catch (error) {
+      setTasks(tasks);
+      reportRequestError("Unable to reorder tasks", error);
+    }
   };
 
   const handleToggleCollapse = async (task) => {
@@ -722,8 +854,12 @@ function App() {
       is_collapsed: task.is_collapsed ? 0 : 1,
     };
 
-    await updateTask(selectedProjectId, task.id, updatedTask);
-    loadTasks();
+    try {
+      const data = await updateTask(selectedProjectId, task.id, updatedTask);
+      setTasks(data.tasks);
+    } catch (error) {
+      reportRequestError("Unable to update task visibility", error);
+    }
   };
 
   const getIndentLevel = (name = "") => {
@@ -810,7 +946,7 @@ function App() {
         <select
           value={selectedProjectId || ""}
           onChange={(e) => {
-            setSelectedProjectId(Number(e.target.value));
+            selectProject(Number(e.target.value));
             setCurrentPage("projectDashboard");
           }}
         >
@@ -952,10 +1088,7 @@ function App() {
           </button>
 
           <button
-            onClick={() => {
-              setCurrentPage("projectSettings");
-              loadProjectCompanies();
-            }}
+            onClick={() => setCurrentPage("projectSettings")}
             style={buttonStyle}
           >
             Project Settings
@@ -1793,7 +1926,7 @@ function App() {
         
         {/* Export schedule as PDF */}
         <button
-          onClick={() => exportProjectPdf(selectedProjectId)}
+          onClick={handleExportProjectPdf}
           disabled={!selectedProjectId}
           style={buttonStyle}
         >
@@ -1880,8 +2013,6 @@ function App() {
                     handleCellClick={handleCellClick}
                     handleCellSave={handleCellSave}
                     handleDelete={handleDelete}
-                    handleIndentTask={handleIndentTask}
-                    handleOutdentTask={handleOutdentTask}
                     handleToggleCollapse={handleToggleCollapse}
                     formatDate={formatDate}
                     hasChildren={taskHasChildren(index)}

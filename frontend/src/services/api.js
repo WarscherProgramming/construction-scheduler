@@ -1,252 +1,252 @@
-
 const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
+
+export const AUTH_UNAUTHORIZED_EVENT = "auth:unauthorized";
+
+export class ApiError extends Error {
+  constructor(message, status, details = null) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.details = details;
+  }
+}
 
 function getAuthHeaders() {
   const token = localStorage.getItem("token");
 
   return {
     "Content-Type": "application/json",
-    Authorization: token ? `Bearer ${token}` : "",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
 }
 
-export async function registerUser(user) {
-  const res = await fetch(`${API_URL}/auth/register`, {
+async function parseResponseBody(response) {
+  if (response.status === 204) return null;
+
+  const text = await response.text();
+  if (!text) return null;
+
+  const contentType = response.headers.get("content-type") || "";
+
+  if (contentType.includes("application/json")) {
+    try {
+      return JSON.parse(text);
+    } catch {
+      return text;
+    }
+  }
+
+  return text;
+}
+
+function getErrorMessage(body, status) {
+  if (typeof body?.detail === "string") {
+    return body.detail;
+  }
+
+  if (Array.isArray(body?.detail)) {
+    return body.detail
+      .map((error) => error.msg)
+      .filter(Boolean)
+      .join(", ");
+  }
+
+  return `Request failed with status ${status}`;
+}
+
+async function request(path, options = {}) {
+  let response;
+
+  try {
+    response = await fetch(`${API_URL}${path}`, options);
+  } catch (error) {
+    throw new ApiError("Unable to connect to the API", 0, error);
+  }
+
+  const body = await parseResponseBody(response);
+
+  if (!response.ok) {
+    if (response.status === 401) {
+      window.dispatchEvent(new Event(AUTH_UNAUTHORIZED_EVENT));
+    }
+
+    throw new ApiError(
+      getErrorMessage(body, response.status),
+      response.status,
+      body
+    );
+  }
+
+  return body;
+}
+
+function authenticatedRequest(path, options = {}) {
+  return request(path, {
+    ...options,
+    headers: {
+      ...getAuthHeaders(),
+      ...options.headers,
+    },
+  });
+}
+
+function jsonRequest(path, method, body) {
+  return authenticatedRequest(path, {
+    method,
+    body: JSON.stringify(body),
+  });
+}
+
+export function registerUser(user) {
+  return request("/auth/register", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
     body: JSON.stringify(user),
   });
-
-  return res.json();
 }
 
-export async function loginUser(email, password) {
+export function loginUser(email, password) {
   const formData = new URLSearchParams();
   formData.append("username", email);
   formData.append("password", password);
 
-  const res = await fetch(`${API_URL}/auth/login`, {
+  return request("/auth/login", {
     method: "POST",
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
     },
     body: formData,
   });
-
-  return res.json();
 }
 
-export async function fetchProjects() {
-  const res = await fetch(`${API_URL}/projects`, {
-    headers: getAuthHeaders(),
-  });
-
-  return res.json();
+export function fetchProjects() {
+  return authenticatedRequest("/projects");
 }
 
-export async function createProject(project) {
-  const res = await fetch(`${API_URL}/projects`, {
-    method: "POST",
-    headers: getAuthHeaders(),
-    body: JSON.stringify(project),
-  });
-
-  return res.json();
+export function createProject(project) {
+  return jsonRequest("/projects", "POST", project);
 }
 
-export async function fetchTasks(projectId) {
-  const res = await fetch(`${API_URL}/projects/${projectId}/tasks`, {
-    headers: getAuthHeaders(),
-  });
-
-  return res.json();
+export function fetchTasks(projectId) {
+  return authenticatedRequest(`/projects/${projectId}/tasks`);
 }
 
-export async function createTask(projectId, task) {
-  const res = await fetch(`${API_URL}/projects/${projectId}/tasks`, {
-    method: "POST",
-    headers: getAuthHeaders(),
-    body: JSON.stringify(task),
-  });
-
-  return res.json();
+export function createTask(projectId, task) {
+  return jsonRequest(`/projects/${projectId}/tasks`, "POST", task);
 }
 
-export async function deleteTask(projectId, id) {
-  await fetch(`${API_URL}/projects/${projectId}/tasks/${id}`, {
+export function deleteTask(projectId, id) {
+  return authenticatedRequest(`/projects/${projectId}/tasks/${id}`, {
     method: "DELETE",
-    headers: getAuthHeaders(),
   });
 }
 
-export async function updateTask(projectId, id, task) {
-  const res = await fetch(`${API_URL}/projects/${projectId}/tasks/${id}`, {
-    method: "PUT",
-    headers: getAuthHeaders(),
-    body: JSON.stringify(task),
-  });
-
-  return res.json();
+export function updateTask(projectId, id, task) {
+  return jsonRequest(`/projects/${projectId}/tasks/${id}`, "PUT", task);
 }
 
-export async function fetchTemplates() {
-  const res = await fetch(`${API_URL}/templates`, {
-    headers: getAuthHeaders(),
-  });
-
-  return res.json();
+export function fetchTemplates() {
+  return authenticatedRequest("/templates");
 }
 
-export async function saveTemplate(projectId, template) {
-  const res = await fetch(`${API_URL}/projects/${projectId}/templates`, {
-    method: "POST",
-    headers: getAuthHeaders(),
-    body: JSON.stringify(template),
-  });
-
-  return res.json();
+export function saveTemplate(projectId, template) {
+  return jsonRequest(`/projects/${projectId}/templates`, "POST", template);
 }
 
-export async function applyTemplate(projectId, templateId) {
-  const res = await fetch(
-    `${API_URL}/projects/${projectId}/templates/${templateId}/apply`,
-    {
-      method: "POST",
-      headers: getAuthHeaders(),
-    }
+export function applyTemplate(projectId, templateId) {
+  return authenticatedRequest(
+    `/projects/${projectId}/templates/${templateId}/apply`,
+    { method: "POST" }
   );
-
-  return res.json();
 }
 
 export async function exportProjectPdf(projectId) {
-  const res = await fetch(`${API_URL}/projects/${projectId}/export/pdf`, {
-    headers: getAuthHeaders(),
-  });
+  let response;
 
-  const blob = await res.blob();
+  try {
+    response = await fetch(`${API_URL}/projects/${projectId}/export/pdf`, {
+      headers: getAuthHeaders(),
+    });
+  } catch (error) {
+    throw new ApiError("Unable to connect to the API", 0, error);
+  }
+
+  if (!response.ok) {
+    const body = await parseResponseBody(response);
+
+    if (response.status === 401) {
+      window.dispatchEvent(new Event(AUTH_UNAUTHORIZED_EVENT));
+    }
+
+    throw new ApiError(
+      getErrorMessage(body, response.status),
+      response.status,
+      body
+    );
+  }
+
+  const blob = await response.blob();
   const url = window.URL.createObjectURL(blob);
 
   window.open(url, "_blank");
+  window.setTimeout(() => window.URL.revokeObjectURL(url), 60_000);
 }
 
-export async function fetchDailyLogs(projectId) {
-  const res = await fetch(
-    `${API_URL}/projects/${projectId}/daily-logs`,
-    {
-      headers: getAuthHeaders(),
-    }
-  );
-
-  return res.json();
+export function fetchDailyLogs(projectId) {
+  return authenticatedRequest(`/projects/${projectId}/daily-logs`);
 }
 
-export async function createDailyLog(projectId, log) {
-  const res = await fetch(
-    `${API_URL}/projects/${projectId}/daily-logs`,
-    {
-      method: "POST",
-      headers: getAuthHeaders(),
-      body: JSON.stringify(log),
-    }
-  );
-
-  return res.json();
+export function createDailyLog(projectId, log) {
+  return jsonRequest(`/projects/${projectId}/daily-logs`, "POST", log);
 }
 
-//fetch and create inspections
-export async function fetchInspections(projectId) {
-  const res = await fetch(`${API_URL}/projects/${projectId}/inspections`, {
-    headers: getAuthHeaders(),
-  });
-
-  return res.json();
+export function fetchInspections(projectId) {
+  return authenticatedRequest(`/projects/${projectId}/inspections`);
 }
 
-export async function createInspection(projectId, inspection) {
-  const res = await fetch(`${API_URL}/projects/${projectId}/inspections`, {
-    method: "POST",
-    headers: getAuthHeaders(),
-    body: JSON.stringify(inspection),
-  });
-
-  return res.json();
+export function createInspection(projectId, inspection) {
+  return jsonRequest(`/projects/${projectId}/inspections`, "POST", inspection);
 }
 
-export async function fetchNotesDelays(projectId) {
-  const res = await fetch(`${API_URL}/projects/${projectId}/notes-delays`, {
-    headers: getAuthHeaders(),
-  });
-
-  return res.json();
+export function fetchNotesDelays(projectId) {
+  return authenticatedRequest(`/projects/${projectId}/notes-delays`);
 }
 
-export async function createNoteDelay(projectId, entry) {
-  const res = await fetch(`${API_URL}/projects/${projectId}/notes-delays`, {
-    method: "POST",
-    headers: getAuthHeaders(),
-    body: JSON.stringify(entry),
-  });
-
-  return res.json();
+export function createNoteDelay(projectId, entry) {
+  return jsonRequest(`/projects/${projectId}/notes-delays`, "POST", entry);
 }
 
-export async function fetchChangeOrders(projectId) {
-  const res = await fetch(`${API_URL}/projects/${projectId}/change-orders`, {
-    headers: getAuthHeaders(),
-  });
-
-  return res.json();
+export function fetchChangeOrders(projectId) {
+  return authenticatedRequest(`/projects/${projectId}/change-orders`);
 }
 
-export async function createChangeOrder(projectId, changeOrder) {
-  const res = await fetch(`${API_URL}/projects/${projectId}/change-orders`, {
-    method: "POST",
-    headers: getAuthHeaders(),
-    body: JSON.stringify(changeOrder),
-  });
-
-  return res.json();
-}
-
-export async function fetchProjectCompanies(projectId) {
-  const res = await fetch(`${API_URL}/projects/${projectId}/companies`, {
-    headers: getAuthHeaders(),
-  });
-
-  return res.json();
-}
-
-export async function createProjectCompany(projectId, company) {
-  const res = await fetch(`${API_URL}/projects/${projectId}/companies`, {
-    method: "POST",
-    headers: getAuthHeaders(),
-    body: JSON.stringify(company),
-  });
-
-  return res.json();
-}
-
-export async function deleteChangeOrder(projectId, changeOrderId) {
-  await fetch(
-    `${API_URL}/projects/${projectId}/change-orders/${changeOrderId}`,
-    {
-      method: "DELETE",
-      headers: getAuthHeaders(),
-    }
+export function createChangeOrder(projectId, changeOrder) {
+  return jsonRequest(
+    `/projects/${projectId}/change-orders`,
+    "POST",
+    changeOrder
   );
 }
 
-export async function reorderTasks(projectId, taskIds) {
-  const res = await fetch(`${API_URL}/projects/${projectId}/tasks/reorder`, {
-    method: "PUT",
-    headers: getAuthHeaders(),
-    body: JSON.stringify({
-      task_ids: taskIds,
-    }),
-  });
+export function fetchProjectCompanies(projectId) {
+  return authenticatedRequest(`/projects/${projectId}/companies`);
+}
 
-  return res.json();
+export function createProjectCompany(projectId, company) {
+  return jsonRequest(`/projects/${projectId}/companies`, "POST", company);
+}
+
+export function deleteChangeOrder(projectId, changeOrderId) {
+  return authenticatedRequest(
+    `/projects/${projectId}/change-orders/${changeOrderId}`,
+    { method: "DELETE" }
+  );
+}
+
+export function reorderTasks(projectId, taskIds) {
+  return jsonRequest(`/projects/${projectId}/tasks/reorder`, "PUT", {
+    task_ids: taskIds,
+  });
 }

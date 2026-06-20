@@ -49,7 +49,7 @@ function GanttChart({ tasks, selectedTaskId }) {
 
   const scheduledTasks = tasks
     .filter((task) => task.start_date && task.end_date)
-    .filter((task, index) => {
+    .filter((task) => {
       const currentLevel = getIndentLevel(task.name);
 
       // Hide child/sub tasks
