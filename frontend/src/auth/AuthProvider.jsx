@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { AuthContext } from "./authContext";
 import { loginUser, registerUser } from "../services/api";
@@ -21,19 +21,12 @@ function AuthProvider({ children }) {
     setToken(null);
   }, []);
 
-  useEffect(() => {
-    configureAuthentication({
-      token,
-      onUnauthorized: logout,
-    });
-
-    return () => {
-      configureAuthentication({
-        token: null,
-        onUnauthorized: null,
-      });
-    };
-  }, [logout, token]);
+  // Configure the transport before children render so their first request
+  // includes a token restored from localStorage.
+  configureAuthentication({
+    token,
+    onUnauthorized: logout,
+  });
 
   const login = useCallback(async (email, password) => {
     const data = await loginUser(email, password);

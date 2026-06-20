@@ -152,7 +152,7 @@ Create a `.env` file inside `backend/`:
 ```env
 DATABASE_URL=postgresql://postgres:YOUR_PASSWORD@localhost:5432/scheduler_db
 SECRET_KEY=replace-with-a-long-random-secret
-ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173,https://construction-scheduler-eight.vercel.app
 ```
 
 ---
