@@ -29,6 +29,7 @@ import { arrayMove } from "@dnd-kit/sortable";
 import { useAuth } from "./auth/authContext";
 import AuthPage from "./pages/AuthPage";
 import ChangeOrdersPage from "./pages/ChangeOrdersPage";
+import FeedbackBanner from "./components/FeedbackBanner";
 import DailyLogsPage from "./pages/DailyLogsPage";
 import HomePage from "./pages/HomePage";
 import InspectionsPage from "./pages/InspectionsPage";
@@ -80,6 +81,7 @@ function App() {
   const [companyName, setCompanyName] = useState("");
   const [companyTrade, setCompanyTrade] = useState("");
   const [scheduleView, setScheduleView] = useState("table");
+  const [notice, setNotice] = useState(null);
   const selectedProjectIdRef = useRef(selectedProjectId);
 
   useEffect(() => {
@@ -108,14 +110,28 @@ function App() {
   const handleLogout = useCallback(() => {
     logout();
     resetApplicationState();
+    setNotice(null);
   }, [logout, resetApplicationState]);
+
+  const showNotice = useCallback((type, message) => {
+    setNotice({
+      id: Date.now(),
+      type,
+      message,
+    });
+  }, []);
 
   const reportRequestError = useCallback((context, error) => {
     const message =
       error instanceof ApiError ? error.message : "Unexpected application error";
 
     console.error(`${context}: ${message}`, error);
-  }, []);
+    showNotice("error", `${context}. ${message}`);
+  }, [showNotice]);
+
+  const reportValidationError = useCallback((message) => {
+    showNotice("error", message);
+  }, [showNotice]);
 
   const loadProjects = useCallback(async () => {
     try {
@@ -347,9 +363,14 @@ function App() {
 
 
   const handleDelete = async (id) => {
+    if (!window.confirm("Delete this task? This action cannot be undone.")) {
+      return;
+    }
+
     try {
       const data = await deleteTask(selectedProjectId, id);
       setTasks(data.tasks);
+      showNotice("success", "Task deleted.");
     } catch (error) {
       reportRequestError("Unable to delete task", error);
     }
@@ -373,7 +394,10 @@ function App() {
   };
 
   const handleCreateProject = async () => {
-    if (!newProjectName.trim()) return;
+    if (!newProjectName.trim()) {
+      reportValidationError("Enter a community name before adding it.");
+      return;
+    }
 
     try {
       const project = await createProject({
@@ -383,13 +407,22 @@ function App() {
       setProjects((currentProjects) => [...currentProjects, project]);
       setNewProjectName("");
       selectProject(project.id);
+      showNotice("success", `${project.name} was added.`);
     } catch (error) {
       reportRequestError("Unable to create project", error);
     }
   };
 
   const handleSaveTemplate = async () => {
-    if (!selectedProjectId || !templateName.trim()) return;
+    if (!selectedProjectId) {
+      reportValidationError("Select a project before saving a template.");
+      return;
+    }
+
+    if (!templateName.trim()) {
+      reportValidationError("Enter a template name before saving.");
+      return;
+    }
 
     try {
       const template = await saveTemplate(selectedProjectId, {
@@ -398,17 +431,22 @@ function App() {
 
       setTemplates((currentTemplates) => [...currentTemplates, template]);
       setTemplateName("");
+      showNotice("success", "Schedule template saved.");
     } catch (error) {
       reportRequestError("Unable to save template", error);
     }
   };
 
   const handleApplyTemplate = async () => {
-    if (!selectedProjectId || !selectedTemplateId) return;
+    if (!selectedProjectId || !selectedTemplateId) {
+      reportValidationError("Select a template before applying it.");
+      return;
+    }
 
     try {
       await applyTemplate(selectedProjectId, selectedTemplateId);
       await loadTasks();
+      showNotice("success", "Schedule template applied.");
     } catch (error) {
       reportRequestError("Unable to apply template", error);
     }
@@ -423,6 +461,7 @@ function App() {
       });
       setAuthMode("login");
       setPassword("");
+      showNotice("success", "Account created. Log in to continue.");
     } catch (error) {
       reportRequestError("Unable to register", error);
     }
@@ -439,17 +478,26 @@ function App() {
   };
 
   const handleExportProjectPdf = async () => {
-    if (!selectedProjectId) return;
+    if (!selectedProjectId) {
+      reportValidationError("Select a project before exporting.");
+      return;
+    }
 
     try {
       await exportProjectPdf(selectedProjectId);
+      showNotice("success", "Schedule PDF downloaded.");
     } catch (error) {
       reportRequestError("Unable to export project PDF", error);
     }
   };
 
   const handleCreateDailyLog = async () => {
-    if (!selectedProjectId || !logDate || !logCompany || !logManpower) return;
+    if (!logDate || !logCompany || !logManpower) {
+      reportValidationError(
+        "Complete the date, company, and manpower fields before saving."
+      );
+      return;
+    }
 
     try {
       await createDailyLog(selectedProjectId, {
@@ -464,13 +512,19 @@ function App() {
       setLogManpower("");
       setLogNotes("");
       await loadDailyLogs();
+      showNotice("success", "Daily log saved.");
     } catch (error) {
       reportRequestError("Unable to create daily log", error);
     }
   };
 
   const handleCreateInspection = async () => {
-    if (!selectedProjectId || !inspectionDate || !inspectionType) return;
+    if (!inspectionDate || !inspectionType) {
+      reportValidationError(
+        "Complete the date and inspection fields before saving."
+      );
+      return;
+    }
 
     try {
       await createInspection(selectedProjectId, {
@@ -483,13 +537,19 @@ function App() {
       setInspectionType("");
       setInspectionStatus("Pending");
       await loadInspections();
+      showNotice("success", "Inspection saved.");
     } catch (error) {
       reportRequestError("Unable to create inspection", error);
     }
   };
 
   const handleCreateNoteDelay = async () => {
-    if (!selectedProjectId || !noteDelayDate || !noteDelayDescription) return;
+    if (!noteDelayDate || !noteDelayDescription.trim()) {
+      reportValidationError(
+        "Complete the date and description fields before saving."
+      );
+      return;
+    }
 
     try {
       await createNoteDelay(selectedProjectId, {
@@ -506,13 +566,22 @@ function App() {
       setNoteDelayDescription("");
       setNoteDelayImpact("");
       await loadNotesDelays();
+      showNotice(
+        "success",
+        noteDelayType === "Delay" ? "Delay recorded." : "Note saved."
+      );
     } catch (error) {
       reportRequestError("Unable to create note or delay", error);
     }
   };
 
   const handleCreateChangeOrder = async () => {
-    if (!selectedProjectId || !changeOrderDate || !changeOrderNumber) return;
+    if (!changeOrderDate || !changeOrderNumber.trim()) {
+      reportValidationError(
+        "Complete the date and change order number before saving."
+      );
+      return;
+    }
 
     try {
       await createChangeOrder(selectedProjectId, {
@@ -533,15 +602,25 @@ function App() {
       setChangeOrderAmount("");
       setChangeOrderResponsibleParty("");
       await loadChangeOrders();
+      showNotice("success", "Change order saved.");
     } catch (error) {
       reportRequestError("Unable to create change order", error);
     }
   };
 
   const handleDeleteChangeOrder = async (id) => {
+    if (
+      !window.confirm(
+        "Delete this change order? This action cannot be undone."
+      )
+    ) {
+      return;
+    }
+
     try {
       await deleteChangeOrder(selectedProjectId, id);
       await loadChangeOrders();
+      showNotice("success", "Change order deleted.");
     } catch (error) {
       reportRequestError("Unable to delete change order", error);
     }
@@ -574,7 +653,10 @@ function App() {
   };
 
   const handleCreateProjectCompany = async () => {
-    if (!selectedProjectId || !companyName.trim()) return;
+    if (!companyName.trim()) {
+      reportValidationError("Enter a company name before adding it.");
+      return;
+    }
 
     try {
       await createProjectCompany(selectedProjectId, {
@@ -585,6 +667,7 @@ function App() {
       setCompanyName("");
       setCompanyTrade("");
       await loadProjectCompanies();
+      showNotice("success", "Company added to the project.");
     } catch (error) {
       reportRequestError("Unable to add project company", error);
     }
@@ -715,8 +798,18 @@ function App() {
     }
   };
 
+  const renderWithFeedback = (content) => (
+    <>
+      <FeedbackBanner
+        notice={notice}
+        onDismiss={() => setNotice(null)}
+      />
+      {content}
+    </>
+  );
+
   if (!isAuthenticated) {
-    return (
+    return renderWithFeedback(
       <AuthPage
         authMode={authMode}
         email={email}
@@ -733,7 +826,7 @@ function App() {
   }
 
   if (currentPage === "home") {
-    return (
+    return renderWithFeedback(
       <HomePage
         projects={projects}
         templates={templates}
@@ -755,7 +848,7 @@ function App() {
       (project) => project.id === selectedProjectId
     );
 
-    return (
+    return renderWithFeedback(
       <ProjectDashboardPage
         projectName={selectedProject?.name || "Project"}
         tasksThisWeek={getTasksThisWeek()}
@@ -772,7 +865,7 @@ function App() {
       (project) => project.id === selectedProjectId
     );
 
-    return (
+    return renderWithFeedback(
       <DailyLogsPage
         projectName={selectedProject?.name || "Project"}
         dailyLogs={dailyLogs}
@@ -798,7 +891,7 @@ function App() {
       (project) => project.id === selectedProjectId
     );
 
-    return (
+    return renderWithFeedback(
       <InspectionsPage
         projectName={selectedProject?.name || "Project"}
         inspections={inspections}
@@ -821,7 +914,7 @@ function App() {
       (project) => project.id === selectedProjectId
     );
 
-    return (
+    return renderWithFeedback(
       <NotesDelaysPage
         projectName={selectedProject?.name || "Project"}
         notesDelays={notesDelays}
@@ -849,7 +942,7 @@ function App() {
       (project) => project.id === selectedProjectId
     );
 
-    return (
+    return renderWithFeedback(
       <ChangeOrdersPage
         projectName={selectedProject?.name || "Project"}
         changeOrders={changeOrders}
@@ -882,7 +975,7 @@ function App() {
       (project) => project.id === selectedProjectId
     );
 
-    return (
+    return renderWithFeedback(
       <ProjectSettingsPage
         projectName={selectedProject?.name || "Project"}
         projectCompanies={projectCompanies}
@@ -896,7 +989,7 @@ function App() {
     );
   }
 
-  return (
+  return renderWithFeedback(
     <SchedulerPage
       tasks={tasks}
       templates={templates}
