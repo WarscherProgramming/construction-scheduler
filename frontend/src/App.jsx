@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import {
   fetchProjects,
   createProject,
@@ -24,7 +31,7 @@ import {
   reorderTasks,
 } from "./services/api";
 import { ApiError } from "./services/httpClient";
-import { arrayMove } from "@dnd-kit/sortable";
+import { moveArrayItem } from "./utils/array";
 import {
   sortByDateDescending,
   toLocalDateInputValue,
@@ -36,15 +43,22 @@ import {
 
 import { useAuth } from "./auth/authContext";
 import AuthPage from "./pages/AuthPage";
-import ChangeOrdersPage from "./pages/ChangeOrdersPage";
 import FeedbackBanner from "./components/FeedbackBanner";
-import DailyLogsPage from "./pages/DailyLogsPage";
+import LoadingState from "./components/LoadingState";
 import HomePage from "./pages/HomePage";
-import InspectionsPage from "./pages/InspectionsPage";
-import NotesDelaysPage from "./pages/NotesDelaysPage";
-import ProjectDashboardPage from "./pages/ProjectDashboardPage";
-import ProjectSettingsPage from "./pages/ProjectSettingsPage";
-import SchedulerPage from "./pages/SchedulerPage";
+
+const ChangeOrdersPage = lazy(() => import("./pages/ChangeOrdersPage"));
+const DailyLogsPage = lazy(() => import("./pages/DailyLogsPage"));
+const InspectionsPage = lazy(() => import("./pages/InspectionsPage"));
+const NotesDelaysPage = lazy(() => import("./pages/NotesDelaysPage"));
+const ProjectDashboardPage = lazy(
+  () => import("./pages/ProjectDashboardPage")
+);
+const ProjectSettingsPage = lazy(
+  () => import("./pages/ProjectSettingsPage")
+);
+const SchedulerPage = lazy(() => import("./pages/SchedulerPage"));
+
 function App() {
   const { isAuthenticated, login, logout, register } = useAuth();
 
@@ -919,7 +933,7 @@ function App() {
     const oldIndex = tasks.findIndex((task) => task.id === active.id);
     const newIndex = tasks.findIndex((task) => task.id === over.id);
 
-    const reorderedTasks = arrayMove(tasks, oldIndex, newIndex);
+    const reorderedTasks = moveArrayItem(tasks, oldIndex, newIndex);
 
     setTasks(reorderedTasks);
 
@@ -1022,7 +1036,9 @@ function App() {
         notice={notice}
         onDismiss={() => setNotice(null)}
       />
-      {content}
+      <Suspense fallback={<LoadingState message="Loading module…" />}>
+        {content}
+      </Suspense>
     </>
   );
 
