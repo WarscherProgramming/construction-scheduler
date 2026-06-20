@@ -27,228 +27,17 @@ import {
   deleteChangeOrder,
   reorderTasks,
 } from "./services/api";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
-import GanttChart from "./components/GanttChart";
-import {
-  DndContext,
-  closestCenter,
-} from "@dnd-kit/core";
+import { arrayMove } from "@dnd-kit/sortable";
 
-import {
-  SortableContext,
-  verticalListSortingStrategy,
-  useSortable,
-  arrayMove,
-} from "@dnd-kit/sortable";
-
-import { CSS } from "@dnd-kit/utilities";
-
-function SortableTaskRow({
-  task,
-  index,
-  selectedTaskId,
-  setSelectedTaskId,
-  editingCell,
-  editValue,
-  setEditValue,
-  handleCellClick,
-  handleCellSave,
-  handleDelete,
-  handleToggleCollapse,
-  formatDate,
-  hasChildren,
-}) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-  } = useSortable({ id: task.id });
-
-  const rowStyle = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    background:
-      selectedTaskId === task.id
-        ? "#e0f2fe"
-        : index % 2 === 0
-        ? "#ffffff"
-        : "#f9fafb",
-    cursor: "pointer",
-  };
-
-  return (
-    <tr
-      ref={setNodeRef}
-      style={rowStyle}
-      onClick={() => setSelectedTaskId(task.id)}
-    >
-      <td
-        style={{
-          padding: "8px",
-          border: "1px solid #ddd",
-          cursor: "grab",
-        }}
-        {...attributes}
-        {...listeners}
-      >
-        ☰ {index + 1}
-      </td>
-
-      <td
-        onClick={(e) => {
-          e.stopPropagation();
-          handleCellClick(task, "name");
-        }}
-        style={{
-          padding: "8px",
-          border: "1px solid #ddd",
-          whiteSpace: "pre",
-        }}
-      >
-        {editingCell?.id === task.id &&
-        editingCell.field === "name" ? (
-          <input
-            autoFocus
-            value={editValue}
-            onChange={(e) => setEditValue(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Tab" && !e.shiftKey) {
-                e.preventDefault();
-                setEditValue((prev) => "    " + prev);
-              }
-
-              if (e.key === "Backspace" && editValue.startsWith("    ")) {
-                e.preventDefault();
-                setEditValue((prev) => prev.substring(4));
-              }
-            }}
-            onBlur={() => handleCellSave(task)}
-          />
-        ) : (
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-            }}
-          >
-            <span
-              style={{
-                fontWeight: hasChildren ? "600" : "400",
-              }}
-            >
-              {task.name}
-            </span>
-
-            {hasChildren && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleToggleCollapse(task);
-                }}
-                style={{
-                  border: "none",
-                  background: "transparent",
-                  cursor: "pointer",
-                  fontSize: "12px",
-                  padding: "0",
-                }}
-              >
-                {task.is_collapsed ? "▶" : "▼"}
-              </button>
-            )}
-          </div>
-        )}
-      </td>
-
-      <td
-        onClick={(e) => {
-          e.stopPropagation();
-          handleCellClick(task, "duration");
-        }}
-        style={{ padding: "8px", border: "1px solid #ddd" }}
-      >
-        {editingCell?.id === task.id && editingCell.field === "duration" ? (
-          <input
-            autoFocus
-            value={editValue}
-            onChange={(e) => setEditValue(e.target.value)}
-            onBlur={() => handleCellSave(task)}
-          />
-        ) : (
-          task.duration
-        )}
-      </td>
-
-      <td
-        onClick={(e) => {
-          e.stopPropagation();
-          handleCellClick(task, "manual_start_date");
-        }}
-        style={{ padding: "8px", border: "1px solid #ddd" }}
-      >
-        {editingCell?.id === task.id &&
-        editingCell.field === "manual_start_date" ? (
-          <input
-            autoFocus
-            type="date"
-            value={editValue || ""}
-            onChange={(e) => setEditValue(e.target.value)}
-            onBlur={() => handleCellSave(task)}
-          />
-        ) : (
-          formatDate(task.start_date)
-        )}
-      </td>
-
-      <td style={{ padding: "8px", border: "1px solid #ddd" }}>
-        {formatDate(task.end_date)}
-      </td>
-
-      <td
-        onClick={(e) => {
-          e.stopPropagation();
-          handleCellClick(task, "predecessor");
-        }}
-        style={{ padding: "8px", border: "1px solid #ddd" }}
-      >
-        {editingCell?.id === task.id && editingCell.field === "predecessor" ? (
-          <input
-            autoFocus
-            placeholder="1, 1+3, 1SS, 1SS+4"
-            value={editValue}
-            onChange={(e) => setEditValue(e.target.value)}
-            onBlur={() => handleCellSave(task)}
-          />
-        ) : (
-          task.predecessor || "-"
-        )}
-      </td>
-
-      <td style={{ padding: "8px", border: "1px solid #ddd" }}>
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            handleDelete(task.id);
-          }}
-        >
-          Delete
-        </button>
-      </td>
-    </tr>
-  );
-}
-
+import AuthPage from "./pages/AuthPage";
+import ChangeOrdersPage from "./pages/ChangeOrdersPage";
+import DailyLogsPage from "./pages/DailyLogsPage";
+import HomePage from "./pages/HomePage";
+import InspectionsPage from "./pages/InspectionsPage";
+import NotesDelaysPage from "./pages/NotesDelaysPage";
+import ProjectDashboardPage from "./pages/ProjectDashboardPage";
+import ProjectSettingsPage from "./pages/ProjectSettingsPage";
+import SchedulerPage from "./pages/SchedulerPage";
 function App() {
   //usestates
   const [tasks, setTasks] = useState([]);
@@ -645,14 +434,6 @@ function App() {
     }
   };
 
-  const buttonStyle = {
-    padding: "3px 12px",
-    border: "1px solid #bbb",
-    borderRadius: "6px",
-    cursor: "pointer",
-    marginLeft: "1px",
-  };
-
   const handleExportProjectPdf = async () => {
     if (!selectedProjectId) return;
 
@@ -893,1205 +674,218 @@ function App() {
     return false;
   };
 
-  //login page
   if (!token) {
     return (
-      <div style={{ padding: "20px" }}>
-        <h1>Construction Scheduler</h1>
-
-        <h2>{authMode === "login" ? "Login" : "Register"}</h2>
-
-        <input
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-
-        <input
-          placeholder="Password"
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-
-        {authMode === "login" ? (
-          <button onClick={handleLogin}>Login</button>
-        ) : (
-          <button onClick={handleRegister}>Register</button>
-        )}
-
-        <button
-          onClick={() =>
-            setAuthMode(authMode === "login" ? "register" : "login")
-          }
-        >
-          {authMode === "login"
-            ? "Need an account? Register"
-            : "Already have an account? Login"}
-        </button>
-      </div>
+      <AuthPage
+        authMode={authMode}
+        email={email}
+        password={password}
+        onEmailChange={setEmail}
+        onPasswordChange={setPassword}
+        onLogin={handleLogin}
+        onRegister={handleRegister}
+        onToggleMode={() =>
+          setAuthMode(authMode === "login" ? "register" : "login")
+        }
+      />
     );
   }
 
-  //homepage
   if (currentPage === "home") {
     return (
-      <div style={{ padding: "24px", fontFamily: "Arial, sans-serif", textAlign: "center" }}>
-        <h1>Construction Management Software</h1>
-
-        <p style={{ color: "#666" }}>
-          Select a Community to open its dashboard.
-        </p>
-
-        <select
-          value={selectedProjectId || ""}
-          onChange={(e) => {
-            selectProject(Number(e.target.value));
-            setCurrentPage("projectDashboard");
-          }}
-        >
-          <option value="">Select project</option>
-          {projects.map((project) => (
-            <option key={project.id} value={project.id}>
-              {project.name}
-            </option>
-          ))}
-        </select>
-
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            gap: "20px",
-            flexWrap: "wrap",
-            marginTop: "20px",
-          }}
-        >
-          {/* Create Project */}
-          <div
-            style={{
-              border: "1px solid #ddd",
-              borderRadius: "8px",
-              padding: "15px",
-              width: "350px",
-            }}
-          >
-            <h3>Add New Community</h3>
-
-            <input
-              placeholder="Community Name"
-              value={newProjectName}
-              onChange={(e) => setNewProjectName(e.target.value)}
-              style={{
-                width: "100%",
-                marginBottom: "10px",
-                padding: "8px",
-                boxSizing: "border-box",
-              }}
-            />
-
-            <button
-              onClick={handleCreateProject}
-              style={buttonStyle}
-            >
-              Add Community
-            </button>
-          </div>
-
-          {/* Active Projects */}
-          <div
-            style={{
-              border: "1px solid #ddd",
-              borderRadius: "8px",
-              padding: "15px",
-              width: "350px",
-            }}
-          >
-            <h3>Active Communities</h3>
-            <p>{projects.length} active project(s)</p>
-          </div>
-
-          {/* Templates */}
-          <div
-            style={{
-              border: "1px solid #ddd",
-              borderRadius: "8px",
-              padding: "15px",
-              width: "350px",
-            }}
-          >
-            <h3>Schedule Templates</h3>
-            <p>{templates.length} saved template(s)</p>
-          </div>
-        </div>
-
-        <button
-          onClick={handleLogout}
-          style={{
-            ...buttonStyle,
-            marginTop: "30px",
-          }}
-        >
-          Logout
-        </button>
-      </div>
+      <HomePage
+        projects={projects}
+        templates={templates}
+        selectedProjectId={selectedProjectId}
+        newProjectName={newProjectName}
+        onProjectSelect={(projectId) => {
+          selectProject(projectId);
+          setCurrentPage("projectDashboard");
+        }}
+        onNewProjectNameChange={setNewProjectName}
+        onCreateProject={handleCreateProject}
+        onLogout={handleLogout}
+      />
     );
   }
 
-  //Project Dashboard
   if (currentPage === "projectDashboard") {
     const selectedProject = projects.find(
       (project) => project.id === selectedProjectId
     );
 
     return (
-      <div
-        style={{
-          display: "flex",
-          minHeight: "100vh",
-          fontFamily: "Arial, sans-serif",
-        }}
-      >
-        <aside
-          style={{
-            width: "220px",
-            minWidth: "220px",
-            padding: "20px",
-            borderRight: "1px solid #ddd",
-            boxSizing: "border-box",
-          }}
-        >
-          <button onClick={() => setCurrentPage("home")} style={buttonStyle}>
-            Back to Home
-          </button>
-
-          <h3>Modules</h3>
-
-          <button onClick={() => setCurrentPage("scheduler")} style={buttonStyle}>
-            Schedule
-          </button>
-
-          <button onClick={() => setCurrentPage("dailyLogs")} style={buttonStyle}>
-            Daily Logs
-          </button>
-
-          <button onClick={() => setCurrentPage("inspections")} style={buttonStyle}>
-            Inspections
-          </button>
-
-          <button onClick={() => setCurrentPage("notesDelays")} style={buttonStyle}>
-            Notes & Delays
-          </button>
-
-          <button onClick={() => setCurrentPage("changeOrders")} style={buttonStyle}>
-            Change Orders
-          </button>
-
-          <button
-            onClick={() => setCurrentPage("projectSettings")}
-            style={buttonStyle}
-          >
-            Project Settings
-          </button>
-        </aside>
-
-        <main style={{ flex: 1, padding: "24px" }}>
-          <h1>{selectedProject?.name || "Project"} Dashboard</h1>
-
-          <div
-            style={{
-              display: "flex",
-              gap: "30px",
-              alignItems: "flex-start",
-              marginTop: "30px",
-              flexWrap: "wrap",
-            }}
-          >
-            <div>
-              <h2 style={{ marginBottom: "15px" }}>Scheduled This Week</h2>
-
-              <table
-                style={{
-                  width: "450px",
-                  borderCollapse: "collapse",
-                  fontSize: "14px",
-                }}
-              >
-                <thead>
-                  <tr>
-                    {["Task", "Start"].map((header) => (
-                      <th
-                        key={header}
-                        style={{
-                          padding: "6px",
-                          background: "#f3f4f6",
-                          border: "1px solid #ddd",
-                          textAlign: "left",
-                        }}
-                      >
-                        {header}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-
-                <tbody>
-                  {getTasksThisWeek().map((task) => (
-                    <tr key={task.id}>
-                      <td style={{ padding: "6px", border: "1px solid #ddd", whiteSpace: "pre" }}>
-                        {task.name}
-                      </td>
-
-                      <td style={{ padding: "6px", border: "1px solid #ddd" }}>
-                        {formatDate(task.start_date)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <div>
-              <h2 style={{ marginBottom: "15px" }}>Change Orders by Company</h2>
-
-              <div
-                style={{
-                  width: "700px",
-                  height: "350px",
-                  border: "1px solid #ddd",
-                  borderRadius: "8px",
-                  padding: "15px",
-                  background: "#fff",
-                }}
-              >
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={getChangeOrderTotalsByCompany()}
-                    margin={{
-                      top: 20,
-                      right: 20,
-                      left: 20,
-                      bottom: 20,
-                    }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="company" />
-                    <YAxis />
-                    <Tooltip formatter={(value) => [`$${value}`, "CO Value"]} />
-                    <Bar dataKey="total" fill="#3b82f6" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          </div>
-
-          <div style={{ marginTop: "30px" }}>
-            <h2 style={{ marginBottom: "15px" }}>Project Delays</h2>
-
-            <table
-              style={{
-                width: "450px",
-                borderCollapse: "collapse",
-                fontSize: "14px",
-              }}
-            >
-              <thead>
-                <tr>
-                  {["Date", "Company", "Description"].map((header) => (
-                    <th
-                      key={header}
-                      style={{
-                        padding: "6px",
-                        background: "#f3f4f6",
-                        border: "1px solid #ddd",
-                        textAlign: "left",
-                      }}
-                    >
-                      {header}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-
-              <tbody>
-                {getProjectDelays().map((entry) => (
-                  <tr key={entry.id}>
-                    <td style={{ padding: "6px", border: "1px solid #ddd" }}>
-                      {formatDate(entry.date)}
-                    </td>
-
-                    <td style={{ padding: "6px", border: "1px solid #ddd" }}>
-                      {entry.company}
-                    </td>
-
-                    <td style={{ padding: "6px", border: "1px solid #ddd" }}>
-                      {entry.description}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </main>
-      </div>
+      <ProjectDashboardPage
+        projectName={selectedProject?.name || "Project"}
+        tasksThisWeek={getTasksThisWeek()}
+        changeOrderTotals={getChangeOrderTotalsByCompany()}
+        projectDelays={getProjectDelays()}
+        formatDate={formatDate}
+        onNavigate={setCurrentPage}
+      />
     );
   }
 
-  //Daily log page
   if (currentPage === "dailyLogs") {
     const selectedProject = projects.find(
       (project) => project.id === selectedProjectId
     );
 
     return (
-      <div style={{ padding: "24px", fontFamily: "Arial, sans-serif" }}>
-        <button
-          onClick={() => setCurrentPage("projectDashboard")}
-          style={buttonStyle}
-        >
-          Back to Project Dashboard
-        </button>
-
-        <h1>{selectedProject?.name || "Project"} Daily Logs</h1>
-
-        <div style={{ border: "1px solid #ddd", padding: "15px", borderRadius: "8px" }}>
-          <h3>Create Daily Log</h3>
-
-          <input type="date" value={logDate} onChange={(e) => setLogDate(e.target.value)} />
-
-          <select
-            value={logCompany}
-            onChange={(e) => setLogCompany(e.target.value)}
-          >
-            <option value="">Select Company</option>
-
-            {projectCompanies.map((company) => (
-              <option key={company.id} value={company.name}>
-                {company.name}
-              </option>
-            ))}
-          </select>
-
-          <select
-            value={logManpower}
-            onChange={(e) => setLogManpower(e.target.value)}
-          >
-            <option value="">Manpower</option>
-
-            {Array.from({ length: 50 }, (_, i) => i + 1).map((num) => (
-              <option key={num} value={num}>
-                {num}
-              </option>
-            ))}
-          </select>
-
-          <textarea placeholder="Notes" value={logNotes} onChange={(e) => setLogNotes(e.target.value)} />
-
-          <button onClick={handleCreateDailyLog} style={buttonStyle}>
-            Save Daily Log
-          </button>
-        </div>
-
-        <button onClick={loadDailyLogs} style={{ ...buttonStyle, marginTop: "15px" }}>
-          Refresh Logs
-        </button>
-
-        <table style={{ width: "100%", borderCollapse: "collapse", marginTop: "20px" }}>
-          <thead>
-            <tr>
-              {["Date", "Company", "Manpower", "Notes"].map((header) => (
-                <th
-                  key={header}
-                  style={{
-                    padding: "10px",
-                    background: "#f3f4f6",
-                    border: "1px solid #ddd",
-                    textAlign: "left",
-                  }}
-                >
-                  {header}
-                </th>
-              ))}
-            </tr>
-          </thead>
-
-          <tbody>
-            {dailyLogs.map((log) => (
-              <tr key={log.id}>
-                <td style={{ padding: "8px", border: "1px solid #ddd" }}>{formatDate(log.date)}</td>
-                <td style={{ padding: "8px", border: "1px solid #ddd" }}>{log.company}</td>
-                <td style={{ padding: "8px", border: "1px solid #ddd" }}>{log.manpower}</td>
-                <td style={{ padding: "8px", border: "1px solid #ddd" }}>{log.notes}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <DailyLogsPage
+        projectName={selectedProject?.name || "Project"}
+        dailyLogs={dailyLogs}
+        projectCompanies={projectCompanies}
+        logDate={logDate}
+        logCompany={logCompany}
+        logManpower={logManpower}
+        logNotes={logNotes}
+        formatDate={formatDate}
+        onBack={() => setCurrentPage("projectDashboard")}
+        onRefresh={loadDailyLogs}
+        onCreate={handleCreateDailyLog}
+        onDateChange={setLogDate}
+        onCompanyChange={setLogCompany}
+        onManpowerChange={setLogManpower}
+        onNotesChange={setLogNotes}
+      />
     );
   }
 
-  //Inspection page
   if (currentPage === "inspections") {
     const selectedProject = projects.find(
       (project) => project.id === selectedProjectId
     );
 
     return (
-      <div style={{ padding: "24px", fontFamily: "Arial, sans-serif" }}>
-        <button
-          onClick={() => setCurrentPage("projectDashboard")}
-          style={buttonStyle}
-        >
-          Back to Project Dashboard
-        </button>
-
-        <h1>{selectedProject?.name || "Project"} Inspections</h1>
-
-        <div
-          style={{
-            border: "1px solid #ddd",
-            padding: "15px",
-            borderRadius: "8px",
-          }}
-        >
-          <h3>Create Inspection</h3>
-
-          <input
-            type="date"
-            value={inspectionDate}
-            onChange={(e) => setInspectionDate(e.target.value)}
-          />
-
-          <input
-            placeholder="Inspection"
-            value={inspectionType}
-            onChange={(e) => setInspectionType(e.target.value)}
-          />
-
-          <select
-            value={inspectionStatus}
-            onChange={(e) => setInspectionStatus(e.target.value)}
-          >
-            <option value="Pass">Pass</option>
-            <option value="Partial Pass">Partial Pass</option>
-            <option value="Fail">Fail</option>
-          </select>
-
-          <button onClick={handleCreateInspection} style={buttonStyle}>
-            Save Inspection
-          </button>
-        </div>
-
-        <button
-          onClick={loadInspections}
-          style={{ ...buttonStyle, marginTop: "15px" }}
-        >
-          Refresh Inspections
-        </button>
-
-        <table
-          style={{
-            width: "100%",
-            borderCollapse: "collapse",
-            marginTop: "20px",
-          }}
-        >
-          <thead>
-            <tr>
-              {["Date", "Inspection", "Status"].map((header) => (
-                <th
-                  key={header}
-                  style={{
-                    padding: "10px",
-                    background: "#f3f4f6",
-                    border: "1px solid #ddd",
-                    textAlign: "left",
-                  }}
-                >
-                  {header}
-                </th>
-              ))}
-            </tr>
-          </thead>
-
-          <tbody>
-            {inspections.map((inspection) => (
-              <tr key={inspection.id}>
-                <td style={{ padding: "8px", border: "1px solid #ddd" }}>
-                  {formatDate(inspection.date)}
-                </td>
-
-                <td style={{ padding: "8px", border: "1px solid #ddd" }}>
-                  {inspection.inspection_type}
-                </td>
-
-                <td style={{ padding: "8px", border: "1px solid #ddd" }}>
-                  {inspection.status}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <InspectionsPage
+        projectName={selectedProject?.name || "Project"}
+        inspections={inspections}
+        inspectionDate={inspectionDate}
+        inspectionType={inspectionType}
+        inspectionStatus={inspectionStatus}
+        formatDate={formatDate}
+        onBack={() => setCurrentPage("projectDashboard")}
+        onRefresh={loadInspections}
+        onCreate={handleCreateInspection}
+        onDateChange={setInspectionDate}
+        onTypeChange={setInspectionType}
+        onStatusChange={setInspectionStatus}
+      />
     );
   }
 
-  //Notes and delays page
   if (currentPage === "notesDelays") {
     const selectedProject = projects.find(
       (project) => project.id === selectedProjectId
     );
 
     return (
-      <div style={{ padding: "24px", fontFamily: "Arial, sans-serif" }}>
-        <button
-          onClick={() => setCurrentPage("projectDashboard")}
-          style={buttonStyle}
-        >
-          Back to Project Dashboard
-        </button>
-
-        <h1>{selectedProject?.name || "Project"} Notes & Delays</h1>
-
-        <div
-          style={{
-            border: "1px solid #ddd",
-            padding: "15px",
-            borderRadius: "8px",
-          }}
-        >
-          <h3>Create Entry</h3>
-
-          <input
-            type="date"
-            value={noteDelayDate}
-            onChange={(e) => setNoteDelayDate(e.target.value)}
-          />
-
-          <select
-            value={noteDelayType}
-            onChange={(e) => setNoteDelayType(e.target.value)}
-          >
-            <option value="Note">Note</option>
-            <option value="Delay">Delay</option>
-          </select>
-
-          <select
-            value={noteDelayCompany}
-            onChange={(e) => setNoteDelayCompany(e.target.value)}
-          >
-            <option value="">Select Company</option>
-
-            {projectCompanies.map((company) => (
-              <option key={company.id} value={company.name}>
-                {company.name}
-              </option>
-            ))}
-          </select>
-
-          <textarea
-            placeholder="Description"
-            value={noteDelayDescription}
-            onChange={(e) => setNoteDelayDescription(e.target.value)}
-          />
-
-          <textarea
-            placeholder="Impact"
-            value={noteDelayImpact}
-            onChange={(e) => setNoteDelayImpact(e.target.value)}
-          />
-
-          <button onClick={handleCreateNoteDelay} style={buttonStyle}>
-            Save Entry
-          </button>
-        </div>
-
-        <button
-          onClick={loadNotesDelays}
-          style={{ ...buttonStyle, marginTop: "15px" }}
-        >
-          Refresh Entries
-        </button>
-
-        <table
-          style={{
-            width: "100%",
-            borderCollapse: "collapse",
-            marginTop: "20px",
-          }}
-        >
-          <thead>
-            <tr>
-              {["Date", "Type", "Company", "Description", "Impact"].map(
-                (header) => (
-                  <th
-                    key={header}
-                    style={{
-                      padding: "10px",
-                      background: "#f3f4f6",
-                      border: "1px solid #ddd",
-                      textAlign: "left",
-                    }}
-                  >
-                    {header}
-                  </th>
-                )
-              )}
-            </tr>
-          </thead>
-
-          <tbody>
-            {notesDelays.map((entry) => (
-              <tr key={entry.id}>
-                <td style={{ padding: "8px", border: "1px solid #ddd" }}>
-                  {formatDate(entry.date)}
-                </td>
-
-                <td style={{ padding: "8px", border: "1px solid #ddd" }}>
-                  {entry.entry_type}
-                </td>
-
-                <td style={{ padding: "8px", border: "1px solid #ddd" }}>
-                  {entry.company}
-                </td>
-
-                <td style={{ padding: "8px", border: "1px solid #ddd" }}>
-                  {entry.description}
-                </td>
-
-                <td style={{ padding: "8px", border: "1px solid #ddd" }}>
-                  {entry.impact}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <NotesDelaysPage
+        projectName={selectedProject?.name || "Project"}
+        notesDelays={notesDelays}
+        projectCompanies={projectCompanies}
+        noteDelayDate={noteDelayDate}
+        noteDelayType={noteDelayType}
+        noteDelayCompany={noteDelayCompany}
+        noteDelayDescription={noteDelayDescription}
+        noteDelayImpact={noteDelayImpact}
+        formatDate={formatDate}
+        onBack={() => setCurrentPage("projectDashboard")}
+        onRefresh={loadNotesDelays}
+        onCreate={handleCreateNoteDelay}
+        onDateChange={setNoteDelayDate}
+        onTypeChange={setNoteDelayType}
+        onCompanyChange={setNoteDelayCompany}
+        onDescriptionChange={setNoteDelayDescription}
+        onImpactChange={setNoteDelayImpact}
+      />
     );
   }
 
-  //Change orders page
   if (currentPage === "changeOrders") {
     const selectedProject = projects.find(
       (project) => project.id === selectedProjectId
     );
 
     return (
-      <div style={{ padding: "24px", fontFamily: "Arial, sans-serif" }}>
-        <button
-          onClick={() => setCurrentPage("projectDashboard")}
-          style={buttonStyle}
-        >
-          Back to Project Dashboard
-        </button>
-
-        <h1>{selectedProject?.name || "Project"} Change Orders</h1>
-
-        <div
-          style={{
-            border: "1px solid #ddd",
-            padding: "15px",
-            borderRadius: "8px",
-          }}
-        >
-          <h3>Create Change Order</h3>
-
-          <input
-            type="date"
-            value={changeOrderDate}
-            onChange={(e) => setChangeOrderDate(e.target.value)}
-          />
-
-          <input
-            placeholder="CO Number"
-            value={changeOrderNumber}
-            onChange={(e) => setChangeOrderNumber(e.target.value)}
-          />
-
-          <select
-            value={changeOrderCompany}
-            onChange={(e) => setChangeOrderCompany(e.target.value)}
-          >
-            <option value="">Select Company</option>
-
-            {projectCompanies.map((company) => (
-              <option key={company.id} value={company.name}>
-                {company.name}
-              </option>
-            ))}
-          </select>
-
-          <select
-            value={changeOrderStatus}
-            onChange={(e) => setChangeOrderStatus(e.target.value)}
-          >
-            <option value="Pending">Pending</option>
-            <option value="Approved">Approved</option>
-            <option value="Rejected">Rejected</option>
-            <option value="Void">Void</option>
-          </select>
-
-          <input
-            placeholder="Amount"
-            value={changeOrderAmount}
-            onChange={(e) => setChangeOrderAmount(e.target.value)}
-          />
-
-          <select
-            value={changeOrderResponsibleParty}
-            onChange={(e) => setChangeOrderResponsibleParty(e.target.value)}
-          >
-            <option value="">Responsible Party</option>
-
-            {projectCompanies.map((company) => (
-              <option key={company.id} value={company.name}>
-                {company.name}
-              </option>
-            ))}
-          </select>
-
-          <textarea
-            placeholder="Description"
-            value={changeOrderDescription}
-            onChange={(e) => setChangeOrderDescription(e.target.value)}
-          />
-
-          <button onClick={handleCreateChangeOrder} style={buttonStyle}>
-            Save Change Order
-          </button>
-        </div>
-
-        <button
-          onClick={loadChangeOrders}
-          style={{ ...buttonStyle, marginTop: "15px" }}
-        >
-          Refresh Change Orders
-        </button>
-
-        <table
-          style={{
-            width: "100%",
-            borderCollapse: "collapse",
-            marginTop: "20px",
-          }}
-        >
-          <thead>
-            <tr>
-              {[
-                "Date",
-                "CO Number",
-                "Company",
-                "Status",
-                "Amount",
-                "Responsible Party",
-                "Description",
-                "Actions",
-              ].map((header) => (
-                <th
-                  key={header}
-                  style={{
-                    padding: "10px",
-                    background: "#f3f4f6",
-                    border: "1px solid #ddd",
-                    textAlign: "left",
-                  }}
-                >
-                  {header}
-                </th>
-              ))}
-            </tr>
-          </thead>
-
-          <tbody>
-            {changeOrders.map((co) => (
-              <tr key={co.id}>
-                <td style={{ padding: "8px", border: "1px solid #ddd" }}>
-                  {formatDate(co.date)}
-                </td>
-
-                <td style={{ padding: "8px", border: "1px solid #ddd" }}>
-                  {co.co_number}
-                </td>
-
-                <td style={{ padding: "8px", border: "1px solid #ddd" }}>
-                  {co.company}
-                </td>
-
-                <td style={{ padding: "8px", border: "1px solid #ddd" }}>
-                  {co.status}
-                </td>
-
-                <td style={{ padding: "8px", border: "1px solid #ddd" }}>
-                  {co.amount}
-                </td>
-
-                <td style={{ padding: "8px", border: "1px solid #ddd" }}>
-                  {co.responsible_party}
-                </td>
-
-                <td style={{ padding: "8px", border: "1px solid #ddd" }}>
-                  {co.description}
-                </td>
-
-                <td style={{ padding: "8px", border: "1px solid #ddd" }}>
-                  <button
-                    onClick={() => handleDeleteChangeOrder(co.id)}
-                  >
-                    Delete
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <ChangeOrdersPage
+        projectName={selectedProject?.name || "Project"}
+        changeOrders={changeOrders}
+        projectCompanies={projectCompanies}
+        changeOrderDate={changeOrderDate}
+        changeOrderNumber={changeOrderNumber}
+        changeOrderCompany={changeOrderCompany}
+        changeOrderStatus={changeOrderStatus}
+        changeOrderDescription={changeOrderDescription}
+        changeOrderAmount={changeOrderAmount}
+        changeOrderResponsibleParty={changeOrderResponsibleParty}
+        formatDate={formatDate}
+        onBack={() => setCurrentPage("projectDashboard")}
+        onRefresh={loadChangeOrders}
+        onCreate={handleCreateChangeOrder}
+        onDelete={handleDeleteChangeOrder}
+        onDateChange={setChangeOrderDate}
+        onNumberChange={setChangeOrderNumber}
+        onCompanyChange={setChangeOrderCompany}
+        onStatusChange={setChangeOrderStatus}
+        onDescriptionChange={setChangeOrderDescription}
+        onAmountChange={setChangeOrderAmount}
+        onResponsiblePartyChange={setChangeOrderResponsibleParty}
+      />
     );
   }
 
-  //project settings page
   if (currentPage === "projectSettings") {
     const selectedProject = projects.find(
       (project) => project.id === selectedProjectId
     );
 
     return (
-      <div style={{ padding: "24px", fontFamily: "Arial, sans-serif" }}>
-        <button
-          onClick={() => setCurrentPage("projectDashboard")}
-          style={buttonStyle}
-        >
-          Back to Project Dashboard
-        </button>
-
-        <h1>{selectedProject?.name || "Project"} Settings</h1>
-
-        <div
-          style={{
-            border: "1px solid #ddd",
-            padding: "15px",
-            borderRadius: "8px",
-          }}
-        >
-          <h3>Add Company</h3>
-
-          <input
-            placeholder="Company name"
-            value={companyName}
-            onChange={(e) => setCompanyName(e.target.value)}
-          />
-
-          <input
-            placeholder="Trade"
-            value={companyTrade}
-            onChange={(e) => setCompanyTrade(e.target.value)}
-          />
-
-          <button onClick={handleCreateProjectCompany} style={buttonStyle}>
-            Add Company
-          </button>
-        </div>
-
-        <table
-          style={{
-            width: "100%",
-            borderCollapse: "collapse",
-            marginTop: "20px",
-          }}
-        >
-          <thead>
-            <tr>
-              {["Company", "Trade"].map((header) => (
-                <th
-                  key={header}
-                  style={{
-                    padding: "10px",
-                    background: "#f3f4f6",
-                    border: "1px solid #ddd",
-                    textAlign: "left",
-                  }}
-                >
-                  {header}
-                </th>
-              ))}
-            </tr>
-          </thead>
-
-          <tbody>
-            {projectCompanies.map((company) => (
-              <tr key={company.id}>
-                <td style={{ padding: "8px", border: "1px solid #ddd" }}>
-                  {company.name}
-                </td>
-
-                <td style={{ padding: "8px", border: "1px solid #ddd" }}>
-                  {company.trade}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <ProjectSettingsPage
+        projectName={selectedProject?.name || "Project"}
+        projectCompanies={projectCompanies}
+        companyName={companyName}
+        companyTrade={companyTrade}
+        onBack={() => setCurrentPage("projectDashboard")}
+        onCreate={handleCreateProjectCompany}
+        onNameChange={setCompanyName}
+        onTradeChange={setCompanyTrade}
+      />
     );
   }
 
-  //scheduling page sidebar
   return (
-    <div
-      style={{
-        display: "flex",
-        minHeight: "100vh",
-        fontFamily: "Arial, sans-serif",
-      }}
-    >
-      <aside
-        style={{
-          width: "200px",
-          minWidth: "200px",
-          padding: "20px",
-          borderRight: "1px solid #ddd",
-          boxSizing: "border-box",
-          display: "flex",
-          flexDirection: "column",
-          height: "100vh",
-          position: "sticky",
-          top: 0,
-        }}
-      > 
-        <button
-          onClick={() => setCurrentPage("projectDashboard")}
-          style={buttonStyle}
-        >
-          Project Dashboard
-        </button>
-
-        <div style={{ marginTop: "15px", marginBottom: "15px" }}>
-          <h3>View</h3>
-
-          <button onClick={() => setScheduleView("table")} style={buttonStyle}>
-            Table
-          </button>
-
-          <button onClick={() => setScheduleView("gantt")} style={buttonStyle}>
-            Gantt
-          </button>
-        </div>
-
-        {/* Template creation and selection */}
-        <div
-          style={{
-            padding: "15px",
-            border: "1px solid #ddd",
-            borderRadius: "8px",
-            marginBottom: "15px",
-          }}
-        >
-          <h3 style={{ marginTop: 0 }}>Templates</h3>
-
-          <input
-            placeholder="Template name"
-            value={templateName}
-            onChange={(e) => setTemplateName(e.target.value)}
-            style={{
-              width: "100%",
-              marginBottom: "8px",
-              boxSizing: "border-box",
-            }}
-          />
-
-          <button onClick={handleSaveTemplate} style={buttonStyle}>
-            Save Template
-          </button>
-
-          <select
-            value={selectedTemplateId}
-            onChange={(e) => setSelectedTemplateId(e.target.value)}
-            style={{
-              width: "100%",
-              marginTop: "8px",
-              marginBottom: "8px",
-            }}
-          >
-            <option value="">Select template</option>
-            {templates.map((template) => (
-              <option key={template.id} value={template.id}>
-                {template.name}
-              </option>
-            ))}
-          </select>
-
-          <button onClick={handleApplyTemplate} style={buttonStyle}>
-            Apply Template
-          </button>
-        </div>
-        
-        {/* Export schedule as PDF */}
-        <button
-          onClick={handleExportProjectPdf}
-          disabled={!selectedProjectId}
-          style={buttonStyle}
-        >
-          Export Schedule as PDF
-        </button>
-
-        {/* Logout */}
-        <div style={{ marginTop: "auto" }}>
-          <button onClick={handleLogout} style={buttonStyle}>
-            Logout
-          </button>
-        </div>
-
-      </aside>
-      
-      {/* Main content of scheduling page */}
-      <main>
-        <h2
-          style={{
-            textAlign: "center",
-            width: "100%",
-            marginBottom: "20px",
-          }}
-          >
-            Schedule
-          </h2>
-
-        {/* Scheduling table */}
-      {scheduleView === "table" && (
-        <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <table
-            style={{
-              width: "100%",
-              minWidth: "1400px",
-              borderCollapse: "collapse",
-              marginTop: "20px",
-              tableLayout: "fixed",
-            }}
-          >
-            <thead>
-              <tr>
-                {[
-                  { label: "Id", width: "50px", align: "center" },
-                  { label: "Task", width: "500px", align: "left" },
-                  { label: "Duration", width: "90px", align: "center" },
-                  { label: "Start", width: "120px", align: "center" },
-                  { label: "End", width: "120px", align: "center" },
-                  { label: "Predecessor", width: "130px", align: "center" },
-                  { label: "Actions", width: "100px", align: "center" },
-                ].map((column) => (
-                  <th
-                    key={column.label}
-                    style={{
-                      width: column.width,
-                      padding: "10px",
-                      background: "#f3f4f6",
-                      border: "1px solid #ddd",
-                      textAlign: column.align,
-                    }}
-                  >
-                    {column.label}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-
-            <SortableContext
-              items={tasks.map((task) => task.id)}
-              strategy={verticalListSortingStrategy}
-            >
-              <tbody>
-                {tasks
-                  .filter((task, index) => !isTaskHiddenByCollapsedParent(index))
-                  .map((task, index) => (
-                  <SortableTaskRow
-                    key={task.id}
-                    task={task}
-                    index={index}
-                    selectedTaskId={selectedTaskId}
-                    setSelectedTaskId={setSelectedTaskId}
-                    editingCell={editingCell}
-                    editValue={editValue}
-                    setEditValue={setEditValue}
-                    handleCellClick={handleCellClick}
-                    handleCellSave={handleCellSave}
-                    handleDelete={handleDelete}
-                    handleToggleCollapse={handleToggleCollapse}
-                    formatDate={formatDate}
-                    hasChildren={taskHasChildren(index)}
-                  />
-                ))}
-
-                {/* Blank row for creating new task */}
-                <tr>
-                  <td></td>
-
-                  <td
-                    onClick={() => handleCellClick(getEmptyRow(), "name")}
-                    style={{ padding: "8px", border: "1px solid #ddd", whiteSpace: "pre", }}
-                  >
-                    {editingCell?.id === "new" && editingCell.field === "name" ? (
-                      <input
-                        autoFocus
-                        value={editValue}
-                        onChange={(e) => setEditValue(e.target.value)}
-                        onKeyDown={(e) => {
-                          // TAB = indent
-                          if (e.key === "Tab" && !e.shiftKey) {
-                            e.preventDefault();
-                            setEditValue((prev) => "    " + prev);
-                          }
-
-                          // Backspace removes one indent level
-                          if (
-                            e.key === "Backspace" &&
-                            editValue.startsWith("    ")
-                          ) {
-                            e.preventDefault();
-                            setEditValue((prev) => prev.substring(4));
-                          }
-                        }}
-                        onBlur={() => handleCellSave(getEmptyRow())}
-                      />
-                    ) : (
-                      ""
-                    )}
-                  </td>
-
-                  <td
-                    onClick={() => handleCellClick(getEmptyRow(), "duration")}
-                    style={{ padding: "8px", border: "1px solid #ddd" }}
-                  ></td>
-
-                  <td
-                    onClick={() => handleCellClick(getEmptyRow(), "manual_start_date")}
-                    style={{ padding: "8px", border: "1px solid #ddd" }}
-                  ></td>
-
-                  <td style={{ padding: "8px", border: "1px solid #ddd" }}></td>
-
-                  <td
-                    onClick={() => handleCellClick(getEmptyRow(), "predecessor")}
-                    style={{ padding: "8px", border: "1px solid #ddd" }}
-                  ></td>
-
-                  <td style={{ padding: "8px", border: "1px solid #ddd" }}></td>
-                </tr>
-              </tbody>
-            </SortableContext>
-          </table>
-        </DndContext>
-      )}
-      {/* Gantt Chart */}
-      
-      {scheduleView === "gantt" && (
-        <div style={{ marginTop: "20px" }}>
-          <GanttChart
-            tasks={tasks}
-            selectedTaskId={selectedTaskId}
-          />
-        </div>
-      )}
-
-      </main>
-    </div>
+    <SchedulerPage
+      tasks={tasks}
+      templates={templates}
+      selectedProjectId={selectedProjectId}
+      selectedTaskId={selectedTaskId}
+      editingCell={editingCell}
+      editValue={editValue}
+      templateName={templateName}
+      selectedTemplateId={selectedTemplateId}
+      scheduleView={scheduleView}
+      setSelectedTaskId={setSelectedTaskId}
+      setEditValue={setEditValue}
+      setTemplateName={setTemplateName}
+      setSelectedTemplateId={setSelectedTemplateId}
+      setScheduleView={setScheduleView}
+      onNavigate={setCurrentPage}
+      onSaveTemplate={handleSaveTemplate}
+      onApplyTemplate={handleApplyTemplate}
+      onExport={handleExportProjectPdf}
+      onLogout={handleLogout}
+      onDragEnd={handleDragEnd}
+      onCellClick={handleCellClick}
+      onCellSave={handleCellSave}
+      onDelete={handleDelete}
+      onToggleCollapse={handleToggleCollapse}
+      getEmptyRow={getEmptyRow}
+      formatDate={formatDate}
+      taskHasChildren={taskHasChildren}
+      isTaskHiddenByCollapsedParent={isTaskHiddenByCollapsedParent}
+    />
   );
 }
 
