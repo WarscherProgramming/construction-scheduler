@@ -1,3 +1,6 @@
+import FormField from "../components/FormField";
+import { buttonStyle } from "../styles";
+
 function AuthPage({
   authMode,
   email,
@@ -8,32 +11,59 @@ function AuthPage({
   onRegister,
   onToggleMode,
 }) {
+  const handleSubmit = (event) => {
+    event.preventDefault();
+
+    if (authMode === "login") {
+      onLogin();
+    } else {
+      onRegister();
+    }
+  };
+
   return (
     <div style={{ padding: "20px" }}>
       <h1>Construction Scheduler</h1>
 
       <h2>{authMode === "login" ? "Login" : "Register"}</h2>
 
-      <input
-        placeholder="Email"
-        value={email}
-        onChange={(event) => onEmailChange(event.target.value)}
-      />
+      <form
+        className="form-stack"
+        onSubmit={handleSubmit}
+        style={{ marginBottom: "12px", maxWidth: "420px" }}
+      >
+        <FormField label="Email" htmlFor="auth-email" required>
+          <input
+            id="auth-email"
+            className="field-control"
+            type="email"
+            autoComplete="email"
+            required
+            value={email}
+            onChange={(event) => onEmailChange(event.target.value)}
+          />
+        </FormField>
 
-      <input
-        placeholder="Password"
-        type="password"
-        value={password}
-        onChange={(event) => onPasswordChange(event.target.value)}
-      />
+        <FormField label="Password" htmlFor="auth-password" required>
+          <input
+            id="auth-password"
+            className="field-control"
+            type="password"
+            autoComplete={
+              authMode === "login" ? "current-password" : "new-password"
+            }
+            required
+            value={password}
+            onChange={(event) => onPasswordChange(event.target.value)}
+          />
+        </FormField>
 
-      {authMode === "login" ? (
-        <button onClick={onLogin}>Login</button>
-      ) : (
-        <button onClick={onRegister}>Register</button>
-      )}
+        <button type="submit" style={buttonStyle}>
+          {authMode === "login" ? "Login" : "Register"}
+        </button>
+      </form>
 
-      <button onClick={onToggleMode}>
+      <button type="button" onClick={onToggleMode} style={buttonStyle}>
         {authMode === "login"
           ? "Need an account? Register"
           : "Already have an account? Login"}

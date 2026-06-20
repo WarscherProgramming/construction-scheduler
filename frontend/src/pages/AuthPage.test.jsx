@@ -25,8 +25,8 @@ describe("AuthPage", () => {
       />
     );
 
-    await user.type(screen.getByPlaceholderText("Email"), "user@example.com");
-    await user.type(screen.getByPlaceholderText("Password"), "secret123");
+    await user.type(screen.getByLabelText("Email *"), "user@example.com");
+    await user.type(screen.getByLabelText("Password *"), "secret123");
 
     expect(onEmailChange).toHaveBeenLastCalledWith("m");
     expect(onPasswordChange).toHaveBeenLastCalledWith("3");
@@ -44,7 +44,7 @@ describe("AuthPage", () => {
       />
     );
 
-    await user.click(screen.getByRole("button", { name: "Login" }));
+    await user.type(screen.getByLabelText("Password *"), "{enter}");
     expect(onLogin).toHaveBeenCalledOnce();
   });
 

@@ -1,3 +1,4 @@
+import FormField from "../components/FormField";
 import ProjectPageLayout from "../components/ProjectPageLayout";
 import RecordTable from "../components/RecordTable";
 import { buttonStyle, tableCellStyle } from "../styles";
@@ -14,7 +15,12 @@ function ProjectSettingsPage({
 }) {
   return (
     <ProjectPageLayout title={`${projectName} Settings`} onBack={onBack}>
-      <div
+      <form
+        className="form-stack"
+        onSubmit={(event) => {
+          event.preventDefault();
+          onCreate();
+        }}
         style={{
           border: "1px solid #ddd",
           padding: "15px",
@@ -23,20 +29,28 @@ function ProjectSettingsPage({
       >
         <h3>Add Company</h3>
 
-        <input
-          placeholder="Company name"
-          value={companyName}
-          onChange={(event) => onNameChange(event.target.value)}
-        />
-        <input
-          placeholder="Trade"
-          value={companyTrade}
-          onChange={(event) => onTradeChange(event.target.value)}
-        />
-        <button onClick={onCreate} style={buttonStyle}>
+        <FormField label="Company name" htmlFor="project-company-name" required>
+          <input
+            id="project-company-name"
+            className="field-control"
+            autoComplete="organization"
+            required
+            value={companyName}
+            onChange={(event) => onNameChange(event.target.value)}
+          />
+        </FormField>
+        <FormField label="Trade" htmlFor="project-company-trade">
+          <input
+            id="project-company-trade"
+            className="field-control"
+            value={companyTrade}
+            onChange={(event) => onTradeChange(event.target.value)}
+          />
+        </FormField>
+        <button type="submit" style={buttonStyle}>
           Add Company
         </button>
-      </div>
+      </form>
 
       <RecordTable headers={["Company", "Trade"]}>
         {projectCompanies.map((company) => (

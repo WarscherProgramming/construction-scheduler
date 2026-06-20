@@ -1,3 +1,4 @@
+import FormField from "../components/FormField";
 import ProjectPageLayout from "../components/ProjectPageLayout";
 import RecordTable from "../components/RecordTable";
 import { buttonStyle, tableCellStyle } from "../styles";
@@ -36,7 +37,12 @@ function ChangeOrdersPage({
 }) {
   return (
     <ProjectPageLayout title={`${projectName} Change Orders`} onBack={onBack}>
-      <div
+      <form
+        className="form-stack"
+        onSubmit={(event) => {
+          event.preventDefault();
+          onCreate();
+        }}
         style={{
           border: "1px solid #ddd",
           padding: "15px",
@@ -45,54 +51,85 @@ function ChangeOrdersPage({
       >
         <h3>Create Change Order</h3>
 
-        <input
-          type="date"
-          value={changeOrderDate}
-          onChange={(event) => onDateChange(event.target.value)}
-        />
-        <input
-          placeholder="CO Number"
-          value={changeOrderNumber}
-          onChange={(event) => onNumberChange(event.target.value)}
-        />
-        <select
-          value={changeOrderCompany}
-          onChange={(event) => onCompanyChange(event.target.value)}
+        <FormField label="Date" htmlFor="change-order-date" required>
+          <input
+            id="change-order-date"
+            className="field-control"
+            type="date"
+            required
+            value={changeOrderDate}
+            onChange={(event) => onDateChange(event.target.value)}
+          />
+        </FormField>
+        <FormField label="Change order number" htmlFor="change-order-number" required>
+          <input
+            id="change-order-number"
+            className="field-control"
+            required
+            value={changeOrderNumber}
+            onChange={(event) => onNumberChange(event.target.value)}
+          />
+        </FormField>
+        <FormField label="Company" htmlFor="change-order-company">
+          <select
+            id="change-order-company"
+            className="field-control"
+            value={changeOrderCompany}
+            onChange={(event) => onCompanyChange(event.target.value)}
+          >
+            <option value="">Select company</option>
+            <CompanyOptions companies={projectCompanies} />
+          </select>
+        </FormField>
+        <FormField label="Status" htmlFor="change-order-status">
+          <select
+            id="change-order-status"
+            className="field-control"
+            value={changeOrderStatus}
+            onChange={(event) => onStatusChange(event.target.value)}
+          >
+            <option value="Pending">Pending</option>
+            <option value="Approved">Approved</option>
+            <option value="Rejected">Rejected</option>
+            <option value="Void">Void</option>
+          </select>
+        </FormField>
+        <FormField label="Amount" htmlFor="change-order-amount">
+          <input
+            id="change-order-amount"
+            className="field-control"
+            inputMode="decimal"
+            value={changeOrderAmount}
+            onChange={(event) => onAmountChange(event.target.value)}
+          />
+        </FormField>
+        <FormField
+          label="Responsible party"
+          htmlFor="change-order-responsible-party"
         >
-          <option value="">Select Company</option>
-          <CompanyOptions companies={projectCompanies} />
-        </select>
-        <select
-          value={changeOrderStatus}
-          onChange={(event) => onStatusChange(event.target.value)}
-        >
-          <option value="Pending">Pending</option>
-          <option value="Approved">Approved</option>
-          <option value="Rejected">Rejected</option>
-          <option value="Void">Void</option>
-        </select>
-        <input
-          placeholder="Amount"
-          value={changeOrderAmount}
-          onChange={(event) => onAmountChange(event.target.value)}
-        />
-        <select
-          value={changeOrderResponsibleParty}
-          onChange={(event) => onResponsiblePartyChange(event.target.value)}
-        >
-          <option value="">Responsible Party</option>
-          <CompanyOptions companies={projectCompanies} />
-        </select>
-        <textarea
-          placeholder="Description"
-          value={changeOrderDescription}
-          onChange={(event) => onDescriptionChange(event.target.value)}
-        />
+          <select
+            id="change-order-responsible-party"
+            className="field-control"
+            value={changeOrderResponsibleParty}
+            onChange={(event) => onResponsiblePartyChange(event.target.value)}
+          >
+            <option value="">Select responsible party</option>
+            <CompanyOptions companies={projectCompanies} />
+          </select>
+        </FormField>
+        <FormField label="Description" htmlFor="change-order-description">
+          <textarea
+            id="change-order-description"
+            className="field-control"
+            value={changeOrderDescription}
+            onChange={(event) => onDescriptionChange(event.target.value)}
+          />
+        </FormField>
 
-        <button onClick={onCreate} style={buttonStyle}>
+        <button type="submit" style={buttonStyle}>
           Save Change Order
         </button>
-      </div>
+      </form>
 
       <button
         onClick={onRefresh}
@@ -123,7 +160,13 @@ function ChangeOrdersPage({
             <td style={tableCellStyle}>{changeOrder.responsible_party}</td>
             <td style={tableCellStyle}>{changeOrder.description}</td>
             <td style={tableCellStyle}>
-              <button onClick={() => onDelete(changeOrder.id)}>Delete</button>
+              <button
+                type="button"
+                onClick={() => onDelete(changeOrder.id)}
+                aria-label={`Delete change order ${changeOrder.co_number}`}
+              >
+                Delete
+              </button>
             </td>
           </tr>
         ))}

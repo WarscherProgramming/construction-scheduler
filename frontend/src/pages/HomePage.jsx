@@ -1,3 +1,4 @@
+import FormField from "../components/FormField";
 import { buttonStyle } from "../styles";
 
 function HomePage({
@@ -24,17 +25,23 @@ function HomePage({
         Select a Community to open its dashboard.
       </p>
 
-      <select
-        value={selectedProjectId || ""}
-        onChange={(event) => onProjectSelect(Number(event.target.value))}
-      >
-        <option value="">Select project</option>
-        {projects.map((project) => (
-          <option key={project.id} value={project.id}>
-            {project.name}
-          </option>
-        ))}
-      </select>
+      <div style={{ maxWidth: "350px", margin: "16px auto 0" }}>
+        <FormField label="Community" htmlFor="project-select">
+          <select
+            id="project-select"
+            className="field-control"
+            value={selectedProjectId || ""}
+            onChange={(event) => onProjectSelect(Number(event.target.value))}
+          >
+            <option value="">Select community</option>
+            {projects.map((project) => (
+              <option key={project.id} value={project.id}>
+                {project.name}
+              </option>
+            ))}
+          </select>
+        </FormField>
+      </div>
 
       <div
         style={{
@@ -55,23 +62,30 @@ function HomePage({
         >
           <h3>Add New Community</h3>
 
-          <input
-            placeholder="Community Name"
-            value={newProjectName}
-            onChange={(event) =>
-              onNewProjectNameChange(event.target.value)
-            }
-            style={{
-              width: "100%",
-              marginBottom: "10px",
-              padding: "8px",
-              boxSizing: "border-box",
+          <form
+            className="form-stack"
+            onSubmit={(event) => {
+              event.preventDefault();
+              onCreateProject();
             }}
-          />
+          >
+            <FormField label="Community name" htmlFor="community-name" required>
+              <input
+                id="community-name"
+                className="field-control"
+                autoComplete="organization"
+                required
+                value={newProjectName}
+                onChange={(event) =>
+                  onNewProjectNameChange(event.target.value)
+                }
+              />
+            </FormField>
 
-          <button onClick={onCreateProject} style={buttonStyle}>
-            Add Community
-          </button>
+            <button type="submit" style={buttonStyle}>
+              Add Community
+            </button>
+          </form>
         </div>
 
         <div

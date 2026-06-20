@@ -5,6 +5,7 @@ import {
 } from "@dnd-kit/sortable";
 
 import GanttChart from "../components/GanttChart";
+import FormField from "../components/FormField";
 import SortableTaskRow from "../components/SortableTaskRow";
 import { buttonStyle } from "../styles";
 
@@ -93,38 +94,56 @@ function SchedulerPage({
           }}
         >
           <h3 style={{ marginTop: 0 }}>Templates</h3>
-          <input
-            placeholder="Template name"
-            value={templateName}
-            onChange={(event) => setTemplateName(event.target.value)}
-            style={{
-              width: "100%",
-              marginBottom: "8px",
-              boxSizing: "border-box",
+          <form
+            className="form-stack"
+            onSubmit={(event) => {
+              event.preventDefault();
+              onSaveTemplate();
             }}
-          />
-          <button onClick={onSaveTemplate} style={buttonStyle}>
-            Save Template
-          </button>
-          <select
-            value={selectedTemplateId}
-            onChange={(event) => setSelectedTemplateId(event.target.value)}
-            style={{
-              width: "100%",
-              marginTop: "8px",
-              marginBottom: "8px",
-            }}
+            style={{ gap: "8px", marginBottom: "16px" }}
           >
-            <option value="">Select template</option>
-            {templates.map((template) => (
-              <option key={template.id} value={template.id}>
-                {template.name}
-              </option>
-            ))}
-          </select>
-          <button onClick={onApplyTemplate} style={buttonStyle}>
-            Apply Template
-          </button>
+            <FormField label="Template name" htmlFor="template-name" required>
+              <input
+                id="template-name"
+                className="field-control"
+                required
+                value={templateName}
+                onChange={(event) => setTemplateName(event.target.value)}
+              />
+            </FormField>
+            <button type="submit" style={buttonStyle}>
+              Save Template
+            </button>
+          </form>
+
+          <form
+            className="form-stack"
+            onSubmit={(event) => {
+              event.preventDefault();
+              onApplyTemplate();
+            }}
+            style={{ gap: "8px" }}
+          >
+            <FormField label="Saved template" htmlFor="saved-template" required>
+              <select
+                id="saved-template"
+                className="field-control"
+                required
+                value={selectedTemplateId}
+                onChange={(event) => setSelectedTemplateId(event.target.value)}
+              >
+                <option value="">Select template</option>
+                {templates.map((template) => (
+                  <option key={template.id} value={template.id}>
+                    {template.name}
+                  </option>
+                ))}
+              </select>
+            </FormField>
+            <button type="submit" style={buttonStyle}>
+              Apply Template
+            </button>
+          </form>
         </div>
 
         <button

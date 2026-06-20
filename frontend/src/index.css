@@ -57,6 +57,64 @@ body {
   box-sizing: border-box;
 }
 
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid #2563eb;
+  outline-offset: 2px;
+}
+
+button {
+  min-height: 40px;
+}
+
+.form-stack {
+  display: grid;
+  gap: 16px;
+  max-width: 720px;
+}
+
+.field-group {
+  display: grid;
+  gap: 6px;
+}
+
+.field-label {
+  color: var(--text-h);
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-align: left;
+}
+
+.field-control {
+  width: 100%;
+  min-height: 44px;
+  padding: 9px 10px;
+  border: 1px solid #9ca3af;
+  border-radius: 6px;
+  background: #fff;
+  color: #111827;
+}
+
+textarea.field-control {
+  min-height: 96px;
+  resize: vertical;
+}
+
+.field-hint {
+  color: #4b5563;
+  font-size: 0.8rem;
+  text-align: left;
+}
+
 #root {
   width: 100%;
   min-height: 100svh;

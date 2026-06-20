@@ -26,7 +26,7 @@ describe("HomePage", () => {
       />
     );
 
-    await user.selectOptions(screen.getByRole("combobox"), "20");
+    await user.selectOptions(screen.getByLabelText("Community"), "20");
 
     expect(onProjectSelect).toHaveBeenCalledWith(20);
   });
@@ -37,7 +37,7 @@ describe("HomePage", () => {
     const onCreateProject = vi.fn();
     const onLogout = vi.fn();
 
-    render(
+    const { rerender } = render(
       <HomePage
         projects={[]}
         templates={[{ id: 1, name: "Standard" }]}
@@ -51,10 +51,24 @@ describe("HomePage", () => {
     );
 
     await user.type(
-      screen.getByPlaceholderText("Community Name"),
+      screen.getByLabelText("Community name *"),
       "Canyon Estates"
     );
-    await user.click(screen.getByRole("button", { name: "Add Community" }));
+
+    rerender(
+      <HomePage
+        projects={[]}
+        templates={[{ id: 1, name: "Standard" }]}
+        selectedProjectId={null}
+        newProjectName="Canyon Estates"
+        onProjectSelect={vi.fn()}
+        onNewProjectNameChange={onNameChange}
+        onCreateProject={onCreateProject}
+        onLogout={onLogout}
+      />
+    );
+
+    await user.type(screen.getByLabelText("Community name *"), "{enter}");
     await user.click(screen.getByRole("button", { name: "Logout" }));
 
     expect(onNameChange).toHaveBeenCalled();

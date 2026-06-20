@@ -1,3 +1,4 @@
+import FormField from "../components/FormField";
 import ProjectPageLayout from "../components/ProjectPageLayout";
 import RecordTable from "../components/RecordTable";
 import { buttonStyle, tableCellStyle } from "../styles";
@@ -23,7 +24,12 @@ function NotesDelaysPage({
 }) {
   return (
     <ProjectPageLayout title={`${projectName} Notes & Delays`} onBack={onBack}>
-      <div
+      <form
+        className="form-stack"
+        onSubmit={(event) => {
+          event.preventDefault();
+          onCreate();
+        }}
         style={{
           border: "1px solid #ddd",
           padding: "15px",
@@ -32,44 +38,64 @@ function NotesDelaysPage({
       >
         <h3>Create Entry</h3>
 
-        <input
-          type="date"
-          value={noteDelayDate}
-          onChange={(event) => onDateChange(event.target.value)}
-        />
-        <select
-          value={noteDelayType}
-          onChange={(event) => onTypeChange(event.target.value)}
-        >
-          <option value="Note">Note</option>
-          <option value="Delay">Delay</option>
-        </select>
-        <select
-          value={noteDelayCompany}
-          onChange={(event) => onCompanyChange(event.target.value)}
-        >
-          <option value="">Select Company</option>
-          {projectCompanies.map((company) => (
-            <option key={company.id} value={company.name}>
-              {company.name}
-            </option>
-          ))}
-        </select>
-        <textarea
-          placeholder="Description"
-          value={noteDelayDescription}
-          onChange={(event) => onDescriptionChange(event.target.value)}
-        />
-        <textarea
-          placeholder="Impact"
-          value={noteDelayImpact}
-          onChange={(event) => onImpactChange(event.target.value)}
-        />
+        <FormField label="Date" htmlFor="note-delay-date" required>
+          <input
+            id="note-delay-date"
+            className="field-control"
+            type="date"
+            required
+            value={noteDelayDate}
+            onChange={(event) => onDateChange(event.target.value)}
+          />
+        </FormField>
+        <FormField label="Entry type" htmlFor="note-delay-type">
+          <select
+            id="note-delay-type"
+            className="field-control"
+            value={noteDelayType}
+            onChange={(event) => onTypeChange(event.target.value)}
+          >
+            <option value="Note">Note</option>
+            <option value="Delay">Delay</option>
+          </select>
+        </FormField>
+        <FormField label="Company" htmlFor="note-delay-company">
+          <select
+            id="note-delay-company"
+            className="field-control"
+            value={noteDelayCompany}
+            onChange={(event) => onCompanyChange(event.target.value)}
+          >
+            <option value="">Select company</option>
+            {projectCompanies.map((company) => (
+              <option key={company.id} value={company.name}>
+                {company.name}
+              </option>
+            ))}
+          </select>
+        </FormField>
+        <FormField label="Description" htmlFor="note-delay-description" required>
+          <textarea
+            id="note-delay-description"
+            className="field-control"
+            required
+            value={noteDelayDescription}
+            onChange={(event) => onDescriptionChange(event.target.value)}
+          />
+        </FormField>
+        <FormField label="Impact" htmlFor="note-delay-impact">
+          <textarea
+            id="note-delay-impact"
+            className="field-control"
+            value={noteDelayImpact}
+            onChange={(event) => onImpactChange(event.target.value)}
+          />
+        </FormField>
 
-        <button onClick={onCreate} style={buttonStyle}>
+        <button type="submit" style={buttonStyle}>
           Save Entry
         </button>
-      </div>
+      </form>
 
       <button
         onClick={onRefresh}
