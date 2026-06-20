@@ -1,153 +1,63 @@
+# FieldFlow
 
-# Construction Scheduler
+FieldFlow is a full-stack construction planning and field management
+application built with React, FastAPI, PostgreSQL, SQLAlchemy, Vite, Render,
+and Vercel.
 
-A full-stack construction scheduling application inspired by tools like Procore, Primavera P6, and Microsoft Project.
+## Features
 
-This project was built to manage construction schedules using spreadsheet-style editing, dependency logic, Gantt chart visualization, reusable templates, and PostgreSQL persistence.
+- Spreadsheet-style schedule editing with keyboard support
+- Finish-to-Start and Start-to-Start dependencies with lag
+- Workday scheduling that excludes weekends and federal holidays
+- Parent/child task hierarchy and drag-and-drop ordering
+- Gantt visualization and PDF schedule export
+- Reusable schedule templates
+- Project dashboards and operational metrics
+- Daily logs, inspections, notes and delays, and change orders
+- Project-company management
+- Search, filtering, responsive record cards, and accessible navigation
 
----
-
-# Features
-
-## Scheduling Engine
-- Spreadsheet-style task editing
-- Dynamic row creation
-- Finish-to-Start (FS) dependencies
-- Start-to-Start (SS) dependencies
-- Dependency lag support
-  - Dependencies reference immutable task IDs
-  - Examples for task ID `42`:
-    - `42`
-    - `42+3`
-    - `42SS`
-    - `42SS+4`
-- Automatic schedule recalculation
-- Workday scheduling
-  - Weekends excluded
-  - Federal holidays excluded
-- Editable manual task start dates
-- Parent/child hierarchy using explicit Indent and Outdent actions
-
----
-
-## Gantt Chart
-- Live Gantt chart rendering
-- Dependency highlighting
-- Project timeline visualization
-- Dynamic task updates
-
----
-
-## Project Management
-- Multiple projects
-- Project switching
-- PostgreSQL persistence
-- Project-specific schedules
-
----
-
-## Templates
-- Save schedules as reusable templates
-- Apply templates to projects
-- Reuse common construction schedule structures
-
----
-
-## Exporting
-- Export schedules to PDF
-- Professional table formatting
-- Project-based PDF generation
-
----
-
-# Tech Stack
-
-## Frontend
-- React
-- Vite
-
-## Backend
-- FastAPI
-- SQLAlchemy
-
-## Database
-- PostgreSQL
-
-## PDF Generation
-- ReportLab
-
----
-
-# Project Structure
+## Project structure
 
 ```text
 scheduler/
-├── backend/
-│   ├── app/
-│   │   ├── api/
-│   │   ├── db/
-│   │   ├── models/
-│   │   └── main.py
-│   └── requirements.txt
-│
-├── frontend/
-│   ├── src/
-│   │   ├── components/
-│   │   ├── services/
-│   │   └── App.jsx
-│   └── package.json
-│
-└── README.md
+|-- backend/
+|   |-- app/
+|   |   |-- api/
+|   |   |-- core/
+|   |   |-- db/
+|   |   |-- domain/
+|   |   |-- models/
+|   |   |-- schemas/
+|   |   |-- services/
+|   |   `-- main.py
+|   |-- alembic/
+|   |-- tests/
+|   `-- requirements.txt
+|-- frontend/
+|   |-- public/
+|   |-- src/
+|   |   |-- auth/
+|   |   |-- components/
+|   |   |-- pages/
+|   |   |-- services/
+|   |   |-- utils/
+|   |   `-- App.jsx
+|   `-- package.json
+`-- README.md
 ```
 
----
+## Backend setup
 
-# Installation
-
-## Clone Repository
-
-```bash
-git clone https://github.com/warscherprogramming/construction-scheduler.git
-cd construction-scheduler
-```
-
----
-
-# Backend Setup
-
-## Create Virtual Environment
+From `backend/`:
 
 ```bash
 python -m venv venv
-```
-
-## Activate Virtual Environment
-
-### Windows
-
-```bash
 venv\Scripts\activate
-```
-
----
-
-## Install Dependencies
-
-```bash
 pip install -r requirements.txt
 ```
 
----
-
-## PostgreSQL Setup
-
-Create a PostgreSQL database:
-
-```text
-scheduler_db
-```
-
-Create a `.env` file inside `backend/`:
+Create `backend/.env`:
 
 ```env
 DATABASE_URL=postgresql://postgres:YOUR_PASSWORD@localhost:5432/scheduler_db
@@ -155,86 +65,57 @@ SECRET_KEY=replace-with-a-long-random-secret
 ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173,https://construction-scheduler-eight.vercel.app
 ```
 
----
-
-## Run Database Migrations
-
-From the `backend/` directory, apply all pending migrations before starting
-the API:
+Apply migrations and run the API:
 
 ```bash
 alembic upgrade head
-```
-
-To create a migration after changing SQLAlchemy models:
-
-```bash
-alembic revision --autogenerate -m "describe schema change"
-```
-
-Review generated migrations before applying them.
-
----
-
-## Run Backend
-
-```bash
 uvicorn app.main:app --reload
 ```
 
-Backend runs on:
+The API runs at `http://127.0.0.1:8000`; interactive documentation is at
+`http://127.0.0.1:8000/docs`.
 
-```text
-http://127.0.0.1:8000
+Run backend tests:
+
+```bash
+pytest
 ```
 
-Swagger Docs:
+## Frontend setup
 
-```text
-http://127.0.0.1:8000/docs
-```
-
----
-
-# Frontend Setup
-
-## Install Dependencies
+From `frontend/`:
 
 ```bash
 npm install
-```
-
-## Run Frontend
-
-```bash
 npm run dev
 ```
 
-Frontend runs on:
+The frontend runs at `http://localhost:5173`.
 
-```text
-http://localhost:5173
+Run frontend verification:
+
+```bash
+npm run lint
+npm test
+npm run build
 ```
 
----
+Set `VITE_API_URL` in the frontend deployment environment to the deployed
+FieldFlow API base URL.
 
-# Future Improvements
+## Deployment
 
-- Critical path calculations
+- `backend/render.yaml` defines the Render web service, migrations, health
+  check, and production CORS origin.
+- The frontend is designed for Vercel and uses hash-based routes so project
+  modules remain refresh-safe without additional rewrite rules.
+
+## Potential next features
+
+- Critical-path calculations
 - Drag-and-drop Gantt editing
-- User authentication
-- Cloud deployment
-- Daily logs
-- RFIs
-- Submittals
+- RFIs and submittals
 - Punch lists
-- File/document management
-- Weather delays
+- File and document management
+- Weather-delay integration
 - Resource loading
-
----
-
-# Screenshots
-
-_Add screenshots here later._
-

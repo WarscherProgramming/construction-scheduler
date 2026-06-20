@@ -16,7 +16,7 @@ from app.api.routes_change_order import router as change_order_router
 from app.api.routes_project_company import router as project_company_router
 
 app = FastAPI(
-    title="Construction Scheduler API",
+    title="FieldFlow API",
     version="1.0.0",
 )
 
@@ -55,6 +55,6 @@ app.include_router(project_company_router)
 def root():
     return {
         "status": "online",
-        "message": "Construction Scheduler API is running",
+        "message": "FieldFlow API is running",
         "version": "1.0.0",
     }
