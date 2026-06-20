@@ -1,5 +1,5 @@
 
-from sqlalchemy import Column, Integer, String, ForeignKey
+from sqlalchemy import Column, ForeignKey, Integer, String, text
 from app.db.database import Base
 
 
@@ -27,5 +27,5 @@ class Task(Base):
     order_index = Column(Integer, nullable=True)
 
     parent_task_id = Column(Integer, nullable=True)
-    indent_level = Column(Integer, default=0)
-    is_collapsed = Column(Integer, default=0)
+    indent_level = Column(Integer, default=0, server_default=text("0"))
+    is_collapsed = Column(Integer, default=0, server_default=text("0"))

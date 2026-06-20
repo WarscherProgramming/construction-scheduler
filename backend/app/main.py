@@ -1,24 +1,8 @@
 
-import os
-from dotenv import load_dotenv
-
-# Load environment variables BEFORE importing anything else
-load_dotenv()
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.db.database import Base, engine
-
-from app.models.user import User
-from app.models.project import Project
-from app.models.task import Task
-from app.models.template import ScheduleTemplate, ScheduleTemplateTask
-from app.models.inspection import Inspection
-from app.models.daily_log import DailyLog
-from app.models.note_delay import NoteDelay
-from app.models.change_order import ChangeOrder
-from app.models.project_company import ProjectCompany
+from app.core.config import ALLOWED_ORIGINS
 
 from app.api.routes_task import router as task_router
 from app.api.routes_project import router as project_router
@@ -31,9 +15,6 @@ from app.api.routes_note_delay import router as note_delay_router
 from app.api.routes_change_order import router as change_order_router
 from app.api.routes_project_company import router as project_company_router
 
-# Create database tables
-Base.metadata.create_all(bind=engine)
-
 app = FastAPI(
     title="Construction Scheduler API",
     version="1.0.0",
@@ -43,20 +24,9 @@ app = FastAPI(
 # CORS
 # ----------------------------------------------------
 
-allowed_origins = os.getenv(
-    "ALLOWED_ORIGINS",
-    "http://localhost:5173,http://127.0.0.1:5173",
-)
-
-allowed_origins = [
-    origin.strip()
-    for origin in allowed_origins.split(",")
-    if origin.strip()
-]
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins,
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

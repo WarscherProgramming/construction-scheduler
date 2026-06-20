@@ -1,17 +1,18 @@
 
 from passlib.context import CryptContext
 from jose import jwt
-from datetime import datetime, timedelta
-from fastapi import Depends, HTTPException
+from datetime import datetime, timedelta, timezone
+from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError
-import os
-from dotenv import load_dotenv
 
-load_dotenv()
+from app.core.config import (
+    ACCESS_TOKEN_EXPIRE_MINUTES,
+    ALGORITHM,
+    require_environment_variable,
+)
 
-SECRET_KEY = os.getenv("SECRET_KEY")
-ALGORITHM = "HS256"
+SECRET_KEY = require_environment_variable("SECRET_KEY")
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
@@ -35,7 +36,9 @@ def verify_password(plain_password, hashed_password):
 def create_access_token(data: dict):
     to_encode = data.copy()
 
-    expire = datetime.utcnow() + timedelta(days=1)
+    expire = datetime.now(timezone.utc) + timedelta(
+        minutes=ACCESS_TOKEN_EXPIRE_MINUTES
+    )
 
     to_encode.update({
         "exp": expire
@@ -60,7 +63,7 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
 
         if user_id is None or email is None:
             raise HTTPException(
-                status_code=401,
+                status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid token"
             )
 
@@ -71,6 +74,7 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
 
     except JWTError:
         raise HTTPException(
-            status_code=401,
-            detail="Invalid token"
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token",
+            headers={"WWW-Authenticate": "Bearer"},
         )

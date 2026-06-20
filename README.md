@@ -149,7 +149,28 @@ Create a `.env` file inside `backend/`:
 
 ```env
 DATABASE_URL=postgresql://postgres:YOUR_PASSWORD@localhost:5432/scheduler_db
+SECRET_KEY=replace-with-a-long-random-secret
+ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
 ```
+
+---
+
+## Run Database Migrations
+
+From the `backend/` directory, apply all pending migrations before starting
+the API:
+
+```bash
+alembic upgrade head
+```
+
+To create a migration after changing SQLAlchemy models:
+
+```bash
+alembic revision --autogenerate -m "describe schema change"
+```
+
+Review generated migrations before applying them.
 
 ---
 

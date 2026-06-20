@@ -1,18 +1,22 @@
+import os
 from logging.config import fileConfig
 
+from dotenv import load_dotenv
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 
 from alembic import context
 
 from app.db.database import Base
-from app.models.user import User
-from app.models.project import Project
-from app.models.task import Task
-from app.models.template import ScheduleTemplate, ScheduleTemplateTask
-
-import os
-from dotenv import load_dotenv
+from app.models.change_order import ChangeOrder  # noqa: F401
+from app.models.daily_log import DailyLog  # noqa: F401
+from app.models.inspection import Inspection  # noqa: F401
+from app.models.note_delay import NoteDelay  # noqa: F401
+from app.models.project import Project  # noqa: F401
+from app.models.project_company import ProjectCompany  # noqa: F401
+from app.models.task import Task  # noqa: F401
+from app.models.template import ScheduleTemplate, ScheduleTemplateTask  # noqa: F401
+from app.models.user import User  # noqa: F401
 
 load_dotenv()
 
@@ -20,10 +24,12 @@ load_dotenv()
 # access to the values within the .ini file in use.
 config = context.config
 
-config.set_main_option(
-    "sqlalchemy.url",
-    os.getenv("DATABASE_URL")
-)
+database_url = os.getenv("DATABASE_URL")
+if database_url is None or not database_url.strip():
+    raise RuntimeError("Required environment variable DATABASE_URL is not set")
+
+# ConfigParser treats percent signs as interpolation markers.
+config.set_main_option("sqlalchemy.url", database_url.replace("%", "%%"))
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
@@ -60,6 +66,8 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
+        compare_type=True,
+        compare_server_default=True,
     )
 
     with context.begin_transaction():
@@ -81,7 +89,10 @@ def run_migrations_online() -> None:
 
     with connectable.connect() as connection:
         context.configure(
-            connection=connection, target_metadata=target_metadata
+            connection=connection,
+            target_metadata=target_metadata,
+            compare_type=True,
+            compare_server_default=True,
         )
 
         with context.begin_transaction():
