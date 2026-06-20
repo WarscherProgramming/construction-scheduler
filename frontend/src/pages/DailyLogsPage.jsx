@@ -2,9 +2,10 @@ import { useMemo, useState } from "react";
 
 import FormField from "../components/FormField";
 import ProjectPageLayout from "../components/ProjectPageLayout";
+import RecordCell from "../components/RecordCell";
 import RecordFilters from "../components/RecordFilters";
 import RecordTable from "../components/RecordTable";
-import { buttonStyle, tableCellStyle } from "../styles";
+import { buttonStyle } from "../styles";
 
 function DailyLogsPage({
   projectName,
@@ -168,10 +169,10 @@ function DailyLogsPage({
       >
         {filteredLogs.map((log) => (
           <tr key={log.id}>
-            <td style={tableCellStyle}>{formatDate(log.date)}</td>
-            <td style={tableCellStyle}>{log.company}</td>
-            <td style={tableCellStyle}>{log.manpower}</td>
-            <td style={tableCellStyle}>{log.notes}</td>
+            <RecordCell label="Date">{formatDate(log.date)}</RecordCell>
+            <RecordCell label="Company">{log.company}</RecordCell>
+            <RecordCell label="Manpower">{log.manpower}</RecordCell>
+            <RecordCell label="Notes">{log.notes}</RecordCell>
           </tr>
         ))}
       </RecordTable>

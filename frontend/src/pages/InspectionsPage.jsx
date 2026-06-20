@@ -2,10 +2,11 @@ import { useMemo, useState } from "react";
 
 import FormField from "../components/FormField";
 import ProjectPageLayout from "../components/ProjectPageLayout";
+import RecordCell from "../components/RecordCell";
 import RecordFilters from "../components/RecordFilters";
 import RecordTable from "../components/RecordTable";
 import StatusBadge from "../components/StatusBadge";
-import { buttonStyle, tableCellStyle } from "../styles";
+import { buttonStyle } from "../styles";
 
 function InspectionsPage({
   projectName,
@@ -144,11 +145,13 @@ function InspectionsPage({
       >
         {filteredInspections.map((inspection) => (
           <tr key={inspection.id}>
-            <td style={tableCellStyle}>{formatDate(inspection.date)}</td>
-            <td style={tableCellStyle}>{inspection.inspection_type}</td>
-            <td style={tableCellStyle}>
+            <RecordCell label="Date">{formatDate(inspection.date)}</RecordCell>
+            <RecordCell label="Inspection">
+              {inspection.inspection_type}
+            </RecordCell>
+            <RecordCell label="Status">
               <StatusBadge value={inspection.status} />
-            </td>
+            </RecordCell>
           </tr>
         ))}
       </RecordTable>

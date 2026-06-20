@@ -2,10 +2,11 @@ import { useMemo, useState } from "react";
 
 import FormField from "../components/FormField";
 import ProjectPageLayout from "../components/ProjectPageLayout";
+import RecordCell from "../components/RecordCell";
 import RecordFilters from "../components/RecordFilters";
 import RecordTable from "../components/RecordTable";
 import StatusBadge from "../components/StatusBadge";
-import { buttonStyle, tableCellStyle } from "../styles";
+import { buttonStyle } from "../styles";
 
 function CompanyOptions({ companies }) {
   return companies.map((company) => (
@@ -233,16 +234,24 @@ function ChangeOrdersPage({
       >
         {filteredChangeOrders.map((changeOrder) => (
           <tr key={changeOrder.id}>
-            <td style={tableCellStyle}>{formatDate(changeOrder.date)}</td>
-            <td style={tableCellStyle}>{changeOrder.co_number}</td>
-            <td style={tableCellStyle}>{changeOrder.company}</td>
-            <td style={tableCellStyle}>
+            <RecordCell label="Date">
+              {formatDate(changeOrder.date)}
+            </RecordCell>
+            <RecordCell label="CO Number">
+              {changeOrder.co_number}
+            </RecordCell>
+            <RecordCell label="Company">{changeOrder.company}</RecordCell>
+            <RecordCell label="Status">
               <StatusBadge value={changeOrder.status} />
-            </td>
-            <td style={tableCellStyle}>{changeOrder.amount}</td>
-            <td style={tableCellStyle}>{changeOrder.responsible_party}</td>
-            <td style={tableCellStyle}>{changeOrder.description}</td>
-            <td style={tableCellStyle}>
+            </RecordCell>
+            <RecordCell label="Amount">{changeOrder.amount}</RecordCell>
+            <RecordCell label="Responsible Party">
+              {changeOrder.responsible_party}
+            </RecordCell>
+            <RecordCell label="Description">
+              {changeOrder.description}
+            </RecordCell>
+            <RecordCell label="Actions" className="record-actions">
               <button
                 type="button"
                 className="button-danger"
@@ -251,7 +260,7 @@ function ChangeOrdersPage({
               >
                 Delete
               </button>
-            </td>
+            </RecordCell>
           </tr>
         ))}
       </RecordTable>

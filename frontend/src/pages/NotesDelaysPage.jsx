@@ -2,10 +2,11 @@ import { useMemo, useState } from "react";
 
 import FormField from "../components/FormField";
 import ProjectPageLayout from "../components/ProjectPageLayout";
+import RecordCell from "../components/RecordCell";
 import RecordFilters from "../components/RecordFilters";
 import RecordTable from "../components/RecordTable";
 import StatusBadge from "../components/StatusBadge";
-import { buttonStyle, tableCellStyle } from "../styles";
+import { buttonStyle } from "../styles";
 
 function NotesDelaysPage({
   projectName,
@@ -185,13 +186,13 @@ function NotesDelaysPage({
       >
         {filteredEntries.map((entry) => (
           <tr key={entry.id}>
-            <td style={tableCellStyle}>{formatDate(entry.date)}</td>
-            <td style={tableCellStyle}>
+            <RecordCell label="Date">{formatDate(entry.date)}</RecordCell>
+            <RecordCell label="Type">
               <StatusBadge value={entry.entry_type} />
-            </td>
-            <td style={tableCellStyle}>{entry.company}</td>
-            <td style={tableCellStyle}>{entry.description}</td>
-            <td style={tableCellStyle}>{entry.impact}</td>
+            </RecordCell>
+            <RecordCell label="Company">{entry.company}</RecordCell>
+            <RecordCell label="Description">{entry.description}</RecordCell>
+            <RecordCell label="Impact">{entry.impact}</RecordCell>
           </tr>
         ))}
       </RecordTable>

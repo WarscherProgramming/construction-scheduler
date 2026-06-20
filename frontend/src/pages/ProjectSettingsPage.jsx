@@ -1,7 +1,8 @@
 import FormField from "../components/FormField";
 import ProjectPageLayout from "../components/ProjectPageLayout";
+import RecordCell from "../components/RecordCell";
 import RecordTable from "../components/RecordTable";
-import { buttonStyle, tableCellStyle } from "../styles";
+import { buttonStyle } from "../styles";
 
 function ProjectSettingsPage({
   projectName,
@@ -61,8 +62,8 @@ function ProjectSettingsPage({
       >
         {projectCompanies.map((company) => (
           <tr key={company.id}>
-            <td style={tableCellStyle}>{company.name}</td>
-            <td style={tableCellStyle}>{company.trade}</td>
+            <RecordCell label="Company">{company.name}</RecordCell>
+            <RecordCell label="Trade">{company.trade}</RecordCell>
           </tr>
         ))}
       </RecordTable>

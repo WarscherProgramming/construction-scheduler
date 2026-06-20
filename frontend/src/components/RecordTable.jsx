@@ -30,7 +30,7 @@ function RecordTable({
       aria-label={label}
       tabIndex={0}
     >
-      <table style={tableStyle}>
+      <table className="record-table" style={tableStyle}>
         <thead>
           <tr>
             {headers.map((header) => (
@@ -45,7 +45,11 @@ function RecordTable({
             children
           ) : (
             <tr>
-              <td className="table-empty-cell" colSpan={headers.length}>
+              <td
+                className="table-empty-cell"
+                colSpan={headers.length}
+                data-label=""
+              >
                 {emptyMessage}
               </td>
             </tr>

@@ -623,4 +623,73 @@ code {
     display: grid;
     grid-template-columns: 1fr;
   }
+
+  .record-table {
+    display: block;
+    margin-top: 16px !important;
+  }
+
+  .record-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .record-table tbody {
+    display: grid;
+    gap: 14px;
+  }
+
+  .record-table tbody tr {
+    display: block;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface);
+    box-shadow: var(--shadow);
+  }
+
+  .record-table .record-cell {
+    display: grid;
+    grid-template-columns: minmax(92px, 36%) minmax(0, 1fr);
+    gap: 12px;
+    align-items: start;
+    width: 100%;
+    min-height: 44px;
+    border: 0 !important;
+    border-bottom: 1px solid var(--border) !important;
+    overflow-wrap: anywhere;
+    text-align: left;
+  }
+
+  .record-table .record-cell:last-child {
+    border-bottom: 0 !important;
+  }
+
+  .record-table .record-cell::before {
+    content: attr(data-label);
+    color: var(--text-h);
+    font-size: 0.82rem;
+    font-weight: 700;
+  }
+
+  .record-table .record-actions button {
+    width: 100%;
+  }
+
+  .record-table .table-empty-cell {
+    display: block;
+    width: 100%;
+    border: 0;
+  }
+
+  .record-table .table-empty-cell::before {
+    content: none;
+  }
 }

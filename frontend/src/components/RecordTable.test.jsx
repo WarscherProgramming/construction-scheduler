@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
+import RecordCell from "./RecordCell";
 import RecordTable from "./RecordTable";
 
 
@@ -9,8 +10,8 @@ describe("RecordTable", () => {
     render(
       <RecordTable label="Daily logs" headers={["Date", "Company"]}>
         <tr>
-          <td>06/20/2026</td>
-          <td>Desert Concrete</td>
+          <RecordCell label="Date">06/20/2026</RecordCell>
+          <RecordCell label="Company">Desert Concrete</RecordCell>
         </tr>
       </RecordTable>
     );
@@ -21,6 +22,10 @@ describe("RecordTable", () => {
     expect(
       screen.getByRole("columnheader", { name: "Date" })
     ).toHaveAttribute("scope", "col");
+    expect(screen.getByText("Desert Concrete")).toHaveAttribute(
+      "data-label",
+      "Company"
+    );
   });
 
   it("shows a useful empty state when no rows exist", () => {
