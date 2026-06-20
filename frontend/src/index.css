@@ -195,6 +195,29 @@ button:disabled {
   margin-top: 30px;
 }
 
+.quick-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 18px 20px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.quick-actions h2 {
+  margin-bottom: 4px;
+}
+
+.quick-action-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .dashboard-panel {
   min-width: 0;
 }
@@ -533,6 +556,16 @@ code {
   .dashboard-chart {
     height: 300px;
   }
+
+  .quick-actions {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .quick-action-buttons {
+    width: 100%;
+    justify-content: flex-start;
+  }
 }
 
 @media (max-width: 520px) {
@@ -549,5 +582,10 @@ code {
   .dashboard-chart {
     height: 260px;
     padding: 8px;
+  }
+
+  .quick-action-buttons {
+    display: grid;
+    grid-template-columns: 1fr;
   }
 }

@@ -25,6 +25,10 @@ import {
 } from "./services/api";
 import { ApiError } from "./services/httpClient";
 import { arrayMove } from "@dnd-kit/sortable";
+import {
+  sortByDateDescending,
+  toLocalDateInputValue,
+} from "./utils/date";
 
 import { useAuth } from "./auth/authContext";
 import AuthPage from "./pages/AuthPage";
@@ -55,22 +59,22 @@ function App() {
   const [authMode, setAuthMode] = useState("login");
   const [currentPage, setCurrentPage] = useState("home");
   const [dailyLogs, setDailyLogs] = useState([]);
-  const [logDate, setLogDate] = useState("");
+  const [logDate, setLogDate] = useState(toLocalDateInputValue);
   const [logCompany, setLogCompany] = useState("");
   const [logManpower, setLogManpower] = useState("");
   const [logNotes, setLogNotes] = useState("");
   const [inspections, setInspections] = useState([]);
-  const [inspectionDate, setInspectionDate] = useState("");
+  const [inspectionDate, setInspectionDate] = useState(toLocalDateInputValue);
   const [inspectionType, setInspectionType] = useState("");
   const [inspectionStatus, setInspectionStatus] = useState("Pending");
   const [notesDelays, setNotesDelays] = useState([]);
-  const [noteDelayDate, setNoteDelayDate] = useState("");
+  const [noteDelayDate, setNoteDelayDate] = useState(toLocalDateInputValue);
   const [noteDelayType, setNoteDelayType] = useState("Note");
   const [noteDelayCompany, setNoteDelayCompany] = useState("");
   const [noteDelayDescription, setNoteDelayDescription] = useState("");
   const [noteDelayImpact, setNoteDelayImpact] = useState("");
   const [changeOrders, setChangeOrders] = useState([]);
-  const [changeOrderDate, setChangeOrderDate] = useState("");
+  const [changeOrderDate, setChangeOrderDate] = useState(toLocalDateInputValue);
   const [changeOrderNumber, setChangeOrderNumber] = useState("");
   const [changeOrderCompany, setChangeOrderCompany] = useState("");
   const [changeOrderStatus, setChangeOrderStatus] = useState("Pending");
@@ -177,7 +181,7 @@ function App() {
       const data = await fetchDailyLogs(projectId);
 
       if (selectedProjectIdRef.current === projectId) {
-        setDailyLogs(data.daily_logs || []);
+        setDailyLogs(sortByDateDescending(data.daily_logs || []));
       }
     } catch (error) {
       reportRequestError("Unable to load daily logs", error);
@@ -192,7 +196,7 @@ function App() {
       const data = await fetchInspections(projectId);
 
       if (selectedProjectIdRef.current === projectId) {
-        setInspections(data.inspections || []);
+        setInspections(sortByDateDescending(data.inspections || []));
       }
     } catch (error) {
       reportRequestError("Unable to load inspections", error);
@@ -207,7 +211,7 @@ function App() {
       const data = await fetchNotesDelays(projectId);
 
       if (selectedProjectIdRef.current === projectId) {
-        setNotesDelays(data.notes_delays || []);
+        setNotesDelays(sortByDateDescending(data.notes_delays || []));
       }
     } catch (error) {
       reportRequestError("Unable to load notes and delays", error);
@@ -222,7 +226,7 @@ function App() {
       const data = await fetchChangeOrders(projectId);
 
       if (selectedProjectIdRef.current === projectId) {
-        setChangeOrders(data.change_orders || []);
+        setChangeOrders(sortByDateDescending(data.change_orders || []));
       }
     } catch (error) {
       reportRequestError("Unable to load change orders", error);
@@ -521,7 +525,7 @@ function App() {
         notes: logNotes,
       });
 
-      setLogDate("");
+      setLogDate(toLocalDateInputValue());
       setLogCompany("");
       setLogManpower("");
       setLogNotes("");
@@ -547,7 +551,7 @@ function App() {
         status: inspectionStatus,
       });
 
-      setInspectionDate("");
+      setInspectionDate(toLocalDateInputValue());
       setInspectionType("");
       setInspectionStatus("Pending");
       await loadInspections();
@@ -574,7 +578,7 @@ function App() {
         impact: noteDelayImpact,
       });
 
-      setNoteDelayDate("");
+      setNoteDelayDate(toLocalDateInputValue());
       setNoteDelayType("Note");
       setNoteDelayCompany("");
       setNoteDelayDescription("");
@@ -608,7 +612,7 @@ function App() {
         responsible_party: changeOrderResponsibleParty,
       });
 
-      setChangeOrderDate("");
+      setChangeOrderDate(toLocalDateInputValue());
       setChangeOrderNumber("");
       setChangeOrderCompany("");
       setChangeOrderStatus("Pending");

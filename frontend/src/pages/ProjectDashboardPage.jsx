@@ -56,6 +56,44 @@ function ProjectDashboardPage({
       <main className="app-main">
         <h1>{projectName} Dashboard</h1>
 
+        <section className="quick-actions" aria-labelledby="quick-actions-title">
+          <div>
+            <h2 id="quick-actions-title">Quick Actions</h2>
+            <p>Start the field records used most often.</p>
+          </div>
+          <div className="quick-action-buttons">
+            <button
+              type="button"
+              className="button-primary"
+              onClick={() => onNavigate("dailyLogs")}
+              style={buttonStyle}
+            >
+              Add Daily Log
+            </button>
+            <button
+              type="button"
+              onClick={() => onNavigate("notesDelays")}
+              style={buttonStyle}
+            >
+              Report Delay
+            </button>
+            <button
+              type="button"
+              onClick={() => onNavigate("inspections")}
+              style={buttonStyle}
+            >
+              Add Inspection
+            </button>
+            <button
+              type="button"
+              onClick={() => onNavigate("changeOrders")}
+              style={buttonStyle}
+            >
+              Add Change Order
+            </button>
+          </div>
+        </section>
+
         <div className="dashboard-grid">
           <section className="dashboard-panel">
             <h2 style={{ marginBottom: "15px" }}>Scheduled This Week</h2>
