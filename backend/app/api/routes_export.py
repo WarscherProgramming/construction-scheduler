@@ -23,9 +23,10 @@ def export_project_pdf(
     tasks = (
         db.query(Task)
         .filter(Task.project_id == project_id)
-        .order_by(Task.id)
+        .order_by(Task.order_index, Task.id)
         .all()
     )
+    task_map = {task.id: task for task in tasks}
 
     file = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
     file_path = file.name
@@ -43,12 +44,24 @@ def export_project_pdf(
         Spacer(1, 12),
     ]
 
-    data = [["Index", "Task", "Duration", "Start", "End", "Predecessor"]]
+    data = [["Task ID", "Task", "Duration", "Start", "End", "Predecessor"]]
 
-    for index, task in enumerate(tasks, start=1):
+    for task in tasks:
+        depth = 0
+        parent_id = task.parent_task_id
+        visited = set()
+
+        while parent_id is not None and parent_id not in visited:
+            visited.add(parent_id)
+            parent = task_map.get(parent_id)
+            if parent is None:
+                break
+            depth += 1
+            parent_id = parent.parent_task_id
+
         data.append([
-            index,
-            task.name,
+            task.id,
+            f"{'    ' * depth}{task.name}",
             task.duration,
             task.start_date or "-",
             task.end_date or "-",

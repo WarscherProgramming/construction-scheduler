@@ -1,6 +1,5 @@
 from dataclasses import dataclass, replace
 from datetime import date, timedelta
-import re
 from typing import Literal
 
 
@@ -12,7 +11,10 @@ class ScheduleTask:
     id: int | None
     name: str
     duration: int
-    predecessor: str | None = None
+    predecessor_task_id: int | None = None
+    dependency_type: DependencyType = "FS"
+    lag_days: int = 0
+    parent_task_id: int | None = None
     manual_start_date: str | None = None
 
 
@@ -21,37 +23,13 @@ class ScheduledTask:
     id: int | None
     name: str
     duration: int
-    predecessor: str | None
+    predecessor_task_id: int | None
+    dependency_type: DependencyType
+    lag_days: int
+    parent_task_id: int | None
     manual_start_date: str | None
     start_date: str | None
     end_date: str | None
-
-
-@dataclass(frozen=True)
-class ParsedPredecessor:
-    task_number: int
-    relationship: DependencyType
-    lag_days: int
-
-
-PREDECESSOR_PATTERN = re.compile(r"^(\d+)(SS)?(?:\+(\d+)D?)?$")
-
-
-def parse_predecessor(value: str | None) -> ParsedPredecessor | None:
-    if not value:
-        return None
-
-    normalized = str(value).replace(" ", "").upper()
-    match = PREDECESSOR_PATTERN.fullmatch(normalized)
-
-    if match is None:
-        return None
-
-    return ParsedPredecessor(
-        task_number=int(match.group(1)),
-        relationship="SS" if match.group(2) else "FS",
-        lag_days=int(match.group(3) or 0),
-    )
 
 
 def is_workday(value: date) -> bool:
@@ -93,7 +71,10 @@ def calculate_schedule(
             id=task.id,
             name=task.name,
             duration=task.duration,
-            predecessor=task.predecessor,
+            predecessor_task_id=task.predecessor_task_id,
+            dependency_type=task.dependency_type,
+            lag_days=task.lag_days,
+            parent_task_id=task.parent_task_id,
             manual_start_date=task.manual_start_date,
             start_date=None,
             end_date=None,
@@ -108,11 +89,9 @@ def calculate_schedule(
             if task.start_date and task.end_date:
                 continue
 
-            predecessor = parse_predecessor(task.predecessor)
             start_date = _resolve_start_date(
                 task,
-                predecessor,
-                scheduled,
+                {candidate.id: candidate for candidate in scheduled},
                 project_start,
             )
 
@@ -136,54 +115,58 @@ def calculate_schedule(
 
 def _resolve_start_date(
     task: ScheduledTask,
-    predecessor: ParsedPredecessor | None,
-    scheduled: list[ScheduledTask],
+    task_map: dict[int | None, ScheduledTask],
     project_start: date,
 ) -> date | None:
-    if predecessor is None:
+    if task.predecessor_task_id is None:
         return (
             date.fromisoformat(task.manual_start_date)
             if task.manual_start_date
             else project_start
         )
 
-    predecessor_index = predecessor.task_number - 1
-    if predecessor_index < 0 or predecessor_index >= len(scheduled):
+    predecessor_task = task_map.get(task.predecessor_task_id)
+    if predecessor_task is None:
         return None
 
-    predecessor_task = scheduled[predecessor_index]
-
-    if predecessor.relationship == "SS":
+    if task.dependency_type == "SS":
         if predecessor_task.start_date is None:
             return None
 
         return date.fromisoformat(predecessor_task.start_date) + timedelta(
-            days=predecessor.lag_days
+            days=task.lag_days
         )
 
     if predecessor_task.end_date is None:
         return None
 
     return date.fromisoformat(predecessor_task.end_date) + timedelta(
-        days=1 + predecessor.lag_days
+        days=1 + task.lag_days
     )
 
 
 def rollup_parent_tasks(tasks: list[ScheduledTask]) -> list[ScheduledTask]:
     rolled_up = list(tasks)
 
-    for index, task in enumerate(rolled_up):
-        current_level = get_indent_level(task.name)
-        children: list[ScheduledTask] = []
+    task_map = {task.id: task for task in rolled_up}
+    depths = {
+        task.id: _hierarchy_depth(task, task_map)
+        for task in rolled_up
+    }
 
-        for candidate in rolled_up[index + 1 :]:
-            candidate_level = get_indent_level(candidate.name)
+    ordered_indices = sorted(
+        range(len(rolled_up)),
+        key=lambda index: depths[rolled_up[index].id],
+        reverse=True,
+    )
 
-            if candidate_level <= current_level:
-                break
-
-            if candidate_level == current_level + 1:
-                children.append(candidate)
+    for index in ordered_indices:
+        task = rolled_up[index]
+        children = [
+            candidate
+            for candidate in rolled_up
+            if candidate.parent_task_id == task.id
+        ]
 
         scheduled_children = [
             child
@@ -204,6 +187,22 @@ def rollup_parent_tasks(tasks: list[ScheduledTask]) -> list[ScheduledTask]:
     return rolled_up
 
 
-def get_indent_level(name: str) -> int:
-    leading_spaces = len(name) - len(name.lstrip(" "))
-    return leading_spaces // 4
+def _hierarchy_depth(
+    task: ScheduledTask,
+    task_map: dict[int | None, ScheduledTask],
+) -> int:
+    depth = 0
+    parent_id = task.parent_task_id
+    visited: set[int] = set()
+
+    while parent_id is not None and parent_id not in visited:
+        visited.add(parent_id)
+        parent = task_map.get(parent_id)
+
+        if parent is None:
+            break
+
+        depth += 1
+        parent_id = parent.parent_task_id
+
+    return depth

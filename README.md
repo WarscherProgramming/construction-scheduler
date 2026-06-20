@@ -15,16 +15,18 @@ This project was built to manage construction schedules using spreadsheet-style 
 - Finish-to-Start (FS) dependencies
 - Start-to-Start (SS) dependencies
 - Dependency lag support
-  - Examples:
-    - `1`
-    - `1+3`
-    - `1SS`
-    - `1SS+4`
+  - Dependencies reference immutable task IDs
+  - Examples for task ID `42`:
+    - `42`
+    - `42+3`
+    - `42SS`
+    - `42SS+4`
 - Automatic schedule recalculation
 - Workday scheduling
   - Weekends excluded
   - Federal holidays excluded
 - Editable manual task start dates
+- Parent/child hierarchy using explicit Indent and Outdent actions
 
 ---
 

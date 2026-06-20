@@ -12,9 +12,14 @@ function SortableTaskRow({
   handleCellClick,
   handleCellSave,
   handleDelete,
+  handleIndent,
+  handleOutdent,
   handleToggleCollapse,
   formatDate,
   hasChildren,
+  depth,
+  canIndent,
+  canOutdent,
 }) {
   const {
     attributes,
@@ -51,7 +56,7 @@ function SortableTaskRow({
         {...attributes}
         {...listeners}
       >
-        ☰ {index + 1}
+        ☰ {task.id}
       </td>
 
       <td
@@ -70,20 +75,6 @@ function SortableTaskRow({
             autoFocus
             value={editValue}
             onChange={(event) => setEditValue(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Tab" && !event.shiftKey) {
-                event.preventDefault();
-                setEditValue((previousValue) => `    ${previousValue}`);
-              }
-
-              if (
-                event.key === "Backspace" &&
-                editValue.startsWith("    ")
-              ) {
-                event.preventDefault();
-                setEditValue((previousValue) => previousValue.substring(4));
-              }
-            }}
             onBlur={() => handleCellSave(task)}
           />
         ) : (
@@ -92,6 +83,7 @@ function SortableTaskRow({
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
+              paddingLeft: `${depth * 20}px`,
             }}
           >
             <span style={{ fontWeight: hasChildren ? "600" : "400" }}>
@@ -174,7 +166,7 @@ function SortableTaskRow({
         editingCell.field === "predecessor" ? (
           <input
             autoFocus
-            placeholder="1, 1+3, 1SS, 1SS+4"
+            placeholder="Task ID: 12, 12+3, 12SS+4"
             value={editValue}
             onChange={(event) => setEditValue(event.target.value)}
             onBlur={() => handleCellSave(task)}
@@ -185,6 +177,26 @@ function SortableTaskRow({
       </td>
 
       <td style={{ padding: "8px", border: "1px solid #ddd" }}>
+        <button
+          onClick={(event) => {
+            event.stopPropagation();
+            handleIndent(task);
+          }}
+          disabled={!canIndent}
+          title="Indent under previous task"
+        >
+          Indent
+        </button>
+        <button
+          onClick={(event) => {
+            event.stopPropagation();
+            handleOutdent(task);
+          }}
+          disabled={!canOutdent}
+          title="Move up one hierarchy level"
+        >
+          Outdent
+        </button>
         <button
           onClick={(event) => {
             event.stopPropagation();

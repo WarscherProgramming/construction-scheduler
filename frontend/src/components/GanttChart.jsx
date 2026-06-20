@@ -28,38 +28,9 @@ function GanttChart({ tasks, selectedTaskId }) {
     });
   };
 
-  const parsePredecessor = (value) => {
-    if (!value) return null;
-
-    const match = value.replace(/\s/g, "").match(/^(\d+)(SS)?(?:\+(\d+))?/i);
-
-    if (!match) return null;
-
-    return {
-      index: Number(match[1]),
-      relation: match[2] ? "SS" : "FS",
-      lag: match[3] ? Number(match[3]) : 0,
-    };
-  };
-
-  const getIndentLevel = (name = "") => {
-    const match = name.match(/^ */);
-    return Math.floor((match ? match[0].length : 0) / 4);
-  };
-
   const scheduledTasks = tasks
     .filter((task) => task.start_date && task.end_date)
-    .filter((task) => {
-      const currentLevel = getIndentLevel(task.name);
-
-      // Hide child/sub tasks
-      if (currentLevel > 0) {
-        return false;
-      }
-
-      // Keep parent tasks and standalone top-level tasks
-      return true;
-    });
+    .filter((task) => task.parent_task_id === null);
     
   if (!scheduledTasks.length) {
     return <p>No scheduled tasks yet</p>;
@@ -91,13 +62,15 @@ function GanttChart({ tasks, selectedTaskId }) {
     if (!selectedId) return false;
 
     let current = task;
+    const visited = new Set();
+    const taskMap = new Map(tasks.map((candidate) => [candidate.id, candidate]));
 
-    while (current.predecessor) {
-      const parsed = parsePredecessor(current.predecessor);
-
-      if (!parsed) break;
-
-      const predecessorTask = tasks[parsed.index - 1];
+    while (
+      current.predecessor_task_id &&
+      !visited.has(current.predecessor_task_id)
+    ) {
+      visited.add(current.predecessor_task_id);
+      const predecessorTask = taskMap.get(current.predecessor_task_id);
 
       if (!predecessorTask) break;
 
@@ -218,7 +191,7 @@ function GanttChart({ tasks, selectedTaskId }) {
                     whiteSpace: "nowrap",
                     overflow: "hidden",
                     textOverflow: "ellipsis",
-                    fontWeight: task.predecessor ? "normal" : "bold",
+                    fontWeight: task.predecessor_task_id ? "normal" : "bold",
                   }}
                   title={task.name}
                 >

@@ -1,5 +1,5 @@
 
-from sqlalchemy import Column, Integer, String, ForeignKey
+from sqlalchemy import Column, ForeignKey, Integer, String, text
 from app.db.database import Base
 
 
@@ -23,5 +23,27 @@ class ScheduleTemplateTask(Base):
 
     name = Column(String, nullable=False)
     duration = Column(Integer, nullable=False)
-    predecessor = Column(String, nullable=True)
+    predecessor_template_task_id = Column(
+        Integer,
+        ForeignKey("schedule_template_tasks.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    dependency_type = Column(
+        String(2),
+        nullable=False,
+        default="FS",
+        server_default=text("'FS'"),
+    )
+    lag_days = Column(
+        Integer,
+        nullable=False,
+        default=0,
+        server_default=text("0"),
+    )
+    parent_template_task_id = Column(
+        Integer,
+        ForeignKey("schedule_template_tasks.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    order_index = Column(Integer, nullable=True)
     manual_start_date = Column(String, nullable=True)

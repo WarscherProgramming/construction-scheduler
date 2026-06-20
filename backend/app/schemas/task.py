@@ -1,5 +1,6 @@
 from datetime import date
-from typing import Annotated
+import re
+from typing import Annotated, Literal
 
 from pydantic import (
     AfterValidator,
@@ -22,6 +23,12 @@ DateString = Annotated[
     StringConstraints(pattern=r"^\d{4}-\d{2}-\d{2}$"),
     AfterValidator(validate_date_string),
 ]
+TaskName = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, min_length=1, max_length=500),
+]
+
+
 def normalize_predecessor(value: object) -> str:
     return str(value).replace(" ", "").upper()
 
@@ -36,24 +43,28 @@ PredecessorString = Annotated[
 
 
 class TaskCreate(BaseModel):
-    name: str = Field(min_length=1, max_length=500)
+    name: TaskName
     duration: int = Field(ge=1)
     predecessor: PredecessorString | None = None
+    predecessor_task_id: int | None = Field(default=None, ge=1)
+    dependency_type: Literal["FS", "SS"] = "FS"
+    lag_days: int = Field(default=0, ge=0)
     manual_start_date: DateString | None = None
     order_index: int | None = Field(default=None, ge=0)
     parent_task_id: int | None = Field(default=None, ge=1)
-    indent_level: int = Field(default=0, ge=0)
     is_collapsed: int = Field(default=0, ge=0, le=1)
 
 
 class TaskUpdate(BaseModel):
-    name: str | None = Field(default=None, min_length=1, max_length=500)
+    name: TaskName | None = None
     duration: int | None = Field(default=None, ge=1)
     predecessor: PredecessorString | None = None
+    predecessor_task_id: int | None = Field(default=None, ge=1)
+    dependency_type: Literal["FS", "SS"] | None = None
+    lag_days: int | None = Field(default=None, ge=0)
     manual_start_date: DateString | None = None
     order_index: int | None = Field(default=None, ge=0)
     parent_task_id: int | None = Field(default=None, ge=1)
-    indent_level: int | None = Field(default=None, ge=0)
     is_collapsed: int | None = Field(default=None, ge=0, le=1)
 
 
@@ -66,15 +77,34 @@ class TaskResponse(ORMModel):
     name: str | None
     duration: int | None
     predecessor: str | None
+    predecessor_task_id: int | None
+    dependency_type: Literal["FS", "SS"]
+    lag_days: int
     start_date: str | None
     end_date: str | None
     manual_start_date: str | None
     project_id: int
     order_index: int | None
     parent_task_id: int | None
-    indent_level: int | None
     is_collapsed: int | None
 
 
 class TaskListResponse(BaseModel):
     tasks: list[TaskResponse]
+
+
+def parse_predecessor_reference(
+    value: str | None,
+) -> tuple[int | None, Literal["FS", "SS"], int]:
+    if not value:
+        return None, "FS", 0
+
+    match = re.fullmatch(r"(\d+)(SS)?(?:\+(\d+)D?)?", value)
+    if match is None:
+        raise ValueError("Invalid predecessor reference")
+
+    return (
+        int(match.group(1)),
+        "SS" if match.group(2) else "FS",
+        int(match.group(3) or 0),
+    )

@@ -11,7 +11,23 @@ class Task(Base):
     name = Column(String)
     duration = Column(Integer)
 
-    predecessor = Column(String, nullable=True)
+    predecessor_task_id = Column(
+        Integer,
+        ForeignKey("tasks.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    dependency_type = Column(
+        String(2),
+        nullable=False,
+        default="FS",
+        server_default=text("'FS'"),
+    )
+    lag_days = Column(
+        Integer,
+        nullable=False,
+        default=0,
+        server_default=text("0"),
+    )
 
     start_date = Column(String, nullable=True)
     end_date = Column(String, nullable=True)
@@ -26,6 +42,18 @@ class Task(Base):
 
     order_index = Column(Integer, nullable=True)
 
-    parent_task_id = Column(Integer, nullable=True)
-    indent_level = Column(Integer, default=0, server_default=text("0"))
+    parent_task_id = Column(
+        Integer,
+        ForeignKey("tasks.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     is_collapsed = Column(Integer, default=0, server_default=text("0"))
+
+    @property
+    def predecessor(self) -> str | None:
+        if self.predecessor_task_id is None:
+            return None
+
+        relationship = "SS" if self.dependency_type == "SS" else ""
+        lag = f"+{self.lag_days}" if self.lag_days else ""
+        return f"{self.predecessor_task_id}{relationship}{lag}"

@@ -32,12 +32,19 @@ function SchedulerPage({
   onCellClick,
   onCellSave,
   onDelete,
+  onIndent,
+  onOutdent,
   onToggleCollapse,
   getEmptyRow,
   formatDate,
   taskHasChildren,
   isTaskHiddenByCollapsedParent,
+  getTaskDepth,
 }) {
+  const visibleTasks = tasks.filter(
+    (task) => !isTaskHiddenByCollapsedParent(task)
+  );
+
   return (
     <div
       style={{
@@ -170,7 +177,7 @@ function SchedulerPage({
                       width: "130px",
                       align: "center",
                     },
-                    { label: "Actions", width: "100px", align: "center" },
+                    { label: "Actions", width: "190px", align: "center" },
                   ].map((column) => (
                     <th
                       key={column.label}
@@ -189,15 +196,11 @@ function SchedulerPage({
               </thead>
 
               <SortableContext
-                items={tasks.map((task) => task.id)}
+                items={visibleTasks.map((task) => task.id)}
                 strategy={verticalListSortingStrategy}
               >
                 <tbody>
-                  {tasks
-                    .filter(
-                      (_, index) => !isTaskHiddenByCollapsedParent(index)
-                    )
-                    .map((task, index) => (
+                  {visibleTasks.map((task, index) => (
                       <SortableTaskRow
                         key={task.id}
                         task={task}
@@ -210,9 +213,18 @@ function SchedulerPage({
                         handleCellClick={onCellClick}
                         handleCellSave={onCellSave}
                         handleDelete={onDelete}
+                        handleIndent={onIndent}
+                        handleOutdent={onOutdent}
                         handleToggleCollapse={onToggleCollapse}
                         formatDate={formatDate}
-                        hasChildren={taskHasChildren(index)}
+                        hasChildren={taskHasChildren(task.id)}
+                        depth={getTaskDepth(task)}
+                        canIndent={
+                          tasks.findIndex(
+                            (candidate) => candidate.id === task.id
+                          ) > 0
+                        }
+                        canOutdent={Boolean(task.parent_task_id)}
                       />
                     ))}
 
@@ -232,24 +244,6 @@ function SchedulerPage({
                           autoFocus
                           value={editValue}
                           onChange={(event) => setEditValue(event.target.value)}
-                          onKeyDown={(event) => {
-                            if (event.key === "Tab" && !event.shiftKey) {
-                              event.preventDefault();
-                              setEditValue(
-                                (previousValue) => `    ${previousValue}`
-                              );
-                            }
-
-                            if (
-                              event.key === "Backspace" &&
-                              editValue.startsWith("    ")
-                            ) {
-                              event.preventDefault();
-                              setEditValue((previousValue) =>
-                                previousValue.substring(4)
-                              );
-                            }
-                          }}
                           onBlur={() => onCellSave(getEmptyRow())}
                         />
                       ) : (

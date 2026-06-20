@@ -647,35 +647,72 @@ function App() {
     }
   };
 
-  const getIndentLevel = (name = "") => {
-    const match = name.match(/^ */);
-    return Math.floor((match ? match[0].length : 0) / 4);
+  const taskMap = new Map(tasks.map((task) => [task.id, task]));
+
+  const getTaskDepth = (task) => {
+    let depth = 0;
+    let parentId = task.parent_task_id;
+    const visited = new Set();
+
+    while (parentId && !visited.has(parentId)) {
+      visited.add(parentId);
+      const parent = taskMap.get(parentId);
+      if (!parent) break;
+
+      depth += 1;
+      parentId = parent.parent_task_id;
+    }
+
+    return depth;
   };
 
-  const taskHasChildren = (taskIndex) => {
-    const currentTask = tasks[taskIndex];
-    const currentLevel = getIndentLevel(currentTask.name);
+  const taskHasChildren = (taskId) =>
+    tasks.some((task) => task.parent_task_id === taskId);
 
-    const nextTask = tasks[taskIndex + 1];
+  const isTaskHiddenByCollapsedParent = (task) => {
+    let parentId = task.parent_task_id;
+    const visited = new Set();
 
-    if (!nextTask) return false;
-
-    return getIndentLevel(nextTask.name) > currentLevel;
-  };
-
-  const isTaskHiddenByCollapsedParent = (taskIndex) => {
-    const currentLevel = getIndentLevel(tasks[taskIndex].name);
-
-    for (let i = taskIndex - 1; i >= 0; i--) {
-      const possibleParent = tasks[i];
-      const parentLevel = getIndentLevel(possibleParent.name);
-
-      if (parentLevel < currentLevel && possibleParent.is_collapsed) {
-        return true;
-      }
+    while (parentId && !visited.has(parentId)) {
+      visited.add(parentId);
+      const parent = taskMap.get(parentId);
+      if (!parent) break;
+      if (parent.is_collapsed) return true;
+      parentId = parent.parent_task_id;
     }
 
     return false;
+  };
+
+  const handleIndentTask = async (task) => {
+    const taskIndex = tasks.findIndex((candidate) => candidate.id === task.id);
+    if (taskIndex <= 0) return;
+
+    const parent = tasks[taskIndex - 1];
+
+    try {
+      const data = await updateTask(selectedProjectId, task.id, {
+        parent_task_id: parent.id,
+      });
+      setTasks(data.tasks);
+    } catch (error) {
+      reportRequestError("Unable to indent task", error);
+    }
+  };
+
+  const handleOutdentTask = async (task) => {
+    if (!task.parent_task_id) return;
+
+    const parent = taskMap.get(task.parent_task_id);
+
+    try {
+      const data = await updateTask(selectedProjectId, task.id, {
+        parent_task_id: parent?.parent_task_id || null,
+      });
+      setTasks(data.tasks);
+    } catch (error) {
+      reportRequestError("Unable to outdent task", error);
+    }
   };
 
   if (!isAuthenticated) {
@@ -884,11 +921,14 @@ function App() {
       onCellClick={handleCellClick}
       onCellSave={handleCellSave}
       onDelete={handleDelete}
+      onIndent={handleIndentTask}
+      onOutdent={handleOutdentTask}
       onToggleCollapse={handleToggleCollapse}
       getEmptyRow={getEmptyRow}
       formatDate={formatDate}
       taskHasChildren={taskHasChildren}
       isTaskHiddenByCollapsedParent={isTaskHiddenByCollapsedParent}
+      getTaskDepth={getTaskDepth}
     />
   );
 }
