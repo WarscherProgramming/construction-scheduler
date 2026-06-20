@@ -30,6 +30,7 @@ function renderRow(overrides = {}) {
     setEditValue: vi.fn(),
     handleCellClick: vi.fn(),
     handleCellSave: vi.fn(),
+    handleCellCancel: vi.fn(),
     handleDelete: vi.fn(),
     handleIndent: vi.fn(),
     handleOutdent: vi.fn(),
@@ -59,6 +60,23 @@ function renderRow(overrides = {}) {
 
 
 describe("SortableTaskRow", () => {
+  it("exposes editable cells and the drag handle to keyboard users", async () => {
+    const user = userEvent.setup();
+    const props = renderRow();
+
+    expect(
+      screen.getByRole("button", {
+        name: "Reorder task 42: Footings",
+      })
+    ).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", { name: "Edit task 42 name" })
+    );
+
+    expect(props.handleCellClick).toHaveBeenCalledWith(task, "name");
+  });
+
   it("dispatches hierarchy and deletion actions", async () => {
     const user = userEvent.setup();
     const props = renderRow();
@@ -93,5 +111,39 @@ describe("SortableTaskRow", () => {
 
     expect(setEditValue).toHaveBeenCalled();
     expect(handleCellSave).toHaveBeenCalledWith(task);
+  });
+
+  it("saves an edited cell with Enter", async () => {
+    const user = userEvent.setup();
+    const handleCellSave = vi.fn();
+
+    renderRow({
+      editingCell: { id: 42, field: "duration" },
+      editValue: "4",
+      handleCellSave,
+    });
+
+    await user.type(screen.getByLabelText("Task 42 duration"), "{enter}");
+
+    expect(handleCellSave).toHaveBeenCalledOnce();
+    expect(handleCellSave).toHaveBeenCalledWith(task);
+  });
+
+  it("cancels an edited cell with Escape without saving", async () => {
+    const user = userEvent.setup();
+    const handleCellSave = vi.fn();
+    const handleCellCancel = vi.fn();
+
+    renderRow({
+      editingCell: { id: 42, field: "name" },
+      editValue: "Footings",
+      handleCellSave,
+      handleCellCancel,
+    });
+
+    await user.type(screen.getByLabelText("Task 42 name"), "{escape}");
+
+    expect(handleCellCancel).toHaveBeenCalledOnce();
+    expect(handleCellSave).not.toHaveBeenCalled();
   });
 });

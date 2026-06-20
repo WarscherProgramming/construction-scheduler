@@ -109,6 +109,49 @@ textarea.field-control {
   resize: vertical;
 }
 
+.schedule-cell-button {
+  width: 100%;
+  min-height: 36px;
+  padding: 4px;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  cursor: pointer;
+  text-align: inherit;
+}
+
+.schedule-cell-button:hover {
+  background: #eff6ff;
+}
+
+.schedule-cell-input {
+  width: 100%;
+  min-height: 36px;
+  padding: 6px 8px;
+  border: 1px solid #2563eb;
+  border-radius: 4px;
+  background: #fff;
+  color: #111827;
+}
+
+.schedule-icon-button {
+  display: inline-grid;
+  place-items: center;
+  min-width: 36px;
+  min-height: 36px;
+  padding: 4px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: inherit;
+  background: transparent;
+  cursor: pointer;
+}
+
+.schedule-icon-button:hover {
+  border-color: #93c5fd;
+  background: #eff6ff;
+}
+
 .field-hint {
   color: #4b5563;
   font-size: 0.8rem;

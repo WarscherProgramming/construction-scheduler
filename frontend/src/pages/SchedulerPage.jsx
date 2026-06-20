@@ -32,6 +32,7 @@ function SchedulerPage({
   onDragEnd,
   onCellClick,
   onCellSave,
+  onCellCancel,
   onDelete,
   onIndent,
   onOutdent,
@@ -231,6 +232,7 @@ function SchedulerPage({
                         setEditValue={setEditValue}
                         handleCellClick={onCellClick}
                         handleCellSave={onCellSave}
+                        handleCellCancel={onCellCancel}
                         handleDelete={onDelete}
                         handleIndent={onIndent}
                         handleOutdent={onOutdent}
@@ -248,47 +250,44 @@ function SchedulerPage({
                     ))}
 
                   <tr>
-                    <td></td>
-                    <td
-                      onClick={() => onCellClick(getEmptyRow(), "name")}
-                      style={{
-                        padding: "8px",
-                        border: "1px solid #ddd",
-                        whiteSpace: "pre",
-                      }}
-                    >
+                    <td style={{ border: "1px solid #ddd" }}></td>
+                    <td style={{ padding: "8px", border: "1px solid #ddd" }}>
                       {editingCell?.id === "new" &&
                       editingCell.field === "name" ? (
                         <input
                           autoFocus
+                          aria-label="New task name"
+                          className="schedule-cell-input"
                           value={editValue}
                           onChange={(event) => setEditValue(event.target.value)}
                           onBlur={() => onCellSave(getEmptyRow())}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter") {
+                              event.preventDefault();
+                              onCellSave(getEmptyRow());
+                            }
+
+                            if (event.key === "Escape") {
+                              event.preventDefault();
+                              onCellCancel();
+                            }
+                          }}
                         />
                       ) : (
-                        ""
+                        <button
+                          type="button"
+                          className="schedule-cell-button"
+                          onClick={() => onCellClick(getEmptyRow(), "name")}
+                        >
+                          + Add task
+                        </button>
                       )}
                     </td>
-                    <td
-                      onClick={() => onCellClick(getEmptyRow(), "duration")}
-                      style={{ padding: "8px", border: "1px solid #ddd" }}
-                    ></td>
-                    <td
-                      onClick={() =>
-                        onCellClick(getEmptyRow(), "manual_start_date")
-                      }
-                      style={{ padding: "8px", border: "1px solid #ddd" }}
-                    ></td>
-                    <td
-                      style={{ padding: "8px", border: "1px solid #ddd" }}
-                    ></td>
-                    <td
-                      onClick={() => onCellClick(getEmptyRow(), "predecessor")}
-                      style={{ padding: "8px", border: "1px solid #ddd" }}
-                    ></td>
-                    <td
-                      style={{ padding: "8px", border: "1px solid #ddd" }}
-                    ></td>
+                    <td style={{ border: "1px solid #ddd" }}></td>
+                    <td style={{ border: "1px solid #ddd" }}></td>
+                    <td style={{ border: "1px solid #ddd" }}></td>
+                    <td style={{ border: "1px solid #ddd" }}></td>
+                    <td style={{ border: "1px solid #ddd" }}></td>
                   </tr>
                 </tbody>
               </SortableContext>

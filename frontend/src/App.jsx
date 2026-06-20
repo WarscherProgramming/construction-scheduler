@@ -338,6 +338,15 @@ function App() {
       value = editValue === "" ? null : editValue;
     }
 
+    if (
+      task.id === null &&
+      editingCell.field === "name" &&
+      !String(value).trim()
+    ) {
+      reportValidationError("Enter a task name before adding the task.");
+      return;
+    }
+
     try {
       const data =
         task.id === null
@@ -359,6 +368,11 @@ function App() {
     } catch (error) {
       reportRequestError("Unable to save task", error);
     }
+  };
+
+  const handleCellCancel = () => {
+    setEditingCell(null);
+    setEditValue("");
   };
 
 
@@ -1013,6 +1027,7 @@ function App() {
       onDragEnd={handleDragEnd}
       onCellClick={handleCellClick}
       onCellSave={handleCellSave}
+      onCellCancel={handleCellCancel}
       onDelete={handleDelete}
       onIndent={handleIndentTask}
       onOutdent={handleOutdentTask}
