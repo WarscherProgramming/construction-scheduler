@@ -1,59 +1,28 @@
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from app.db.database import SessionLocal
+from app.api.dependencies import get_db, get_owned_project
 from app.models.note_delay import NoteDelay
 from app.models.project import Project
-from app.core.security import get_current_user
+from app.schemas.note_delay import (
+    NoteDelayCreate,
+    NoteDelayListResponse,
+    NoteDelayResponse,
+)
 
 router = APIRouter()
 
 
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-
-def verify_project_owner(project_id: int, user_id: int, db: Session):
-    project = (
-        db.query(Project)
-        .filter(Project.id == project_id, Project.user_id == user_id)
-        .first()
-    )
-
-    if not project:
-        raise HTTPException(
-            status_code=403,
-            detail="You do not have access to this project"
-        )
-
-    return project
-
-
-def note_delay_to_dict(entry):
-    return {
-        "id": entry.id,
-        "project_id": entry.project_id,
-        "date": entry.date,
-        "entry_type": entry.entry_type,
-        "company": entry.company,
-        "description": entry.description,
-        "impact": entry.impact,
-    }
-
-
-@router.get("/projects/{project_id}/notes-delays")
+@router.get(
+    "/projects/{project_id}/notes-delays",
+    response_model=NoteDelayListResponse,
+)
 def get_notes_delays(
     project_id: int,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
+    project: Project = Depends(get_owned_project),
 ):
-    verify_project_owner(project_id, current_user["id"], db)
-
     entries = (
         db.query(NoteDelay)
         .filter(NoteDelay.project_id == project_id)
@@ -61,34 +30,27 @@ def get_notes_delays(
         .all()
     )
 
-    return {
-        "notes_delays": [
-            note_delay_to_dict(entry)
-            for entry in entries
-        ]
-    }
+    return {"notes_delays": entries}
 
 
-@router.post("/projects/{project_id}/notes-delays")
+@router.post(
+    "/projects/{project_id}/notes-delays",
+    response_model=NoteDelayResponse,
+    status_code=201,
+)
 def create_note_delay(
     project_id: int,
-    entry: dict,
+    entry: NoteDelayCreate,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
+    project: Project = Depends(get_owned_project),
 ):
-    verify_project_owner(project_id, current_user["id"], db)
-
     new_entry = NoteDelay(
         project_id=project_id,
-        date=entry["date"],
-        entry_type=entry["entry_type"],
-        company=entry.get("company"),
-        description=entry["description"],
-        impact=entry.get("impact"),
+        **entry.model_dump(),
     )
 
     db.add(new_entry)
     db.commit()
     db.refresh(new_entry)
 
-    return note_delay_to_dict(new_entry)
+    return new_entry

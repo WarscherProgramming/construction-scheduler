@@ -7,42 +7,19 @@ from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, 
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet
 import tempfile
-from app.db.database import SessionLocal
+from app.api.dependencies import get_db, get_owned_project
 from app.models.task import Task
 from app.models.project import Project
-from fastapi import HTTPException
-from app.core.security import get_current_user
 
 router = APIRouter()
 
 
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-def verify_project_owner(project_id: int, user_id: int, db: Session):
-    project = (
-        db.query(Project)
-        .filter(Project.id == project_id, Project.user_id == user_id)
-        .first()
-    )
-
-    if not project:
-        raise HTTPException(
-            status_code=403,
-            detail="You do not have access to this project"
-        )
-
-    return project
-
-
 @router.get("/projects/{project_id}/export/pdf")
-def export_project_pdf(project_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
-    project = verify_project_owner(project_id, current_user["id"], db)
-
+def export_project_pdf(
+    project_id: int,
+    db: Session = Depends(get_db),
+    project: Project = Depends(get_owned_project),
+):
     tasks = (
         db.query(Task)
         .filter(Task.project_id == project_id)

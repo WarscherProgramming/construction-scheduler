@@ -1,38 +1,22 @@
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from app.db.database import SessionLocal
+from app.api.dependencies import get_db, get_owned_project
 from app.models.task import Task
 from app.models.template import ScheduleTemplate, ScheduleTemplateTask
 from app.core.security import get_current_user
 from app.models.project import Project
+from app.schemas.common import MessageResponse
+from app.schemas.template import (
+    TemplateCreate,
+    TemplateListResponse,
+    TemplateResponse,
+)
 
 router = APIRouter()
 
 
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-def verify_project_owner(project_id: int, user_id: int, db: Session):
-    project = (
-        db.query(Project)
-        .filter(Project.id == project_id, Project.user_id == user_id)
-        .first()
-    )
-
-    if not project:
-        raise HTTPException(
-            status_code=403,
-            detail="You do not have access to this project"
-        )
-
-    return project
-
-@router.get("/templates")
+@router.get("/templates", response_model=TemplateListResponse)
 def get_templates(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user),
@@ -47,14 +31,17 @@ def get_templates(
     }
 
 
-@router.post("/projects/{project_id}/templates")
+@router.post(
+    "/projects/{project_id}/templates",
+    response_model=TemplateResponse,
+    status_code=201,
+)
 def save_project_as_template(
     project_id: int,
-    template: dict,
+    template: TemplateCreate,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
+    project: Project = Depends(get_owned_project),
 ):
-    verify_project_owner(project_id, current_user["id"], db)
     tasks = (
         db.query(Task)
         .filter(Task.project_id == project_id)
@@ -62,7 +49,7 @@ def save_project_as_template(
         .all()
     )
 
-    new_template = ScheduleTemplate(name=template["name"])
+    new_template = ScheduleTemplate(name=template.name)
 
     db.add(new_template)
     db.commit()
@@ -87,14 +74,16 @@ def save_project_as_template(
     }
 
 
-@router.post("/projects/{project_id}/templates/{template_id}/apply")
+@router.post(
+    "/projects/{project_id}/templates/{template_id}/apply",
+    response_model=MessageResponse,
+)
 def apply_template_to_project(
     project_id: int,
     template_id: int,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    project: Project = Depends(get_owned_project),
 ):
-    verify_project_owner(project_id, current_user["id"], db)
     template_tasks = (
         db.query(ScheduleTemplateTask)
         .filter(ScheduleTemplateTask.template_id == template_id)

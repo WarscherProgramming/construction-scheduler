@@ -1,22 +1,15 @@
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from app.db.database import SessionLocal
+from app.api.dependencies import get_db
 from app.models.project import Project
 from app.core.security import get_current_user
+from app.schemas.project import ProjectCreate, ProjectListResponse, ProjectResponse
 
 router = APIRouter()
 
 
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-
-@router.get("/projects")
+@router.get("/projects", response_model=ProjectListResponse)
 def get_projects(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user),
@@ -39,14 +32,14 @@ def get_projects(
     }
 
 
-@router.post("/projects")
+@router.post("/projects", response_model=ProjectResponse, status_code=201)
 def create_project(
-    project: dict,
+    project: ProjectCreate,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
     new_project = Project(
-        name=project["name"],
+        name=project.name,
         user_id=current_user["id"],
     )
 

@@ -2,55 +2,21 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 import re
-from app.db.database import SessionLocal
+from app.api.dependencies import get_db, get_owned_project
 from app.models.task import Task
-from app.core.security import get_current_user
-from fastapi import HTTPException
 from app.models.project import Project
+from app.schemas.common import MessageResponse
+from app.schemas.task import (
+    TaskCreate,
+    TaskListResponse,
+    TaskReorderRequest,
+    TaskUpdate,
+)
 
 router = APIRouter()
 
 today = datetime.today()
 PROJECT_START = datetime(today.year, today.month, today.day)
-
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-def verify_project_owner(project_id: int, user_id: int, db: Session):
-    project = (
-        db.query(Project)
-        .filter(Project.id == project_id, Project.user_id == user_id)
-        .first()
-    )
-
-    if not project:
-        raise HTTPException(
-            status_code=403,
-            detail="You do not have access to this project"
-        )
-
-    return project
-
-def task_to_dict(task):
-    return {
-        "id": task.id,
-        "name": task.name,
-        "duration": task.duration,
-        "manual_start_date": task.manual_start_date,
-        "predecessor": task.predecessor,
-        "start_date": task.start_date,
-        "end_date": task.end_date,
-        "project_id": task.project_id,
-        "order_index": task.order_index,
-        "parent_task_id": task.parent_task_id,
-        "indent_level": task.indent_level,
-        "is_collapsed": task.is_collapsed,
-    }
 
 
 def parse_predecessor(value):
@@ -176,9 +142,12 @@ def rollup_parent_tasks(task_list):
                 task.duration = len(child_end_dates)
 
 
-@router.get("/projects/{project_id}/tasks")
-def get_tasks(project_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
-    verify_project_owner(project_id, current_user["id"], db)
+@router.get("/projects/{project_id}/tasks", response_model=TaskListResponse)
+def get_tasks(
+    project_id: int,
+    db: Session = Depends(get_db),
+    project: Project = Depends(get_owned_project),
+):
     tasks = (
         db.query(Task)
         .filter(Task.project_id == project_id)
@@ -186,28 +155,23 @@ def get_tasks(project_id: int, db: Session = Depends(get_db), current_user: dict
         .all()
     )
 
-    return {"tasks": [task_to_dict(task) for task in tasks]}
+    return {"tasks": tasks}
 
 
-@router.post("/projects/{project_id}/tasks")
+@router.post(
+    "/projects/{project_id}/tasks",
+    response_model=TaskListResponse,
+    status_code=201,
+)
 def create_task(
     project_id: int,
-    task: dict,
+    task: TaskCreate,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
+    project: Project = Depends(get_owned_project),
 ):
-    verify_project_owner(project_id, current_user["id"], db)
-
     new_task = Task(
         project_id=project_id,
-        name=task["name"],
-        duration=task["duration"],
-        manual_start_date=task.get("manual_start_date"),
-        predecessor=task.get("predecessor"),
-        order_index=task.get("order_index"),
-        parent_task_id=task.get("parent_task_id"),
-        indent_level=task.get("indent_level", 0),
-        is_collapsed=task.get("is_collapsed", 0),
+        **task.model_dump(),
     )
 
     db.add(new_task)
@@ -225,18 +189,19 @@ def create_task(
 
     db.commit()
 
-    return {"tasks": [task_to_dict(task) for task in tasks]}
+    return {"tasks": tasks}
 
-@router.put("/projects/{project_id}/tasks/reorder")
+@router.put(
+    "/projects/{project_id}/tasks/reorder",
+    response_model=MessageResponse,
+)
 def reorder_tasks(
     project_id: int,
-    payload: dict,
+    payload: TaskReorderRequest,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
+    project: Project = Depends(get_owned_project),
 ):
-    verify_project_owner(project_id, current_user["id"], db)
-
-    task_ids = payload["task_ids"]
+    task_ids = payload.task_ids
 
     for index, task_id in enumerate(task_ids, start=1):
         task = (
@@ -252,15 +217,17 @@ def reorder_tasks(
 
     return {"message": "Tasks reordered"}
 
-@router.put("/projects/{project_id}/tasks/{task_id}")
+@router.put(
+    "/projects/{project_id}/tasks/{task_id}",
+    response_model=TaskListResponse,
+)
 def update_task(
     project_id: int,
     task_id: int,
-    updated_task: dict,
+    updated_task: TaskUpdate,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
+    project: Project = Depends(get_owned_project),
 ):
-    verify_project_owner(project_id, current_user["id"], db)
     task = (
         db.query(Task)
         .filter(Task.id == task_id, Task.project_id == project_id)
@@ -268,17 +235,8 @@ def update_task(
     )
 
     if task:
-        task.name = updated_task.get("name", task.name)
-        task.duration = updated_task.get("duration", task.duration)
-        task.manual_start_date = updated_task.get(
-            "manual_start_date", task.manual_start_date
-        )
-        task.predecessor = updated_task.get("predecessor", task.predecessor)
-
-        task.order_index = updated_task.get("order_index", task.order_index)
-        task.parent_task_id = updated_task.get("parent_task_id", task.parent_task_id)
-        task.indent_level = updated_task.get("indent_level", task.indent_level)
-        task.is_collapsed = updated_task.get("is_collapsed", task.is_collapsed)
+        for field, value in updated_task.model_dump(exclude_unset=True).items():
+            setattr(task, field, value)
 
     tasks = (
         db.query(Task)
@@ -292,12 +250,19 @@ def update_task(
 
     db.commit()
 
-    return {"tasks": [task_to_dict(task) for task in tasks]}
+    return {"tasks": tasks}
 
 
-@router.delete("/projects/{project_id}/tasks/{task_id}")
-def delete_task(project_id: int, task_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
-    verify_project_owner(project_id, current_user["id"], db)
+@router.delete(
+    "/projects/{project_id}/tasks/{task_id}",
+    response_model=TaskListResponse,
+)
+def delete_task(
+    project_id: int,
+    task_id: int,
+    db: Session = Depends(get_db),
+    project: Project = Depends(get_owned_project),
+):
     task = (
         db.query(Task)
         .filter(Task.id == task_id, Task.project_id == project_id)
@@ -320,5 +285,5 @@ def delete_task(project_id: int, task_id: int, db: Session = Depends(get_db), cu
 
     db.commit()
 
-    return {"tasks": [task_to_dict(task) for task in tasks]}
+    return {"tasks": tasks}
 

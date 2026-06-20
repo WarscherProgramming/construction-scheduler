@@ -1,56 +1,28 @@
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from app.db.database import SessionLocal
+from app.api.dependencies import get_db, get_owned_project
 from app.models.project import Project
 from app.models.project_company import ProjectCompany
-from app.core.security import get_current_user
+from app.schemas.project_company import (
+    ProjectCompanyCreate,
+    ProjectCompanyListResponse,
+    ProjectCompanyResponse,
+)
 
 router = APIRouter()
 
 
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-
-def verify_project_owner(project_id: int, user_id: int, db: Session):
-    project = (
-        db.query(Project)
-        .filter(Project.id == project_id, Project.user_id == user_id)
-        .first()
-    )
-
-    if not project:
-        raise HTTPException(
-            status_code=403,
-            detail="You do not have access to this project"
-        )
-
-    return project
-
-
-def project_company_to_dict(company):
-    return {
-        "id": company.id,
-        "project_id": company.project_id,
-        "name": company.name,
-        "trade": company.trade,
-    }
-
-
-@router.get("/projects/{project_id}/companies")
+@router.get(
+    "/projects/{project_id}/companies",
+    response_model=ProjectCompanyListResponse,
+)
 def get_project_companies(
     project_id: int,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
+    project: Project = Depends(get_owned_project),
 ):
-    verify_project_owner(project_id, current_user["id"], db)
-
     companies = (
         db.query(ProjectCompany)
         .filter(ProjectCompany.project_id == project_id)
@@ -58,31 +30,27 @@ def get_project_companies(
         .all()
     )
 
-    return {
-        "companies": [
-            project_company_to_dict(company)
-            for company in companies
-        ]
-    }
+    return {"companies": companies}
 
 
-@router.post("/projects/{project_id}/companies")
+@router.post(
+    "/projects/{project_id}/companies",
+    response_model=ProjectCompanyResponse,
+    status_code=201,
+)
 def create_project_company(
     project_id: int,
-    company: dict,
+    company: ProjectCompanyCreate,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
+    project: Project = Depends(get_owned_project),
 ):
-    verify_project_owner(project_id, current_user["id"], db)
-
     new_company = ProjectCompany(
         project_id=project_id,
-        name=company["name"],
-        trade=company.get("trade"),
+        **company.model_dump(),
     )
 
     db.add(new_company)
     db.commit()
     db.refresh(new_company)
 
-    return project_company_to_dict(new_company)
+    return new_company

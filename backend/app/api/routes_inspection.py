@@ -1,60 +1,28 @@
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from app.db.database import SessionLocal
+from app.api.dependencies import get_db, get_owned_project
 from app.models.inspection import Inspection
 from app.models.project import Project
-from app.core.security import get_current_user
+from app.schemas.inspection import (
+    InspectionCreate,
+    InspectionListResponse,
+    InspectionResponse,
+)
 
 router = APIRouter()
 
 
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-
-def verify_project_owner(project_id: int, user_id: int, db: Session):
-    project = (
-        db.query(Project)
-        .filter(Project.id == project_id, Project.user_id == user_id)
-        .first()
-    )
-
-    if not project:
-        raise HTTPException(
-            status_code=403,
-            detail="You do not have access to this project"
-        )
-
-    return project
-
-
-def inspection_to_dict(inspection):
-    return {
-        "id": inspection.id,
-        "project_id": inspection.project_id,
-        "date": inspection.date,
-        "inspection_type": inspection.inspection_type,
-        "inspector": inspection.inspector,
-        "status": inspection.status,
-        "notes": inspection.notes,
-        "corrective_action": inspection.corrective_action,
-    }
-
-
-@router.get("/projects/{project_id}/inspections")
+@router.get(
+    "/projects/{project_id}/inspections",
+    response_model=InspectionListResponse,
+)
 def get_inspections(
     project_id: int,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
+    project: Project = Depends(get_owned_project),
 ):
-    verify_project_owner(project_id, current_user["id"], db)
-
     inspections = (
         db.query(Inspection)
         .filter(Inspection.project_id == project_id)
@@ -62,35 +30,27 @@ def get_inspections(
         .all()
     )
 
-    return {
-        "inspections": [
-            inspection_to_dict(inspection)
-            for inspection in inspections
-        ]
-    }
+    return {"inspections": inspections}
 
 
-@router.post("/projects/{project_id}/inspections")
+@router.post(
+    "/projects/{project_id}/inspections",
+    response_model=InspectionResponse,
+    status_code=201,
+)
 def create_inspection(
     project_id: int,
-    inspection: dict,
+    inspection: InspectionCreate,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
+    project: Project = Depends(get_owned_project),
 ):
-    verify_project_owner(project_id, current_user["id"], db)
-
     new_inspection = Inspection(
         project_id=project_id,
-        date=inspection["date"],
-        inspection_type=inspection["inspection_type"],
-        inspector=inspection.get("inspector"),
-        status=inspection["status"],
-        notes=inspection.get("notes"),
-        corrective_action=inspection.get("corrective_action"),
+        **inspection.model_dump(),
     )
 
     db.add(new_inspection)
     db.commit()
     db.refresh(new_inspection)
 
-    return inspection_to_dict(new_inspection)
+    return new_inspection
