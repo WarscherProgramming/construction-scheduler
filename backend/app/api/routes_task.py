@@ -1,8 +1,9 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from datetime import datetime, timedelta
-import re
+from datetime import date
+
 from app.api.dependencies import get_db, get_owned_project
+from app.domain.scheduling import ScheduleTask, calculate_schedule
 from app.models.task import Task
 from app.models.project import Project
 from app.schemas.common import MessageResponse
@@ -15,131 +16,26 @@ from app.schemas.task import (
 
 router = APIRouter()
 
-today = datetime.today()
-PROJECT_START = datetime(today.year, today.month, today.day)
 
+def recalculate_schedule(tasks: list[Task]) -> None:
+    schedule = calculate_schedule(
+        [
+            ScheduleTask(
+                id=task.id,
+                name=task.name or "",
+                duration=task.duration,
+                predecessor=task.predecessor,
+                manual_start_date=task.manual_start_date,
+            )
+            for task in tasks
+        ],
+        project_start=date.today(),
+    )
 
-def parse_predecessor(value):
-    if not value:
-        return None, "FS", 0
-
-    value = str(value).replace(" ", "").upper()
-
-    match = re.match(r"^(\d+)(SS)?(?:\+(\d+)D?)?$", value)
-
-    if not match:
-        return None, "FS", 0
-
-    pred_index = int(match.group(1))
-    relation = "SS" if match.group(2) else "FS"
-    lag = int(match.group(3)) if match.group(3) else 0
-
-    return pred_index, relation, lag
-
-def is_workday(date):
-    return date.weekday() < 5
-
-def next_workday(date):
-    while not is_workday(date):
-        date += timedelta(days=1)
-    return date
-
-
-def add_workdays(start_date, duration):
-    current_date = next_workday(start_date)
-    days_added = 1
-
-    while days_added < duration:
-        current_date += timedelta(days=1)
-
-        if is_workday(current_date):
-            days_added += 1
-
-    return current_date
-
-def get_indent_level(task):
-    name = task.name or ""
-    leading_spaces = len(name) - len(name.lstrip(" "))
-    return leading_spaces // 4
-
-def calculate_schedule(task_list):
-    index_map = {
-        index + 1: task
-        for index, task in enumerate(task_list)
-    }
-
-    for task in task_list:
-        task.start_date = None
-        task.end_date = None
-
-    for _ in range(len(task_list)):
-        for task in task_list:
-            pred_index, relation, lag = parse_predecessor(task.predecessor)
-
-            if not pred_index:
-                if task.manual_start_date:
-                    start_date = datetime.strptime(
-                        task.manual_start_date, "%Y-%m-%d"
-                    )
-                else:
-                    start_date = PROJECT_START
-            else:
-                predecessor = index_map.get(pred_index)
-
-                if not predecessor or not predecessor.end_date:
-                    continue
-
-                if relation == "SS":
-                    start_date = datetime.strptime(
-                        predecessor.start_date, "%Y-%m-%d"
-                    ) + timedelta(days=lag)
-                else:
-                    start_date = datetime.strptime(
-                        predecessor.end_date, "%Y-%m-%d"
-                    ) + timedelta(days=1 + lag)
-
-                    start_date = next_workday(start_date)
-
-            start_date = next_workday(start_date)
-            end_date = add_workdays(start_date, task.duration)
-
-            task.start_date = start_date.strftime("%Y-%m-%d")
-            task.end_date = end_date.strftime("%Y-%m-%d")
-
-    return task_list
-
-def rollup_parent_tasks(task_list):
-    for index, task in enumerate(task_list):
-        current_level = get_indent_level(task)
-
-        child_tasks = []
-
-        for next_task in task_list[index + 1:]:
-            next_level = get_indent_level(next_task)
-
-            if next_level <= current_level:
-                break
-
-            if next_level == current_level + 1:
-                child_tasks.append(next_task)
-
-        if child_tasks:
-            child_start_dates = [
-                datetime.strptime(child.start_date, "%Y-%m-%d")
-                for child in child_tasks
-                if child.start_date
-            ]
-
-            child_end_dates = [
-                datetime.strptime(child.end_date, "%Y-%m-%d")
-                for child in child_tasks
-                if child.end_date
-            ]
-
-            if child_start_dates and child_end_dates:
-                task.start_date = min(child_start_dates).strftime("%Y-%m-%d")
-                task.end_date = max(child_end_dates).strftime("%Y-%m-%d")
-                task.duration = len(child_end_dates)
+    for task, scheduled_task in zip(tasks, schedule, strict=True):
+        task.start_date = scheduled_task.start_date
+        task.end_date = scheduled_task.end_date
+        task.duration = scheduled_task.duration
 
 
 @router.get("/projects/{project_id}/tasks", response_model=TaskListResponse)
@@ -184,8 +80,7 @@ def create_task(
         .all()
     )
 
-    calculate_schedule(tasks)
-    rollup_parent_tasks(tasks)
+    recalculate_schedule(tasks)
 
     db.commit()
 
@@ -245,8 +140,7 @@ def update_task(
         .all()
     )
 
-    calculate_schedule(tasks)
-    rollup_parent_tasks(tasks)
+    recalculate_schedule(tasks)
 
     db.commit()
 
@@ -280,8 +174,7 @@ def delete_task(
         .all()
     )
 
-    calculate_schedule(tasks)
-    rollup_parent_tasks(tasks)
+    recalculate_schedule(tasks)
 
     db.commit()
 
