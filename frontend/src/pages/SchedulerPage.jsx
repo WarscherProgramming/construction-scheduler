@@ -28,6 +28,9 @@ function SchedulerPage({
   onSaveTemplate,
   onApplyTemplate,
   onExport,
+  isSavingTemplate = false,
+  isApplyingTemplate = false,
+  isExporting = false,
   onLogout,
   onDragEnd,
   onCellClick,
@@ -101,8 +104,14 @@ function SchedulerPage({
                 onChange={(event) => setTemplateName(event.target.value)}
               />
             </FormField>
-            <button type="submit" className="button-primary" style={buttonStyle}>
-              Save Template
+            <button
+              type="submit"
+              className="button-primary"
+              disabled={isSavingTemplate}
+              aria-busy={isSavingTemplate}
+              style={buttonStyle}
+            >
+              {isSavingTemplate ? "Saving template…" : "Save Template"}
             </button>
           </form>
 
@@ -130,18 +139,25 @@ function SchedulerPage({
                 ))}
               </select>
             </FormField>
-            <button type="submit" className="button-primary" style={buttonStyle}>
-              Apply Template
+            <button
+              type="submit"
+              className="button-primary"
+              disabled={isApplyingTemplate}
+              aria-busy={isApplyingTemplate}
+              style={buttonStyle}
+            >
+              {isApplyingTemplate ? "Applying template…" : "Apply Template"}
             </button>
           </form>
         </div>
 
         <button
           onClick={onExport}
-          disabled={!selectedProjectId}
+          disabled={!selectedProjectId || isExporting}
+          aria-busy={isExporting}
           style={buttonStyle}
         >
-          Export Schedule as PDF
+          {isExporting ? "Exporting PDF…" : "Export Schedule as PDF"}
         </button>
 
         <div className="sidebar-footer">

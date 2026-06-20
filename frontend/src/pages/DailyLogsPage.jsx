@@ -22,6 +22,8 @@ function DailyLogsPage({
   onCompanyChange,
   onManpowerChange,
   onNotesChange,
+  isCreating = false,
+  isRefreshing = false,
 }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [companyFilter, setCompanyFilter] = useState("");
@@ -107,16 +109,24 @@ function DailyLogsPage({
           />
         </FormField>
 
-        <button type="submit" className="button-primary" style={buttonStyle}>
-          Save Daily Log
+        <button
+          type="submit"
+          className="button-primary"
+          disabled={isCreating}
+          aria-busy={isCreating}
+          style={buttonStyle}
+        >
+          {isCreating ? "Saving daily log…" : "Save Daily Log"}
         </button>
       </form>
 
       <button
         onClick={onRefresh}
+        disabled={isRefreshing}
+        aria-busy={isRefreshing}
         style={{ ...buttonStyle, marginTop: "15px" }}
       >
-        Refresh Logs
+        {isRefreshing ? "Refreshing logs…" : "Refresh Logs"}
       </button>
 
       <RecordFilters resultCount={filteredLogs.length}>

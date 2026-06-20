@@ -86,6 +86,8 @@ function App() {
   const [companyTrade, setCompanyTrade] = useState("");
   const [scheduleView, setScheduleView] = useState("table");
   const [notice, setNotice] = useState(null);
+  const [activeOperations, setActiveOperations] = useState([]);
+  const activeOperationsRef = useRef(new Set());
   const selectedProjectIdRef = useRef(selectedProjectId);
 
   useEffect(() => {
@@ -124,6 +126,25 @@ function App() {
       message,
     });
   }, []);
+
+  const runOperation = useCallback(async (key, operation) => {
+    if (activeOperationsRef.current.has(key)) return undefined;
+
+    activeOperationsRef.current.add(key);
+    setActiveOperations(Array.from(activeOperationsRef.current));
+
+    try {
+      return await operation();
+    } finally {
+      activeOperationsRef.current.delete(key);
+      setActiveOperations(Array.from(activeOperationsRef.current));
+    }
+  }, []);
+
+  const isOperationActive = useCallback(
+    (key) => activeOperations.includes(key),
+    [activeOperations]
+  );
 
   const reportRequestError = useCallback((context, error) => {
     const message =
@@ -417,18 +438,20 @@ function App() {
       return;
     }
 
-    try {
-      const project = await createProject({
-        name: newProjectName,
-      });
+    return runOperation("createProject", async () => {
+      try {
+        const project = await createProject({
+          name: newProjectName,
+        });
 
-      setProjects((currentProjects) => [...currentProjects, project]);
-      setNewProjectName("");
-      selectProject(project.id);
-      showNotice("success", `${project.name} was added.`);
-    } catch (error) {
-      reportRequestError("Unable to create project", error);
-    }
+        setProjects((currentProjects) => [...currentProjects, project]);
+        setNewProjectName("");
+        selectProject(project.id);
+        showNotice("success", `${project.name} was added.`);
+      } catch (error) {
+        reportRequestError("Unable to create project", error);
+      }
+    });
   };
 
   const handleSaveTemplate = async () => {
@@ -442,17 +465,19 @@ function App() {
       return;
     }
 
-    try {
-      const template = await saveTemplate(selectedProjectId, {
-        name: templateName,
-      });
+    return runOperation("saveTemplate", async () => {
+      try {
+        const template = await saveTemplate(selectedProjectId, {
+          name: templateName,
+        });
 
-      setTemplates((currentTemplates) => [...currentTemplates, template]);
-      setTemplateName("");
-      showNotice("success", "Schedule template saved.");
-    } catch (error) {
-      reportRequestError("Unable to save template", error);
-    }
+        setTemplates((currentTemplates) => [...currentTemplates, template]);
+        setTemplateName("");
+        showNotice("success", "Schedule template saved.");
+      } catch (error) {
+        reportRequestError("Unable to save template", error);
+      }
+    });
   };
 
   const handleApplyTemplate = async () => {
@@ -461,38 +486,44 @@ function App() {
       return;
     }
 
-    try {
-      await applyTemplate(selectedProjectId, selectedTemplateId);
-      await loadTasks();
-      showNotice("success", "Schedule template applied.");
-    } catch (error) {
-      reportRequestError("Unable to apply template", error);
-    }
+    return runOperation("applyTemplate", async () => {
+      try {
+        await applyTemplate(selectedProjectId, selectedTemplateId);
+        await loadTasks();
+        showNotice("success", "Schedule template applied.");
+      } catch (error) {
+        reportRequestError("Unable to apply template", error);
+      }
+    });
   };
 
   //authentaction
   const handleRegister = async () => {
-    try {
-      await register({
-        email,
-        password,
-      });
-      setAuthMode("login");
-      setPassword("");
-      showNotice("success", "Account created. Log in to continue.");
-    } catch (error) {
-      reportRequestError("Unable to register", error);
-    }
+    return runOperation("auth", async () => {
+      try {
+        await register({
+          email,
+          password,
+        });
+        setAuthMode("login");
+        setPassword("");
+        showNotice("success", "Account created. Log in to continue.");
+      } catch (error) {
+        reportRequestError("Unable to register", error);
+      }
+    });
   };
 
   const handleLogin = async () => {
-    try {
-      await login(email, password);
-      setEmail("");
-      setPassword("");
-    } catch (error) {
-      reportRequestError("Unable to log in", error);
-    }
+    return runOperation("auth", async () => {
+      try {
+        await login(email, password);
+        setEmail("");
+        setPassword("");
+      } catch (error) {
+        reportRequestError("Unable to log in", error);
+      }
+    });
   };
 
   const handleExportProjectPdf = async () => {
@@ -501,12 +532,14 @@ function App() {
       return;
     }
 
-    try {
-      await exportProjectPdf(selectedProjectId);
-      showNotice("success", "Schedule PDF downloaded.");
-    } catch (error) {
-      reportRequestError("Unable to export project PDF", error);
-    }
+    return runOperation("exportPdf", async () => {
+      try {
+        await exportProjectPdf(selectedProjectId);
+        showNotice("success", "Schedule PDF downloaded.");
+      } catch (error) {
+        reportRequestError("Unable to export project PDF", error);
+      }
+    });
   };
 
   const handleCreateDailyLog = async () => {
@@ -517,23 +550,25 @@ function App() {
       return;
     }
 
-    try {
-      await createDailyLog(selectedProjectId, {
-        date: logDate,
-        company: logCompany,
-        manpower: Number(logManpower),
-        notes: logNotes,
-      });
+    return runOperation("createDailyLog", async () => {
+      try {
+        await createDailyLog(selectedProjectId, {
+          date: logDate,
+          company: logCompany,
+          manpower: Number(logManpower),
+          notes: logNotes,
+        });
 
-      setLogDate(toLocalDateInputValue());
-      setLogCompany("");
-      setLogManpower("");
-      setLogNotes("");
-      await loadDailyLogs();
-      showNotice("success", "Daily log saved.");
-    } catch (error) {
-      reportRequestError("Unable to create daily log", error);
-    }
+        setLogDate(toLocalDateInputValue());
+        setLogCompany("");
+        setLogManpower("");
+        setLogNotes("");
+        await loadDailyLogs();
+        showNotice("success", "Daily log saved.");
+      } catch (error) {
+        reportRequestError("Unable to create daily log", error);
+      }
+    });
   };
 
   const handleCreateInspection = async () => {
@@ -544,21 +579,23 @@ function App() {
       return;
     }
 
-    try {
-      await createInspection(selectedProjectId, {
-        date: inspectionDate,
-        inspection_type: inspectionType,
-        status: inspectionStatus,
-      });
+    return runOperation("createInspection", async () => {
+      try {
+        await createInspection(selectedProjectId, {
+          date: inspectionDate,
+          inspection_type: inspectionType,
+          status: inspectionStatus,
+        });
 
-      setInspectionDate(toLocalDateInputValue());
-      setInspectionType("");
-      setInspectionStatus("Pending");
-      await loadInspections();
-      showNotice("success", "Inspection saved.");
-    } catch (error) {
-      reportRequestError("Unable to create inspection", error);
-    }
+        setInspectionDate(toLocalDateInputValue());
+        setInspectionType("");
+        setInspectionStatus("Pending");
+        await loadInspections();
+        showNotice("success", "Inspection saved.");
+      } catch (error) {
+        reportRequestError("Unable to create inspection", error);
+      }
+    });
   };
 
   const handleCreateNoteDelay = async () => {
@@ -569,28 +606,30 @@ function App() {
       return;
     }
 
-    try {
-      await createNoteDelay(selectedProjectId, {
-        date: noteDelayDate,
-        entry_type: noteDelayType,
-        company: noteDelayCompany,
-        description: noteDelayDescription,
-        impact: noteDelayImpact,
-      });
+    return runOperation("createNoteDelay", async () => {
+      try {
+        await createNoteDelay(selectedProjectId, {
+          date: noteDelayDate,
+          entry_type: noteDelayType,
+          company: noteDelayCompany,
+          description: noteDelayDescription,
+          impact: noteDelayImpact,
+        });
 
-      setNoteDelayDate(toLocalDateInputValue());
-      setNoteDelayType("Note");
-      setNoteDelayCompany("");
-      setNoteDelayDescription("");
-      setNoteDelayImpact("");
-      await loadNotesDelays();
-      showNotice(
-        "success",
-        noteDelayType === "Delay" ? "Delay recorded." : "Note saved."
-      );
-    } catch (error) {
-      reportRequestError("Unable to create note or delay", error);
-    }
+        setNoteDelayDate(toLocalDateInputValue());
+        setNoteDelayType("Note");
+        setNoteDelayCompany("");
+        setNoteDelayDescription("");
+        setNoteDelayImpact("");
+        await loadNotesDelays();
+        showNotice(
+          "success",
+          noteDelayType === "Delay" ? "Delay recorded." : "Note saved."
+        );
+      } catch (error) {
+        reportRequestError("Unable to create note or delay", error);
+      }
+    });
   };
 
   const handleCreateChangeOrder = async () => {
@@ -601,29 +640,31 @@ function App() {
       return;
     }
 
-    try {
-      await createChangeOrder(selectedProjectId, {
-        date: changeOrderDate,
-        co_number: changeOrderNumber,
-        company: changeOrderCompany,
-        status: changeOrderStatus,
-        description: changeOrderDescription,
-        amount: changeOrderAmount,
-        responsible_party: changeOrderResponsibleParty,
-      });
+    return runOperation("createChangeOrder", async () => {
+      try {
+        await createChangeOrder(selectedProjectId, {
+          date: changeOrderDate,
+          co_number: changeOrderNumber,
+          company: changeOrderCompany,
+          status: changeOrderStatus,
+          description: changeOrderDescription,
+          amount: changeOrderAmount,
+          responsible_party: changeOrderResponsibleParty,
+        });
 
-      setChangeOrderDate(toLocalDateInputValue());
-      setChangeOrderNumber("");
-      setChangeOrderCompany("");
-      setChangeOrderStatus("Pending");
-      setChangeOrderDescription("");
-      setChangeOrderAmount("");
-      setChangeOrderResponsibleParty("");
-      await loadChangeOrders();
-      showNotice("success", "Change order saved.");
-    } catch (error) {
-      reportRequestError("Unable to create change order", error);
-    }
+        setChangeOrderDate(toLocalDateInputValue());
+        setChangeOrderNumber("");
+        setChangeOrderCompany("");
+        setChangeOrderStatus("Pending");
+        setChangeOrderDescription("");
+        setChangeOrderAmount("");
+        setChangeOrderResponsibleParty("");
+        await loadChangeOrders();
+        showNotice("success", "Change order saved.");
+      } catch (error) {
+        reportRequestError("Unable to create change order", error);
+      }
+    });
   };
 
   const handleDeleteChangeOrder = async (id) => {
@@ -676,20 +717,31 @@ function App() {
       return;
     }
 
-    try {
-      await createProjectCompany(selectedProjectId, {
-        name: companyName,
-        trade: companyTrade,
-      });
+    return runOperation("createCompany", async () => {
+      try {
+        await createProjectCompany(selectedProjectId, {
+          name: companyName,
+          trade: companyTrade,
+        });
 
-      setCompanyName("");
-      setCompanyTrade("");
-      await loadProjectCompanies();
-      showNotice("success", "Company added to the project.");
-    } catch (error) {
-      reportRequestError("Unable to add project company", error);
-    }
+        setCompanyName("");
+        setCompanyTrade("");
+        await loadProjectCompanies();
+        showNotice("success", "Company added to the project.");
+      } catch (error) {
+        reportRequestError("Unable to add project company", error);
+      }
+    });
   };
+
+  const handleRefreshDailyLogs = () =>
+    runOperation("refreshDailyLogs", loadDailyLogs);
+  const handleRefreshInspections = () =>
+    runOperation("refreshInspections", loadInspections);
+  const handleRefreshNotesDelays = () =>
+    runOperation("refreshNotesDelays", loadNotesDelays);
+  const handleRefreshChangeOrders = () =>
+    runOperation("refreshChangeOrders", loadChangeOrders);
 
   //Change order totals
   const getChangeOrderTotalsByCompany = () => {
@@ -836,6 +888,7 @@ function App() {
         onPasswordChange={setPassword}
         onLogin={handleLogin}
         onRegister={handleRegister}
+        isSubmitting={isOperationActive("auth")}
         onToggleMode={() =>
           setAuthMode(authMode === "login" ? "register" : "login")
         }
@@ -856,6 +909,7 @@ function App() {
         }}
         onNewProjectNameChange={setNewProjectName}
         onCreateProject={handleCreateProject}
+        isCreating={isOperationActive("createProject")}
         onLogout={handleLogout}
       />
     );
@@ -894,8 +948,10 @@ function App() {
         logNotes={logNotes}
         formatDate={formatDate}
         onBack={() => setCurrentPage("projectDashboard")}
-        onRefresh={loadDailyLogs}
+        onRefresh={handleRefreshDailyLogs}
         onCreate={handleCreateDailyLog}
+        isCreating={isOperationActive("createDailyLog")}
+        isRefreshing={isOperationActive("refreshDailyLogs")}
         onDateChange={setLogDate}
         onCompanyChange={setLogCompany}
         onManpowerChange={setLogManpower}
@@ -918,8 +974,10 @@ function App() {
         inspectionStatus={inspectionStatus}
         formatDate={formatDate}
         onBack={() => setCurrentPage("projectDashboard")}
-        onRefresh={loadInspections}
+        onRefresh={handleRefreshInspections}
         onCreate={handleCreateInspection}
+        isCreating={isOperationActive("createInspection")}
+        isRefreshing={isOperationActive("refreshInspections")}
         onDateChange={setInspectionDate}
         onTypeChange={setInspectionType}
         onStatusChange={setInspectionStatus}
@@ -944,8 +1002,10 @@ function App() {
         noteDelayImpact={noteDelayImpact}
         formatDate={formatDate}
         onBack={() => setCurrentPage("projectDashboard")}
-        onRefresh={loadNotesDelays}
+        onRefresh={handleRefreshNotesDelays}
         onCreate={handleCreateNoteDelay}
+        isCreating={isOperationActive("createNoteDelay")}
+        isRefreshing={isOperationActive("refreshNotesDelays")}
         onDateChange={setNoteDelayDate}
         onTypeChange={setNoteDelayType}
         onCompanyChange={setNoteDelayCompany}
@@ -974,8 +1034,10 @@ function App() {
         changeOrderResponsibleParty={changeOrderResponsibleParty}
         formatDate={formatDate}
         onBack={() => setCurrentPage("projectDashboard")}
-        onRefresh={loadChangeOrders}
+        onRefresh={handleRefreshChangeOrders}
         onCreate={handleCreateChangeOrder}
+        isCreating={isOperationActive("createChangeOrder")}
+        isRefreshing={isOperationActive("refreshChangeOrders")}
         onDelete={handleDeleteChangeOrder}
         onDateChange={setChangeOrderDate}
         onNumberChange={setChangeOrderNumber}
@@ -1001,6 +1063,7 @@ function App() {
         companyTrade={companyTrade}
         onBack={() => setCurrentPage("projectDashboard")}
         onCreate={handleCreateProjectCompany}
+        isCreating={isOperationActive("createCompany")}
         onNameChange={setCompanyName}
         onTradeChange={setCompanyTrade}
       />
@@ -1027,6 +1090,9 @@ function App() {
       onSaveTemplate={handleSaveTemplate}
       onApplyTemplate={handleApplyTemplate}
       onExport={handleExportProjectPdf}
+      isSavingTemplate={isOperationActive("saveTemplate")}
+      isApplyingTemplate={isOperationActive("applyTemplate")}
+      isExporting={isOperationActive("exportPdf")}
       onLogout={handleLogout}
       onDragEnd={handleDragEnd}
       onCellClick={handleCellClick}

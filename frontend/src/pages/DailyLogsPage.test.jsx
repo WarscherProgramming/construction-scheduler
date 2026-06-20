@@ -86,4 +86,35 @@ describe("DailyLogsPage", () => {
     expect(screen.queryByText("North pour complete")).not.toBeInTheDocument();
     expect(screen.getByText("1 record")).toBeInTheDocument();
   });
+
+  it("disables save and refresh actions while they are running", () => {
+    render(
+      <DailyLogsPage
+        projectName="North Ridge"
+        dailyLogs={[]}
+        projectCompanies={[]}
+        logDate="2026-06-20"
+        logCompany=""
+        logManpower=""
+        logNotes=""
+        formatDate={(value) => value}
+        onBack={vi.fn()}
+        onRefresh={vi.fn()}
+        onCreate={vi.fn()}
+        onDateChange={vi.fn()}
+        onCompanyChange={vi.fn()}
+        onManpowerChange={vi.fn()}
+        onNotesChange={vi.fn()}
+        isCreating
+        isRefreshing
+      />
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Saving daily log…" })
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Refreshing logs…" })
+    ).toBeDisabled();
+  });
 });

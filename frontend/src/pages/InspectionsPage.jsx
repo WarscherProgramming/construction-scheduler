@@ -20,6 +20,8 @@ function InspectionsPage({
   onDateChange,
   onTypeChange,
   onStatusChange,
+  isCreating = false,
+  isRefreshing = false,
 }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -84,16 +86,24 @@ function InspectionsPage({
           </select>
         </FormField>
 
-        <button type="submit" className="button-primary" style={buttonStyle}>
-          Save Inspection
+        <button
+          type="submit"
+          className="button-primary"
+          disabled={isCreating}
+          aria-busy={isCreating}
+          style={buttonStyle}
+        >
+          {isCreating ? "Saving inspection…" : "Save Inspection"}
         </button>
       </form>
 
       <button
         onClick={onRefresh}
+        disabled={isRefreshing}
+        aria-busy={isRefreshing}
         style={{ ...buttonStyle, marginTop: "15px" }}
       >
-        Refresh Inspections
+        {isRefreshing ? "Refreshing inspections…" : "Refresh Inspections"}
       </button>
 
       <RecordFilters resultCount={filteredInspections.length}>

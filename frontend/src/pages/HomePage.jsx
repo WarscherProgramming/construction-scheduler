@@ -10,6 +10,7 @@ function HomePage({
   onNewProjectNameChange,
   onCreateProject,
   onLogout,
+  isCreating = false,
 }) {
   return (
     <div className="home-page">
@@ -59,8 +60,14 @@ function HomePage({
               />
             </FormField>
 
-            <button type="submit" className="button-primary" style={buttonStyle}>
-              Add Project
+            <button
+              type="submit"
+              className="button-primary"
+              disabled={isCreating}
+              aria-busy={isCreating}
+              style={buttonStyle}
+            >
+              {isCreating ? "Adding project…" : "Add Project"}
             </button>
           </form>
         </div>

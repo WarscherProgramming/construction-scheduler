@@ -38,6 +38,8 @@ function ChangeOrdersPage({
   onDescriptionChange,
   onAmountChange,
   onResponsiblePartyChange,
+  isCreating = false,
+  isRefreshing = false,
 }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -151,16 +153,26 @@ function ChangeOrdersPage({
           />
         </FormField>
 
-        <button type="submit" className="button-primary" style={buttonStyle}>
-          Save Change Order
+        <button
+          type="submit"
+          className="button-primary"
+          disabled={isCreating}
+          aria-busy={isCreating}
+          style={buttonStyle}
+        >
+          {isCreating ? "Saving change order…" : "Save Change Order"}
         </button>
       </form>
 
       <button
         onClick={onRefresh}
+        disabled={isRefreshing}
+        aria-busy={isRefreshing}
         style={{ ...buttonStyle, marginTop: "15px" }}
       >
-        Refresh Change Orders
+        {isRefreshing
+          ? "Refreshing change orders…"
+          : "Refresh Change Orders"}
       </button>
 
       <RecordFilters resultCount={filteredChangeOrders.length}>

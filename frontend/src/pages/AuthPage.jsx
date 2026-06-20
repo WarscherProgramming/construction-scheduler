@@ -10,6 +10,7 @@ function AuthPage({
   onLogin,
   onRegister,
   onToggleMode,
+  isSubmitting = false,
 }) {
   const handleSubmit = (event) => {
     event.preventDefault();
@@ -58,12 +59,29 @@ function AuthPage({
           />
         </FormField>
 
-        <button type="submit" className="button-primary" style={buttonStyle}>
-          {authMode === "login" ? "Login" : "Register"}
+        <button
+          type="submit"
+          className="button-primary"
+          disabled={isSubmitting}
+          aria-busy={isSubmitting}
+          style={buttonStyle}
+        >
+          {isSubmitting
+            ? authMode === "login"
+              ? "Logging in…"
+              : "Creating account…"
+            : authMode === "login"
+              ? "Login"
+              : "Register"}
         </button>
       </form>
 
-      <button type="button" onClick={onToggleMode} style={buttonStyle}>
+      <button
+        type="button"
+        onClick={onToggleMode}
+        disabled={isSubmitting}
+        style={buttonStyle}
+      >
         {authMode === "login"
           ? "Need an account? Register"
           : "Already have an account? Login"}

@@ -12,6 +12,7 @@ function ProjectSettingsPage({
   onCreate,
   onNameChange,
   onTradeChange,
+  isCreating = false,
 }) {
   return (
     <ProjectPageLayout title={`${projectName} Settings`} onBack={onBack}>
@@ -42,8 +43,14 @@ function ProjectSettingsPage({
             onChange={(event) => onTradeChange(event.target.value)}
           />
         </FormField>
-        <button type="submit" className="button-primary" style={buttonStyle}>
-          Add Company
+        <button
+          type="submit"
+          className="button-primary"
+          disabled={isCreating}
+          aria-busy={isCreating}
+          style={buttonStyle}
+        >
+          {isCreating ? "Adding company…" : "Add Company"}
         </button>
       </form>
 

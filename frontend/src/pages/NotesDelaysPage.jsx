@@ -25,6 +25,8 @@ function NotesDelaysPage({
   onCompanyChange,
   onDescriptionChange,
   onImpactChange,
+  isCreating = false,
+  isRefreshing = false,
 }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
@@ -112,16 +114,24 @@ function NotesDelaysPage({
           />
         </FormField>
 
-        <button type="submit" className="button-primary" style={buttonStyle}>
-          Save Entry
+        <button
+          type="submit"
+          className="button-primary"
+          disabled={isCreating}
+          aria-busy={isCreating}
+          style={buttonStyle}
+        >
+          {isCreating ? "Saving entry…" : "Save Entry"}
         </button>
       </form>
 
       <button
         onClick={onRefresh}
+        disabled={isRefreshing}
+        aria-busy={isRefreshing}
         style={{ ...buttonStyle, marginTop: "15px" }}
       >
-        Refresh Entries
+        {isRefreshing ? "Refreshing entries…" : "Refresh Entries"}
       </button>
 
       <RecordFilters resultCount={filteredEntries.length}>
