@@ -121,6 +121,7 @@ function GanttChart({ tasks, selectedTaskId }) {
     <div style={{ marginTop: "20px" }}>
 
       <div
+        className="gantt-frame"
         style={{
           display: "flex",
           border: "1px solid #ddd",

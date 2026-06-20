@@ -12,13 +12,7 @@ function HomePage({
   onLogout,
 }) {
   return (
-    <div
-      style={{
-        padding: "24px",
-        fontFamily: "Arial, sans-serif",
-        textAlign: "center",
-      }}
-    >
+    <div className="home-page">
       <h1>Construction Management Software</h1>
 
       <p style={{ color: "#666" }}>
@@ -43,21 +37,13 @@ function HomePage({
         </FormField>
       </div>
 
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          gap: "20px",
-          flexWrap: "wrap",
-          marginTop: "20px",
-        }}
-      >
+      <div className="home-card-grid">
         <div
+          className="home-card"
           style={{
             border: "1px solid #ddd",
             borderRadius: "8px",
             padding: "15px",
-            width: "350px",
           }}
         >
           <h3>Add New Community</h3>
@@ -89,11 +75,11 @@ function HomePage({
         </div>
 
         <div
+          className="home-card"
           style={{
             border: "1px solid #ddd",
             borderRadius: "8px",
             padding: "15px",
-            width: "350px",
           }}
         >
           <h3>Active Communities</h3>
@@ -101,11 +87,11 @@ function HomePage({
         </div>
 
         <div
+          className="home-card"
           style={{
             border: "1px solid #ddd",
             borderRadius: "8px",
             padding: "15px",
-            width: "350px",
           }}
         >
           <h3>Schedule Templates</h3>

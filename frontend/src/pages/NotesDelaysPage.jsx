@@ -105,6 +105,7 @@ function NotesDelaysPage({
       </button>
 
       <RecordTable
+        label="Notes and delays"
         headers={["Date", "Type", "Company", "Description", "Impact"]}
       >
         {notesDelays.map((entry) => (

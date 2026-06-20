@@ -52,7 +52,7 @@ function ProjectSettingsPage({
         </button>
       </form>
 
-      <RecordTable headers={["Company", "Trade"]}>
+      <RecordTable label="Project companies" headers={["Company", "Trade"]}>
         {projectCompanies.map((company) => (
           <tr key={company.id}>
             <td style={tableCellStyle}>{company.name}</td>

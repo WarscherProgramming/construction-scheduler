@@ -11,20 +11,27 @@ const headerStyle = {
   textAlign: "left",
 };
 
-function RecordTable({ headers, children }) {
+function RecordTable({ headers, children, label = "Project records" }) {
   return (
-    <table style={tableStyle}>
-      <thead>
-        <tr>
-          {headers.map((header) => (
-            <th key={header} style={headerStyle}>
-              {header}
-            </th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>{children}</tbody>
-    </table>
+    <div
+      className="table-scroll-region"
+      role="region"
+      aria-label={label}
+      tabIndex={0}
+    >
+      <table style={tableStyle}>
+        <thead>
+          <tr>
+            {headers.map((header) => (
+              <th key={header} scope="col" style={headerStyle}>
+                {header}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>{children}</tbody>
+      </table>
+    </div>
   );
 }
 

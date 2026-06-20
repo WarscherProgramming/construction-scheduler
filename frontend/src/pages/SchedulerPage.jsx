@@ -48,27 +48,8 @@ function SchedulerPage({
   );
 
   return (
-    <div
-      style={{
-        display: "flex",
-        minHeight: "100vh",
-        fontFamily: "Arial, sans-serif",
-      }}
-    >
-      <aside
-        style={{
-          width: "200px",
-          minWidth: "200px",
-          padding: "20px",
-          borderRight: "1px solid #ddd",
-          boxSizing: "border-box",
-          display: "flex",
-          flexDirection: "column",
-          height: "100vh",
-          position: "sticky",
-          top: 0,
-        }}
-      >
+    <div className="app-shell scheduler-shell">
+      <aside className="app-sidebar scheduler-sidebar">
         <button
           onClick={() => onNavigate("projectDashboard")}
           style={buttonStyle}
@@ -76,12 +57,20 @@ function SchedulerPage({
           Project Dashboard
         </button>
 
-        <div style={{ marginTop: "15px", marginBottom: "15px" }}>
+        <div className="schedule-view-controls">
           <h3>View</h3>
-          <button onClick={() => setScheduleView("table")} style={buttonStyle}>
+          <button
+            onClick={() => setScheduleView("table")}
+            aria-pressed={scheduleView === "table"}
+            style={buttonStyle}
+          >
             Table
           </button>
-          <button onClick={() => setScheduleView("gantt")} style={buttonStyle}>
+          <button
+            onClick={() => setScheduleView("gantt")}
+            aria-pressed={scheduleView === "gantt"}
+            style={buttonStyle}
+          >
             Gantt
           </button>
         </div>
@@ -155,14 +144,14 @@ function SchedulerPage({
           Export Schedule as PDF
         </button>
 
-        <div style={{ marginTop: "auto" }}>
+        <div className="sidebar-footer">
           <button onClick={onLogout} style={buttonStyle}>
             Logout
           </button>
         </div>
       </aside>
 
-      <main>
+      <main className="app-main scheduler-main">
         <h2
           style={{
             textAlign: "center",
@@ -175,6 +164,12 @@ function SchedulerPage({
 
         {scheduleView === "table" && (
           <DndContext collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+            <div
+              className="table-scroll-region schedule-table-region"
+              role="region"
+              aria-label="Project schedule"
+              tabIndex={0}
+            >
             <table
               style={{
                 width: "100%",
@@ -292,11 +287,17 @@ function SchedulerPage({
                 </tbody>
               </SortableContext>
             </table>
+            </div>
           </DndContext>
         )}
 
         {scheduleView === "gantt" && (
-          <div style={{ marginTop: "20px" }}>
+          <div
+            className="gantt-scroll-region"
+            role="region"
+            aria-label="Project Gantt chart"
+            tabIndex={0}
+          >
             <GanttChart tasks={tasks} selectedTaskId={selectedTaskId} />
           </div>
         )}

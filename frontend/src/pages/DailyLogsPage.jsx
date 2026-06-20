@@ -102,7 +102,10 @@ function DailyLogsPage({
         Refresh Logs
       </button>
 
-      <RecordTable headers={["Date", "Company", "Manpower", "Notes"]}>
+      <RecordTable
+        label="Daily logs"
+        headers={["Date", "Company", "Manpower", "Notes"]}
+      >
         {dailyLogs.map((log) => (
           <tr key={log.id}>
             <td style={tableCellStyle}>{formatDate(log.date)}</td>

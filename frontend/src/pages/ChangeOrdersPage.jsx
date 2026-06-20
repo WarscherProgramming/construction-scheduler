@@ -139,6 +139,7 @@ function ChangeOrdersPage({
       </button>
 
       <RecordTable
+        label="Change orders"
         headers={[
           "Date",
           "CO Number",

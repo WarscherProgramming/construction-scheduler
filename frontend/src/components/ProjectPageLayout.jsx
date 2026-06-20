@@ -2,7 +2,7 @@ import { buttonStyle } from "../styles";
 
 function ProjectPageLayout({ title, onBack, children }) {
   return (
-    <div style={{ padding: "24px", fontFamily: "Arial, sans-serif" }}>
+    <div className="project-page">
       <button onClick={onBack} style={buttonStyle}>
         Back to Project Dashboard
       </button>

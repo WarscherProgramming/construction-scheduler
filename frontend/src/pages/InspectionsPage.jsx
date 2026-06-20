@@ -78,7 +78,10 @@ function InspectionsPage({
         Refresh Inspections
       </button>
 
-      <RecordTable headers={["Date", "Inspection", "Status"]}>
+      <RecordTable
+        label="Inspections"
+        headers={["Date", "Inspection", "Status"]}
+      >
         {inspections.map((inspection) => (
           <tr key={inspection.id}>
             <td style={tableCellStyle}>{formatDate(inspection.date)}</td>
