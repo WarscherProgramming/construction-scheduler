@@ -16,10 +16,22 @@ describe("ProjectDashboardPage", () => {
         tasksThisWeek={[]}
         changeOrderTotals={[]}
         projectDelays={[]}
+        metrics={{
+          totalTasks: 14,
+          scheduledTasks: 11,
+          tasksThisWeek: 3,
+          recordedDelays: 2,
+          pendingChangeOrders: 4,
+          pendingChangeOrderValue: 12500,
+        }}
         formatDate={(value) => value}
         onNavigate={onNavigate}
       />
     );
+
+    expect(screen.getByText("14")).toBeInTheDocument();
+    expect(screen.getByText("11 scheduled")).toBeInTheDocument();
+    expect(screen.getByText("$12,500")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Add Daily Log" }));
     await user.click(screen.getByRole("button", { name: "Report Delay" }));
@@ -41,6 +53,14 @@ describe("ProjectDashboardPage", () => {
         tasksThisWeek={[]}
         changeOrderTotals={[]}
         projectDelays={[]}
+        metrics={{
+          totalTasks: 0,
+          scheduledTasks: 0,
+          tasksThisWeek: 0,
+          recordedDelays: 0,
+          pendingChangeOrders: 0,
+          pendingChangeOrderValue: 0,
+        }}
         isLoadingTasks
         isLoadingChangeOrders
         isLoadingDelays
@@ -55,5 +75,8 @@ describe("ProjectDashboardPage", () => {
     expect(
       screen.queryByText("No tasks scheduled this week")
     ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("region", { name: "Project Overview" })
+    ).toHaveAttribute("aria-busy", "true");
   });
 });

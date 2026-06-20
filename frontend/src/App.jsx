@@ -33,9 +33,12 @@ import {
 import { ApiError } from "./services/httpClient";
 import { moveArrayItem } from "./utils/array";
 import {
+  getCurrentWeekRange,
+  parseLocalDateInputValue,
   sortByDateDescending,
   toLocalDateInputValue,
 } from "./utils/date";
+import { getDashboardMetrics } from "./utils/dashboard";
 import {
   parseAppHash,
   updateBrowserRoute,
@@ -849,21 +852,16 @@ function App() {
 
   //Dashboard pull task current week
   const getTasksThisWeek = () => {
-    const today = new Date();
+    const { start, end } = getCurrentWeekRange();
 
-    const startOfWeek = new Date(today);
-    startOfWeek.setDate(today.getDate() - today.getDay());
-
-    const endOfWeek = new Date(startOfWeek);
-    endOfWeek.setDate(startOfWeek.getDate() + 6);
-
-    return tasks.filter((task) => {
-      if (!task.start_date) return false;
-
-      const taskStart = new Date(task.start_date);
-
-      return taskStart >= startOfWeek && taskStart <= endOfWeek;
-    });
+    return tasks
+      .filter((task) => {
+        const taskStart = parseLocalDateInputValue(task.start_date);
+        return taskStart && taskStart >= start && taskStart <= end;
+      })
+      .sort((left, right) =>
+        String(left.start_date).localeCompare(String(right.start_date))
+      );
   };
 
   //project delay table
@@ -1087,12 +1085,22 @@ function App() {
       (project) => project.id === selectedProjectId
     );
 
+    const tasksThisWeek = getTasksThisWeek();
+    const projectDelays = getProjectDelays();
+    const dashboardMetrics = getDashboardMetrics({
+      tasks,
+      tasksThisWeek,
+      projectDelays,
+      changeOrders,
+    });
+
     return renderWithFeedback(
       <ProjectDashboardPage
         projectName={selectedProject?.name || "Project"}
-        tasksThisWeek={getTasksThisWeek()}
+        tasksThisWeek={tasksThisWeek}
         changeOrderTotals={getChangeOrderTotalsByCompany()}
-        projectDelays={getProjectDelays()}
+        projectDelays={projectDelays}
+        metrics={dashboardMetrics}
         isLoadingTasks={
           !hasLoadedProjects || isResourceLoading("tasks")
         }

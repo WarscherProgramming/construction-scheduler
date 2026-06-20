@@ -18,12 +18,28 @@ function ProjectDashboardPage({
   tasksThisWeek,
   changeOrderTotals,
   projectDelays,
+  metrics = {
+    totalTasks: 0,
+    scheduledTasks: 0,
+    tasksThisWeek: 0,
+    recordedDelays: 0,
+    pendingChangeOrders: 0,
+    pendingChangeOrderValue: 0,
+  },
   isLoadingTasks = false,
   isLoadingChangeOrders = false,
   isLoadingDelays = false,
   formatDate,
   onNavigate,
 }) {
+  const currencyFormatter = new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  });
+  const dashboardIsLoading =
+    isLoadingTasks || isLoadingChangeOrders || isLoadingDelays;
+
   return (
     <div className="app-shell">
       <SkipLink />
@@ -98,6 +114,48 @@ function ProjectDashboardPage({
               Add Change Order
             </button>
           </div>
+        </section>
+
+        <section
+          className="dashboard-metrics"
+          aria-labelledby="project-overview-title"
+          aria-busy={dashboardIsLoading}
+        >
+          <h2 id="project-overview-title" className="visually-hidden">
+            Project Overview
+          </h2>
+          <dl className="metric-grid">
+            <div className="metric-card">
+              <dt>Total tasks</dt>
+              <dd>{isLoadingTasks ? "—" : metrics.totalTasks}</dd>
+              <span>
+                {isLoadingTasks
+                  ? "Loading schedule"
+                  : `${metrics.scheduledTasks} scheduled`}
+              </span>
+            </div>
+            <div className="metric-card">
+              <dt>Starting this week</dt>
+              <dd>{isLoadingTasks ? "—" : metrics.tasksThisWeek}</dd>
+              <span>Sunday through Saturday</span>
+            </div>
+            <div className="metric-card metric-card-alert">
+              <dt>Recorded delays</dt>
+              <dd>{isLoadingDelays ? "—" : metrics.recordedDelays}</dd>
+              <span>All delay entries</span>
+            </div>
+            <div className="metric-card metric-card-warning">
+              <dt>Pending change orders</dt>
+              <dd>
+                {isLoadingChangeOrders ? "—" : metrics.pendingChangeOrders}
+              </dd>
+              <span>
+                {isLoadingChangeOrders
+                  ? "Loading exposure"
+                  : currencyFormatter.format(metrics.pendingChangeOrderValue)}
+              </span>
+            </div>
+          </dl>
         </section>
 
         <div className="dashboard-grid">
