@@ -35,7 +35,7 @@ def validate_task_reference(
 
     if exists is None:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=f"{field_name} must reference a task in this project",
         )
 
@@ -59,7 +59,7 @@ def validate_parent_assignment(
 
     if parent_task_id == task.id:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="A task cannot be its own parent",
         )
 
@@ -69,7 +69,7 @@ def validate_parent_assignment(
     while current_id is not None and current_id not in visited:
         if current_id == task.id:
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail="Parent assignment would create a hierarchy cycle",
             )
 
@@ -101,7 +101,7 @@ def validate_dependency_assignment(
 
     if predecessor_task_id == task.id:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="A task cannot depend on itself",
         )
 
@@ -111,7 +111,7 @@ def validate_dependency_assignment(
     while current_id is not None and current_id not in visited:
         if current_id == task.id:
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail="Dependency assignment would create a cycle",
             )
 
