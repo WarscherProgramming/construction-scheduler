@@ -10,6 +10,7 @@ import {
 
 import EmptyState from "../components/EmptyState";
 import LoadingState from "../components/LoadingState";
+import SkipLink from "../components/SkipLink";
 import { buttonStyle } from "../styles";
 
 function ProjectDashboardPage({
@@ -25,12 +26,13 @@ function ProjectDashboardPage({
 }) {
   return (
     <div className="app-shell">
+      <SkipLink />
       <aside className="app-sidebar dashboard-sidebar">
         <button onClick={() => onNavigate("home")} style={buttonStyle}>
           Back to Home
         </button>
 
-        <h3>Modules</h3>
+        <h2 className="sidebar-heading">Modules</h2>
 
         <nav className="sidebar-nav" aria-label="Project modules">
           <button onClick={() => onNavigate("scheduler")} style={buttonStyle}>
@@ -57,7 +59,7 @@ function ProjectDashboardPage({
         </nav>
       </aside>
 
-      <main className="app-main">
+      <main id="main-content" className="app-main" tabIndex={-1}>
         <h1>{projectName} Dashboard</h1>
 
         <section className="quick-actions" aria-labelledby="quick-actions-title">
@@ -112,6 +114,9 @@ function ProjectDashboardPage({
                 tabIndex={0}
               >
                 <table className="dashboard-table">
+                <caption className="visually-hidden">
+                  Tasks scheduled this week
+                </caption>
                 <thead>
                   <tr>
                     {["Task", "Start"].map((header) => (
@@ -168,6 +173,13 @@ function ProjectDashboardPage({
               <LoadingState message="Loading change orders…" />
             ) : changeOrderTotals.length ? (
               <div className="dashboard-chart">
+                <ul className="visually-hidden">
+                  {changeOrderTotals.map((entry) => (
+                    <li key={entry.company}>
+                      {entry.company}: ${entry.total}
+                    </li>
+                  ))}
+                </ul>
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
                     data={changeOrderTotals}
@@ -203,6 +215,7 @@ function ProjectDashboardPage({
               tabIndex={0}
             >
               <table className="dashboard-table">
+              <caption className="visually-hidden">Project delays</caption>
               <thead>
                 <tr>
                   {["Date", "Company", "Description"].map((header) => (

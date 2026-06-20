@@ -79,7 +79,7 @@ function FeedbackBanner({ notice, onDismiss }) {
           lineHeight: 1,
         }}
       >
-        ×
+        <span aria-hidden="true">Close</span>
       </button>
     </div>
   );

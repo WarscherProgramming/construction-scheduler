@@ -56,7 +56,7 @@ function DailyLogsPage({
           onCreate();
         }}
       >
-        <h3>Create Daily Log</h3>
+        <h2>Create Daily Log</h2>
 
         <FormField label="Date" htmlFor="daily-log-date" required>
           <input

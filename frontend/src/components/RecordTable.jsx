@@ -36,6 +36,7 @@ function RecordTable({
     >
       {isLoading && <LoadingState message={loadingMessage} />}
       <table className="record-table" style={tableStyle}>
+        <caption className="visually-hidden">{label}</caption>
         <thead>
           <tr>
             {headers.map((header) => (

@@ -53,7 +53,7 @@ function InspectionsPage({
           onCreate();
         }}
       >
-        <h3>Create Inspection</h3>
+        <h2>Create Inspection</h2>
 
         <FormField label="Date" htmlFor="inspection-date" required>
           <input

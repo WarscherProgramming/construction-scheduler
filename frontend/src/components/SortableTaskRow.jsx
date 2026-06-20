@@ -123,7 +123,7 @@ function SortableTaskRow({
           {...attributes}
           {...listeners}
         >
-          <span aria-hidden="true">☰</span>
+          <span aria-hidden="true">Move</span>
           <span style={{ marginLeft: "4px" }}>{task.id}</span>
         </button>
       </td>
@@ -170,7 +170,7 @@ function SortableTaskRow({
                 }}
               >
                 <span aria-hidden="true">
-                  {task.is_collapsed ? "▶" : "▼"}
+                  {task.is_collapsed ? "Expand" : "Collapse"}
                 </span>
               </button>
             )}

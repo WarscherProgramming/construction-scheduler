@@ -22,6 +22,9 @@ describe("RecordTable", () => {
     expect(
       screen.getByRole("columnheader", { name: "Date" })
     ).toHaveAttribute("scope", "col");
+    expect(screen.getByText("Daily logs", { selector: "caption" })).toHaveClass(
+      "visually-hidden"
+    );
     expect(screen.getByText("Desert Concrete")).toHaveAttribute(
       "data-label",
       "Company"

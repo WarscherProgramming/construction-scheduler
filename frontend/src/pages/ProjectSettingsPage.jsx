@@ -25,7 +25,7 @@ function ProjectSettingsPage({
           onCreate();
         }}
       >
-        <h3>Add Company</h3>
+        <h2>Add Company</h2>
 
         <FormField label="Company name" htmlFor="project-company-name" required>
           <input

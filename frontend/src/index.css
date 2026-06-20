@@ -40,6 +40,34 @@ body {
   box-sizing: border-box;
 }
 
+.skip-link {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  z-index: 2000;
+  padding: 10px 14px;
+  border-radius: 6px;
+  color: #fff;
+  background: #111827;
+  transform: translateY(-150%);
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
 button,
 input,
 select,
@@ -100,6 +128,11 @@ button:disabled {
   width: 100%;
   padding: 24px;
   font-family: Arial, sans-serif;
+}
+
+.auth-page {
+  width: min(100%, 520px);
+  padding: 24px;
 }
 
 .home-page {
@@ -177,9 +210,14 @@ button:disabled {
   margin: 15px 0;
 }
 
-.schedule-view-controls h3 {
+.schedule-view-controls .sidebar-heading {
   grid-column: 1 / -1;
   margin-bottom: 0;
+}
+
+.sidebar-heading {
+  font-size: 1rem;
+  font-weight: 700;
 }
 
 .sidebar-footer {
@@ -290,9 +328,11 @@ button:disabled {
   box-shadow: var(--shadow);
 }
 
-.form-card h3,
-.home-card h3 {
+.form-card h2,
+.home-card h2 {
   margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
   color: var(--text-h);
 }
 
@@ -447,6 +487,15 @@ textarea.field-control {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+
   .loading-spinner {
     animation: none;
     border-top-color: #bfdbfe;

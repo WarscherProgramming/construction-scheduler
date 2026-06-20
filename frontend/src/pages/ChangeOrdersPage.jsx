@@ -79,7 +79,7 @@ function ChangeOrdersPage({
           onCreate();
         }}
       >
-        <h3>Create Change Order</h3>
+        <h2>Create Change Order</h2>
 
         <FormField label="Date" htmlFor="change-order-date" required>
           <input

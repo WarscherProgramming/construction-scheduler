@@ -61,7 +61,7 @@ function NotesDelaysPage({
           onCreate();
         }}
       >
-        <h3>Create Entry</h3>
+        <h2>Create Entry</h2>
 
         <FormField label="Date" htmlFor="note-delay-date" required>
           <input

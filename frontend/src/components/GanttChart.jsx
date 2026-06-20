@@ -185,6 +185,13 @@ function GanttChart({ tasks, selectedTaskId }) {
                     : "#f9fafb",
                 }}
               >
+                {(isSelected || dependent) && (
+                  <span className="visually-hidden">
+                    {isSelected
+                      ? "Selected task."
+                      : "Depends on the selected task."}
+                  </span>
+                )}
                 <div
                   style={{
                     padding: "8px",
@@ -323,6 +330,16 @@ function GanttChart({ tasks, selectedTaskId }) {
                 >
                   {/* DAY GRID */}
                   <div
+                    role="img"
+                    aria-label={`${task.name}, ${formatDate(
+                      task.start_date
+                    )} through ${formatDate(task.end_date)}${
+                      isSelected
+                        ? ", selected"
+                        : dependent
+                          ? ", depends on selected task"
+                          : ""
+                    }`}
                     style={{
                       display: "flex",
                       height: "100%",
@@ -370,9 +387,6 @@ function GanttChart({ tasks, selectedTaskId }) {
                       borderRadius: "2px",
                       boxShadow: "inset 0 -2px 0 rgba(0,0,0,0.15)",
                     }}
-                    title={`${task.name}: ${formatDate(
-                      task.start_date
-                    )} - ${formatDate(task.end_date)}`}
                   />
                 </div>
               );

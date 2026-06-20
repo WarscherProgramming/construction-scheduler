@@ -1,4 +1,5 @@
 import FormField from "../components/FormField";
+import SkipLink from "../components/SkipLink";
 import { buttonStyle } from "../styles";
 
 function AuthPage({
@@ -23,10 +24,12 @@ function AuthPage({
   };
 
   return (
-    <div style={{ padding: "20px" }}>
-      <h1>FieldFlow</h1>
+    <>
+      <SkipLink />
+      <main id="main-content" className="auth-page" tabIndex={-1}>
+        <h1>FieldFlow</h1>
 
-      <h2>{authMode === "login" ? "Login" : "Register"}</h2>
+        <h2>{authMode === "login" ? "Login" : "Register"}</h2>
 
       <form
         className="form-stack"
@@ -76,17 +79,18 @@ function AuthPage({
         </button>
       </form>
 
-      <button
-        type="button"
-        onClick={onToggleMode}
-        disabled={isSubmitting}
-        style={buttonStyle}
-      >
-        {authMode === "login"
-          ? "Need an account? Register"
-          : "Already have an account? Login"}
-      </button>
-    </div>
+        <button
+          type="button"
+          onClick={onToggleMode}
+          disabled={isSubmitting}
+          style={buttonStyle}
+        >
+          {authMode === "login"
+            ? "Need an account? Register"
+            : "Already have an account? Login"}
+        </button>
+      </main>
+    </>
   );
 }
 

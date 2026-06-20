@@ -1,5 +1,6 @@
 import FormField from "../components/FormField";
 import LoadingState from "../components/LoadingState";
+import SkipLink from "../components/SkipLink";
 import { buttonStyle } from "../styles";
 
 function HomePage({
@@ -16,8 +17,10 @@ function HomePage({
   isLoadingTemplates = false,
 }) {
   return (
-    <div className="home-page">
-      <h1>FieldFlow</h1>
+    <>
+      <SkipLink />
+      <main id="main-content" className="home-page" tabIndex={-1}>
+        <h1>FieldFlow</h1>
 
       <p>Construction planning and field management</p>
 
@@ -44,7 +47,7 @@ function HomePage({
 
       <div className="home-card-grid">
         <div className="home-card">
-          <h3>Add New Project</h3>
+          <h2>Add New Project</h2>
 
           <form
             className="form-stack"
@@ -79,7 +82,7 @@ function HomePage({
         </div>
 
         <div className="home-card">
-          <h3>Active Projects</h3>
+          <h2>Active Projects</h2>
           {isLoadingProjects ? (
             <LoadingState message="Loading projects…" />
           ) : (
@@ -88,7 +91,7 @@ function HomePage({
         </div>
 
         <div className="home-card">
-          <h3>Schedule Templates</h3>
+          <h2>Schedule Templates</h2>
           {isLoadingTemplates ? (
             <LoadingState message="Loading templates…" />
           ) : (
@@ -97,16 +100,17 @@ function HomePage({
         </div>
       </div>
 
-      <button
-        onClick={onLogout}
-        style={{
-          ...buttonStyle,
-          marginTop: "30px",
-        }}
-      >
-        Logout
-      </button>
-    </div>
+        <button
+          onClick={onLogout}
+          style={{
+            ...buttonStyle,
+            marginTop: "30px",
+          }}
+        >
+          Logout
+        </button>
+      </main>
+    </>
   );
 }
 

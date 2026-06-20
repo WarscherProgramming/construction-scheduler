@@ -6,6 +6,29 @@ import HomePage from "./HomePage";
 
 
 describe("HomePage", () => {
+  it("provides a skip link and main landmark", () => {
+    render(
+      <HomePage
+        projects={[]}
+        templates={[]}
+        selectedProjectId={null}
+        newProjectName=""
+        onProjectSelect={vi.fn()}
+        onNewProjectNameChange={vi.fn()}
+        onCreateProject={vi.fn()}
+        onLogout={vi.fn()}
+      />
+    );
+
+    expect(
+      screen.getByRole("link", { name: "Skip to main content" })
+    ).toHaveAttribute("href", "#main-content");
+    expect(screen.getByRole("main")).toHaveAttribute("id", "main-content");
+    expect(
+      screen.getByRole("heading", { level: 1, name: "FieldFlow" })
+    ).toBeInTheDocument();
+  });
+
   it("selects a project by numeric ID", async () => {
     const user = userEvent.setup();
     const onProjectSelect = vi.fn();

@@ -7,6 +7,7 @@ import {
 import GanttChart from "../components/GanttChart";
 import FormField from "../components/FormField";
 import LoadingState from "../components/LoadingState";
+import SkipLink from "../components/SkipLink";
 import SortableTaskRow from "../components/SortableTaskRow";
 import { buttonStyle } from "../styles";
 
@@ -55,6 +56,7 @@ function SchedulerPage({
 
   return (
     <div className="app-shell scheduler-shell">
+      <SkipLink />
       <aside className="app-sidebar scheduler-sidebar">
         <button
           onClick={() => onNavigate("projectDashboard")}
@@ -64,7 +66,7 @@ function SchedulerPage({
         </button>
 
         <div className="schedule-view-controls">
-          <h3>View</h3>
+          <h2 className="sidebar-heading">View</h2>
           <button
             onClick={() => setScheduleView("table")}
             aria-pressed={scheduleView === "table"}
@@ -89,7 +91,9 @@ function SchedulerPage({
             marginBottom: "15px",
           }}
         >
-          <h3 style={{ marginTop: 0 }}>Templates</h3>
+          <h2 className="sidebar-heading" style={{ marginTop: 0 }}>
+            Templates
+          </h2>
           <form
             className="form-stack"
             onSubmit={(event) => {
@@ -173,8 +177,12 @@ function SchedulerPage({
         </div>
       </aside>
 
-      <main className="app-main scheduler-main">
-        <h2
+      <main
+        id="main-content"
+        className="app-main scheduler-main"
+        tabIndex={-1}
+      >
+        <h1
           style={{
             textAlign: "center",
             width: "100%",
@@ -182,7 +190,7 @@ function SchedulerPage({
           }}
         >
           Schedule
-        </h2>
+        </h1>
 
         {isLoadingTasks ? (
           <LoadingState message="Loading project schedule…" />
@@ -203,6 +211,9 @@ function SchedulerPage({
                 tableLayout: "fixed",
               }}
             >
+              <caption className="visually-hidden">
+                Editable project schedule
+              </caption>
               <thead>
                 <tr>
                   {[
