@@ -99,7 +99,7 @@ describe("SortableTaskRow", () => {
     });
 
     const input = screen.getByPlaceholderText(
-      "Schedule ID: 1, 1+3, 1SS+4"
+      "Schedule ID: 2, 1.2+3, 2SS+4"
     );
     await user.clear(input);
     await user.type(input, "15");
@@ -123,6 +123,57 @@ describe("SortableTaskRow", () => {
 
     expect(handleCellSave).toHaveBeenCalledOnce();
     expect(handleCellSave).toHaveBeenCalledWith(task);
+  });
+
+  it("flags critical-path tasks with an accessible marker and float tooltip", () => {
+    renderRow({
+      task: { ...task, is_critical: true, total_float: 0 },
+    });
+
+    expect(screen.getByText("Critical path task.")).toHaveClass(
+      "visually-hidden"
+    );
+    expect(
+      screen.getByTitle("Critical path — 0 workdays of float")
+    ).toBeInTheDocument();
+  });
+
+  it("shows total float for non-critical tasks", () => {
+    renderRow({
+      task: { ...task, is_critical: false, total_float: 3 },
+    });
+
+    expect(screen.queryByText("Critical path task.")).not.toBeInTheDocument();
+    expect(
+      screen.getByTitle("Total float: 3 workdays")
+    ).toBeInTheDocument();
+  });
+
+  it("blocks saving an invalid duration and explains the fix inline", async () => {
+    const user = userEvent.setup();
+    const handleCellSave = vi.fn();
+    const validateCell = (field, value) =>
+      field === "duration" && Number(value) < 1
+        ? "Enter a whole number of workdays (1 or more)."
+        : null;
+
+    renderRow({
+      editingCell: { id: 42, field: "duration" },
+      editValue: "0",
+      handleCellSave,
+      validateCell,
+    });
+
+    await user.type(screen.getByLabelText("Task 1 duration"), "{enter}");
+
+    expect(handleCellSave).not.toHaveBeenCalled();
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Enter a whole number of workdays (1 or more)."
+    );
+    expect(screen.getByLabelText("Task 1 duration")).toHaveAttribute(
+      "aria-invalid",
+      "true"
+    );
   });
 
   it("cancels an edited cell with Escape without saving", async () => {

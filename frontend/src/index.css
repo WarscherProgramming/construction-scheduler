@@ -1716,12 +1716,275 @@ button:disabled {
   box-shadow: inset 3px 0 0 var(--brand);
 }
 
+/* Critical-path marker beside the task name in the grid. */
+.critical-flag {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: #dc2626;
+}
+
 .gantt-scroll-region {
   margin-top: 20px;
 }
 
-.gantt-frame {
+/* ── Gantt chart ────────────────────────────────────────────── */
+.gantt {
+  display: grid;
+  gap: var(--space-3);
   min-width: 900px;
+  font-size: 13px;
+}
+
+.gantt-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--text);
+  font-size: 0.8rem;
+}
+
+.gantt-legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.gantt-legend__swatch {
+  width: 14px;
+  height: 10px;
+  border-radius: 3px;
+}
+
+.gantt-legend__swatch--task {
+  background: var(--brand);
+}
+
+.gantt-legend__swatch--summary {
+  height: 6px;
+  background: #334155;
+}
+
+.gantt-legend__swatch--critical {
+  background: #dc2626;
+}
+
+.gantt-legend__swatch--selected {
+  background: var(--amber);
+}
+
+.gantt-legend__swatch--dependent {
+  background: var(--success);
+}
+
+.gantt-legend__swatch--today {
+  height: 10px;
+  border: 1px solid var(--amber);
+  background: rgba(245, 158, 11, 0.15);
+}
+
+.gantt-frame {
+  display: flex;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+/* Left task table */
+.gantt-table {
+  width: 480px;
+  min-width: 480px;
+  border-right: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.gantt-table__header {
+  display: grid;
+  grid-template-columns: 52px 1fr 48px 92px 92px;
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-muted);
+  color: var(--text-h);
+  font-weight: 700;
+}
+
+.gantt-table__row {
+  display: grid;
+  grid-template-columns: 52px 1fr 48px 92px 92px;
+  align-items: center;
+  border-bottom: 1px solid var(--surface-muted);
+  color: var(--text-h);
+}
+
+.gantt-table__cell--wbs {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.gantt-table__row--summary .gantt-table__cell--wbs {
+  color: var(--text-h);
+}
+
+.gantt-table__row--summary {
+  font-weight: 700;
+  background: #f8fafc;
+}
+
+.gantt-table__row--selected {
+  background: #fef3c7;
+}
+
+.gantt-table__row--dependent {
+  background: var(--success-bg);
+}
+
+.gantt-table__cell {
+  padding: 6px 10px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.gantt-table__cell--date {
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.gantt-table__row--summary .gantt-table__cell--date {
+  color: var(--text-h);
+}
+
+/* Timeline */
+.gantt-timeline {
+  position: relative;
+  flex: 1;
+  overflow-x: auto;
+}
+
+.gantt-months {
+  display: flex;
+  height: 26px;
+}
+
+.gantt-month {
+  box-sizing: border-box;
+  overflow: hidden;
+  padding-top: 4px;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-muted);
+  color: var(--text-h);
+  font-weight: 700;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.gantt-days {
+  display: flex;
+  height: 30px;
+}
+
+.gantt-day {
+  box-sizing: border-box;
+  padding-top: 2px;
+  border-right: 1px solid rgba(15, 23, 42, 0.06);
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  font-size: 10px;
+  line-height: 1.25;
+  text-align: center;
+}
+
+.gantt-day--weekend {
+  background: rgba(226, 232, 240, 0.55);
+}
+
+.gantt-day--today {
+  border-top: 2px solid var(--amber);
+  background: rgba(245, 158, 11, 0.18);
+  color: var(--amber-strong);
+  font-weight: 700;
+}
+
+.gantt-body {
+  position: relative;
+}
+
+.gantt-today-column {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 1;
+  border-left: 2px solid var(--amber);
+  background: rgba(245, 158, 11, 0.1);
+  pointer-events: none;
+}
+
+.gantt-row {
+  position: relative;
+  border-bottom: 1px solid var(--surface-muted);
+}
+
+/* Bars */
+.gantt-bar {
+  position: absolute;
+  top: 11px;
+  z-index: 2;
+  height: 16px;
+  border-radius: 3px;
+  background: var(--brand);
+  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.15);
+}
+
+.gantt-bar--summary {
+  top: 13px;
+  height: 7px;
+  border-radius: 2px;
+  background: #334155;
+  box-shadow: none;
+}
+
+/* Downward end caps give summary bars the classic bracket shape. */
+.gantt-bar--summary::before,
+.gantt-bar--summary::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  width: 3px;
+  height: 13px;
+  border-radius: 0 0 2px 2px;
+  background: inherit;
+}
+
+.gantt-bar--summary::before {
+  left: 0;
+}
+
+.gantt-bar--summary::after {
+  right: 0;
+}
+
+.gantt-bar--selected {
+  background: var(--amber);
+}
+
+.gantt-bar--critical {
+  background: #dc2626;
+}
+
+.gantt-bar--summary.gantt-bar--critical {
+  background: #991b1b;
+}
+
+.gantt-bar--dependent {
+  background: var(--success);
 }
 
 .form-stack {
@@ -1820,6 +2083,24 @@ textarea.field-control {
   border-radius: 4px;
   background: #fff;
   color: #111827;
+}
+
+.schedule-cell-input--invalid {
+  border-color: var(--danger);
+  outline-color: var(--danger);
+}
+
+/* Inline cell validation message, anchored to the editing cell. */
+.cell-error {
+  display: block;
+  margin-top: 4px;
+  padding: 3px 6px;
+  border-radius: var(--radius-sm);
+  color: var(--danger);
+  background: var(--danger-bg);
+  font-size: 0.75rem;
+  line-height: 1.35;
+  white-space: normal;
 }
 
 .schedule-icon-button {

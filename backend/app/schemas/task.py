@@ -87,6 +87,9 @@ class TaskResponse(ORMModel):
     order_index: int | None
     parent_task_id: int | None
     is_collapsed: int | None
+    # Derived critical-path metadata, computed per response (not persisted).
+    is_critical: bool = False
+    total_float: int | None = None
 
 
 class TaskListResponse(BaseModel):

@@ -85,6 +85,76 @@ describe("SchedulerPage", () => {
     ).toBeInTheDocument();
   });
 
+  it("moves the roving cell cursor with arrow keys", async () => {
+    const user = userEvent.setup();
+    const tasks = [
+      { id: 1, name: "Mobilization", duration: 1, predecessor: null },
+      { id: 2, name: "Grading", duration: 2, predecessor: null },
+    ];
+
+    render(<SchedulerPage {...baseProps} tasks={tasks} />);
+
+    const firstName = screen.getByRole("button", { name: "Edit task 1 name" });
+
+    // Roving tabindex: only the cursor cell is in the tab order.
+    expect(firstName).toHaveAttribute("tabindex", "0");
+    expect(
+      screen.getByRole("button", { name: "Edit task 1 duration" })
+    ).toHaveAttribute("tabindex", "-1");
+
+    firstName.focus();
+
+    await user.keyboard("{ArrowRight}");
+    expect(
+      screen.getByRole("button", { name: "Edit task 1 duration" })
+    ).toHaveFocus();
+
+    await user.keyboard("{ArrowDown}");
+    expect(
+      screen.getByRole("button", { name: "Edit task 2 duration" })
+    ).toHaveFocus();
+
+    await user.keyboard("{ArrowLeft}");
+    expect(
+      screen.getByRole("button", { name: "Edit task 2 name" })
+    ).toHaveFocus();
+
+    await user.keyboard("{ArrowUp}");
+    expect(firstName).toHaveFocus();
+  });
+
+  it("wraps Tab across rows and opens the focused cell with Enter", async () => {
+    const user = userEvent.setup();
+    const onCellClick = vi.fn();
+    const tasks = [
+      { id: 1, name: "Mobilization", duration: 1, predecessor: null },
+      { id: 2, name: "Grading", duration: 2, predecessor: null },
+    ];
+
+    render(
+      <SchedulerPage {...baseProps} tasks={tasks} onCellClick={onCellClick} />
+    );
+
+    const firstPredecessor = screen.getByRole("button", {
+      name: "Edit task 1 predecessor",
+    });
+    firstPredecessor.focus();
+
+    await user.keyboard("{Tab}");
+    expect(
+      screen.getByRole("button", { name: "Edit task 2 name" })
+    ).toHaveFocus();
+
+    await user.keyboard("{Shift>}{Tab}{/Shift}");
+    expect(firstPredecessor).toHaveFocus();
+
+    await user.keyboard("{Enter}");
+    expect(onCellClick).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 1 }),
+      "predecessor"
+    );
+  });
+
   it("applies hierarchy controls to the selected task", async () => {
     const user = userEvent.setup();
     const task = {
@@ -110,7 +180,7 @@ describe("SchedulerPage", () => {
       />
     );
 
-    expect(screen.getByText("Task 2 selected")).toBeInTheDocument();
+    expect(screen.getByText("Task 1.1 selected")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Indent" })).toBeDisabled();
 
     await user.click(screen.getByRole("button", { name: "Outdent" }));

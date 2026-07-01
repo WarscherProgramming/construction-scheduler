@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useId, useRef, useState } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
@@ -13,14 +13,30 @@ function CellEditor({
   onChange,
   onSave,
   onCancel,
+  validate,
 }) {
   const skipBlurSave = useRef(false);
+  const [error, setError] = useState(null);
+  const errorId = useId();
+
+  // Returns true when the value passed validation and was saved; on failure
+  // the editor stays open with an inline message next to the cell.
+  const trySave = () => {
+    const message = validate ? validate(value) : null;
+
+    if (message) {
+      setError(message);
+      return false;
+    }
+
+    onSave();
+    return true;
+  };
 
   const handleKeyDown = (event) => {
     if (event.key === "Enter") {
       event.preventDefault();
-      skipBlurSave.current = true;
-      onSave();
+      skipBlurSave.current = trySave();
     }
 
     if (event.key === "Escape") {
@@ -31,26 +47,38 @@ function CellEditor({
   };
 
   return (
-    <input
-      autoFocus
-      aria-label={label}
-      className="schedule-cell-input"
-      type={type}
-      placeholder={placeholder}
-      value={value}
-      onChange={(event) => {
-        skipBlurSave.current = false;
-        onChange(event.target.value);
-      }}
-      onKeyDown={handleKeyDown}
-      onBlur={() => {
-        if (!skipBlurSave.current) onSave();
-      }}
-    />
+    <>
+      <input
+        autoFocus
+        aria-label={label}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? errorId : undefined}
+        className={`schedule-cell-input${
+          error ? " schedule-cell-input--invalid" : ""
+        }`}
+        type={type}
+        placeholder={placeholder}
+        value={value}
+        onChange={(event) => {
+          skipBlurSave.current = false;
+          setError(null);
+          onChange(event.target.value);
+        }}
+        onKeyDown={handleKeyDown}
+        onBlur={() => {
+          if (!skipBlurSave.current) trySave();
+        }}
+      />
+      {error && (
+        <span id={errorId} className="cell-error" role="alert">
+          {error}
+        </span>
+      )}
+    </>
   );
 }
 
-function EditButton({ label, children, onEdit, style }) {
+function EditButton({ label, children, onEdit, style, navProps }) {
   return (
     <button
       type="button"
@@ -58,6 +86,7 @@ function EditButton({ label, children, onEdit, style }) {
       aria-label={`Edit ${label}`}
       onClick={onEdit}
       style={style}
+      {...navProps}
     >
       {children}
     </button>
@@ -82,6 +111,9 @@ function SortableTaskRow({
   formatDate,
   hasChildren,
   depth,
+  validateCell,
+  focusedField = null,
+  onCellNavigate,
 }) {
   const {
     attributes,
@@ -105,6 +137,17 @@ function SortableTaskRow({
 
   const isEditing = (field) =>
     editingCell?.id === task.id && editingCell.field === field;
+
+  // Roving grid cursor: only the focused cell is in the tab order; arrow and
+  // Tab handling live in the parent so the cursor can cross rows.
+  const cellNavProps = (field) =>
+    onCellNavigate
+      ? {
+          tabIndex: focusedField === field ? 0 : -1,
+          "data-cell": `${index}:${field}`,
+          onKeyDown: (event) => onCellNavigate(event, index, field),
+        }
+      : undefined;
 
   return (
     <tr
@@ -150,7 +193,19 @@ function SortableTaskRow({
               alignItems: "center",
               paddingLeft: `${depth * 20}px`,
             }}
+            title={
+              task.is_critical
+                ? "Critical path — 0 workdays of float"
+                : task.total_float != null
+                  ? `Total float: ${task.total_float} workdays`
+                  : undefined
+            }
           >
+            {task.is_critical && (
+              <span className="critical-flag">
+                <span className="visually-hidden">Critical path task.</span>
+              </span>
+            )}
             <EditButton
               label={`task ${displayId} name`}
               onEdit={() => handleCellClick(task, "name")}
@@ -158,6 +213,7 @@ function SortableTaskRow({
                 flex: 1,
                 fontWeight: hasChildren ? "600" : "400",
               }}
+              navProps={cellNavProps("name")}
             >
               {task.name}
             </EditButton>
@@ -195,11 +251,15 @@ function SortableTaskRow({
             onChange={setEditValue}
             onSave={() => handleCellSave(task)}
             onCancel={handleCellCancel}
+            validate={
+              validateCell ? (value) => validateCell("duration", value) : undefined
+            }
           />
         ) : (
           <EditButton
             label={`task ${displayId} duration`}
             onEdit={() => handleCellClick(task, "duration")}
+            navProps={cellNavProps("duration")}
           >
             {task.duration}
           </EditButton>
@@ -220,6 +280,7 @@ function SortableTaskRow({
           <EditButton
             label={`task ${displayId} start date`}
             onEdit={() => handleCellClick(task, "manual_start_date")}
+            navProps={cellNavProps("manual_start_date")}
           >
             {formatDate(task.start_date)}
           </EditButton>
@@ -234,16 +295,22 @@ function SortableTaskRow({
         {isEditing("predecessor") ? (
           <CellEditor
             label={`Task ${displayId} predecessor`}
-            placeholder="Schedule ID: 1, 1+3, 1SS+4"
+            placeholder="Schedule ID: 2, 1.2+3, 2SS+4"
             value={editValue}
             onChange={setEditValue}
             onSave={() => handleCellSave(task)}
             onCancel={handleCellCancel}
+            validate={
+              validateCell
+                ? (value) => validateCell("predecessor", value)
+                : undefined
+            }
           />
         ) : (
           <EditButton
             label={`task ${displayId} predecessor`}
             onEdit={() => handleCellClick(task, "predecessor")}
+            navProps={cellNavProps("predecessor")}
           >
             {displayPredecessor || "-"}
           </EditButton>

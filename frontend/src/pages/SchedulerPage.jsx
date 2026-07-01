@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { closestCenter, DndContext } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -14,10 +15,14 @@ import Card from "../components/ui/Card";
 import PageHeader from "../components/ui/PageHeader";
 import ProjectLayout from "../components/ui/ProjectLayout";
 import {
+  formatPredecessorForApi,
   formatPredecessorForSchedule,
   getScheduleTaskNumber,
 } from "../utils/taskReferences";
 import { findIndentParent } from "../utils/taskHierarchy";
+
+/** Grid columns reachable by the roving keyboard cursor, in visual order. */
+const EDITABLE_FIELDS = ["name", "duration", "manual_start_date", "predecessor"];
 
 function SchedulerPage({
   projectName,
@@ -70,6 +75,122 @@ function SchedulerPage({
     selectedTask && findIndentParent(tasks, selectedTask.id)
   );
   const canOutdentSelectedTask = Boolean(selectedTask?.parent_task_id);
+
+  // Roving cell cursor (Excel-style): one tab stop for the grid, arrows and
+  // Tab move between editable cells, Enter activates the focused cell.
+  const [focusedCell, setFocusedCell] = useState({ row: 0, field: "name" });
+  const tableRegionRef = useRef(null);
+  const previousEditingCellRef = useRef(editingCell);
+
+  const effectiveFocus = visibleTasks.length
+    ? {
+        row: Math.min(focusedCell.row, visibleTasks.length - 1),
+        field: focusedCell.field,
+      }
+    : null;
+
+  const moveFocusTo = (row, field) => {
+    setFocusedCell({ row, field });
+    tableRegionRef.current
+      ?.querySelector(`[data-cell="${row}:${field}"]`)
+      ?.focus();
+  };
+
+  const handleCellNavigate = (event, row, field) => {
+    const colIndex = EDITABLE_FIELDS.indexOf(field);
+    const lastRow = visibleTasks.length - 1;
+    const lastCol = EDITABLE_FIELDS.length - 1;
+    let targetRow = row;
+    let targetCol = colIndex;
+
+    switch (event.key) {
+      case "ArrowRight":
+        targetCol = Math.min(colIndex + 1, lastCol);
+        break;
+      case "ArrowLeft":
+        targetCol = Math.max(colIndex - 1, 0);
+        break;
+      case "ArrowDown":
+        targetRow = Math.min(row + 1, lastRow);
+        break;
+      case "ArrowUp":
+        targetRow = Math.max(row - 1, 0);
+        break;
+      case "Tab": {
+        const step = event.shiftKey ? -1 : 1;
+        const flatIndex = row * EDITABLE_FIELDS.length + colIndex + step;
+
+        // At the grid's boundaries, let Tab continue out of the grid.
+        if (
+          flatIndex < 0 ||
+          flatIndex > lastRow * EDITABLE_FIELDS.length + lastCol
+        ) {
+          return;
+        }
+
+        targetRow = Math.floor(flatIndex / EDITABLE_FIELDS.length);
+        targetCol = flatIndex % EDITABLE_FIELDS.length;
+        break;
+      }
+      default:
+        return;
+    }
+
+    event.preventDefault();
+    moveFocusTo(targetRow, EDITABLE_FIELDS[targetCol]);
+  };
+
+  // Clicking a cell moves the cursor there so keyboard flow continues from it.
+  const handleGridCellClick = (task, field) => {
+    if (EDITABLE_FIELDS.includes(field)) {
+      const row = visibleTasks.findIndex(
+        (candidate) => candidate.id === task.id
+      );
+
+      if (row >= 0) setFocusedCell({ row, field });
+    }
+
+    onCellClick(task, field);
+  };
+
+  // When an editor closes (save or cancel), return focus to its grid cell.
+  useEffect(() => {
+    const wasEditing = previousEditingCellRef.current;
+    previousEditingCellRef.current = editingCell;
+
+    if (!wasEditing || editingCell || wasEditing.id === "new") {
+      return undefined;
+    }
+
+    const frame = requestAnimationFrame(() => {
+      tableRegionRef.current
+        ?.querySelector(
+          `[data-cell="${focusedCell.row}:${focusedCell.field}"]`
+        )
+        ?.focus();
+    });
+
+    return () => cancelAnimationFrame(frame);
+  }, [editingCell, focusedCell]);
+
+  // Inline cell validation: messages surface next to the cell being edited.
+  const validateCell = (field, value) => {
+    if (field === "duration") {
+      const days = Number(value);
+
+      if (!Number.isInteger(days) || days < 1) {
+        return "Enter a whole number of workdays (1 or more).";
+      }
+
+      return null;
+    }
+
+    if (field === "predecessor") {
+      return formatPredecessorForApi(value, tasks).error;
+    }
+
+    return null;
+  };
 
   const schedulerControls = (
     <>
@@ -215,12 +336,13 @@ function SchedulerPage({
             <summary>Dependency format help</summary>
             <div>
               <p>
-                Enter a task ID for Finish-to-Start. Add <code>SS</code> for
-                Start-to-Start and <code>+days</code> for lag.
+                Enter the predecessor&rsquo;s ID from the first column for
+                Finish-to-Start. Add <code>SS</code> for Start-to-Start and{" "}
+                <code>+days</code> for lag.
               </p>
               <p>
-                Examples: <code>12</code>, <code>12+3</code>,{" "}
-                <code>12SS</code>, <code>12SS+4</code>.
+                Examples: <code>2</code>, <code>2+3</code>,{" "}
+                <code>1.2SS</code>, <code>1.2SS+4</code>.
               </p>
             </div>
           </details>
@@ -231,6 +353,7 @@ function SchedulerPage({
         ) : scheduleView === "table" ? (
           <DndContext collisionDetection={closestCenter} onDragEnd={onDragEnd}>
             <div
+              ref={tableRegionRef}
               className="table-scroll-region schedule-table-region"
               role="region"
               aria-label="Project schedule"
@@ -300,7 +423,7 @@ function SchedulerPage({
                         editingCell={editingCell}
                         editValue={editValue}
                         setEditValue={setEditValue}
-                        handleCellClick={onCellClick}
+                        handleCellClick={handleGridCellClick}
                         handleCellSave={onCellSave}
                         handleCellCancel={onCellCancel}
                         handleDelete={onDelete}
@@ -308,6 +431,13 @@ function SchedulerPage({
                         formatDate={formatDate}
                         hasChildren={taskHasChildren(task.id)}
                         depth={getTaskDepth(task)}
+                        validateCell={validateCell}
+                        focusedField={
+                          effectiveFocus && effectiveFocus.row === index
+                            ? effectiveFocus.field
+                            : null
+                        }
+                        onCellNavigate={handleCellNavigate}
                       />
                     ))}
 

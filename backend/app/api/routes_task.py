@@ -12,7 +12,10 @@ from app.schemas.task import (
     TaskUpdate,
     parse_predecessor_reference,
 )
-from app.services.task_scheduling import recalculate_schedule
+from app.services.task_scheduling import (
+    annotate_critical_path,
+    recalculate_schedule,
+)
 
 router = APIRouter()
 
@@ -160,6 +163,7 @@ def get_tasks(
         .order_by(Task.order_index, Task.id)
         .all()
     )
+    annotate_critical_path(tasks)
 
     return {"tasks": tasks}
 
@@ -213,6 +217,8 @@ def create_task(
     recalculate_schedule(tasks)
 
     db.commit()
+
+    annotate_critical_path(tasks)
 
     return {"tasks": tasks}
 
@@ -311,6 +317,8 @@ def update_task(
 
     db.commit()
 
+    annotate_critical_path(tasks)
+
     return {"tasks": tasks}
 
 
@@ -344,6 +352,8 @@ def delete_task(
     recalculate_schedule(tasks)
 
     db.commit()
+
+    annotate_critical_path(tasks)
 
     return {"tasks": tasks}
 

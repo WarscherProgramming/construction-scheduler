@@ -41,10 +41,11 @@ class TaskSchedulingServiceTests(unittest.TestCase):
             project_start=date(2026, 6, 19),
         )
 
-        self.assertEqual(predecessor.start_date, "2026-06-19")
-        self.assertEqual(predecessor.end_date, "2026-06-19")
-        self.assertEqual(successor.start_date, "2026-06-22")
-        self.assertEqual(successor.end_date, "2026-06-23")
+        # 2026-06-19 is Juneteenth, so work begins Monday 06-22.
+        self.assertEqual(predecessor.start_date, "2026-06-22")
+        self.assertEqual(predecessor.end_date, "2026-06-22")
+        self.assertEqual(successor.start_date, "2026-06-23")
+        self.assertEqual(successor.end_date, "2026-06-24")
 
     def test_recalculation_rolls_parent_dates_into_orm_task(self):
         parent = Task(

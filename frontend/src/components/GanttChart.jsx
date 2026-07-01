@@ -1,69 +1,142 @@
+import EmptyState from "./EmptyState";
+import { getTaskDepthFromList } from "../utils/taskHierarchy";
+import { buildWbsMap } from "../utils/taskReferences";
 
-function GanttChart({ tasks, selectedTaskId }) {
-  if (!tasks.length) return <p>No tasks yet</p>;
+const MS_PER_DAY = 1000 * 60 * 60 * 24;
+const DAY_WIDTH = 34;
+const ROW_HEIGHT = 38;
 
-  const MS_PER_DAY = 1000 * 60 * 60 * 24;
+function parseDate(value) {
+  if (!value) return null;
 
-  const parseDate = (date) => {
-    if (!date) return null;
-
-    if (date.includes("/")) {
-      const [m, d, y] = date.split("/").map(Number);
-      return new Date(y, m - 1, d);
-    }
-
-    const [y, m, d] = date.split("-").map(Number);
+  if (value.includes("/")) {
+    const [m, d, y] = value.split("/").map(Number);
     return new Date(y, m - 1, d);
-  };
-
-  const formatDate = (date) => {
-    if (!date) return "-";
-
-    const parsed = parseDate(date);
-
-    return parsed.toLocaleDateString("en-US", {
-      month: "2-digit",
-      day: "2-digit",
-      year: "numeric",
-    });
-  };
-
-  const scheduledTasks = tasks
-    .filter((task) => task.start_date && task.end_date)
-    .filter((task) => task.parent_task_id === null);
-    
-  if (!scheduledTasks.length) {
-    return <p>No scheduled tasks yet</p>;
   }
 
-  const taskStartTimes = scheduledTasks.map((task) =>
-    parseDate(task.start_date).getTime()
+  const [y, m, d] = value.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+
+function formatDate(value) {
+  if (!value) return "-";
+
+  return parseDate(value).toLocaleDateString("en-US", {
+    month: "2-digit",
+    day: "2-digit",
+    year: "numeric",
+  });
+}
+
+/**
+ * Weekend shading and day grid lines as repeating gradients on the row
+ * area — one background instead of a rows × days grid of divs.
+ */
+function buildTimelineBackground(startDow) {
+  const weekendStops = [];
+
+  for (let offset = 0; offset < 7; offset += 1) {
+    const day = (startDow + offset) % 7;
+    const color =
+      day === 0 || day === 6 ? "rgba(226, 232, 240, 0.55)" : "transparent";
+    weekendStops.push(
+      `${color} ${offset * DAY_WIDTH}px ${(offset + 1) * DAY_WIDTH}px`
+    );
+  }
+
+  const weekendLayer = `repeating-linear-gradient(to right, ${weekendStops.join(
+    ", "
+  )})`;
+  const gridLayer = `repeating-linear-gradient(to right, transparent 0 ${
+    DAY_WIDTH - 1
+  }px, rgba(15, 23, 42, 0.06) ${DAY_WIDTH - 1}px ${DAY_WIDTH}px)`;
+
+  return `${gridLayer}, ${weekendLayer}`;
+}
+
+const LEGEND = [
+  { swatch: "task", label: "Task" },
+  { swatch: "summary", label: "Summary" },
+  { swatch: "critical", label: "Critical path" },
+  { swatch: "selected", label: "Selected" },
+  { swatch: "dependent", label: "Depends on selection" },
+  { swatch: "today", label: "Today" },
+];
+
+function GanttChart({ tasks, selectedTaskId }) {
+  if (!tasks.length) {
+    return (
+      <EmptyState
+        title="No tasks yet"
+        description="Add schedule tasks to see them on the Gantt chart."
+      />
+    );
+  }
+
+  const taskMap = new Map(tasks.map((task) => [task.id, task]));
+  const parentIds = new Set(
+    tasks
+      .map((task) => task.parent_task_id)
+      .filter((parentId) => parentId !== null && parentId !== undefined)
   );
 
-  const taskEndTimes = scheduledTasks.map((task) =>
-    parseDate(task.end_date).getTime()
+  const isHiddenByCollapse = (task) => {
+    let parentId = task.parent_task_id;
+    const visited = new Set();
+
+    while (parentId && !visited.has(parentId)) {
+      visited.add(parentId);
+      const parent = taskMap.get(parentId);
+      if (!parent) break;
+      if (parent.is_collapsed) return true;
+      parentId = parent.parent_task_id;
+    }
+
+    return false;
+  };
+
+  const scheduledTasks = tasks.filter(
+    (task) => task.start_date && task.end_date
+  );
+  const visibleTasks = scheduledTasks.filter(
+    (task) => !isHiddenByCollapse(task)
   );
 
-  const projectStartMs = Math.min(...taskStartTimes);
-  const projectEndMs = Math.max(...taskEndTimes);
+  if (!visibleTasks.length) {
+    return (
+      <EmptyState
+        title="No scheduled tasks yet"
+        description="Tasks appear on the Gantt once they have start and end dates."
+      />
+    );
+  }
+
+  // Time range covers every scheduled task (collapsing rows never rescales
+  // the timeline).
+  const projectStartMs = Math.min(
+    ...scheduledTasks.map((task) => parseDate(task.start_date).getTime())
+  );
+  const projectEndMs = Math.max(
+    ...scheduledTasks.map((task) => parseDate(task.end_date).getTime())
+  );
 
   const projectStartDate = new Date(projectStartMs);
   projectStartDate.setHours(0, 0, 0, 0);
 
-  const totalDays =
-    Math.ceil((projectEndMs - projectStartMs) / MS_PER_DAY) + 1;
+  const totalDays = Math.ceil((projectEndMs - projectStartMs) / MS_PER_DAY) + 1;
 
-  const dayWidth = 34;
-  const rowHeight = 42;
-  const timelineHeaderHeight = 64;
-  const barHeight = 18;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayIndex = Math.round(
+    (today.getTime() - projectStartDate.getTime()) / MS_PER_DAY
+  );
+  const todayVisible = todayIndex >= 0 && todayIndex < totalDays;
 
   const isDependent = (task, selectedId) => {
     if (!selectedId) return false;
 
     let current = task;
     const visited = new Set();
-    const taskMap = new Map(tasks.map((candidate) => [candidate.id, candidate]));
 
     while (
       current.predecessor_task_id &&
@@ -73,10 +146,7 @@ function GanttChart({ tasks, selectedTaskId }) {
       const predecessorTask = taskMap.get(current.predecessor_task_id);
 
       if (!predecessorTask) break;
-
-      if (predecessorTask.id === selectedId) {
-        return true;
-      }
+      if (predecessorTask.id === selectedId) return true;
 
       current = predecessorTask;
     }
@@ -88,7 +158,7 @@ function GanttChart({ tasks, selectedTaskId }) {
   let currentMonth = null;
   let count = 0;
 
-  for (let i = 0; i < totalDays; i++) {
+  for (let i = 0; i < totalDays; i += 1) {
     const date = new Date(projectStartDate);
     date.setDate(date.getDate() + i);
 
@@ -99,91 +169,68 @@ function GanttChart({ tasks, selectedTaskId }) {
 
     if (month !== currentMonth) {
       if (currentMonth !== null) {
-        months.push({
-          name: currentMonth,
-          days: count,
-        });
+        months.push({ name: currentMonth, days: count });
       }
-
       currentMonth = month;
       count = 1;
     } else {
-      count++;
+      count += 1;
     }
   }
 
-  months.push({
-    name: currentMonth,
-    days: count,
-  });
+  months.push({ name: currentMonth, days: count });
+
+  const timelineBackground = buildTimelineBackground(projectStartDate.getDay());
+  const wbsMap = buildWbsMap(tasks);
 
   return (
-    <div style={{ marginTop: "20px" }}>
+    <div className="gantt">
+      <ul className="gantt-legend">
+        {LEGEND.map((entry) => (
+          <li key={entry.swatch} className="gantt-legend__item">
+            <span
+              className={`gantt-legend__swatch gantt-legend__swatch--${entry.swatch}`}
+              aria-hidden="true"
+            />
+            {entry.label}
+          </li>
+        ))}
+      </ul>
 
-      <div
-        className="gantt-frame"
-        style={{
-          display: "flex",
-          border: "1px solid #ddd",
-          overflow: "hidden",
-          width: "100%",
-        }}
-      >
-        {/* LEFT TASK TABLE */}
-        <div
-          style={{
-            width: "500px",
-            minWidth: "500px",
-            borderRight: "1px solid #ddd",
-            background: "#fff",
-          }}
-        >
+      <div className="gantt-frame">
+        {/* Left task table */}
+        <div className="gantt-table">
           <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 70px 110px 110px",
-              height: timelineHeaderHeight,
-              alignItems: "center",
-              fontWeight: "bold",
-              background: "#f3f4f6",
-              borderBottom: "1px solid #ddd",
-              fontSize: "13px",
-            }}
+            className="gantt-table__header"
+            style={{ height: 56 }}
           >
-            <div style={{ padding: "8px", borderRight: "1px solid #ddd" }}>
-              Task Name
-            </div>
-            <div style={{ padding: "8px", borderRight: "1px solid #ddd" }}>
-              Dur
-            </div>
-            <div style={{ padding: "8px", borderRight: "1px solid #ddd" }}>
-              Start
-            </div>
-            <div style={{ padding: "8px" }}>End</div>
+            <div className="gantt-table__cell">WBS</div>
+            <div className="gantt-table__cell">Task</div>
+            <div className="gantt-table__cell">Dur</div>
+            <div className="gantt-table__cell">Start</div>
+            <div className="gantt-table__cell">End</div>
           </div>
 
-          {scheduledTasks.map((task, index) => {
+          {visibleTasks.map((task) => {
             const isSelected = task.id === selectedTaskId;
             const dependent = isDependent(task, selectedTaskId);
+            const isSummary = parentIds.has(task.id);
+            const depth = getTaskDepthFromList(tasks, task);
+
+            const rowClasses = [
+              "gantt-table__row",
+              isSummary ? "gantt-table__row--summary" : "",
+              isSelected ? "gantt-table__row--selected" : "",
+              !isSelected && dependent ? "gantt-table__row--dependent" : "",
+            ]
+              .filter(Boolean)
+              .join(" ");
 
             return (
               <div
                 key={task.id}
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 70px 110px 110px",
-                  height: rowHeight,
-                  alignItems: "center",
-                  borderBottom: "1px solid #eee",
-                  fontSize: "13px",
-                  background: isSelected
-                    ? "#e0f2fe"
-                    : dependent
-                    ? "#ecfdf5"
-                    : index % 2 === 0
-                    ? "#ffffff"
-                    : "#f9fafb",
-                }}
+                className={rowClasses}
+                style={{ height: ROW_HEIGHT }}
               >
                 {(isSelected || dependent) && (
                   <span className="visually-hidden">
@@ -192,39 +239,21 @@ function GanttChart({ tasks, selectedTaskId }) {
                       : "Depends on the selected task."}
                   </span>
                 )}
+                <div className="gantt-table__cell gantt-table__cell--wbs">
+                  {wbsMap.get(task.id)}
+                </div>
                 <div
-                  style={{
-                    padding: "8px",
-                    borderRight: "1px solid #eee",
-                    whiteSpace: "nowrap",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    fontWeight: task.predecessor_task_id ? "normal" : "bold",
-                  }}
+                  className="gantt-table__cell gantt-table__cell--name"
+                  style={{ paddingLeft: 10 + depth * 16 }}
                   title={task.name}
                 >
                   {task.name}
                 </div>
-
-                <div
-                  style={{
-                    padding: "8px",
-                    borderRight: "1px solid #eee",
-                  }}
-                >
-                  {task.duration}
-                </div>
-
-                <div
-                  style={{
-                    padding: "8px",
-                    borderRight: "1px solid #eee",
-                  }}
-                >
+                <div className="gantt-table__cell">{task.duration}</div>
+                <div className="gantt-table__cell gantt-table__cell--date">
                   {formatDate(task.start_date)}
                 </div>
-
-                <div style={{ padding: "8px" }}>
+                <div className="gantt-table__cell gantt-table__cell--date">
                   {formatDate(task.end_date)}
                 </div>
               </div>
@@ -232,69 +261,46 @@ function GanttChart({ tasks, selectedTaskId }) {
           })}
         </div>
 
-        {/* RIGHT TIMELINE */}
-        <div
-          style={{
-            flex: 1,
-            overflowX: "auto",
-            position: "relative",
-          }}
-        >
-          <div
-            style={{
-              width: totalDays * dayWidth,
-              minWidth: "100%",
-            }}
-          >
-            {/* MONTH HEADER */}
-            <div style={{ display: "flex", height: "32px" }}>
+        {/* Timeline */}
+        <div className="gantt-timeline">
+          <div style={{ width: totalDays * DAY_WIDTH, minWidth: "100%" }}>
+            <div className="gantt-months">
               {months.map((month, index) => (
                 <div
                   key={index}
-                  style={{
-                    width: month.days * dayWidth,
-                    textAlign: "center",
-                    fontWeight: "bold",
-                    fontSize: "13px",
-                    background: "#dbeafe",
-                    borderRight: "1px solid #ccc",
-                    borderBottom: "1px solid #ccc",
-                    boxSizing: "border-box",
-                    paddingTop: "7px",
-                  }}
+                  className="gantt-month"
+                  style={{ width: month.days * DAY_WIDTH }}
                 >
                   {month.name}
                 </div>
               ))}
             </div>
 
-            {/* DAY HEADER */}
-            <div style={{ display: "flex", height: "32px" }}>
+            <div className="gantt-days">
               {Array.from({ length: totalDays }).map((_, index) => {
                 const date = new Date(projectStartDate);
                 date.setDate(date.getDate() + index);
 
-                const isWeekend =
-                  date.getDay() === 0 || date.getDay() === 6;
+                const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+                const isToday = todayVisible && index === todayIndex;
+
+                const classes = [
+                  "gantt-day",
+                  isWeekend ? "gantt-day--weekend" : "",
+                  isToday ? "gantt-day--today" : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ");
 
                 return (
                   <div
                     key={index}
-                    style={{
-                      width: dayWidth,
-                      textAlign: "center",
-                      fontSize: "11px",
-                      background: isWeekend ? "#e5e7eb" : "#f3f4f6",
-                      borderRight: "1px solid #ddd",
-                      borderBottom: "1px solid #ccc",
-                      boxSizing: "border-box",
-                      paddingTop: "4px",
-                    }}
+                    className={classes}
+                    style={{ width: DAY_WIDTH }}
+                    title={isToday ? "Today" : undefined}
                   >
                     <div>
-                      {date.toLocaleDateString("en-US", {
-                        weekday: "narrow",
-                      })}
+                      {date.toLocaleDateString("en-US", { weekday: "narrow" })}
                     </div>
                     <div>{date.getDate()}</div>
                   </div>
@@ -302,95 +308,79 @@ function GanttChart({ tasks, selectedTaskId }) {
               })}
             </div>
 
-            {/* TASK ROWS */}
-            {scheduledTasks.map((task, rowIndex) => {
-              const startMs = parseDate(task.start_date).getTime();
-              const endMs = parseDate(task.end_date).getTime();
-
-              const offsetDays = Math.round(
-                (startMs - projectStartMs) / MS_PER_DAY
-              );
-
-              const durationDays =
-                Math.round((endMs - startMs) / MS_PER_DAY) + 1;
-
-              const isSelected = task.id === selectedTaskId;
-              const dependent = isDependent(task, selectedTaskId);
-
-              return (
+            <div
+              className="gantt-body"
+              style={{ backgroundImage: timelineBackground }}
+            >
+              {todayVisible && (
                 <div
-                  key={task.id}
+                  className="gantt-today-column"
                   style={{
-                    height: rowHeight,
-                    position: "relative",
-                    borderBottom: "1px solid #eee",
-                    background:
-                      rowIndex % 2 === 0 ? "#ffffff" : "#f9fafb",
+                    left: todayIndex * DAY_WIDTH,
+                    width: DAY_WIDTH,
                   }}
-                >
-                  {/* DAY GRID */}
+                  aria-hidden="true"
+                />
+              )}
+
+              {visibleTasks.map((task) => {
+                const startMs = parseDate(task.start_date).getTime();
+                const endMs = parseDate(task.end_date).getTime();
+
+                const offsetDays = Math.round(
+                  (startMs - projectStartMs) / MS_PER_DAY
+                );
+                const durationDays =
+                  Math.round((endMs - startMs) / MS_PER_DAY) + 1;
+
+                const isSelected = task.id === selectedTaskId;
+                const dependent = isDependent(task, selectedTaskId);
+                const isSummary = parentIds.has(task.id);
+                const isCritical = Boolean(task.is_critical);
+
+                const barClasses = [
+                  "gantt-bar",
+                  isSummary ? "gantt-bar--summary" : "",
+                  isSelected ? "gantt-bar--selected" : "",
+                  !isSelected && isCritical ? "gantt-bar--critical" : "",
+                  !isSelected && !isCritical && dependent
+                    ? "gantt-bar--dependent"
+                    : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ");
+
+                const label = `${task.name}${
+                  isSummary ? " summary" : ""
+                }, ${formatDate(task.start_date)} through ${formatDate(
+                  task.end_date
+                )}${isCritical ? ", on the critical path" : ""}${
+                  isSelected
+                    ? ", selected"
+                    : dependent
+                      ? ", depends on selected task"
+                      : ""
+                }`;
+
+                return (
                   <div
+                    key={task.id}
+                    className="gantt-row"
+                    style={{ height: ROW_HEIGHT }}
                     role="img"
-                    aria-label={`${task.name}, ${formatDate(
-                      task.start_date
-                    )} through ${formatDate(task.end_date)}${
-                      isSelected
-                        ? ", selected"
-                        : dependent
-                          ? ", depends on selected task"
-                          : ""
-                    }`}
-                    style={{
-                      display: "flex",
-                      height: "100%",
-                      position: "absolute",
-                      inset: 0,
-                    }}
+                    aria-label={label}
                   >
-                    {Array.from({ length: totalDays }).map((_, dayIndex) => {
-                      const date = new Date(projectStartDate);
-                      date.setDate(date.getDate() + dayIndex);
-
-                      const isWeekend =
-                        date.getDay() === 0 || date.getDay() === 6;
-
-                      return (
-                        <div
-                          key={dayIndex}
-                          style={{
-                            width: dayWidth,
-                            height: "100%",
-                            background: isWeekend
-                              ? "rgba(229, 231, 235, 0.7)"
-                              : "transparent",
-                            borderRight: "1px solid #eee",
-                            boxSizing: "border-box",
-                          }}
-                        />
-                      );
-                    })}
+                    <div
+                      className={barClasses}
+                      style={{
+                        left: offsetDays * DAY_WIDTH + 1,
+                        width: durationDays * DAY_WIDTH - 2,
+                      }}
+                    />
                   </div>
-
-                  {/* TASK BAR */}
-                  <div
-                    style={{
-                      position: "absolute",
-                      left: offsetDays * dayWidth,
-                      top: (rowHeight - barHeight) / 2,
-                      width: durationDays * dayWidth,
-                      height: barHeight,
-                      background: isSelected
-                        ? "#f97316"
-                        : dependent
-                        ? "#22c55e"
-                        : "#2563eb",
-                      borderRadius: "2px",
-                      boxShadow: "inset 0 -2px 0 rgba(0,0,0,0.15)",
-                    }}
-                  />
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>
