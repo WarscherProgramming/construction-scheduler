@@ -10,12 +10,12 @@ import {
 } from "recharts";
 
 import EmptyState from "../components/EmptyState";
-import LoadingState from "../components/LoadingState";
 import StatusBadge from "../components/StatusBadge";
 import Button from "../components/ui/Button";
 import Icon from "../components/ui/Icon";
 import PageHeader from "../components/ui/PageHeader";
 import ProjectLayout from "../components/ui/ProjectLayout";
+import { Skeleton, SkeletonPanel } from "../components/ui/Skeleton";
 import {
   getAttentionActivities,
   getChangeOrderTotalsByCompany,
@@ -69,12 +69,21 @@ function HealthGauge({ score, band }) {
   );
 }
 
-function KpiTile({ label, value, sub, tone }) {
+function KpiTile({ label, value, sub, tone, loading = false }) {
   return (
     <div className={`kpi-tile${tone ? ` kpi-tile--${tone}` : ""}`}>
       <span className="kpi-tile__label">{label}</span>
-      <span className="kpi-tile__value">{value}</span>
-      {sub && <span className="kpi-tile__sub">{sub}</span>}
+      {loading ? (
+        <>
+          <Skeleton className="skeleton--value" />
+          <Skeleton className="skeleton--sub" />
+        </>
+      ) : (
+        <>
+          <span className="kpi-tile__value">{value}</span>
+          {sub && <span className="kpi-tile__sub">{sub}</span>}
+        </>
+      )}
     </div>
   );
 }
@@ -187,7 +196,8 @@ function ProjectDashboardPage({
     isLoadingDelays ||
     isLoadingChangeOrders;
 
-  const dash = (loading, value) => (loading ? "—" : value);
+  const statOrSkeleton = (loading, value) =>
+    loading ? <Skeleton className="skeleton--stat" /> : value;
 
   return (
     <ProjectLayout
@@ -215,18 +225,27 @@ function ProjectDashboardPage({
           <div>
             <p className="today-focus__eyebrow">Today&rsquo;s Focus</p>
             <h2 id="today-focus-title" className="today-focus__headline">
-              {focusLoading
-                ? "Loading today's focus…"
-                : focus.hasItems
-                  ? `${focus.itemCount} ${
-                      focus.itemCount === 1 ? "item needs" : "items need"
-                    } your attention`
-                  : "You're all clear for today"}
+              {focusLoading ? (
+                <>
+                  <span className="visually-hidden">
+                    Loading today&rsquo;s focus…
+                  </span>
+                  <Skeleton className="skeleton--headline" />
+                </>
+              ) : focus.hasItems ? (
+                `${focus.itemCount} ${
+                  focus.itemCount === 1 ? "item needs" : "items need"
+                } your attention`
+              ) : (
+                "You're all clear for today"
+              )}
             </h2>
             <p className="today-focus__sub">
-              {focusLoading
-                ? "Pulling today's schedule, inspections, and open items…"
-                : "Start here before you walk the site."}
+              {focusLoading ? (
+                <Skeleton className="skeleton--sub" />
+              ) : (
+                "Start here before you walk the site."
+              )}
             </p>
           </div>
           <Button variant="primary" onClick={() => onNavigate("scheduler")}>
@@ -237,13 +256,16 @@ function ProjectDashboardPage({
         <ul className="today-focus__stats">
           <li className="focus-stat">
             <span className="focus-stat__num">
-              {dash(isLoadingTasks, focus.startingTodayCount)}
+              {statOrSkeleton(isLoadingTasks, focus.startingTodayCount)}
             </span>
             <span className="focus-stat__label">Activities starting today</span>
           </li>
           <li className="focus-stat">
             <span className="focus-stat__num">
-              {dash(isLoadingInspections, focus.inspectionsDueTodayCount)}
+              {statOrSkeleton(
+                isLoadingInspections,
+                focus.inspectionsDueTodayCount
+              )}
             </span>
             <span className="focus-stat__label">Inspections due today</span>
           </li>
@@ -253,7 +275,7 @@ function ProjectDashboardPage({
             }`}
           >
             <span className="focus-stat__num">
-              {dash(isLoadingDelays, focus.activeDelays)}
+              {statOrSkeleton(isLoadingDelays, focus.activeDelays)}
             </span>
             <span className="focus-stat__label">Active delays</span>
           </li>
@@ -265,7 +287,7 @@ function ProjectDashboardPage({
             }`}
           >
             <span className="focus-stat__num">
-              {dash(isLoadingChangeOrders, focus.pendingChangeOrders)}
+              {statOrSkeleton(isLoadingChangeOrders, focus.pendingChangeOrders)}
             </span>
             <span className="focus-stat__label">Pending change orders</span>
           </li>
@@ -284,7 +306,7 @@ function ProjectDashboardPage({
           <div className="kpi-tile kpi-tile--gauge">
             <span className="kpi-tile__label">Project health</span>
             {overviewLoading ? (
-              <span className="kpi-tile__value">—</span>
+              <Skeleton className="skeleton--gauge" />
             ) : (
               <HealthGauge score={health.score} band={health.band} />
             )}
@@ -292,32 +314,29 @@ function ProjectDashboardPage({
 
           <KpiTile
             label="Schedule health"
-            value={dash(isLoadingTasks, `${schedule.timelineElapsedPct}%`)}
+            loading={isLoadingTasks}
+            value={`${schedule.timelineElapsedPct}%`}
             sub={
-              isLoadingTasks
-                ? "Loading schedule"
-                : schedule.hasSchedule
-                  ? `${schedule.activeCount} active · ${schedule.pastDueCount} past due`
-                  : "No scheduled tasks yet"
+              schedule.hasSchedule
+                ? `${schedule.activeCount} active · ${schedule.pastDueCount} past due`
+                : "No scheduled tasks yet"
             }
             tone={!isLoadingTasks && schedule.pastDueCount ? "alert" : undefined}
           />
 
           <KpiTile
             label="Active delays"
-            value={dash(isLoadingDelays, metrics.recordedDelays)}
+            loading={isLoadingDelays}
+            value={metrics.recordedDelays}
             sub="All delay entries"
             tone={!isLoadingDelays && metrics.recordedDelays ? "alert" : undefined}
           />
 
           <KpiTile
             label="Open change orders"
-            value={dash(isLoadingChangeOrders, metrics.pendingChangeOrders)}
-            sub={
-              isLoadingChangeOrders
-                ? "Loading exposure"
-                : currencyFormatter.format(metrics.pendingChangeOrderValue)
-            }
+            loading={isLoadingChangeOrders}
+            value={metrics.pendingChangeOrders}
+            sub={currencyFormatter.format(metrics.pendingChangeOrderValue)}
             tone={
               !isLoadingChangeOrders && metrics.pendingChangeOrders
                 ? "warning"
@@ -327,12 +346,9 @@ function ProjectDashboardPage({
 
           <KpiTile
             label="Starting this week"
-            value={dash(isLoadingTasks, thisWeek.starting)}
-            sub={
-              isLoadingTasks
-                ? "Loading schedule"
-                : `${thisWeek.finishing} finishing · ${thisWeek.active} active`
-            }
+            loading={isLoadingTasks}
+            value={thisWeek.starting}
+            sub={`${thisWeek.finishing} finishing · ${thisWeek.active} active`}
           />
         </div>
       </section>
@@ -340,7 +356,7 @@ function ProjectDashboardPage({
       <div className="insight-grid">
         <Panel title="Critical activities">
           {isLoadingTasks ? (
-            <LoadingState message="Loading schedule…" />
+            <SkeletonPanel label="Loading schedule…" lines={4} />
           ) : attention.length ? (
             <ul className="stack-list">
               {attention.map((task) => (
@@ -368,7 +384,7 @@ function ProjectDashboardPage({
 
         <Panel title="Upcoming inspections">
           {isLoadingInspections ? (
-            <LoadingState message="Loading inspections…" />
+            <SkeletonPanel label="Loading inspections…" lines={4} />
           ) : upcomingInspections.length ? (
             <ul className="stack-list">
               {upcomingInspections.map((inspection) => (
@@ -393,7 +409,7 @@ function ProjectDashboardPage({
 
         <Panel title="Upcoming tasks">
           {isLoadingTasks ? (
-            <LoadingState message="Loading schedule…" />
+            <SkeletonPanel label="Loading schedule…" lines={4} />
           ) : upcomingTasks.length ? (
             <ul className="stack-list">
               {upcomingTasks.map((task) => (
@@ -417,7 +433,7 @@ function ProjectDashboardPage({
 
         <Panel title="Recent daily logs">
           {isLoadingDailyLogs ? (
-            <LoadingState message="Loading daily logs…" />
+            <SkeletonPanel label="Loading daily logs…" lines={4} />
           ) : recentDailyLogs.length ? (
             <ul className="stack-list">
               {recentDailyLogs.map((log) => (
@@ -464,7 +480,7 @@ function ProjectDashboardPage({
 
         <Panel title="Recent changes">
           {isLoadingChangeOrders ? (
-            <LoadingState message="Loading change orders…" />
+            <SkeletonPanel label="Loading change orders…" lines={4} />
           ) : recentChangeOrders.length ? (
             <>
               <ul className="stack-list">
@@ -519,13 +535,19 @@ function ProjectDashboardPage({
           </p>
           <div className="quick-action-stack">
             <Button variant="primary" onClick={() => onNavigate("dailyLogs")}>
+              <Icon name="plus" size={17} />
               Add Daily Log
             </Button>
-            <Button onClick={() => onNavigate("notesDelays")}>Report Delay</Button>
+            <Button onClick={() => onNavigate("notesDelays")}>
+              <Icon name="alert-triangle" size={17} />
+              Report Delay
+            </Button>
             <Button onClick={() => onNavigate("inspections")}>
+              <Icon name="clipboard-check" size={17} />
               Add Inspection
             </Button>
             <Button onClick={() => onNavigate("changeOrders")}>
+              <Icon name="dollar-sign" size={17} />
               Add Change Order
             </Button>
           </div>

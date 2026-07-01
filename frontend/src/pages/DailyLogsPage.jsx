@@ -6,6 +6,7 @@ import RecordFilters from "../components/RecordFilters";
 import RecordTable from "../components/RecordTable";
 import Button from "../components/ui/Button";
 import Card from "../components/ui/Card";
+import Icon from "../components/ui/Icon";
 import PageHeader from "../components/ui/PageHeader";
 import ProjectLayout from "../components/ui/ProjectLayout";
 
@@ -65,6 +66,7 @@ function DailyLogsPage({
             disabled={isRefreshing}
             aria-busy={isRefreshing}
           >
+            <Icon name="refresh" size={17} />
             {isRefreshing ? "Refreshing logs…" : "Refresh Logs"}
           </Button>
         }

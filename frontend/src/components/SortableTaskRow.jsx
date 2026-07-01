@@ -2,6 +2,8 @@ import { useRef } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
+import Icon from "./ui/Icon";
+
 
 function CellEditor({
   label,
@@ -108,6 +110,9 @@ function SortableTaskRow({
     <tr
       ref={setNodeRef}
       style={rowStyle}
+      className={
+        selectedTaskId === task.id ? "schedule-row--selected" : undefined
+      }
       onClick={() => setSelectedTaskId(task.id)}
     >
       <td className="schedule-sticky-column schedule-sticky-0">
@@ -165,14 +170,16 @@ function SortableTaskRow({
                   task.name
                 }`}
                 aria-expanded={!task.is_collapsed}
+                title={task.is_collapsed ? "Expand" : "Collapse"}
                 onClick={(event) => {
                   event.stopPropagation();
                   handleToggleCollapse(task);
                 }}
               >
-                <span aria-hidden="true">
-                  {task.is_collapsed ? "Expand" : "Collapse"}
-                </span>
+                <Icon
+                  name={task.is_collapsed ? "chevron-right" : "chevron-down"}
+                  size={18}
+                />
               </button>
             )}
           </div>
@@ -246,12 +253,15 @@ function SortableTaskRow({
       <td>
         <button
           type="button"
+          className="schedule-icon-button schedule-icon-button--danger"
+          aria-label="Delete"
+          title={`Delete ${task.name}`}
           onClick={(event) => {
             event.stopPropagation();
             handleDelete(task.id);
           }}
         >
-          Delete
+          <Icon name="trash" size={17} />
         </button>
       </td>
     </tr>

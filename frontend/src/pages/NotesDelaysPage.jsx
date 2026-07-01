@@ -7,6 +7,7 @@ import RecordTable from "../components/RecordTable";
 import StatusBadge from "../components/StatusBadge";
 import Button from "../components/ui/Button";
 import Card from "../components/ui/Card";
+import Icon from "../components/ui/Icon";
 import PageHeader from "../components/ui/PageHeader";
 import ProjectLayout from "../components/ui/ProjectLayout";
 
@@ -70,6 +71,7 @@ function NotesDelaysPage({
             disabled={isRefreshing}
             aria-busy={isRefreshing}
           >
+            <Icon name="refresh" size={17} />
             {isRefreshing ? "Refreshing entries…" : "Refresh Entries"}
           </Button>
         }

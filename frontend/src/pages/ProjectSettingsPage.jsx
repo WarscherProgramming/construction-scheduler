@@ -3,6 +3,7 @@ import RecordCell from "../components/RecordCell";
 import RecordTable from "../components/RecordTable";
 import Button from "../components/ui/Button";
 import Card from "../components/ui/Card";
+import Icon from "../components/ui/Icon";
 import PageHeader from "../components/ui/PageHeader";
 import ProjectLayout from "../components/ui/ProjectLayout";
 
@@ -61,6 +62,7 @@ function ProjectSettingsPage({
           disabled={isCreating}
           aria-busy={isCreating}
         >
+          <Icon name="plus" size={17} />
           {isCreating ? "Adding company…" : "Add Company"}
         </Button>
       </Card>

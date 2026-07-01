@@ -1,6 +1,6 @@
 import { Children } from "react";
 
-import LoadingState from "./LoadingState";
+import { SkeletonPanel } from "./ui/Skeleton";
 
 function RecordTable({
   headers,
@@ -19,7 +19,13 @@ function RecordTable({
       aria-label={label}
       tabIndex={0}
     >
-      {isLoading && <LoadingState message={loadingMessage} />}
+      {isLoading && (
+        <SkeletonPanel
+          label={loadingMessage}
+          lines={4}
+          className="skeleton-panel--table"
+        />
+      )}
       <table className="data-table record-table">
         <caption className="visually-hidden">{label}</caption>
         <thead>

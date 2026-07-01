@@ -55,6 +55,7 @@ import FeedbackBanner from "./components/FeedbackBanner";
 import LoadingState from "./components/LoadingState";
 import HomePage from "./pages/HomePage";
 import FirstRunPage from "./pages/FirstRunPage";
+import ConfirmDialog from "./components/ui/ConfirmDialog";
 import { seedDemoProject } from "./services/demoSeeder";
 
 const ONBOARDING_FLAG = "fieldflow.onboardingDismissed";
@@ -132,6 +133,7 @@ function App() {
     () => localStorage.getItem(ONBOARDING_FLAG) === "1"
   );
   const [seedProgress, setSeedProgress] = useState(null);
+  const [pendingDelete, setPendingDelete] = useState(null);
   const [activeOperations, setActiveOperations] = useState([]);
   const activeOperationsRef = useRef(new Set());
   const [loadingResources, setLoadingResources] = useState([]);
@@ -622,17 +624,38 @@ function App() {
   };
 
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Delete this task? This action cannot be undone.")) {
+  const handleDelete = (id) => {
+    setPendingDelete({
+      kind: "task",
+      id,
+      title: "Delete this task?",
+      message:
+        "The task will be permanently removed from the schedule. This action cannot be undone.",
+    });
+  };
+
+  const handleConfirmDelete = async () => {
+    const pending = pendingDelete;
+    setPendingDelete(null);
+    if (!pending) return;
+
+    if (pending.kind === "task") {
+      try {
+        const data = await deleteTask(selectedProjectId, pending.id);
+        setTasks(data.tasks);
+        showNotice("success", "Task deleted.");
+      } catch (error) {
+        reportRequestError("Unable to delete task", error);
+      }
       return;
     }
 
     try {
-      const data = await deleteTask(selectedProjectId, id);
-      setTasks(data.tasks);
-      showNotice("success", "Task deleted.");
+      await deleteChangeOrder(selectedProjectId, pending.id);
+      await loadChangeOrders();
+      showNotice("success", "Change order deleted.");
     } catch (error) {
-      reportRequestError("Unable to delete task", error);
+      reportRequestError("Unable to delete change order", error);
     }
   };
 
@@ -936,22 +959,14 @@ function App() {
     });
   };
 
-  const handleDeleteChangeOrder = async (id) => {
-    if (
-      !window.confirm(
-        "Delete this change order? This action cannot be undone."
-      )
-    ) {
-      return;
-    }
-
-    try {
-      await deleteChangeOrder(selectedProjectId, id);
-      await loadChangeOrders();
-      showNotice("success", "Change order deleted.");
-    } catch (error) {
-      reportRequestError("Unable to delete change order", error);
-    }
+  const handleDeleteChangeOrder = (id) => {
+    setPendingDelete({
+      kind: "changeOrder",
+      id,
+      title: "Delete this change order?",
+      message:
+        "The change order will be permanently removed. This action cannot be undone.",
+    });
   };
 
   const handleCreateProjectCompany = async () => {
@@ -1079,6 +1094,15 @@ function App() {
       <FeedbackBanner
         notice={notice}
         onDismiss={() => setNotice(null)}
+      />
+      <ConfirmDialog
+        open={Boolean(pendingDelete)}
+        destructive
+        title={pendingDelete?.title}
+        message={pendingDelete?.message}
+        confirmLabel="Delete"
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setPendingDelete(null)}
       />
       <Suspense fallback={<LoadingState message="Loading module…" />}>
         {content}

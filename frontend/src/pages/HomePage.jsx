@@ -3,6 +3,7 @@ import LoadingState from "../components/LoadingState";
 import SkipLink from "../components/SkipLink";
 import Button from "../components/ui/Button";
 import Card from "../components/ui/Card";
+import Icon from "../components/ui/Icon";
 import PageHeader from "../components/ui/PageHeader";
 
 function HomePage({
@@ -25,7 +26,12 @@ function HomePage({
         <PageHeader
           title="FieldFlow"
           subtitle="Construction planning and field management"
-          actions={<Button onClick={onLogout}>Logout</Button>}
+          actions={
+            <Button onClick={onLogout}>
+              <Icon name="log-out" size={17} />
+              Logout
+            </Button>
+          }
         />
 
         <div style={{ maxWidth: "350px" }}>
@@ -77,6 +83,7 @@ function HomePage({
                 disabled={isCreating}
                 aria-busy={isCreating}
               >
+                <Icon name="plus" size={17} />
                 {isCreating ? "Adding project…" : "Add Project"}
               </Button>
             </form>

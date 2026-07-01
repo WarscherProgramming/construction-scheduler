@@ -1,10 +1,12 @@
+import Icon from "./Icon";
+
 /**
  * Reusable sidebar container built on the shared `.app-sidebar` shell.
  *
  * Two modes, composable:
- *  - Navigation: pass `items` (`{ id, label, onClick }`); the entry whose id
- *    matches `activeId` is marked as the current page. `navHeading` renders a
- *    visible label above the list.
+ *  - Navigation: pass `items` (`{ id, label, onClick, icon? }`); the entry
+ *    whose id matches `activeId` is marked as the current page. `navHeading`
+ *    renders a visible label above the list.
  *  - Control panel: pass arbitrary `children` (e.g. the Scheduler's view
  *    toggle, template forms, export action).
  *
@@ -49,6 +51,7 @@ function Sidebar({
                 aria-current={isActive ? "page" : undefined}
                 onClick={item.onClick}
               >
+                {item.icon && <Icon name={item.icon} size={18} />}
                 {item.label}
               </button>
             );

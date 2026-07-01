@@ -7,6 +7,7 @@ import RecordTable from "../components/RecordTable";
 import StatusBadge from "../components/StatusBadge";
 import Button from "../components/ui/Button";
 import Card from "../components/ui/Card";
+import Icon from "../components/ui/Icon";
 import PageHeader from "../components/ui/PageHeader";
 import ProjectLayout from "../components/ui/ProjectLayout";
 
@@ -88,6 +89,7 @@ function ChangeOrdersPage({
             disabled={isRefreshing}
             aria-busy={isRefreshing}
           >
+            <Icon name="refresh" size={17} />
             {isRefreshing
               ? "Refreshing change orders…"
               : "Refresh Change Orders"}
@@ -277,6 +279,7 @@ function ChangeOrdersPage({
                 onClick={() => onDelete(changeOrder.id)}
                 aria-label={`Delete change order ${changeOrder.co_number}`}
               >
+                <Icon name="trash" size={16} />
                 Delete
               </Button>
             </RecordCell>

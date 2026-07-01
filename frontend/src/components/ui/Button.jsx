@@ -6,8 +6,7 @@ const VARIANT_CLASS = {
 };
 
 /**
- * Shared button. Replaces the inline `buttonStyle` object so every button
- * shares the same sizing, spacing, and variant treatment from CSS.
+ * Shared button: consistent sizing, spacing, and variant treatment from CSS.
  */
 function Button({
   variant = "secondary",

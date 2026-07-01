@@ -1,16 +1,17 @@
 import AppLayout from "./AppLayout";
 import Button from "./Button";
+import Icon from "./Icon";
 import Sidebar from "./Sidebar";
 
 /** Single source of truth for the persistent project navigation rail. */
 const NAV_ITEMS = [
-  { id: "projectDashboard", label: "Dashboard" },
-  { id: "scheduler", label: "Schedule" },
-  { id: "dailyLogs", label: "Daily Logs" },
-  { id: "inspections", label: "Inspections" },
-  { id: "notesDelays", label: "Notes & Delays" },
-  { id: "changeOrders", label: "Change Orders" },
-  { id: "projectSettings", label: "Project Settings" },
+  { id: "projectDashboard", label: "Dashboard", icon: "layout-dashboard" },
+  { id: "scheduler", label: "Schedule", icon: "calendar" },
+  { id: "dailyLogs", label: "Daily Logs", icon: "file-text" },
+  { id: "inspections", label: "Inspections", icon: "clipboard-check" },
+  { id: "notesDelays", label: "Notes & Delays", icon: "alert-triangle" },
+  { id: "changeOrders", label: "Change Orders", icon: "dollar-sign" },
+  { id: "projectSettings", label: "Project Settings", icon: "settings" },
 ];
 
 /**
@@ -50,6 +51,7 @@ function ProjectLayout({
             <p className="sidebar-brand__project">{projectName}</p>
           </div>
           <Button block onClick={() => onNavigate?.("home")}>
+            <Icon name="home" size={18} />
             Back to Home
           </Button>
         </>
@@ -57,6 +59,7 @@ function ProjectLayout({
       footer={
         onLogout && (
           <Button block onClick={onLogout}>
+            <Icon name="log-out" size={18} />
             Logout
           </Button>
         )
