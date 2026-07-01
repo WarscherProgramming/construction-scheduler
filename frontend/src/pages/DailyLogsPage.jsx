@@ -1,11 +1,13 @@
 import { useMemo, useState } from "react";
 
 import FormField from "../components/FormField";
-import ProjectPageLayout from "../components/ProjectPageLayout";
 import RecordCell from "../components/RecordCell";
 import RecordFilters from "../components/RecordFilters";
 import RecordTable from "../components/RecordTable";
-import { buttonStyle } from "../styles";
+import Button from "../components/ui/Button";
+import Card from "../components/ui/Card";
+import PageHeader from "../components/ui/PageHeader";
+import ProjectLayout from "../components/ui/ProjectLayout";
 
 function DailyLogsPage({
   projectName,
@@ -16,7 +18,8 @@ function DailyLogsPage({
   logManpower,
   logNotes,
   formatDate,
-  onBack,
+  onNavigate,
+  onLogout,
   onRefresh,
   onCreate,
   onDateChange,
@@ -48,16 +51,34 @@ function DailyLogsPage({
   }, [companyFilter, dailyLogs, searchQuery]);
 
   return (
-    <ProjectPageLayout title={`${projectName} Daily Logs`} onBack={onBack}>
-      <form
-        className="form-stack form-card"
+    <ProjectLayout
+      projectName={projectName}
+      activeId="dailyLogs"
+      onNavigate={onNavigate}
+      onLogout={onLogout}
+    >
+      <PageHeader
+        title="Daily Logs"
+        actions={
+          <Button
+            onClick={onRefresh}
+            disabled={isRefreshing}
+            aria-busy={isRefreshing}
+          >
+            {isRefreshing ? "Refreshing logs…" : "Refresh Logs"}
+          </Button>
+        }
+      />
+
+      <Card
+        as="form"
+        title="Create Daily Log"
+        bodyClassName="form-stack"
         onSubmit={(event) => {
           event.preventDefault();
           onCreate();
         }}
       >
-        <h2>Create Daily Log</h2>
-
         <FormField label="Date" htmlFor="daily-log-date" required>
           <input
             id="daily-log-date"
@@ -115,25 +136,15 @@ function DailyLogsPage({
           />
         </FormField>
 
-        <button
+        <Button
           type="submit"
-          className="button-primary"
+          variant="primary"
           disabled={isCreating}
           aria-busy={isCreating}
-          style={buttonStyle}
         >
           {isCreating ? "Saving daily log…" : "Save Daily Log"}
-        </button>
-      </form>
-
-      <button
-        onClick={onRefresh}
-        disabled={isRefreshing}
-        aria-busy={isRefreshing}
-        style={{ ...buttonStyle, marginTop: "15px" }}
-      >
-        {isRefreshing ? "Refreshing logs…" : "Refresh Logs"}
-      </button>
+        </Button>
+      </Card>
 
       <RecordFilters resultCount={filteredLogs.length}>
         <FormField label="Search" htmlFor="daily-log-search">
@@ -184,7 +195,7 @@ function DailyLogsPage({
           </tr>
         ))}
       </RecordTable>
-    </ProjectPageLayout>
+    </ProjectLayout>
   );
 }
 

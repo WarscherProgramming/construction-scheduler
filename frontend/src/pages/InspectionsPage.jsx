@@ -1,12 +1,14 @@
 import { useMemo, useState } from "react";
 
 import FormField from "../components/FormField";
-import ProjectPageLayout from "../components/ProjectPageLayout";
 import RecordCell from "../components/RecordCell";
 import RecordFilters from "../components/RecordFilters";
 import RecordTable from "../components/RecordTable";
 import StatusBadge from "../components/StatusBadge";
-import { buttonStyle } from "../styles";
+import Button from "../components/ui/Button";
+import Card from "../components/ui/Card";
+import PageHeader from "../components/ui/PageHeader";
+import ProjectLayout from "../components/ui/ProjectLayout";
 
 function InspectionsPage({
   projectName,
@@ -15,7 +17,8 @@ function InspectionsPage({
   inspectionType,
   inspectionStatus,
   formatDate,
-  onBack,
+  onNavigate,
+  onLogout,
   onRefresh,
   onCreate,
   onDateChange,
@@ -45,16 +48,34 @@ function InspectionsPage({
   }, [inspections, searchQuery, statusFilter]);
 
   return (
-    <ProjectPageLayout title={`${projectName} Inspections`} onBack={onBack}>
-      <form
-        className="form-stack form-card"
+    <ProjectLayout
+      projectName={projectName}
+      activeId="inspections"
+      onNavigate={onNavigate}
+      onLogout={onLogout}
+    >
+      <PageHeader
+        title="Inspections"
+        actions={
+          <Button
+            onClick={onRefresh}
+            disabled={isRefreshing}
+            aria-busy={isRefreshing}
+          >
+            {isRefreshing ? "Refreshing inspections…" : "Refresh Inspections"}
+          </Button>
+        }
+      />
+
+      <Card
+        as="form"
+        title="Create Inspection"
+        bodyClassName="form-stack"
         onSubmit={(event) => {
           event.preventDefault();
           onCreate();
         }}
       >
-        <h2>Create Inspection</h2>
-
         <FormField label="Date" htmlFor="inspection-date" required>
           <input
             id="inspection-date"
@@ -88,25 +109,15 @@ function InspectionsPage({
           </select>
         </FormField>
 
-        <button
+        <Button
           type="submit"
-          className="button-primary"
+          variant="primary"
           disabled={isCreating}
           aria-busy={isCreating}
-          style={buttonStyle}
         >
           {isCreating ? "Saving inspection…" : "Save Inspection"}
-        </button>
-      </form>
-
-      <button
-        onClick={onRefresh}
-        disabled={isRefreshing}
-        aria-busy={isRefreshing}
-        style={{ ...buttonStyle, marginTop: "15px" }}
-      >
-        {isRefreshing ? "Refreshing inspections…" : "Refresh Inspections"}
-      </button>
+        </Button>
+      </Card>
 
       <RecordFilters resultCount={filteredInspections.length}>
         <FormField label="Search" htmlFor="inspection-search">
@@ -158,7 +169,7 @@ function InspectionsPage({
           </tr>
         ))}
       </RecordTable>
-    </ProjectPageLayout>
+    </ProjectLayout>
   );
 }
 

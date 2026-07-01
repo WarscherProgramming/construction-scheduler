@@ -2,21 +2,6 @@ import { Children } from "react";
 
 import LoadingState from "./LoadingState";
 
-
-const tableStyle = {
-  width: "100%",
-  borderCollapse: "collapse",
-  marginTop: "20px",
-};
-
-const headerStyle = {
-  padding: "10px",
-  background: "var(--surface-muted)",
-  border: "1px solid var(--border)",
-  color: "var(--text-h)",
-  textAlign: "left",
-};
-
 function RecordTable({
   headers,
   children,
@@ -35,12 +20,12 @@ function RecordTable({
       tabIndex={0}
     >
       {isLoading && <LoadingState message={loadingMessage} />}
-      <table className="record-table" style={tableStyle}>
+      <table className="data-table record-table">
         <caption className="visually-hidden">{label}</caption>
         <thead>
           <tr>
             {headers.map((header) => (
-              <th key={header} scope="col" style={headerStyle}>
+              <th key={header} scope="col">
                 {header}
               </th>
             ))}

@@ -1,7 +1,9 @@
 import FormField from "../components/FormField";
 import LoadingState from "../components/LoadingState";
 import SkipLink from "../components/SkipLink";
-import { buttonStyle } from "../styles";
+import Button from "../components/ui/Button";
+import Card from "../components/ui/Card";
+import PageHeader from "../components/ui/PageHeader";
 
 function HomePage({
   projects,
@@ -20,95 +22,82 @@ function HomePage({
     <>
       <SkipLink />
       <main id="main-content" className="home-page" tabIndex={-1}>
-        <h1>FieldFlow</h1>
+        <PageHeader
+          title="FieldFlow"
+          subtitle="Construction planning and field management"
+          actions={<Button onClick={onLogout}>Logout</Button>}
+        />
 
-      <p>Construction planning and field management</p>
-
-      <div style={{ maxWidth: "350px", margin: "16px auto 0" }}>
-        <FormField label="Project" htmlFor="project-select">
-          <select
-            id="project-select"
-            className="field-control"
-            disabled={isLoadingProjects}
-            value={selectedProjectId || ""}
-            onChange={(event) => onProjectSelect(Number(event.target.value))}
-          >
-            <option value="">
-              {isLoadingProjects ? "Loading projects…" : "Select project"}
-            </option>
-            {projects.map((project) => (
-              <option key={project.id} value={project.id}>
-                {project.name}
-              </option>
-            ))}
-          </select>
-        </FormField>
-      </div>
-
-      <div className="home-card-grid">
-        <div className="home-card">
-          <h2>Add New Project</h2>
-
-          <form
-            className="form-stack"
-            onSubmit={(event) => {
-              event.preventDefault();
-              onCreateProject();
-            }}
-          >
-            <FormField label="Project name" htmlFor="project-name" required>
-              <input
-                id="project-name"
-                className="field-control"
-                autoComplete="organization"
-                required
-                value={newProjectName}
-                onChange={(event) =>
-                  onNewProjectNameChange(event.target.value)
-                }
-              />
-            </FormField>
-
-            <button
-              type="submit"
-              className="button-primary"
-              disabled={isCreating}
-              aria-busy={isCreating}
-              style={buttonStyle}
+        <div style={{ maxWidth: "350px" }}>
+          <FormField label="Project" htmlFor="project-select">
+            <select
+              id="project-select"
+              className="field-control"
+              disabled={isLoadingProjects}
+              value={selectedProjectId || ""}
+              onChange={(event) => onProjectSelect(Number(event.target.value))}
             >
-              {isCreating ? "Adding project…" : "Add Project"}
-            </button>
-          </form>
+              <option value="">
+                {isLoadingProjects ? "Loading projects…" : "Select project"}
+              </option>
+              {projects.map((project) => (
+                <option key={project.id} value={project.id}>
+                  {project.name}
+                </option>
+              ))}
+            </select>
+          </FormField>
         </div>
 
-        <div className="home-card">
-          <h2>Active Projects</h2>
-          {isLoadingProjects ? (
-            <LoadingState message="Loading projects…" />
-          ) : (
-            <p>{projects.length} active project(s)</p>
-          )}
-        </div>
+        <div className="home-card-grid">
+          <Card title="Add New Project">
+            <form
+              className="form-stack"
+              onSubmit={(event) => {
+                event.preventDefault();
+                onCreateProject();
+              }}
+            >
+              <FormField label="Project name" htmlFor="project-name" required>
+                <input
+                  id="project-name"
+                  className="field-control"
+                  autoComplete="organization"
+                  required
+                  value={newProjectName}
+                  onChange={(event) =>
+                    onNewProjectNameChange(event.target.value)
+                  }
+                />
+              </FormField>
 
-        <div className="home-card">
-          <h2>Schedule Templates</h2>
-          {isLoadingTemplates ? (
-            <LoadingState message="Loading templates…" />
-          ) : (
-            <p>{templates.length} saved template(s)</p>
-          )}
-        </div>
-      </div>
+              <Button
+                type="submit"
+                variant="primary"
+                disabled={isCreating}
+                aria-busy={isCreating}
+              >
+                {isCreating ? "Adding project…" : "Add Project"}
+              </Button>
+            </form>
+          </Card>
 
-        <button
-          onClick={onLogout}
-          style={{
-            ...buttonStyle,
-            marginTop: "30px",
-          }}
-        >
-          Logout
-        </button>
+          <Card title="Active Projects">
+            {isLoadingProjects ? (
+              <LoadingState message="Loading projects…" />
+            ) : (
+              <p>{projects.length} active project(s)</p>
+            )}
+          </Card>
+
+          <Card title="Schedule Templates">
+            {isLoadingTemplates ? (
+              <LoadingState message="Loading templates…" />
+            ) : (
+              <p>{templates.length} saved template(s)</p>
+            )}
+          </Card>
+        </div>
       </main>
     </>
   );

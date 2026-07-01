@@ -110,10 +110,7 @@ function SortableTaskRow({
       style={rowStyle}
       onClick={() => setSelectedTaskId(task.id)}
     >
-      <td
-        className="schedule-sticky-column schedule-sticky-0"
-        style={{ padding: "4px", border: "1px solid #ddd" }}
-      >
+      <td className="schedule-sticky-column schedule-sticky-0">
         <button
           type="button"
           className="schedule-icon-button schedule-drag-handle"
@@ -132,10 +129,7 @@ function SortableTaskRow({
         </button>
       </td>
 
-      <td
-        className="schedule-sticky-column schedule-sticky-1"
-        style={{ padding: "4px", border: "1px solid #ddd" }}
-      >
+      <td className="schedule-sticky-column schedule-sticky-1">
         {isEditing("name") ? (
           <CellEditor
             label={`Task ${displayId} name`}
@@ -185,7 +179,7 @@ function SortableTaskRow({
         )}
       </td>
 
-      <td style={{ padding: "4px", border: "1px solid #ddd" }}>
+      <td>
         {isEditing("duration") ? (
           <CellEditor
             label={`Task ${displayId} duration`}
@@ -205,7 +199,7 @@ function SortableTaskRow({
         )}
       </td>
 
-      <td style={{ padding: "4px", border: "1px solid #ddd" }}>
+      <td>
         {isEditing("manual_start_date") ? (
           <CellEditor
             label={`Task ${displayId} start date`}
@@ -225,11 +219,11 @@ function SortableTaskRow({
         )}
       </td>
 
-      <td style={{ padding: "8px", border: "1px solid #ddd" }}>
+      <td>
         {formatDate(task.end_date)}
       </td>
 
-      <td style={{ padding: "4px", border: "1px solid #ddd" }}>
+      <td>
         {isEditing("predecessor") ? (
           <CellEditor
             label={`Task ${displayId} predecessor`}
@@ -249,7 +243,7 @@ function SortableTaskRow({
         )}
       </td>
 
-      <td style={{ padding: "8px", border: "1px solid #ddd" }}>
+      <td>
         <button
           type="button"
           onClick={(event) => {

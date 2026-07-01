@@ -6,9 +6,3 @@ export const buttonStyle = {
   cursor: "pointer",
   marginLeft: "1px",
 };
-
-export const tableCellStyle = {
-  padding: "8px",
-  border: "1px solid var(--border)",
-  background: "var(--surface)",
-};

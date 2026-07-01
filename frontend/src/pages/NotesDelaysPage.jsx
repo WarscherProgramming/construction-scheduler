@@ -1,12 +1,14 @@
 import { useMemo, useState } from "react";
 
 import FormField from "../components/FormField";
-import ProjectPageLayout from "../components/ProjectPageLayout";
 import RecordCell from "../components/RecordCell";
 import RecordFilters from "../components/RecordFilters";
 import RecordTable from "../components/RecordTable";
 import StatusBadge from "../components/StatusBadge";
-import { buttonStyle } from "../styles";
+import Button from "../components/ui/Button";
+import Card from "../components/ui/Card";
+import PageHeader from "../components/ui/PageHeader";
+import ProjectLayout from "../components/ui/ProjectLayout";
 
 function NotesDelaysPage({
   projectName,
@@ -18,7 +20,8 @@ function NotesDelaysPage({
   noteDelayDescription,
   noteDelayImpact,
   formatDate,
-  onBack,
+  onNavigate,
+  onLogout,
   onRefresh,
   onCreate,
   onDateChange,
@@ -53,16 +56,34 @@ function NotesDelaysPage({
   }, [companyFilter, notesDelays, searchQuery, typeFilter]);
 
   return (
-    <ProjectPageLayout title={`${projectName} Notes & Delays`} onBack={onBack}>
-      <form
-        className="form-stack form-card"
+    <ProjectLayout
+      projectName={projectName}
+      activeId="notesDelays"
+      onNavigate={onNavigate}
+      onLogout={onLogout}
+    >
+      <PageHeader
+        title="Notes & Delays"
+        actions={
+          <Button
+            onClick={onRefresh}
+            disabled={isRefreshing}
+            aria-busy={isRefreshing}
+          >
+            {isRefreshing ? "Refreshing entries…" : "Refresh Entries"}
+          </Button>
+        }
+      />
+
+      <Card
+        as="form"
+        title="Create Entry"
+        bodyClassName="form-stack"
         onSubmit={(event) => {
           event.preventDefault();
           onCreate();
         }}
       >
-        <h2>Create Entry</h2>
-
         <FormField label="Date" htmlFor="note-delay-date" required>
           <input
             id="note-delay-date"
@@ -120,25 +141,15 @@ function NotesDelaysPage({
           />
         </FormField>
 
-        <button
+        <Button
           type="submit"
-          className="button-primary"
+          variant="primary"
           disabled={isCreating}
           aria-busy={isCreating}
-          style={buttonStyle}
         >
           {isCreating ? "Saving entry…" : "Save Entry"}
-        </button>
-      </form>
-
-      <button
-        onClick={onRefresh}
-        disabled={isRefreshing}
-        aria-busy={isRefreshing}
-        style={{ ...buttonStyle, marginTop: "15px" }}
-      >
-        {isRefreshing ? "Refreshing entries…" : "Refresh Entries"}
-      </button>
+        </Button>
+      </Card>
 
       <RecordFilters resultCount={filteredEntries.length}>
         <FormField label="Search" htmlFor="notes-delays-search">
@@ -204,7 +215,7 @@ function NotesDelaysPage({
           </tr>
         ))}
       </RecordTable>
-    </ProjectPageLayout>
+    </ProjectLayout>
   );
 }
 

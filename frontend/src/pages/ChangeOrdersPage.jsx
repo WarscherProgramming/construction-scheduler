@@ -1,12 +1,14 @@
 import { useMemo, useState } from "react";
 
 import FormField from "../components/FormField";
-import ProjectPageLayout from "../components/ProjectPageLayout";
 import RecordCell from "../components/RecordCell";
 import RecordFilters from "../components/RecordFilters";
 import RecordTable from "../components/RecordTable";
 import StatusBadge from "../components/StatusBadge";
-import { buttonStyle } from "../styles";
+import Button from "../components/ui/Button";
+import Card from "../components/ui/Card";
+import PageHeader from "../components/ui/PageHeader";
+import ProjectLayout from "../components/ui/ProjectLayout";
 
 function CompanyOptions({ companies }) {
   return companies.map((company) => (
@@ -28,7 +30,8 @@ function ChangeOrdersPage({
   changeOrderAmount,
   changeOrderResponsibleParty,
   formatDate,
-  onBack,
+  onNavigate,
+  onLogout,
   onRefresh,
   onCreate,
   onDelete,
@@ -71,16 +74,36 @@ function ChangeOrdersPage({
   }, [changeOrders, companyFilter, searchQuery, statusFilter]);
 
   return (
-    <ProjectPageLayout title={`${projectName} Change Orders`} onBack={onBack}>
-      <form
-        className="form-stack form-card"
+    <ProjectLayout
+      projectName={projectName}
+      activeId="changeOrders"
+      onNavigate={onNavigate}
+      onLogout={onLogout}
+    >
+      <PageHeader
+        title="Change Orders"
+        actions={
+          <Button
+            onClick={onRefresh}
+            disabled={isRefreshing}
+            aria-busy={isRefreshing}
+          >
+            {isRefreshing
+              ? "Refreshing change orders…"
+              : "Refresh Change Orders"}
+          </Button>
+        }
+      />
+
+      <Card
+        as="form"
+        title="Create Change Order"
+        bodyClassName="form-stack"
         onSubmit={(event) => {
           event.preventDefault();
           onCreate();
         }}
       >
-        <h2>Create Change Order</h2>
-
         <FormField label="Date" htmlFor="change-order-date" required>
           <input
             id="change-order-date"
@@ -160,27 +183,15 @@ function ChangeOrdersPage({
           />
         </FormField>
 
-        <button
+        <Button
           type="submit"
-          className="button-primary"
+          variant="primary"
           disabled={isCreating}
           aria-busy={isCreating}
-          style={buttonStyle}
         >
           {isCreating ? "Saving change order…" : "Save Change Order"}
-        </button>
-      </form>
-
-      <button
-        onClick={onRefresh}
-        disabled={isRefreshing}
-        aria-busy={isRefreshing}
-        style={{ ...buttonStyle, marginTop: "15px" }}
-      >
-        {isRefreshing
-          ? "Refreshing change orders…"
-          : "Refresh Change Orders"}
-      </button>
+        </Button>
+      </Card>
 
       <RecordFilters resultCount={filteredChangeOrders.length}>
         <FormField label="Search" htmlFor="change-order-search">
@@ -261,19 +272,18 @@ function ChangeOrdersPage({
               {changeOrder.description}
             </RecordCell>
             <RecordCell label="Actions" className="record-actions">
-              <button
-                type="button"
-                className="button-danger"
+              <Button
+                variant="danger"
                 onClick={() => onDelete(changeOrder.id)}
                 aria-label={`Delete change order ${changeOrder.co_number}`}
               >
                 Delete
-              </button>
+              </Button>
             </RecordCell>
           </tr>
         ))}
       </RecordTable>
-    </ProjectPageLayout>
+    </ProjectLayout>
   );
 }
 

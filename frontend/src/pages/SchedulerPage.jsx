@@ -8,9 +8,11 @@ import GanttChart from "../components/GanttChart";
 import FormField from "../components/FormField";
 import LoadingState from "../components/LoadingState";
 import NewTaskInput from "../components/NewTaskInput";
-import SkipLink from "../components/SkipLink";
 import SortableTaskRow from "../components/SortableTaskRow";
-import { buttonStyle } from "../styles";
+import Button from "../components/ui/Button";
+import Card from "../components/ui/Card";
+import PageHeader from "../components/ui/PageHeader";
+import ProjectLayout from "../components/ui/ProjectLayout";
 import {
   formatPredecessorForSchedule,
   getScheduleTaskNumber,
@@ -18,6 +20,7 @@ import {
 import { findIndentParent } from "../utils/taskHierarchy";
 
 function SchedulerPage({
+  projectName,
   tasks,
   templates,
   selectedProjectId,
@@ -68,143 +71,111 @@ function SchedulerPage({
   );
   const canOutdentSelectedTask = Boolean(selectedTask?.parent_task_id);
 
-  return (
-    <div className="app-shell scheduler-shell">
-      <SkipLink />
-      <aside className="app-sidebar scheduler-sidebar">
-        <button
-          onClick={() => onNavigate("projectDashboard")}
-          style={buttonStyle}
+  const schedulerControls = (
+    <>
+      <div className="schedule-view-controls">
+        <h2 className="sidebar-heading">View</h2>
+        <Button
+          onClick={() => setScheduleView("table")}
+          aria-pressed={scheduleView === "table"}
         >
-          Project Dashboard
-        </button>
+          Table
+        </Button>
+        <Button
+          onClick={() => setScheduleView("gantt")}
+          aria-pressed={scheduleView === "gantt"}
+        >
+          Gantt
+        </Button>
+      </div>
 
-        <div className="schedule-view-controls">
-          <h2 className="sidebar-heading">View</h2>
-          <button
-            onClick={() => setScheduleView("table")}
-            aria-pressed={scheduleView === "table"}
-            style={buttonStyle}
-          >
-            Table
-          </button>
-          <button
-            onClick={() => setScheduleView("gantt")}
-            aria-pressed={scheduleView === "gantt"}
-            style={buttonStyle}
-          >
-            Gantt
-          </button>
-        </div>
-
-        <div
-          style={{
-            padding: "15px",
-            border: "1px solid #ddd",
-            borderRadius: "8px",
-            marginBottom: "15px",
+      <Card title="Templates" style={{ marginBottom: "var(--space-4)" }}>
+        <form
+          className="form-stack"
+          onSubmit={(event) => {
+            event.preventDefault();
+            onSaveTemplate();
           }}
+          style={{ gap: "8px", marginBottom: "16px" }}
         >
-          <h2 className="sidebar-heading" style={{ marginTop: 0 }}>
-            Templates
-          </h2>
-          <form
-            className="form-stack"
-            onSubmit={(event) => {
-              event.preventDefault();
-              onSaveTemplate();
-            }}
-            style={{ gap: "8px", marginBottom: "16px" }}
+          <FormField label="Template name" htmlFor="template-name" required>
+            <input
+              id="template-name"
+              className="field-control"
+              required
+              value={templateName}
+              onChange={(event) => setTemplateName(event.target.value)}
+            />
+          </FormField>
+          <Button
+            type="submit"
+            variant="primary"
+            disabled={isSavingTemplate}
+            aria-busy={isSavingTemplate}
           >
-            <FormField label="Template name" htmlFor="template-name" required>
-              <input
-                id="template-name"
-                className="field-control"
-                required
-                value={templateName}
-                onChange={(event) => setTemplateName(event.target.value)}
-              />
-            </FormField>
-            <button
-              type="submit"
-              className="button-primary"
-              disabled={isSavingTemplate}
-              aria-busy={isSavingTemplate}
-              style={buttonStyle}
-            >
-              {isSavingTemplate ? "Saving template…" : "Save Template"}
-            </button>
-          </form>
+            {isSavingTemplate ? "Saving template…" : "Save Template"}
+          </Button>
+        </form>
 
-          <form
-            className="form-stack"
-            onSubmit={(event) => {
-              event.preventDefault();
-              onApplyTemplate();
-            }}
-            style={{ gap: "8px" }}
-          >
-            <FormField label="Saved template" htmlFor="saved-template" required>
-              <select
-                id="saved-template"
-                className="field-control"
-                required
-                disabled={isLoadingTemplates}
-                value={selectedTemplateId}
-                onChange={(event) => setSelectedTemplateId(event.target.value)}
-              >
-                <option value="">
-                  {isLoadingTemplates ? "Loading templates…" : "Select template"}
+        <form
+          className="form-stack"
+          onSubmit={(event) => {
+            event.preventDefault();
+            onApplyTemplate();
+          }}
+          style={{ gap: "8px" }}
+        >
+          <FormField label="Saved template" htmlFor="saved-template" required>
+            <select
+              id="saved-template"
+              className="field-control"
+              required
+              disabled={isLoadingTemplates}
+              value={selectedTemplateId}
+              onChange={(event) => setSelectedTemplateId(event.target.value)}
+            >
+              <option value="">
+                {isLoadingTemplates ? "Loading templates…" : "Select template"}
+              </option>
+              {templates.map((template) => (
+                <option key={template.id} value={template.id}>
+                  {template.name}
                 </option>
-                {templates.map((template) => (
-                  <option key={template.id} value={template.id}>
-                    {template.name}
-                  </option>
-                ))}
-              </select>
-            </FormField>
-            <button
-              type="submit"
-              className="button-primary"
-              disabled={isApplyingTemplate}
-              aria-busy={isApplyingTemplate}
-              style={buttonStyle}
-            >
-              {isApplyingTemplate ? "Applying template…" : "Apply Template"}
-            </button>
-          </form>
-        </div>
+              ))}
+            </select>
+          </FormField>
+          <Button
+            type="submit"
+            variant="primary"
+            disabled={isApplyingTemplate}
+            aria-busy={isApplyingTemplate}
+          >
+            {isApplyingTemplate ? "Applying template…" : "Apply Template"}
+          </Button>
+        </form>
+      </Card>
 
-        <button
-          onClick={onExport}
-          disabled={!selectedProjectId || isExporting}
-          aria-busy={isExporting}
-          style={buttonStyle}
-        >
-          {isExporting ? "Exporting PDF…" : "Export Schedule as PDF"}
-        </button>
-
-        <div className="sidebar-footer">
-          <button onClick={onLogout} style={buttonStyle}>
-            Logout
-          </button>
-        </div>
-      </aside>
-
-      <main
-        id="main-content"
-        className="app-main scheduler-main"
-        tabIndex={-1}
+      <Button
+        block
+        onClick={onExport}
+        disabled={!selectedProjectId || isExporting}
+        aria-busy={isExporting}
       >
-        <h1
-          style={{
-            textAlign: "center",
-            width: "100%",
-            marginBottom: "20px",
-          }}
-        >
-          Schedule
-        </h1>
+        {isExporting ? "Exporting PDF…" : "Export Schedule as PDF"}
+      </Button>
+    </>
+  );
+
+  return (
+    <ProjectLayout
+      projectName={projectName}
+      activeId="scheduler"
+      onNavigate={onNavigate}
+      onLogout={onLogout}
+      sidebarExtras={schedulerControls}
+      mainClassName="scheduler-main"
+    >
+        <PageHeader title="Schedule" />
 
         <div className="schedule-toolbar">
           <div className="schedule-toolbar-selection">
@@ -271,17 +242,7 @@ function SchedulerPage({
                 item.
               </div>
             )}
-            <table
-              className="schedule-table"
-              style={{
-                width: "100%",
-                minWidth: "1400px",
-                borderCollapse: "separate",
-                borderSpacing: 0,
-                marginTop: "20px",
-                tableLayout: "fixed",
-              }}
-            >
+            <table className="schedule-table">
               <caption className="visually-hidden">
                 Editable project schedule
               </caption>
@@ -310,9 +271,6 @@ function SchedulerPage({
                       }
                       style={{
                         width: column.width,
-                        padding: "10px",
-                        background: "#f3f4f6",
-                        border: "1px solid #ddd",
                         textAlign: column.align,
                       }}
                     >
@@ -354,14 +312,8 @@ function SchedulerPage({
                     ))}
 
                   <tr className="schedule-new-row">
-                    <td
-                      className="schedule-sticky-column schedule-sticky-0"
-                      style={{ border: "1px solid #ddd" }}
-                    ></td>
-                    <td
-                      className="schedule-sticky-column schedule-sticky-1"
-                      style={{ padding: "8px", border: "1px solid #ddd" }}
-                    >
+                    <td className="schedule-sticky-column schedule-sticky-0"></td>
+                    <td className="schedule-sticky-column schedule-sticky-1">
                       {editingCell?.id === "new" &&
                       editingCell.field === "name" ? (
                         <NewTaskInput
@@ -380,11 +332,11 @@ function SchedulerPage({
                         </button>
                       )}
                     </td>
-                    <td style={{ border: "1px solid #ddd" }}></td>
-                    <td style={{ border: "1px solid #ddd" }}></td>
-                    <td style={{ border: "1px solid #ddd" }}></td>
-                    <td style={{ border: "1px solid #ddd" }}></td>
-                    <td style={{ border: "1px solid #ddd" }}></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
                   </tr>
                 </tbody>
               </SortableContext>
@@ -401,8 +353,7 @@ function SchedulerPage({
             <GanttChart tasks={tasks} selectedTaskId={selectedTaskId} />
           </div>
         )}
-      </main>
-    </div>
+    </ProjectLayout>
   );
 }
 

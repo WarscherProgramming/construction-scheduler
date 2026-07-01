@@ -1,15 +1,18 @@
 import FormField from "../components/FormField";
-import ProjectPageLayout from "../components/ProjectPageLayout";
 import RecordCell from "../components/RecordCell";
 import RecordTable from "../components/RecordTable";
-import { buttonStyle } from "../styles";
+import Button from "../components/ui/Button";
+import Card from "../components/ui/Card";
+import PageHeader from "../components/ui/PageHeader";
+import ProjectLayout from "../components/ui/ProjectLayout";
 
 function ProjectSettingsPage({
   projectName,
   projectCompanies,
   companyName,
   companyTrade,
-  onBack,
+  onNavigate,
+  onLogout,
   onCreate,
   onNameChange,
   onTradeChange,
@@ -17,16 +20,23 @@ function ProjectSettingsPage({
   isLoading = false,
 }) {
   return (
-    <ProjectPageLayout title={`${projectName} Settings`} onBack={onBack}>
-      <form
-        className="form-stack form-card"
+    <ProjectLayout
+      projectName={projectName}
+      activeId="projectSettings"
+      onNavigate={onNavigate}
+      onLogout={onLogout}
+    >
+      <PageHeader title="Project Settings" />
+
+      <Card
+        as="form"
+        title="Add Company"
+        bodyClassName="form-stack"
         onSubmit={(event) => {
           event.preventDefault();
           onCreate();
         }}
       >
-        <h2>Add Company</h2>
-
         <FormField label="Company name" htmlFor="project-company-name" required>
           <input
             id="project-company-name"
@@ -45,16 +55,15 @@ function ProjectSettingsPage({
             onChange={(event) => onTradeChange(event.target.value)}
           />
         </FormField>
-        <button
+        <Button
           type="submit"
-          className="button-primary"
+          variant="primary"
           disabled={isCreating}
           aria-busy={isCreating}
-          style={buttonStyle}
         >
           {isCreating ? "Adding company…" : "Add Company"}
-        </button>
-      </form>
+        </Button>
+      </Card>
 
       <RecordTable
         label="Project companies"
@@ -70,7 +79,7 @@ function ProjectSettingsPage({
           </tr>
         ))}
       </RecordTable>
-    </ProjectPageLayout>
+    </ProjectLayout>
   );
 }
 

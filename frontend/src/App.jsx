@@ -33,12 +33,9 @@ import {
 import { ApiError } from "./services/httpClient";
 import { moveArrayItem } from "./utils/array";
 import {
-  getCurrentWeekRange,
-  parseLocalDateInputValue,
   sortByDateDescending,
   toLocalDateInputValue,
 } from "./utils/date";
-import { getDashboardMetrics } from "./utils/dashboard";
 import {
   parseAppHash,
   updateBrowserRoute,
@@ -57,6 +54,10 @@ import AuthPage from "./pages/AuthPage";
 import FeedbackBanner from "./components/FeedbackBanner";
 import LoadingState from "./components/LoadingState";
 import HomePage from "./pages/HomePage";
+import FirstRunPage from "./pages/FirstRunPage";
+import { seedDemoProject } from "./services/demoSeeder";
+
+const ONBOARDING_FLAG = "fieldflow.onboardingDismissed";
 
 const ChangeOrdersPage = lazy(() => import("./pages/ChangeOrdersPage"));
 const DailyLogsPage = lazy(() => import("./pages/DailyLogsPage"));
@@ -71,7 +72,14 @@ const ProjectSettingsPage = lazy(
 const SchedulerPage = lazy(() => import("./pages/SchedulerPage"));
 
 function App() {
-  const { isAuthenticated, login, logout, register } = useAuth();
+  const {
+    isAuthenticated,
+    login,
+    logout,
+    register,
+    sessionExpired,
+    acknowledgeSessionExpiry,
+  } = useAuth();
 
   //usestates
   const [tasks, setTasks] = useState([]);
@@ -120,6 +128,10 @@ function App() {
   const [companyTrade, setCompanyTrade] = useState("");
   const [scheduleView, setScheduleView] = useState("table");
   const [notice, setNotice] = useState(null);
+  const [onboardingDismissed, setOnboardingDismissed] = useState(
+    () => localStorage.getItem(ONBOARDING_FLAG) === "1"
+  );
+  const [seedProgress, setSeedProgress] = useState(null);
   const [activeOperations, setActiveOperations] = useState([]);
   const activeOperationsRef = useRef(new Set());
   const [loadingResources, setLoadingResources] = useState([]);
@@ -259,6 +271,13 @@ function App() {
       error instanceof ApiError ? error.message : "Unexpected application error";
 
     console.error(`${context}: ${message}`, error);
+
+    // A 401 means the session ended; the auth flow surfaces a single
+    // "session expired" message, so suppress these stale request errors.
+    if (error instanceof ApiError && error.status === 401) {
+      return;
+    }
+
     showNotice("error", `${context}. ${message}`);
   }, [showNotice]);
 
@@ -455,7 +474,12 @@ function App() {
     if (!isAuthenticated || !hasLoadedProjects || !selectedProjectId) return;
 
     const pageLoaders = {
-      projectDashboard: [loadChangeOrders, loadNotesDelays],
+      projectDashboard: [
+        loadChangeOrders,
+        loadNotesDelays,
+        loadInspections,
+        loadDailyLogs,
+      ],
       dailyLogs: [loadDailyLogs],
       inspections: [loadInspections],
       notesDelays: [loadNotesDelays],
@@ -487,6 +511,23 @@ function App() {
     const timeoutId = window.setTimeout(resetApplicationState, 0);
     return () => window.clearTimeout(timeoutId);
   }, [isAuthenticated, resetApplicationState]);
+
+  useEffect(() => {
+    if (!sessionExpired) return;
+
+    const timeoutId = window.setTimeout(() => {
+      // Replace any stale request errors with a single session-expiry notice.
+      setNotice({
+        id: Date.now(),
+        type: "info",
+        title: "Session expired",
+        message: "Your session has expired. Please sign in again.",
+      });
+      acknowledgeSessionExpiry();
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [sessionExpired, acknowledgeSessionExpiry]);
 
   useEffect(() => {
     const pageTitles = {
@@ -634,6 +675,44 @@ function App() {
     });
   };
 
+  const dismissOnboarding = useCallback(() => {
+    localStorage.setItem(ONBOARDING_FLAG, "1");
+    setOnboardingDismissed(true);
+  }, []);
+
+  const handleStartEmptyWorkspace = useCallback(() => {
+    dismissOnboarding();
+  }, [dismissOnboarding]);
+
+  const handleLoadSampleProject = useCallback(() => {
+    return runOperation("seedDemo", async () => {
+      setSeedProgress({ step: 0, total: 0, label: "Preparing sample data…" });
+
+      try {
+        const project = await seedDemoProject({ onProgress: setSeedProgress });
+
+        dismissOnboarding();
+        await loadProjects();
+        navigateTo("projectDashboard", project.id);
+        showNotice(
+          "success",
+          "Sample project loaded — explore Riverside Medical Center — Phase 2."
+        );
+      } catch (error) {
+        reportRequestError("Unable to load the sample project", error);
+      } finally {
+        setSeedProgress(null);
+      }
+    });
+  }, [
+    dismissOnboarding,
+    loadProjects,
+    navigateTo,
+    reportRequestError,
+    runOperation,
+    showNotice,
+  ]);
+
   const handleSaveTemplate = async () => {
     if (!selectedProjectId) {
       reportValidationError("Select a project before saving a template.");
@@ -705,6 +784,16 @@ function App() {
       }
     });
   };
+
+  const handleDemoAccess = useCallback(() => {
+    setEmail(`demo+${Date.now()}@fieldflow.app`);
+    setPassword("FieldFlowDemo123!");
+    setAuthMode("register");
+    showNotice(
+      "info",
+      "Demo account ready — select Create account to explore FieldFlow with a sample project."
+    );
+  }, [showNotice]);
 
   const handleExportProjectPdf = async () => {
     if (!selectedProjectId) {
@@ -865,27 +954,6 @@ function App() {
     }
   };
 
-  //Dashboard pull task current week
-  const getTasksThisWeek = () => {
-    const { start, end } = getCurrentWeekRange();
-
-    return tasks
-      .filter((task) => {
-        const taskStart = parseLocalDateInputValue(task.start_date);
-        return taskStart && taskStart >= start && taskStart <= end;
-      })
-      .sort((left, right) =>
-        String(left.start_date).localeCompare(String(right.start_date))
-      );
-  };
-
-  //project delay table
-  const getProjectDelays = () => {
-    return notesDelays.filter(
-      (entry) => entry.entry_type === "Delay"
-    );
-  };
-
   const handleCreateProjectCompany = async () => {
     if (!companyName.trim()) {
       reportValidationError("Enter a company name before adding it.");
@@ -917,26 +985,6 @@ function App() {
     runOperation("refreshNotesDelays", loadNotesDelays);
   const handleRefreshChangeOrders = () =>
     runOperation("refreshChangeOrders", loadChangeOrders);
-
-  //Change order totals
-  const getChangeOrderTotalsByCompany = () => {
-    const totals = {};
-
-    changeOrders.forEach((co) => {
-      const company = co.company || "Unassigned";
-
-      const amount = Number(
-        String(co.amount || "0").replace(/[$,]/g, "")
-      );
-
-      totals[company] = (totals[company] || 0) + amount;
-    });
-
-    return Object.entries(totals).map(([company, total]) => ({
-      company,
-      total,
-    }));
-  };
 
   const handleDragEnd = async (event) => {
     const { active, over } = event;
@@ -1048,6 +1096,7 @@ function App() {
         onPasswordChange={setPassword}
         onLogin={handleLogin}
         onRegister={handleRegister}
+        onDemo={handleDemoAccess}
         isSubmitting={isOperationActive("auth")}
         onToggleMode={() =>
           setAuthMode(authMode === "login" ? "register" : "login")
@@ -1057,6 +1106,21 @@ function App() {
   }
 
   if (currentPage === "home") {
+    const showOnboarding =
+      hasLoadedProjects && projects.length === 0 && !onboardingDismissed;
+
+    if (showOnboarding) {
+      return renderWithFeedback(
+        <FirstRunPage
+          onLoadSample={handleLoadSampleProject}
+          onStartEmpty={handleStartEmptyWorkspace}
+          isSeeding={isOperationActive("seedDemo")}
+          seedProgress={seedProgress}
+          onLogout={handleLogout}
+        />
+      );
+    }
+
     return renderWithFeedback(
       <HomePage
         projects={projects}
@@ -1083,33 +1147,30 @@ function App() {
       (project) => project.id === selectedProjectId
     );
 
-    const tasksThisWeek = getTasksThisWeek();
-    const projectDelays = getProjectDelays();
-    const dashboardMetrics = getDashboardMetrics({
-      tasks,
-      tasksThisWeek,
-      projectDelays,
-      changeOrders,
-    });
-
     return renderWithFeedback(
       <ProjectDashboardPage
         projectName={selectedProject?.name || "Project"}
-        tasksThisWeek={tasksThisWeek}
-        changeOrderTotals={getChangeOrderTotalsByCompany()}
-        projectDelays={projectDelays}
-        metrics={dashboardMetrics}
-        isLoadingTasks={
-          !hasLoadedProjects || isResourceLoading("tasks")
-        }
+        tasks={tasks}
+        changeOrders={changeOrders}
+        notesDelays={notesDelays}
+        inspections={inspections}
+        dailyLogs={dailyLogs}
+        isLoadingTasks={!hasLoadedProjects || isResourceLoading("tasks")}
         isLoadingChangeOrders={
           !hasLoadedProjects || isResourceLoading("changeOrders")
         }
         isLoadingDelays={
           !hasLoadedProjects || isResourceLoading("notesDelays")
         }
+        isLoadingInspections={
+          !hasLoadedProjects || isResourceLoading("inspections")
+        }
+        isLoadingDailyLogs={
+          !hasLoadedProjects || isResourceLoading("dailyLogs")
+        }
         formatDate={formatDate}
         onNavigate={navigateTo}
+        onLogout={handleLogout}
       />
     );
   }
@@ -1129,7 +1190,8 @@ function App() {
         logManpower={logManpower}
         logNotes={logNotes}
         formatDate={formatDate}
-        onBack={() => navigateTo("projectDashboard")}
+        onNavigate={navigateTo}
+        onLogout={handleLogout}
         onRefresh={handleRefreshDailyLogs}
         onCreate={handleCreateDailyLog}
         isCreating={isOperationActive("createDailyLog")}
@@ -1159,7 +1221,8 @@ function App() {
         inspectionType={inspectionType}
         inspectionStatus={inspectionStatus}
         formatDate={formatDate}
-        onBack={() => navigateTo("projectDashboard")}
+        onNavigate={navigateTo}
+        onLogout={handleLogout}
         onRefresh={handleRefreshInspections}
         onCreate={handleCreateInspection}
         isCreating={isOperationActive("createInspection")}
@@ -1188,7 +1251,8 @@ function App() {
         noteDelayDescription={noteDelayDescription}
         noteDelayImpact={noteDelayImpact}
         formatDate={formatDate}
-        onBack={() => navigateTo("projectDashboard")}
+        onNavigate={navigateTo}
+        onLogout={handleLogout}
         onRefresh={handleRefreshNotesDelays}
         onCreate={handleCreateNoteDelay}
         isCreating={isOperationActive("createNoteDelay")}
@@ -1224,7 +1288,8 @@ function App() {
         changeOrderAmount={changeOrderAmount}
         changeOrderResponsibleParty={changeOrderResponsibleParty}
         formatDate={formatDate}
-        onBack={() => navigateTo("projectDashboard")}
+        onNavigate={navigateTo}
+        onLogout={handleLogout}
         onRefresh={handleRefreshChangeOrders}
         onCreate={handleCreateChangeOrder}
         isCreating={isOperationActive("createChangeOrder")}
@@ -1256,7 +1321,8 @@ function App() {
         projectCompanies={projectCompanies}
         companyName={companyName}
         companyTrade={companyTrade}
-        onBack={() => navigateTo("projectDashboard")}
+        onNavigate={navigateTo}
+        onLogout={handleLogout}
         onCreate={handleCreateProjectCompany}
         isCreating={isOperationActive("createCompany")}
         isLoading={!hasLoadedProjects || isResourceLoading("companies")}
@@ -1268,6 +1334,10 @@ function App() {
 
   return renderWithFeedback(
     <SchedulerPage
+      projectName={
+        projects.find((project) => project.id === selectedProjectId)?.name ||
+        "Project"
+      }
       tasks={tasks}
       templates={templates}
       selectedProjectId={selectedProjectId}
