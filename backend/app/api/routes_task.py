@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_db, get_owned_project
@@ -16,115 +16,36 @@ from app.services.task_scheduling import (
     annotate_critical_path,
     recalculate_schedule,
 )
+from app.services.task_validation import (
+    validate_dependency_assignment,
+    validate_parent_assignment,
+    validate_task_reference,
+)
+
+__all__ = [
+    "router",
+    "validate_dependency_assignment",
+    "validate_parent_assignment",
+    "validate_task_reference",
+]
 
 router = APIRouter()
 
 
-def validate_task_reference(
-    task_id: int | None,
-    *,
-    project_id: int,
-    db: Session,
-    field_name: str,
-) -> None:
-    if task_id is None:
-        return
-
-    exists = (
-        db.query(Task.id)
-        .filter(Task.id == task_id, Task.project_id == project_id)
-        .first()
+def ordered_project_tasks(db: Session, project_id: int) -> list[Task]:
+    """The project's tasks in display order — the canonical task query."""
+    return (
+        db.query(Task)
+        .filter(Task.project_id == project_id)
+        .order_by(Task.order_index, Task.id)
+        .all()
     )
 
-    if exists is None:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail=f"{field_name} must reference a task in this project",
-        )
 
-
-def validate_parent_assignment(
-    task: Task,
-    parent_task_id: int | None,
-    *,
-    project_id: int,
-    db: Session,
-) -> None:
-    validate_task_reference(
-        parent_task_id,
-        project_id=project_id,
-        db=db,
-        field_name="parent_task_id",
-    )
-
-    if parent_task_id is None:
-        return
-
-    if parent_task_id == task.id:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail="A task cannot be its own parent",
-        )
-
-    visited: set[int] = set()
-    current_id = parent_task_id
-
-    while current_id is not None and current_id not in visited:
-        if current_id == task.id:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-                detail="Parent assignment would create a hierarchy cycle",
-            )
-
-        visited.add(current_id)
-        current = (
-            db.query(Task)
-            .filter(Task.id == current_id, Task.project_id == project_id)
-            .first()
-        )
-        current_id = current.parent_task_id if current else None
-
-
-def validate_dependency_assignment(
-    task: Task,
-    predecessor_task_id: int | None,
-    *,
-    project_id: int,
-    db: Session,
-) -> None:
-    validate_task_reference(
-        predecessor_task_id,
-        project_id=project_id,
-        db=db,
-        field_name="predecessor_task_id",
-    )
-
-    if predecessor_task_id is None:
-        return
-
-    if predecessor_task_id == task.id:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail="A task cannot depend on itself",
-        )
-
-    visited: set[int] = set()
-    current_id = predecessor_task_id
-
-    while current_id is not None and current_id not in visited:
-        if current_id == task.id:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-                detail="Dependency assignment would create a cycle",
-            )
-
-        visited.add(current_id)
-        current = (
-            db.query(Task)
-            .filter(Task.id == current_id, Task.project_id == project_id)
-            .first()
-        )
-        current_id = current.predecessor_task_id if current else None
+def task_list_response(tasks: list[Task]) -> dict:
+    """Annotate derived critical-path metadata and shape the response."""
+    annotate_critical_path(tasks)
+    return {"tasks": tasks}
 
 
 def dependency_values(payload: TaskCreate | TaskUpdate) -> dict:
@@ -157,15 +78,7 @@ def get_tasks(
     db: Session = Depends(get_db),
     project: Project = Depends(get_owned_project),
 ):
-    tasks = (
-        db.query(Task)
-        .filter(Task.project_id == project_id)
-        .order_by(Task.order_index, Task.id)
-        .all()
-    )
-    annotate_critical_path(tasks)
-
-    return {"tasks": tasks}
+    return task_list_response(ordered_project_tasks(db, project_id))
 
 
 @router.post(
@@ -207,20 +120,11 @@ def create_task(
     db.add(new_task)
     db.commit()
 
-    tasks = (
-        db.query(Task)
-        .filter(Task.project_id == project_id)
-        .order_by(Task.order_index, Task.id)
-        .all()
-    )
-
+    tasks = ordered_project_tasks(db, project_id)
     recalculate_schedule(tasks)
-
     db.commit()
 
-    annotate_critical_path(tasks)
-
-    return {"tasks": tasks}
+    return task_list_response(tasks)
 
 @router.put(
     "/projects/{project_id}/tasks/reorder",
@@ -244,12 +148,7 @@ def reorder_tasks(
         if task:
             task.order_index = index
 
-    tasks = (
-        db.query(Task)
-        .filter(Task.project_id == project_id)
-        .order_by(Task.order_index, Task.id)
-        .all()
-    )
+    tasks = ordered_project_tasks(db, project_id)
     recalculate_schedule(tasks)
     db.commit()
 
@@ -306,20 +205,11 @@ def update_task(
         for field, value in values.items():
             setattr(task, field, value)
 
-    tasks = (
-        db.query(Task)
-        .filter(Task.project_id == project_id)
-        .order_by(Task.order_index, Task.id)
-        .all()
-    )
-
+    tasks = ordered_project_tasks(db, project_id)
     recalculate_schedule(tasks)
-
     db.commit()
 
-    annotate_critical_path(tasks)
-
-    return {"tasks": tasks}
+    return task_list_response(tasks)
 
 
 @router.delete(
@@ -342,18 +232,9 @@ def delete_task(
         db.delete(task)
         db.commit()
 
-    tasks = (
-        db.query(Task)
-        .filter(Task.project_id == project_id)
-        .order_by(Task.order_index, Task.id)
-        .all()
-    )
-
+    tasks = ordered_project_tasks(db, project_id)
     recalculate_schedule(tasks)
-
     db.commit()
 
-    annotate_critical_path(tasks)
-
-    return {"tasks": tasks}
+    return task_list_response(tasks)
 

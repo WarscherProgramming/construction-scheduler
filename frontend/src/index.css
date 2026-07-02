@@ -1532,8 +1532,71 @@ button:disabled {
   letter-spacing: 0.04em;
 }
 
-.mini-chart {
-  margin-top: var(--space-3);
+/* Recoverable render-error fallback. */
+.error-boundary {
+  display: grid;
+  gap: var(--space-2);
+  justify-items: center;
+  padding: var(--space-6) var(--space-5);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  text-align: center;
+}
+
+.error-boundary__title {
+  color: var(--text-h);
+  font-size: 1.05rem;
+}
+
+.error-boundary__description {
+  max-width: 44ch;
+  color: var(--text);
+}
+
+/* Compact horizontal bar comparison (replaces the former chart library). */
+.bar-list {
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bar-list__row {
+  display: grid;
+  grid-template-columns: minmax(72px, 30%) 1fr auto;
+  gap: var(--space-2);
+  align-items: center;
+  font-size: 0.82rem;
+}
+
+.bar-list__label {
+  overflow: hidden;
+  color: var(--text);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.bar-list__track {
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--surface-muted);
+}
+
+.bar-list__fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--brand);
+}
+
+.bar-list__value {
+  color: var(--text-h);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .quick-action-stack {

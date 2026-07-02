@@ -1,4 +1,5 @@
 import EmptyState from "./EmptyState";
+import { formatDisplayDate as formatDate } from "../utils/date";
 import { getTaskDepthFromList } from "../utils/taskHierarchy";
 import { buildWbsMap } from "../utils/taskReferences";
 
@@ -16,16 +17,6 @@ function parseDate(value) {
 
   const [y, m, d] = value.split("-").map(Number);
   return new Date(y, m - 1, d);
-}
-
-function formatDate(value) {
-  if (!value) return "-";
-
-  return parseDate(value).toLocaleDateString("en-US", {
-    month: "2-digit",
-    day: "2-digit",
-    year: "numeric",
-  });
 }
 
 /**

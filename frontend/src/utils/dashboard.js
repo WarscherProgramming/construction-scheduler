@@ -1,4 +1,5 @@
 import {
+  addDays,
   getCurrentWeekRange,
   parseLocalDateInputValue,
   toLocalDateInputValue,
@@ -9,12 +10,6 @@ const INSPECTION_ISSUE_STATUSES = new Set(["Pending", "Fail", "Partial Pass"]);
 function parseCurrencyAmount(value) {
   const amount = Number(String(value || "0").replace(/[$,\s]/g, ""));
   return Number.isFinite(amount) ? amount : 0;
-}
-
-function addDays(date, days) {
-  const next = new Date(date);
-  next.setDate(next.getDate() + days);
-  return next;
 }
 
 function scheduledTasksOf(tasks) {

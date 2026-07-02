@@ -1,8 +1,8 @@
 # FieldFlow — Portfolio Copy
 
 Ready-to-use descriptions for resumes, portfolio sites, and LinkedIn.
-Keep the metrics in sync with the repo (currently **91 tests: 70 frontend +
-21 backend**).
+Keep the metrics in sync with the repo (currently **140 tests: 98 frontend +
+42 backend**).
 
 ---
 
@@ -12,7 +12,7 @@ Keep the metrics in sync with the repo (currently **91 tests: 70 frontend +
 
 > FieldFlow — full-stack construction scheduling and field-management SaaS
 > (React 19, FastAPI, PostgreSQL) with a drag-and-drop CPM-style scheduler,
-> executive dashboard, and 91 automated tests.
+> executive dashboard, and 140 automated tests.
 
 ### Resume bullets
 
@@ -27,7 +27,7 @@ Keep the metrics in sync with the repo (currently **91 tests: 70 frontend +
 >   dashboard of client-side derived insights — health scoring, attention
 >   lists, and an activity feed — without adding backend endpoints.
 > - Implemented JWT authentication with expiry-aware session UX, client-side
->   demo-data onboarding through the public API, and 91 automated tests
+>   demo-data onboarding through the public API, and 140 automated tests
 >   (Vitest/RTL + pytest) run against every change.
 
 ### Portfolio-site paragraph
@@ -43,7 +43,7 @@ Keep the metrics in sync with the repo (currently **91 tests: 70 frontend +
 > a superintendent's first question of the day: what needs my attention? The
 > project emphasizes production polish: a token-based accessible design
 > system, first-run onboarding that seeds a realistic demo project, JWT auth
-> with graceful session expiry, and 91 automated tests across the stack.
+> with graceful session expiry, and 140 automated tests across the stack.
 
 ---
 
@@ -64,7 +64,7 @@ Keep the metrics in sync with the repo (currently **91 tests: 70 frontend +
 > 📝 Daily logs, inspections, delays, and change orders with search and filters
 >
 > Under the hood: React 19 + Vite, FastAPI + SQLAlchemy + PostgreSQL, JWT
-> auth, an accessible component design system, and 91 automated tests.
+> auth, an accessible component design system, and 140 automated tests.
 >
 > The demo seeds a full sample project in ~10 seconds — no signup friction:
 > 👉 https://construction-scheduler-eight.vercel.app
@@ -76,7 +76,7 @@ Keep the metrics in sync with the repo (currently **91 tests: 70 frontend +
 
 > FieldFlow — full-stack construction scheduling SaaS. React 19 · FastAPI ·
 > PostgreSQL. Drag-and-drop CPM-style scheduler, Gantt + PDF export, executive
-> dashboard, accessible design system, 91 automated tests. Live demo seeds a
+> dashboard, accessible design system, 140 automated tests. Live demo seeds a
 > complete sample project in seconds.
 
 ---

@@ -1,3 +1,21 @@
+/** ISO "YYYY-MM-DD" → display "MM/DD/YYYY"; falsy → "-".
+ *  Already-formatted values pass through unchanged. */
+export function formatDisplayDate(value) {
+  if (!value) return "-";
+
+  const normalized = String(value);
+  if (normalized.includes("/")) return normalized;
+
+  const [y, m, d] = normalized.split("-");
+  return `${m}/${d}/${y}`;
+}
+
+export function addDays(date, days) {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
+}
+
 export function toLocalDateInputValue(date = new Date()) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");

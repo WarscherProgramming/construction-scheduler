@@ -62,7 +62,8 @@ describe("ProjectDashboardPage", () => {
     // Health gauge (score 77 → At Risk) and change-order exposure.
     expect(screen.getByText("77")).toBeInTheDocument();
     expect(screen.getByText("At Risk")).toBeInTheDocument();
-    expect(screen.getByText("$12,500")).toBeInTheDocument();
+    // Exposure appears in the KPI tile and the change-order bar list.
+    expect(screen.getAllByText("$12,500").length).toBeGreaterThan(0);
 
     await user.click(screen.getByRole("button", { name: "Open Schedule" }));
     expect(onNavigate).toHaveBeenCalledWith("scheduler");

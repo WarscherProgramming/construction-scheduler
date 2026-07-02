@@ -10,7 +10,7 @@ records (daily logs, inspections, delays, change orders).
 ![React 19](https://img.shields.io/badge/React-19-61dafb?logo=react&logoColor=white&labelColor=20232a)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.1x-009688?logo=fastapi&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169e1?logo=postgresql&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-91%20passing-2ea44f)
+![Tests](https://img.shields.io/badge/tests-140%20passing-2ea44f)
 ![Vite](https://img.shields.io/badge/Vite-8-646cff?logo=vite&logoColor=white)
 
 ![FieldFlow executive dashboard](docs/screenshots/dashboard.png)
@@ -74,9 +74,10 @@ question — *"what needs my attention today?"* — has a one-screen answer.
 - **Client-side onboarding**: first-run detection seeds a realistic demo
   project through the public API with visible progress — the app is never
   empty.
-- **Automated testing: 91 tests** — 70 frontend (Vitest + React Testing
-  Library, behavior- and accessibility-focused) and 21 backend (pytest,
-  covering the scheduling engine, services, migrations, and CORS).
+- **Automated testing: 140 tests** — 98 frontend (Vitest + React Testing
+  Library, behavior- and accessibility-focused) and 42 backend (pytest,
+  covering the scheduling engine, critical path, services, migrations, CORS,
+  and TestClient API integration).
 
 ## Architecture at a Glance
 
@@ -152,20 +153,23 @@ client-side** in pure, unit-tested functions — no duplicate reporting API.
 | Backend | FastAPI, SQLAlchemy, Alembic, Pydantic |
 | Database | PostgreSQL |
 | Auth | JWT (OAuth2 password flow) |
-| Testing | Vitest + React Testing Library (70), pytest (21) |
+| Testing | Vitest + React Testing Library (98), pytest (42) |
 | Hosting | Vercel (frontend) · Render (API + migrations) |
 
 ## Testing
 
-**91 automated tests.**
+**140 automated tests.**
 
-- **Frontend (70)** — Vitest + React Testing Library. Tests target behavior
+- **Frontend (98)** — Vitest + React Testing Library. Tests target behavior
   and accessibility: roles and names, keyboard flows (Enter/Escape editing,
-  focus traps), derived dashboard metrics, demo-seeding orchestration, and
-  loading/empty/error states.
-- **Backend (21)** — pytest. Covers the workday scheduling engine
-  (dependencies, lag, holidays), task services, relationship migrations, and
-  CORS configuration.
+  grid cursor navigation, focus traps), derived dashboard metrics,
+  demo-seeding orchestration, App-level integration wiring, the HTTP
+  transport layer, and loading/empty/error states.
+- **Backend (42)** — pytest. Covers the workday scheduling engine
+  (dependencies, lag, federal holidays), critical path and total float,
+  task services, relationship migrations, CORS configuration, and
+  TestClient API integration (auth, ownership enforcement, task lifecycle,
+  and field records over HTTP).
 
 ```bash
 # frontend
@@ -226,12 +230,17 @@ Set `VITE_API_URL` when pointing at a deployed API.
 - ✅ Executive dashboard with derived health/attention insights
 - ✅ Branded landing page and first-run demo seeding
 - ✅ Icon system, confirmation dialogs, notifications, loading skeletons
+- ✅ Scheduler showcase: WBS numbering, inline validation, critical path +
+  float, federal-holiday calendar, today marker, keyboard grid navigation
+- ✅ Engineering hardening: dashboard bundle optimization (chart library
+  removed for CSS bars), error boundaries, App decomposition into feature
+  hooks + router, targeted memoization and shared date utilities, backend
+  DRY cleanup with TestClient API integration coverage
 
 **Next**
-- Scheduler showcase: critical-path highlighting, inline validation, today marker
-- Engineering hardening: state decomposition, chart code-splitting
 - RFIs and submittals, punch lists, document management
 - Weather-delay integration and resource loading
+- Milestone tasks, Gantt dependency arrows, and timeline zoom
 
 ## Author
 

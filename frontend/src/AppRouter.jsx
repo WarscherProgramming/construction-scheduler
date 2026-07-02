@@ -1,0 +1,283 @@
+import { lazy } from "react";
+
+import FirstRunPage from "./pages/FirstRunPage";
+import HomePage from "./pages/HomePage";
+import { formatDisplayDate as formatDate } from "./utils/date";
+
+const ChangeOrdersPage = lazy(() => import("./pages/ChangeOrdersPage"));
+const DailyLogsPage = lazy(() => import("./pages/DailyLogsPage"));
+const InspectionsPage = lazy(() => import("./pages/InspectionsPage"));
+const NotesDelaysPage = lazy(() => import("./pages/NotesDelaysPage"));
+const ProjectDashboardPage = lazy(
+  () => import("./pages/ProjectDashboardPage")
+);
+const ProjectSettingsPage = lazy(
+  () => import("./pages/ProjectSettingsPage")
+);
+const SchedulerPage = lazy(() => import("./pages/SchedulerPage"));
+
+/**
+ * Selects and wires the page for the current route. Pure presentation
+ * plumbing: all state arrives composed from App's hooks; nothing here owns
+ * state or side effects.
+ */
+function AppRouter({
+  currentPage,
+  selectedProjectId,
+  navigateTo,
+  onLogout,
+  data,
+  schedule,
+  forms,
+  onboarding,
+  onDeleteTask,
+  onDeleteChangeOrder,
+}) {
+  const {
+    projects,
+    hasLoadedProjects,
+    templates,
+    tasks,
+    dailyLogs,
+    inspections,
+    notesDelays,
+    changeOrders,
+    projectCompanies,
+    isOperationActive,
+    isResourceLoading,
+  } = data;
+
+  // Shared prop builders: one place for the loading-flag pattern, the
+  // navigation/logout pair, and the selected project's display name.
+  const loading = (key) => !hasLoadedProjects || isResourceLoading(key);
+  const navProps = { onNavigate: navigateTo, onLogout };
+  const projectName =
+    projects.find((project) => project.id === selectedProjectId)?.name ||
+    "Project";
+
+  if (currentPage === "home") {
+    const showOnboarding =
+      hasLoadedProjects && projects.length === 0 && !onboarding.dismissed;
+
+    if (showOnboarding) {
+      return (
+        <FirstRunPage
+          onLoadSample={onboarding.onLoadSample}
+          onStartEmpty={onboarding.onStartEmpty}
+          isSeeding={isOperationActive("seedDemo")}
+          seedProgress={onboarding.seedProgress}
+          onLogout={onLogout}
+        />
+      );
+    }
+
+    return (
+      <HomePage
+        projects={projects}
+        templates={templates}
+        selectedProjectId={selectedProjectId}
+        newProjectName={forms.newProjectName}
+        onProjectSelect={(projectId) => {
+          navigateTo("projectDashboard", projectId);
+        }}
+        onNewProjectNameChange={forms.setNewProjectName}
+        onCreateProject={forms.handleCreateProject}
+        isCreating={isOperationActive("createProject")}
+        isLoadingProjects={loading("projects")}
+        isLoadingTemplates={isResourceLoading("templates")}
+        onLogout={onLogout}
+      />
+    );
+  }
+
+  if (currentPage === "projectDashboard") {
+    return (
+      <ProjectDashboardPage
+        projectName={projectName}
+        tasks={tasks}
+        changeOrders={changeOrders}
+        notesDelays={notesDelays}
+        inspections={inspections}
+        dailyLogs={dailyLogs}
+        isLoadingTasks={loading("tasks")}
+        isLoadingChangeOrders={loading("changeOrders")}
+        isLoadingDelays={loading("notesDelays")}
+        isLoadingInspections={loading("inspections")}
+        isLoadingDailyLogs={loading("dailyLogs")}
+        formatDate={formatDate}
+        {...navProps}
+      />
+    );
+  }
+
+  if (currentPage === "dailyLogs") {
+    return (
+      <DailyLogsPage
+        projectName={projectName}
+        dailyLogs={dailyLogs}
+        projectCompanies={projectCompanies}
+        logDate={forms.logDate}
+        logCompany={forms.logCompany}
+        logManpower={forms.logManpower}
+        logNotes={forms.logNotes}
+        formatDate={formatDate}
+        {...navProps}
+        onRefresh={forms.handleRefreshDailyLogs}
+        onCreate={forms.handleCreateDailyLog}
+        isCreating={isOperationActive("createDailyLog")}
+        isRefreshing={isOperationActive("refreshDailyLogs")}
+        isLoading={loading("dailyLogs")}
+        isLoadingCompanies={loading("companies")}
+        onDateChange={forms.setLogDate}
+        onCompanyChange={forms.setLogCompany}
+        onManpowerChange={forms.setLogManpower}
+        onNotesChange={forms.setLogNotes}
+      />
+    );
+  }
+
+  if (currentPage === "inspections") {
+    return (
+      <InspectionsPage
+        projectName={projectName}
+        inspections={inspections}
+        inspectionDate={forms.inspectionDate}
+        inspectionType={forms.inspectionType}
+        inspectionStatus={forms.inspectionStatus}
+        formatDate={formatDate}
+        {...navProps}
+        onRefresh={forms.handleRefreshInspections}
+        onCreate={forms.handleCreateInspection}
+        isCreating={isOperationActive("createInspection")}
+        isRefreshing={isOperationActive("refreshInspections")}
+        isLoading={loading("inspections")}
+        onDateChange={forms.setInspectionDate}
+        onTypeChange={forms.setInspectionType}
+        onStatusChange={forms.setInspectionStatus}
+      />
+    );
+  }
+
+  if (currentPage === "notesDelays") {
+    return (
+      <NotesDelaysPage
+        projectName={projectName}
+        notesDelays={notesDelays}
+        projectCompanies={projectCompanies}
+        noteDelayDate={forms.noteDelayDate}
+        noteDelayType={forms.noteDelayType}
+        noteDelayCompany={forms.noteDelayCompany}
+        noteDelayDescription={forms.noteDelayDescription}
+        noteDelayImpact={forms.noteDelayImpact}
+        formatDate={formatDate}
+        {...navProps}
+        onRefresh={forms.handleRefreshNotesDelays}
+        onCreate={forms.handleCreateNoteDelay}
+        isCreating={isOperationActive("createNoteDelay")}
+        isRefreshing={isOperationActive("refreshNotesDelays")}
+        isLoading={loading("notesDelays")}
+        isLoadingCompanies={loading("companies")}
+        onDateChange={forms.setNoteDelayDate}
+        onTypeChange={forms.setNoteDelayType}
+        onCompanyChange={forms.setNoteDelayCompany}
+        onDescriptionChange={forms.setNoteDelayDescription}
+        onImpactChange={forms.setNoteDelayImpact}
+      />
+    );
+  }
+
+  if (currentPage === "changeOrders") {
+    return (
+      <ChangeOrdersPage
+        projectName={projectName}
+        changeOrders={changeOrders}
+        projectCompanies={projectCompanies}
+        changeOrderDate={forms.changeOrderDate}
+        changeOrderNumber={forms.changeOrderNumber}
+        changeOrderCompany={forms.changeOrderCompany}
+        changeOrderStatus={forms.changeOrderStatus}
+        changeOrderDescription={forms.changeOrderDescription}
+        changeOrderAmount={forms.changeOrderAmount}
+        changeOrderResponsibleParty={forms.changeOrderResponsibleParty}
+        formatDate={formatDate}
+        {...navProps}
+        onRefresh={forms.handleRefreshChangeOrders}
+        onCreate={forms.handleCreateChangeOrder}
+        isCreating={isOperationActive("createChangeOrder")}
+        isRefreshing={isOperationActive("refreshChangeOrders")}
+        isLoading={loading("changeOrders")}
+        isLoadingCompanies={loading("companies")}
+        onDelete={onDeleteChangeOrder}
+        onDateChange={forms.setChangeOrderDate}
+        onNumberChange={forms.setChangeOrderNumber}
+        onCompanyChange={forms.setChangeOrderCompany}
+        onStatusChange={forms.setChangeOrderStatus}
+        onDescriptionChange={forms.setChangeOrderDescription}
+        onAmountChange={forms.setChangeOrderAmount}
+        onResponsiblePartyChange={forms.setChangeOrderResponsibleParty}
+      />
+    );
+  }
+
+  if (currentPage === "projectSettings") {
+    return (
+      <ProjectSettingsPage
+        projectName={projectName}
+        projectCompanies={projectCompanies}
+        companyName={forms.companyName}
+        companyTrade={forms.companyTrade}
+        {...navProps}
+        onCreate={forms.handleCreateProjectCompany}
+        isCreating={isOperationActive("createCompany")}
+        isLoading={loading("companies")}
+        onNameChange={forms.setCompanyName}
+        onTradeChange={forms.setCompanyTrade}
+      />
+    );
+  }
+
+  return (
+    <SchedulerPage
+      projectName={projectName}
+      tasks={tasks}
+      templates={templates}
+      selectedProjectId={selectedProjectId}
+      selectedTaskId={schedule.selectedTaskId}
+      editingCell={schedule.editingCell}
+      editValue={schedule.editValue}
+      templateName={schedule.templateName}
+      selectedTemplateId={schedule.selectedTemplateId}
+      scheduleView={schedule.scheduleView}
+      setSelectedTaskId={schedule.setSelectedTaskId}
+      setEditValue={schedule.setEditValue}
+      setTemplateName={schedule.setTemplateName}
+      setSelectedTemplateId={schedule.setSelectedTemplateId}
+      setScheduleView={schedule.setScheduleView}
+      onNavigate={navigateTo}
+      onSaveTemplate={schedule.handleSaveTemplate}
+      onApplyTemplate={schedule.handleApplyTemplate}
+      onExport={schedule.handleExportProjectPdf}
+      isSavingTemplate={isOperationActive("saveTemplate")}
+      isApplyingTemplate={isOperationActive("applyTemplate")}
+      isExporting={isOperationActive("exportPdf")}
+      isLoadingTasks={loading("tasks")}
+      isLoadingTemplates={isResourceLoading("templates")}
+      onLogout={onLogout}
+      onDragEnd={schedule.handleDragEnd}
+      onCellClick={schedule.handleCellClick}
+      onCellSave={schedule.handleCellSave}
+      onCellCancel={schedule.handleCellCancel}
+      onDelete={onDeleteTask}
+      onIndent={schedule.handleIndentTask}
+      onOutdent={schedule.handleOutdentTask}
+      onToggleCollapse={schedule.handleToggleCollapse}
+      getEmptyRow={schedule.getEmptyRow}
+      formatDate={formatDate}
+      taskHasChildren={schedule.taskHasChildren}
+      isTaskHiddenByCollapsedParent={schedule.isTaskHiddenByCollapsedParent}
+      getTaskDepth={schedule.getTaskDepth}
+    />
+  );
+}
+
+export default AppRouter;

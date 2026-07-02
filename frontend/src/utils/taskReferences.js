@@ -48,7 +48,11 @@ export function getScheduleTaskNumber(tasks, taskId) {
   return buildWbsMap(tasks).get(taskId) ?? null;
 }
 
-export function formatPredecessorForSchedule(reference, tasks) {
+export function formatPredecessorForSchedule(
+  reference,
+  tasks,
+  wbsMap = buildWbsMap(tasks)
+) {
   const parsed = parsePredecessor(reference);
 
   if (!parsed) {
@@ -56,7 +60,7 @@ export function formatPredecessorForSchedule(reference, tasks) {
   }
 
   // Stored references use database task ids (always plain integers).
-  const wbsNumber = buildWbsMap(tasks).get(Number(parsed.code));
+  const wbsNumber = wbsMap.get(Number(parsed.code));
 
   if (!wbsNumber) {
     return reference;

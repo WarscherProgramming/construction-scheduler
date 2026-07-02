@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { closestCenter, DndContext } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -12,12 +12,13 @@ import NewTaskInput from "../components/NewTaskInput";
 import SortableTaskRow from "../components/SortableTaskRow";
 import Button from "../components/ui/Button";
 import Card from "../components/ui/Card";
+import ErrorBoundary from "../components/ui/ErrorBoundary";
 import PageHeader from "../components/ui/PageHeader";
 import ProjectLayout from "../components/ui/ProjectLayout";
 import {
+  buildWbsMap,
   formatPredecessorForApi,
   formatPredecessorForSchedule,
-  getScheduleTaskNumber,
 } from "../utils/taskReferences";
 import { findIndentParent } from "../utils/taskHierarchy";
 
@@ -64,12 +65,16 @@ function SchedulerPage({
   isTaskHiddenByCollapsedParent,
   getTaskDepth,
 }) {
-  const visibleTasks = tasks.filter(
-    (task) => !isTaskHiddenByCollapsedParent(task)
+  // Derived once per task-list change instead of per render/per row: the WBS
+  // map alone was previously rebuilt for every row (O(n²) per keystroke).
+  const wbsMap = useMemo(() => buildWbsMap(tasks), [tasks]);
+  const visibleTasks = useMemo(
+    () => tasks.filter((task) => !isTaskHiddenByCollapsedParent(task)),
+    [tasks, isTaskHiddenByCollapsedParent]
   );
   const selectedTask = tasks.find((task) => task.id === selectedTaskId);
   const selectedDisplayId = selectedTask
-    ? getScheduleTaskNumber(tasks, selectedTask.id)
+    ? wbsMap.get(selectedTask.id)
     : null;
   const canIndentSelectedTask = Boolean(
     selectedTask && findIndentParent(tasks, selectedTask.id)
@@ -413,10 +418,11 @@ function SchedulerPage({
                         key={task.id}
                         task={task}
                         index={index}
-                        displayId={getScheduleTaskNumber(tasks, task.id)}
+                        displayId={wbsMap.get(task.id)}
                         displayPredecessor={formatPredecessorForSchedule(
                           task.predecessor,
-                          tasks
+                          tasks,
+                          wbsMap
                         )}
                         selectedTaskId={selectedTaskId}
                         setSelectedTaskId={setSelectedTaskId}
@@ -480,7 +486,12 @@ function SchedulerPage({
             aria-label="Project Gantt chart"
             tabIndex={0}
           >
-            <GanttChart tasks={tasks} selectedTaskId={selectedTaskId} />
+            <ErrorBoundary
+              title="The Gantt chart failed to display"
+              description="Your schedule data is safe. Try again or switch back to the table view."
+            >
+              <GanttChart tasks={tasks} selectedTaskId={selectedTaskId} />
+            </ErrorBoundary>
           </div>
         )}
     </ProjectLayout>

@@ -1,4 +1,4 @@
-import { toLocalDateInputValue } from "../utils/date";
+import { addDays, toLocalDateInputValue } from "../utils/date";
 
 export const DEMO_PROJECT_NAME = "Riverside Medical Center — Phase 2";
 
@@ -110,12 +110,6 @@ const CHANGE_ORDERS = [
     responsible_party: "Owner",
   },
 ];
-
-function addDays(date, days) {
-  const next = new Date(date);
-  next.setDate(next.getDate() + days);
-  return next;
-}
 
 /**
  * Build the demo project payloads, with all dates anchored relative to

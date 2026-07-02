@@ -1,13 +1,4 @@
 import { useMemo } from "react";
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
 
 import EmptyState from "../components/EmptyState";
 import StatusBadge from "../components/StatusBadge";
@@ -497,20 +488,40 @@ function ProjectDashboardPage({
                 ))}
               </ul>
               {changeOrderTotals.length > 0 && (
-                <div className="mini-chart" aria-hidden="true">
-                  <ResponsiveContainer width="100%" height={140}>
-                    <BarChart
-                      data={changeOrderTotals}
-                      margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="company" hide />
-                      <YAxis hide />
-                      <Tooltip formatter={(value) => [`$${value}`, "CO value"]} />
-                      <Bar dataKey="total" fill="var(--brand)" radius={[3, 3, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
+                <ul
+                  className="bar-list"
+                  aria-label="Change-order value by company"
+                >
+                  {changeOrderTotals.map((entry) => {
+                    const maxTotal = Math.max(
+                      ...changeOrderTotals.map((candidate) => candidate.total)
+                    );
+                    const percent =
+                      maxTotal > 0
+                        ? Math.max(
+                            Math.round((entry.total / maxTotal) * 100),
+                            2
+                          )
+                        : 0;
+
+                    return (
+                      <li key={entry.company} className="bar-list__row">
+                        <span className="bar-list__label" title={entry.company}>
+                          {entry.company}
+                        </span>
+                        <span className="bar-list__track" aria-hidden="true">
+                          <span
+                            className="bar-list__fill"
+                            style={{ width: `${percent}%` }}
+                          />
+                        </span>
+                        <span className="bar-list__value">
+                          {currencyFormatter.format(entry.total)}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
               )}
             </>
           ) : (

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  addDays,
+  formatDisplayDate,
   getCurrentWeekRange,
   parseLocalDateInputValue,
   sortByDateDescending,
@@ -9,6 +11,21 @@ import {
 
 
 describe("date utilities", () => {
+  it("formats ISO dates for display and passes through everything else", () => {
+    expect(formatDisplayDate("2026-06-20")).toBe("06/20/2026");
+    expect(formatDisplayDate("06/20/2026")).toBe("06/20/2026");
+    expect(formatDisplayDate(null)).toBe("-");
+    expect(formatDisplayDate("")).toBe("-");
+  });
+
+  it("adds calendar days without mutating the input", () => {
+    const start = new Date(2026, 5, 30);
+
+    expect(addDays(start, 2).getDate()).toBe(2);
+    expect(addDays(start, 2).getMonth()).toBe(6);
+    expect(start.getDate()).toBe(30);
+  });
+
   it("formats a date for native date inputs without UTC conversion", () => {
     const date = new Date(2026, 5, 20, 23, 30);
 
