@@ -1,6 +1,7 @@
 import {
   addDays,
   getCurrentWeekRange,
+  isPastLocalDate,
   parseLocalDateInputValue,
   toLocalDateInputValue,
 } from "./date";
@@ -41,6 +42,20 @@ export function getDashboardMetrics({
       (total, changeOrder) => total + parseCurrencyAmount(changeOrder.amount),
       0
     ),
+  };
+}
+
+export function getRFIMetrics(rfis = [], referenceDate = new Date()) {
+  return {
+    openRFIs: rfis.filter(
+      (rfi) => rfi.status === "Open" || rfi.status === "Pending"
+    ).length,
+    overdueRFIs: rfis.filter(
+      (rfi) =>
+        rfi.status !== "Closed" &&
+        isPastLocalDate(rfi.due_date, referenceDate)
+    ).length,
+    closedRFIs: rfis.filter((rfi) => rfi.status === "Closed").length,
   };
 }
 

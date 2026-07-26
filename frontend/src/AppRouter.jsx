@@ -102,11 +102,13 @@ function AppRouter({
         notesDelays={notesDelays}
         inspections={inspections}
         dailyLogs={dailyLogs}
+        rfis={rfis}
         isLoadingTasks={loading("tasks")}
         isLoadingChangeOrders={loading("changeOrders")}
         isLoadingDelays={loading("notesDelays")}
         isLoadingInspections={loading("inspections")}
         isLoadingDailyLogs={loading("dailyLogs")}
+        isLoadingRFIs={loading("rfis")}
         formatDate={formatDate}
         {...navProps}
       />

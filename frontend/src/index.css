@@ -1259,7 +1259,7 @@ button:disabled {
 /* KPI row */
 .kpi-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: var(--space-3);
   margin: 0;
 }
@@ -1304,6 +1304,23 @@ button:disabled {
 
 .kpi-tile--warning {
   border-top-color: var(--amber);
+}
+
+.kpi-tile--action {
+  width: 100%;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.kpi-tile--action:hover {
+  background: var(--surface-muted);
+}
+
+.kpi-tile--action:focus-visible {
+  outline: 3px solid #2563eb;
+  outline-offset: 2px;
 }
 
 .kpi-tile--gauge {

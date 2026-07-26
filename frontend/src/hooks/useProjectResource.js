@@ -302,6 +302,7 @@ function useProjectResource({
         loadNotesDelays,
         loadInspections,
         loadDailyLogs,
+        loadRFIs,
       ],
       dailyLogs: [loadDailyLogs],
       inspections: [loadInspections],

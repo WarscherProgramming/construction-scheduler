@@ -14,6 +14,7 @@ import {
   getInspectionIssueCount,
   getProjectHealthScore,
   getRecentActivity,
+  getRFIMetrics,
   getScheduleHealth,
   getThisWeekProgress,
   getTodaysFocus,
@@ -60,9 +61,31 @@ function HealthGauge({ score, band }) {
   );
 }
 
-function KpiTile({ label, value, sub, tone, loading = false }) {
+function KpiTile({
+  label,
+  value,
+  sub,
+  tone,
+  loading = false,
+  onClick,
+  ariaLabel,
+}) {
+  const Tag = onClick ? "button" : "div";
+
   return (
-    <div className={`kpi-tile${tone ? ` kpi-tile--${tone}` : ""}`}>
+    <Tag
+      className={[
+        "kpi-tile",
+        tone ? `kpi-tile--${tone}` : "",
+        onClick ? "kpi-tile--action" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      type={onClick ? "button" : undefined}
+      onClick={onClick}
+      aria-label={ariaLabel}
+      aria-busy={loading}
+    >
       <span className="kpi-tile__label">{label}</span>
       {loading ? (
         <>
@@ -75,7 +98,7 @@ function KpiTile({ label, value, sub, tone, loading = false }) {
           {sub && <span className="kpi-tile__sub">{sub}</span>}
         </>
       )}
-    </div>
+    </Tag>
   );
 }
 
@@ -98,12 +121,14 @@ function ProjectDashboardPage({
   notesDelays = [],
   inspections = [],
   dailyLogs = [],
+  rfis = [],
   referenceDate,
   isLoadingTasks = false,
   isLoadingChangeOrders = false,
   isLoadingDelays = false,
   isLoadingInspections = false,
   isLoadingDailyLogs = false,
+  isLoadingRFIs = false,
   formatDate,
   onNavigate,
   onLogout,
@@ -161,8 +186,9 @@ function ProjectDashboardPage({
         .sort((left, right) => String(right.date).localeCompare(String(left.date)))
         .slice(0, 4),
       changeOrderTotals: getChangeOrderTotalsByCompany(changeOrders),
+      rfiMetrics: getRFIMetrics(rfis, now),
     };
-  }, [tasks, inspections, notesDelays, changeOrders, dailyLogs, now]);
+  }, [tasks, inspections, notesDelays, changeOrders, dailyLogs, rfis, now]);
 
   const {
     schedule,
@@ -177,6 +203,7 @@ function ProjectDashboardPage({
     recentActivity,
     recentChangeOrders,
     changeOrderTotals,
+    rfiMetrics,
   } = insights;
 
   const overviewLoading =
@@ -332,6 +359,24 @@ function ProjectDashboardPage({
               !isLoadingChangeOrders && metrics.pendingChangeOrders
                 ? "warning"
                 : undefined
+            }
+          />
+
+          <KpiTile
+            label="Open RFIs"
+            loading={isLoadingRFIs}
+            value={rfiMetrics.openRFIs}
+            sub={`${rfiMetrics.overdueRFIs} overdue · ${rfiMetrics.closedRFIs} closed`}
+            tone={
+              !isLoadingRFIs && rfiMetrics.overdueRFIs
+                ? "alert"
+                : undefined
+            }
+            onClick={() => onNavigate("rfis")}
+            ariaLabel={
+              isLoadingRFIs
+                ? "RFI health, loading"
+                : `RFI health: ${rfiMetrics.openRFIs} open, ${rfiMetrics.overdueRFIs} overdue, ${rfiMetrics.closedRFIs} closed`
             }
           />
 

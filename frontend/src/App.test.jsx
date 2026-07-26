@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -125,6 +125,89 @@ describe("App integration (hooks wiring)", () => {
     expect(fetchTasks).toHaveBeenCalledWith(1);
     expect(fetchChangeOrders).toHaveBeenCalledWith(1);
     expect(fetchDailyLogs).toHaveBeenCalledWith(1);
+    await screen.findByRole("button", {
+      name: "RFI health: 0 open, 0 overdue, 0 closed",
+    });
+    expect(fetchRFIs).toHaveBeenCalledTimes(1);
+    expect(fetchRFIs).toHaveBeenCalledWith(1);
+  });
+
+  it("clears RFI dashboard metrics while switching projects", async () => {
+    const user = userEvent.setup();
+    let resolveSecondProject;
+
+    fetchProjects.mockResolvedValue({
+      projects: [
+        { id: 1, name: "Riverside" },
+        { id: 2, name: "North Ridge" },
+      ],
+    });
+    fetchRFIs.mockImplementation((projectId) => {
+      if (projectId === 1) {
+        return Promise.resolve({
+          rfis: [{ id: 1, status: "Open", due_date: null }],
+        });
+      }
+
+      return new Promise((resolve) => {
+        resolveSecondProject = resolve;
+      });
+    });
+
+    renderApp();
+
+    await screen.findByRole("option", { name: "Riverside" });
+    await user.selectOptions(screen.getByLabelText("Project"), "1");
+    expect(
+      await screen.findByRole("button", {
+        name: "RFI health: 1 open, 0 overdue, 0 closed",
+      })
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Back to Home" }));
+    await user.selectOptions(screen.getByLabelText("Project"), "2");
+
+    expect(
+      await screen.findByRole("button", { name: "RFI health, loading" })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", {
+        name: "RFI health: 1 open, 0 overdue, 0 closed",
+      })
+    ).not.toBeInTheDocument();
+
+    await act(async () => {
+      resolveSecondProject({ rfis: [] });
+    });
+
+    expect(
+      await screen.findByRole("button", {
+        name: "RFI health: 0 open, 0 overdue, 0 closed",
+      })
+    ).toBeInTheDocument();
+    expect(fetchRFIs.mock.calls.map(([projectId]) => projectId)).toEqual([
+      1, 2,
+    ]);
+  });
+
+  it("keeps the dashboard usable when its RFI request fails", async () => {
+    fetchProjects.mockResolvedValue({
+      projects: [{ id: 1, name: "Riverside" }],
+    });
+    fetchRFIs.mockRejectedValue(new ApiError("Service unavailable", 503));
+    window.location.hash = "#/projects/1/dashboard";
+
+    renderApp();
+
+    expect(
+      await screen.findByRole("heading", { name: "Riverside Dashboard" })
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText("Unable to load RFIs. Service unavailable")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Open Schedule" })
+    ).toBeEnabled();
   });
 
   it("suppresses toast errors for expired-session (401) failures", async () => {

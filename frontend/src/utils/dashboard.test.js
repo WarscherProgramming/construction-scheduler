@@ -7,6 +7,7 @@ import {
   getInspectionIssueCount,
   getProjectHealthScore,
   getRecentActivity,
+  getRFIMetrics,
   getScheduleHealth,
   getThisWeekProgress,
   getTodaysFocus,
@@ -54,6 +55,33 @@ describe("getDashboardMetrics", () => {
       recordedDelays: 2,
       pendingChangeOrders: 2,
       pendingChangeOrderValue: 1250.5,
+    });
+  });
+});
+
+describe("getRFIMetrics", () => {
+  it("counts Open and Pending as open and excludes Closed from overdue", () => {
+    expect(
+      getRFIMetrics(
+        [
+          { status: "Open", due_date: "2026-06-29" },
+          { status: "Pending", due_date: "2026-07-02" },
+          { status: "Closed", due_date: "2026-06-20" },
+        ],
+        REFERENCE
+      )
+    ).toEqual({
+      openRFIs: 2,
+      overdueRFIs: 1,
+      closedRFIs: 1,
+    });
+  });
+
+  it("returns zero counts for an empty RFI collection", () => {
+    expect(getRFIMetrics([], REFERENCE)).toEqual({
+      openRFIs: 0,
+      overdueRFIs: 0,
+      closedRFIs: 0,
     });
   });
 });

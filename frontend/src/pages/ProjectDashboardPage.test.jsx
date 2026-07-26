@@ -44,6 +44,11 @@ const populated = {
   dailyLogs: [
     { id: 1, date: "2026-06-29", company: "Desert Concrete", manpower: 8 },
   ],
+  rfis: [
+    { id: 1, status: "Open", due_date: "2026-06-29" },
+    { id: 2, status: "Pending", due_date: "2026-07-05" },
+    { id: 3, status: "Closed", due_date: "2026-06-20" },
+  ],
 };
 
 describe("ProjectDashboardPage", () => {
@@ -64,6 +69,11 @@ describe("ProjectDashboardPage", () => {
     expect(screen.getByText("At Risk")).toBeInTheDocument();
     // Exposure appears in the KPI tile and the change-order bar list.
     expect(screen.getAllByText("$12,500").length).toBeGreaterThan(0);
+    expect(
+      screen.getByRole("button", {
+        name: "RFI health: 2 open, 1 overdue, 1 closed",
+      })
+    ).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Open Schedule" }));
     expect(onNavigate).toHaveBeenCalledWith("scheduler");
@@ -72,6 +82,11 @@ describe("ProjectDashboardPage", () => {
     await user.click(screen.getByRole("button", { name: "Report Delay" }));
     await user.click(screen.getByRole("button", { name: "Add Inspection" }));
     await user.click(screen.getByRole("button", { name: "Add Change Order" }));
+    await user.click(
+      screen.getByRole("button", {
+        name: "RFI health: 2 open, 1 overdue, 1 closed",
+      })
+    );
 
     expect(onNavigate.mock.calls).toEqual([
       ["scheduler"],
@@ -79,6 +94,7 @@ describe("ProjectDashboardPage", () => {
       ["notesDelays"],
       ["inspections"],
       ["changeOrders"],
+      ["rfis"],
     ]);
   });
 
@@ -96,6 +112,7 @@ describe("ProjectDashboardPage", () => {
         isLoadingDelays
         isLoadingInspections
         isLoadingDailyLogs
+        isLoadingRFIs
       />
     );
 
@@ -108,5 +125,19 @@ describe("ProjectDashboardPage", () => {
     expect(
       screen.queryByText("You're all clear for today")
     ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "RFI health, loading" })
+    ).toHaveAttribute("aria-busy", "true");
+  });
+
+  it("shows zeroed RFI health without changing the empty dashboard", () => {
+    render(<ProjectDashboardPage {...baseProps} />);
+
+    expect(
+      screen.getByRole("button", {
+        name: "RFI health: 0 open, 0 overdue, 0 closed",
+      })
+    ).toBeInTheDocument();
+    expect(screen.getByText("No recent activity")).toBeInTheDocument();
   });
 });
