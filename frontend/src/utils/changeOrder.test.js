@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   formatCurrency,
   formatScheduleImpact,
+  getChangeOrderMetrics,
   normalizeMoneyInput,
   normalizeOptionalValue,
   normalizeScheduleImpact,
@@ -113,5 +114,74 @@ describe("change order utilities", () => {
     expect(
       validateChangeOrderForm({ ...valid, scheduleImpactDays: "1.5" })
     ).toMatch(/whole number/);
+  });
+
+  it("counts every enhanced workflow status in the correct bucket", () => {
+    const records = [
+      "Draft",
+      "Pending",
+      "Submitted",
+      "Under Review",
+      "Approved",
+      "Executed",
+      "Rejected",
+      "Void",
+      "Unknown Legacy",
+    ].map((status) => ({ status }));
+
+    expect(getChangeOrderMetrics(records)).toMatchObject({
+      activeChangeOrders: 4,
+      approvedChangeOrders: 2,
+      rejectedChangeOrders: 2,
+    });
+  });
+
+  it("sums proposed cost with exact legacy fallback and no double count", () => {
+    expect(
+      getChangeOrderMetrics([
+        { proposed_amount: "0.10", amount: "999" },
+        { proposed_amount: "0.20" },
+        { proposed_amount: "100.00", amount: "500" },
+        { proposed_amount: null, amount: "$1,250.50" },
+        { proposed_amount: null, amount: "bad value" },
+        { proposed_amount: null, amount: "-10" },
+        { proposed_amount: null, amount: "0" },
+      ]).proposedCost
+    ).toBe("1350.80");
+  });
+
+  it("sums only approved amounts with two-decimal precision", () => {
+    expect(
+      getChangeOrderMetrics([
+        { approved_amount: "0.10", proposed_amount: "500" },
+        { approved_amount: "0.20", amount: "400" },
+        { approved_amount: "0" },
+        { approved_amount: null, proposed_amount: "900", amount: "800" },
+      ]).approvedCost
+    ).toBe("0.30");
+  });
+
+  it("sums valid schedule impacts and ignores malformed values", () => {
+    expect(
+      getChangeOrderMetrics([
+        { schedule_impact_days: 5 },
+        { schedule_impact_days: -2 },
+        { schedule_impact_days: 0 },
+        { schedule_impact_days: null },
+        { schedule_impact_days: "1.5" },
+        { schedule_impact_days: "not-days" },
+      ]).scheduleImpactDays
+    ).toBe(3);
+  });
+
+  it("returns zeroed metrics for an empty collection", () => {
+    expect(getChangeOrderMetrics()).toEqual({
+      activeChangeOrders: 0,
+      approvedChangeOrders: 0,
+      rejectedChangeOrders: 0,
+      proposedCost: "0.00",
+      approvedCost: "0.00",
+      scheduleImpactDays: 0,
+    });
   });
 });

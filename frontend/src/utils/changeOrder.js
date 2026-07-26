@@ -10,7 +10,98 @@ export const CHANGE_ORDER_STATUSES = [
 ];
 
 const MONEY_PATTERN = /^\d+(?:\.\d{1,2})?$/;
+const LEGACY_MONEY_PATTERN =
+  /^(?:\$\s*)?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d{1,2})?$/;
 const WHOLE_NUMBER_PATTERN = /^-?\d+$/;
+const ACTIVE_CHANGE_ORDER_STATUSES = new Set([
+  "Draft",
+  "Pending",
+  "Submitted",
+  "Under Review",
+]);
+const APPROVED_CHANGE_ORDER_STATUSES = new Set(["Approved", "Executed"]);
+const REJECTED_CHANGE_ORDER_STATUSES = new Set(["Rejected", "Void"]);
+
+function moneyToCents(value) {
+  const normalized = String(value ?? "").trim();
+
+  if (!MONEY_PATTERN.test(normalized)) return null;
+
+  const [integerPart, decimalPart = ""] = normalized.split(".");
+  return (
+    BigInt(integerPart) * 100n +
+    BigInt(decimalPart.padEnd(2, "0"))
+  );
+}
+
+function legacyMoneyToCents(value) {
+  const normalized = String(value ?? "").trim();
+
+  if (!LEGACY_MONEY_PATTERN.test(normalized)) return null;
+
+  return moneyToCents(normalized.replace(/[$,\s]/g, ""));
+}
+
+export function centsToDecimalString(cents) {
+  const normalized = typeof cents === "bigint" ? cents : 0n;
+  const dollars = normalized / 100n;
+  const remainder = normalized % 100n;
+
+  return `${dollars}.${remainder.toString().padStart(2, "0")}`;
+}
+
+export function getChangeOrderProposedCostCents(changeOrder) {
+  const proposedAmount = String(
+    changeOrder?.proposed_amount ?? ""
+  ).trim();
+
+  if (proposedAmount) {
+    return moneyToCents(proposedAmount) ?? 0n;
+  }
+
+  return legacyMoneyToCents(changeOrder?.amount) ?? 0n;
+}
+
+export function getChangeOrderMetrics(changeOrders = []) {
+  let proposedCostCents = 0n;
+  let approvedCostCents = 0n;
+  let scheduleImpactDays = 0;
+  let activeChangeOrders = 0;
+  let approvedChangeOrders = 0;
+  let rejectedChangeOrders = 0;
+
+  for (const changeOrder of changeOrders) {
+    if (ACTIVE_CHANGE_ORDER_STATUSES.has(changeOrder.status)) {
+      activeChangeOrders += 1;
+    }
+    if (APPROVED_CHANGE_ORDER_STATUSES.has(changeOrder.status)) {
+      approvedChangeOrders += 1;
+    }
+    if (REJECTED_CHANGE_ORDER_STATUSES.has(changeOrder.status)) {
+      rejectedChangeOrders += 1;
+    }
+
+    proposedCostCents += getChangeOrderProposedCostCents(changeOrder);
+    approvedCostCents += moneyToCents(changeOrder.approved_amount) ?? 0n;
+
+    const impact = normalizeScheduleImpact(
+      changeOrder.schedule_impact_days
+    );
+    const nextImpact = scheduleImpactDays + (impact ?? 0);
+    if (impact !== undefined && Number.isSafeInteger(nextImpact)) {
+      scheduleImpactDays = nextImpact;
+    }
+  }
+
+  return {
+    activeChangeOrders,
+    approvedChangeOrders,
+    rejectedChangeOrders,
+    proposedCost: centsToDecimalString(proposedCostCents),
+    approvedCost: centsToDecimalString(approvedCostCents),
+    scheduleImpactDays,
+  };
+}
 
 export function normalizeOptionalValue(value) {
   const normalized = String(value ?? "").trim();
@@ -47,11 +138,9 @@ export function formatCurrency(value) {
 }
 
 export function formatScheduleImpact(value) {
-  const normalized = String(value ?? "").trim();
+  const impact = normalizeScheduleImpact(value);
+  if (impact === null || impact === undefined) return "Not specified";
 
-  if (!WHOLE_NUMBER_PATTERN.test(normalized)) return "Not specified";
-
-  const impact = Number(normalized);
   const prefix = impact > 0 ? "+" : "";
   return `${prefix}${impact} ${Math.abs(impact) === 1 ? "day" : "days"}`;
 }

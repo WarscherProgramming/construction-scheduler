@@ -189,8 +189,12 @@ describe("App integration (hooks wiring)", () => {
       await screen.findByText("Riverside Dashboard")
     ).toBeInTheDocument();
     expect(fetchTasks).toHaveBeenCalledWith(1);
-    expect(fetchChangeOrders).toHaveBeenCalledWith(1);
     expect(fetchDailyLogs).toHaveBeenCalledWith(1);
+    await screen.findByRole("button", {
+      name: "Change Order health: 0 active, 0 approved, 0 rejected, $0.00 proposed cost, $0.00 approved cost, 0 days schedule impact",
+    });
+    expect(fetchChangeOrders).toHaveBeenCalledTimes(1);
+    expect(fetchChangeOrders).toHaveBeenCalledWith(1);
     await screen.findByRole("button", {
       name: "RFI health: 0 open, 0 overdue, 0 closed",
     });
@@ -210,6 +214,211 @@ describe("App integration (hooks wiring)", () => {
       expect(fetchPunchItems).toHaveBeenCalledTimes(1);
     });
     expect(fetchPunchItems).toHaveBeenCalledWith(1);
+  });
+
+  it("clears Change Order dashboard metrics while switching projects", async () => {
+    const user = userEvent.setup();
+    let resolveSecondProject;
+
+    fetchProjects.mockResolvedValue({
+      projects: [
+        { id: 1, name: "Riverside" },
+        { id: 2, name: "North Ridge" },
+      ],
+    });
+    fetchChangeOrders.mockImplementation((projectId) => {
+      if (projectId === 1) {
+        return Promise.resolve({
+          change_orders: [
+            {
+              id: 1,
+              status: "Draft",
+              proposed_amount: "100.25",
+              approved_amount: null,
+              schedule_impact_days: 5,
+            },
+          ],
+        });
+      }
+
+      return new Promise((resolve) => {
+        resolveSecondProject = resolve;
+      });
+    });
+
+    renderApp();
+
+    await screen.findByRole("option", { name: "Riverside" });
+    await user.selectOptions(screen.getByLabelText("Project"), "1");
+    expect(
+      await screen.findByRole("button", {
+        name: "Change Order health: 1 active, 0 approved, 0 rejected, $100.25 proposed cost, $0.00 approved cost, +5 days schedule impact",
+      })
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Back to Home" }));
+    await user.selectOptions(screen.getByLabelText("Project"), "2");
+
+    expect(
+      await screen.findByRole("button", {
+        name: "Change Order health, loading",
+      })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", {
+        name: "Change Order health: 1 active, 0 approved, 0 rejected, $100.25 proposed cost, $0.00 approved cost, +5 days schedule impact",
+      })
+    ).not.toBeInTheDocument();
+
+    await act(async () => {
+      resolveSecondProject({
+        change_orders: [
+          {
+            id: 2,
+            status: "Approved",
+            proposed_amount: "80.00",
+            approved_amount: "75.50",
+            schedule_impact_days: -2,
+          },
+        ],
+      });
+    });
+
+    expect(
+      await screen.findByRole("button", {
+        name: "Change Order health: 0 active, 1 approved, 0 rejected, $80.00 proposed cost, $75.50 approved cost, -2 days schedule impact",
+      })
+    ).toBeInTheDocument();
+    expect(
+      fetchChangeOrders.mock.calls.map(([projectId]) => projectId)
+    ).toEqual([1, 2]);
+  });
+
+  it("keeps the dashboard usable when Change Orders fail to load", async () => {
+    fetchProjects.mockResolvedValue({
+      projects: [{ id: 1, name: "Riverside" }],
+    });
+    fetchChangeOrders.mockRejectedValue(
+      new ApiError("Service unavailable", 503)
+    );
+    window.location.hash = "#/projects/1/dashboard";
+
+    renderApp();
+
+    expect(
+      await screen.findByText(
+        "Unable to load change orders. Service unavailable"
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Open Schedule" })
+    ).toBeEnabled();
+    expect(
+      screen.getByRole("button", {
+        name: "RFI health: 0 open, 0 overdue, 0 closed",
+      })
+    ).toBeEnabled();
+    expect(fetchChangeOrders).toHaveBeenCalledTimes(1);
+  });
+
+  it("navigates from the dashboard KPI to Change Orders", async () => {
+    const user = userEvent.setup();
+    fetchProjects.mockResolvedValue({
+      projects: [{ id: 1, name: "Riverside" }],
+    });
+    window.location.hash = "#/projects/1/dashboard";
+
+    renderApp();
+
+    const changeOrderKpi = await screen.findByRole("button", {
+      name: "Change Order health: 0 active, 0 approved, 0 rejected, $0.00 proposed cost, $0.00 approved cost, 0 days schedule impact",
+    });
+    expect(fetchChangeOrders).toHaveBeenCalledTimes(1);
+
+    await user.click(changeOrderKpi);
+
+    expect(
+      await screen.findByRole("heading", { name: "Change Orders" })
+    ).toBeInTheDocument();
+    expect(window.location.hash).toBe("#/projects/1/change-orders");
+  });
+
+  it("drops a late Change Orders dashboard response after a project switch", async () => {
+    let resolveFirstProject;
+
+    fetchProjects.mockResolvedValue({
+      projects: [
+        { id: 1, name: "Riverside" },
+        { id: 2, name: "North Ridge" },
+      ],
+    });
+    fetchChangeOrders.mockImplementation((projectId) => {
+      if (projectId === 1) {
+        return new Promise((resolve) => {
+          resolveFirstProject = resolve;
+        });
+      }
+
+      return Promise.resolve({
+        change_orders: [
+          {
+            id: 2,
+            status: "Void",
+            amount: "$50.00",
+            schedule_impact_days: 0,
+          },
+        ],
+      });
+    });
+    window.location.hash = "#/projects/1/dashboard";
+
+    renderApp();
+
+    await waitFor(() => {
+      expect(fetchChangeOrders).toHaveBeenCalledWith(1);
+    });
+    await act(async () => {
+      window.history.pushState({}, "", "#/projects/2/dashboard");
+      window.dispatchEvent(new HashChangeEvent("hashchange"));
+    });
+
+    expect(
+      await screen.findByRole("button", {
+        name: "Change Order health, loading",
+      })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", {
+        name: "Change Order health: 1 active, 0 approved, 0 rejected, $999.00 proposed cost, $0.00 approved cost, +10 days schedule impact",
+      })
+    ).not.toBeInTheDocument();
+
+    await act(async () => {
+      resolveFirstProject({
+        change_orders: [
+          {
+            id: 9,
+            status: "Pending",
+            proposed_amount: "999.00",
+            schedule_impact_days: 10,
+          },
+        ],
+      });
+    });
+
+    expect(
+      await screen.findByRole("button", {
+        name: "Change Order health: 0 active, 0 approved, 1 rejected, $50.00 proposed cost, $0.00 approved cost, 0 days schedule impact",
+      })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", {
+        name: "Change Order health: 1 active, 0 approved, 0 rejected, $999.00 proposed cost, $0.00 approved cost, +10 days schedule impact",
+      })
+    ).not.toBeInTheDocument();
+    expect(
+      fetchChangeOrders.mock.calls.map(([projectId]) => projectId)
+    ).toEqual([1, 2]);
   });
 
   it("clears RFI dashboard metrics while switching projects", async () => {
@@ -636,11 +845,13 @@ describe("App integration (hooks wiring)", () => {
     expect(
       screen.getByRole("button", { name: "Change Orders" })
     ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(fetchChangeOrders).toHaveBeenCalledTimes(1);
+    });
+    expect(fetchChangeOrders).toHaveBeenCalledWith(1);
     expect(screen.getByRole("status")).toHaveTextContent(
       "Loading change orders..."
     );
-    expect(fetchChangeOrders).toHaveBeenCalledTimes(1);
-    expect(fetchChangeOrders).toHaveBeenCalledWith(1);
 
     await act(async () => {
       resolveChangeOrders({ change_orders: [] });

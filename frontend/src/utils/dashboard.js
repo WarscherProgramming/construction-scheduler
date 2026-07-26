@@ -5,6 +5,11 @@ import {
   parseLocalDateInputValue,
   toLocalDateInputValue,
 } from "./date";
+import {
+  centsToDecimalString,
+  getChangeOrderMetrics as calculateChangeOrderMetrics,
+  getChangeOrderProposedCostCents,
+} from "./changeOrder";
 import { isPunchItemOverdue } from "./punchItem";
 import { isSubmittalOverdue } from "./submittal";
 
@@ -16,11 +21,6 @@ const ACTIVE_SUBMITTAL_STATUSES = new Set([
 ]);
 const OPEN_PUNCH_ITEM_STATUSES = new Set(["Open", "In Progress"]);
 const COMPLETED_PUNCH_ITEM_STATUSES = new Set(["Completed", "Verified"]);
-
-function parseCurrencyAmount(value) {
-  const amount = Number(String(value || "0").replace(/[$,\s]/g, ""));
-  return Number.isFinite(amount) ? amount : 0;
-}
 
 function scheduledTasksOf(tasks) {
   return tasks.filter((task) => task.start_date && task.end_date);
@@ -47,11 +47,18 @@ export function getDashboardMetrics({
     tasksThisWeek: tasksThisWeek.length,
     recordedDelays: projectDelays.length,
     pendingChangeOrders: pendingChangeOrders.length,
-    pendingChangeOrderValue: pendingChangeOrders.reduce(
-      (total, changeOrder) => total + parseCurrencyAmount(changeOrder.amount),
-      0
+    pendingChangeOrderValue: centsToDecimalString(
+      pendingChangeOrders.reduce(
+        (total, changeOrder) =>
+          total + getChangeOrderProposedCostCents(changeOrder),
+        0n
+      )
     ),
   };
+}
+
+export function getChangeOrderMetrics(changeOrders = []) {
+  return calculateChangeOrderMetrics(changeOrders);
 }
 
 export function getRFIMetrics(rfis = [], referenceDate = new Date()) {
@@ -107,11 +114,15 @@ export function getChangeOrderTotalsByCompany(changeOrders = []) {
 
   changeOrders.forEach((changeOrder) => {
     const company = changeOrder.company || "Unassigned";
-    const amount = parseCurrencyAmount(changeOrder.amount);
-    totals.set(company, (totals.get(company) || 0) + amount);
+    const amount = getChangeOrderProposedCostCents(changeOrder);
+    totals.set(company, (totals.get(company) || 0n) + amount);
   });
 
-  return Array.from(totals, ([company, total]) => ({ company, total }));
+  return Array.from(totals, ([company, totalCents]) => ({
+    company,
+    total: centsToDecimalString(totalCents),
+    totalCents,
+  }));
 }
 
 /** Time-based schedule position. There is no task-completion field, so this
@@ -343,8 +354,14 @@ export function getRecentActivity(
       key: `co-${changeOrder.id}`,
       date: changeOrder.date,
       type: "changeOrder",
-      label: `${changeOrder.co_number} ${changeOrder.status} — ${
-        changeOrder.company || "Unassigned"
+      label: `${changeOrder.co_number || "Change order"} ${
+        changeOrder.status || "Unknown"
+      } — ${
+        changeOrder.title && changeOrder.company
+          ? `${changeOrder.title} · ${changeOrder.company}`
+          : changeOrder.title ||
+            changeOrder.company ||
+            "Unassigned"
       }`,
     })),
     ...notesDelays.map((entry) => ({

@@ -27,6 +27,10 @@ const populated = {
       company: "ClearView Glazing",
       status: "Pending",
       amount: "12500",
+      proposed_amount: null,
+      approved_amount: "10000.50",
+      schedule_impact_days: 5,
+      title: "Storefront revision",
     },
   ],
   notesDelays: [
@@ -86,8 +90,16 @@ describe("ProjectDashboardPage", () => {
     // Health gauge (score 77 → At Risk) and change-order exposure.
     expect(screen.getByText("77")).toBeInTheDocument();
     expect(screen.getByText("At Risk")).toBeInTheDocument();
-    // Exposure appears in the KPI tile and the change-order bar list.
-    expect(screen.getAllByText("$12,500").length).toBeGreaterThan(0);
+    const changeOrderKpi = screen.getByRole("button", {
+      name: "Change Order health: 1 active, 0 approved, 0 rejected, $12,500.00 proposed cost, $10,000.50 approved cost, +5 days schedule impact",
+    });
+    expect(changeOrderKpi).toBeInTheDocument();
+    expect(changeOrderKpi).toHaveTextContent("Active1");
+    expect(changeOrderKpi).toHaveTextContent("Approved0");
+    expect(changeOrderKpi).toHaveTextContent("Rejected0");
+    expect(changeOrderKpi).toHaveTextContent("Proposed Cost$12,500.00");
+    expect(changeOrderKpi).toHaveTextContent("Approved Cost$10,000.50");
+    expect(changeOrderKpi).toHaveTextContent("Schedule Impact+5 days");
     expect(
       screen.getByRole("button", {
         name: "RFI health: 2 open, 1 overdue, 1 closed",
@@ -113,6 +125,7 @@ describe("ProjectDashboardPage", () => {
     await user.click(screen.getByRole("button", { name: "Report Delay" }));
     await user.click(screen.getByRole("button", { name: "Add Inspection" }));
     await user.click(screen.getByRole("button", { name: "Add Change Order" }));
+    await user.click(changeOrderKpi);
     await user.click(
       screen.getByRole("button", {
         name: "RFI health: 2 open, 1 overdue, 1 closed",
@@ -134,6 +147,7 @@ describe("ProjectDashboardPage", () => {
       ["dailyLogs"],
       ["notesDelays"],
       ["inspections"],
+      ["changeOrders"],
       ["changeOrders"],
       ["rfis"],
       ["submittals"],
@@ -171,6 +185,9 @@ describe("ProjectDashboardPage", () => {
       screen.queryByText("You're all clear for today")
     ).not.toBeInTheDocument();
     expect(
+      screen.getByRole("button", { name: "Change Order health, loading" })
+    ).toHaveAttribute("aria-busy", "true");
+    expect(
       screen.getByRole("button", { name: "RFI health, loading" })
     ).toHaveAttribute("aria-busy", "true");
     expect(
@@ -184,6 +201,11 @@ describe("ProjectDashboardPage", () => {
   it("shows zeroed record health without changing the empty dashboard", () => {
     render(<ProjectDashboardPage {...baseProps} />);
 
+    expect(
+      screen.getByRole("button", {
+        name: "Change Order health: 0 active, 0 approved, 0 rejected, $0.00 proposed cost, $0.00 approved cost, 0 days schedule impact",
+      })
+    ).toBeInTheDocument();
     expect(
       screen.getByRole("button", {
         name: "RFI health: 0 open, 0 overdue, 0 closed",
@@ -244,5 +266,68 @@ describe("ProjectDashboardPage", () => {
     expect(
       screen.getByRole("button", { name: "Open Schedule" })
     ).toBeEnabled();
+  });
+
+  it("isolates Change Order loading from unrelated dashboard controls", () => {
+    render(
+      <ProjectDashboardPage
+        {...baseProps}
+        {...populated}
+        isLoadingChangeOrders
+      />
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Change Order health, loading" })
+    ).toHaveAttribute("aria-busy", "true");
+    expect(
+      screen.getByRole("button", {
+        name: "RFI health: 2 open, 1 overdue, 1 closed",
+      })
+    ).not.toHaveAttribute("aria-busy", "true");
+    expect(
+      screen.getByRole("button", { name: "Open Schedule" })
+    ).toBeEnabled();
+  });
+
+  it("keeps enhanced and unknown legacy recent changes readable", () => {
+    render(
+      <ProjectDashboardPage
+        {...baseProps}
+        changeOrders={[
+          {
+            id: 1,
+            date: "2026-06-30",
+            co_number: "3",
+            company: "Legacy Builder",
+            status: "Legacy Review",
+            amount: "$4,500",
+          },
+          {
+            id: 2,
+            date: "2026-06-29",
+            co_number: "CO-002",
+            title: "Executed entry revision",
+            company: "Desert Concrete",
+            status: "Executed",
+            proposed_amount: "5000.00",
+            approved_amount: "4500.25",
+            schedule_impact_days: -2,
+          },
+        ]}
+      />
+    );
+
+    expect(screen.getByText("3")).toBeInTheDocument();
+    expect(screen.getAllByText("Legacy Review").length).toBeGreaterThan(0);
+    expect(
+      screen.getByText("Legacy Builder · Legacy amount $4,500")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Executed entry revision · Desert Concrete · Approved $4,500.25 · -2 days"
+      )
+    ).toBeInTheDocument();
+    expect(screen.getAllByText("$9,500.00").length).toBeGreaterThan(0);
   });
 });

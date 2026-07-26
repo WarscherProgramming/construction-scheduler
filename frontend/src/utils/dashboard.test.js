@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   getAttentionActivities,
+  getChangeOrderMetrics,
   getChangeOrderTotalsByCompany,
   getDashboardMetrics,
   getInspectionIssueCount,
@@ -56,8 +57,31 @@ describe("getDashboardMetrics", () => {
       tasksThisWeek: 1,
       recordedDelays: 2,
       pendingChangeOrders: 2,
-      pendingChangeOrderValue: 1250.5,
+      pendingChangeOrderValue: "1250.50",
     });
+  });
+
+  it("keeps Pending as the only Change Order health input", () => {
+    const changeOrders = [
+      { status: "Draft", proposed_amount: "100" },
+      { status: "Pending", proposed_amount: "200" },
+      { status: "Submitted", proposed_amount: "300" },
+      { status: "Under Review", proposed_amount: "400" },
+    ];
+    const metrics = getDashboardMetrics({
+      tasks: [],
+      tasksThisWeek: [],
+      projectDelays: [],
+      changeOrders,
+    });
+
+    expect(metrics.pendingChangeOrders).toBe(1);
+    expect(
+      getProjectHealthScore({
+        pendingChangeOrders: metrics.pendingChangeOrders,
+      })
+    ).toEqual({ score: 95, band: "healthy" });
+    expect(getChangeOrderMetrics(changeOrders).activeChangeOrders).toBe(4);
   });
 });
 
@@ -261,8 +285,39 @@ describe("getChangeOrderTotalsByCompany", () => {
         { company: "Beta", amount: "250" },
       ])
     ).toEqual([
-      { company: "Alpha", total: 1500 },
-      { company: "Beta", total: 250 },
+      {
+        company: "Alpha",
+        total: "1500.00",
+        totalCents: 150000n,
+      },
+      {
+        company: "Beta",
+        total: "250.00",
+        totalCents: 25000n,
+      },
+    ]);
+  });
+
+  it("uses enhanced proposed cost before legacy company totals", () => {
+    expect(
+      getChangeOrderTotalsByCompany([
+        {
+          company: "Alpha",
+          proposed_amount: "100.25",
+          amount: "900",
+        },
+        {
+          company: "Alpha",
+          proposed_amount: null,
+          amount: "$10.25",
+        },
+      ])
+    ).toEqual([
+      {
+        company: "Alpha",
+        total: "110.50",
+        totalCents: 11050n,
+      },
     ]);
   });
 });
@@ -287,5 +342,36 @@ describe("getRecentActivity", () => {
     expect(feed).toHaveLength(6);
     expect(feed.find((item) => item.date === "2026-06-29").isNew).toBe(true);
     expect(feed.find((item) => item.date === "2026-06-28").isNew).toBe(false);
+  });
+
+  it("formats enhanced and unknown legacy Change Order activity safely", () => {
+    const feed = getRecentActivity(
+      {
+        changeOrders: [
+          {
+            id: 1,
+            date: "2026-06-30",
+            co_number: "3",
+            status: "Legacy Review",
+            title: "Existing field revision",
+          },
+          {
+            id: 2,
+            date: "2026-06-29",
+            co_number: null,
+            status: null,
+            company: null,
+          },
+        ],
+      },
+      REFERENCE
+    );
+
+    expect(feed[0].label).toBe(
+      "3 Legacy Review — Existing field revision"
+    );
+    expect(feed[1].label).toBe(
+      "Change order Unknown — Unassigned"
+    );
   });
 });

@@ -8,7 +8,12 @@ import PageHeader from "../components/ui/PageHeader";
 import ProjectLayout from "../components/ui/ProjectLayout";
 import { Skeleton, SkeletonPanel } from "../components/ui/Skeleton";
 import {
+  formatCurrency,
+  formatScheduleImpact,
+} from "../utils/changeOrder";
+import {
   getAttentionActivities,
+  getChangeOrderMetrics,
   getChangeOrderTotalsByCompany,
   getDashboardMetrics,
   getInspectionIssueCount,
@@ -24,12 +29,6 @@ import {
   getUpcomingTasks,
 } from "../utils/dashboard";
 
-const currencyFormatter = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
-  maximumFractionDigits: 0,
-});
-
 const BAND_LABEL = {
   healthy: "Healthy",
   "at-risk": "At Risk",
@@ -37,6 +36,28 @@ const BAND_LABEL = {
 };
 
 const GAUGE_ARC = "M 10 60 A 50 50 0 0 1 110 60";
+
+function getRecentChangeOrderMeta(changeOrder) {
+  const details = [changeOrder.title, changeOrder.company].filter(Boolean);
+
+  if (!details.length) {
+    details.push("Untitled change order");
+  }
+
+  if (changeOrder.approved_amount != null) {
+    details.push(`Approved ${formatCurrency(changeOrder.approved_amount)}`);
+  } else if (changeOrder.proposed_amount != null) {
+    details.push(`Proposed ${formatCurrency(changeOrder.proposed_amount)}`);
+  } else if (changeOrder.amount) {
+    details.push(`Legacy amount ${changeOrder.amount}`);
+  }
+
+  if (changeOrder.schedule_impact_days != null) {
+    details.push(formatScheduleImpact(changeOrder.schedule_impact_days));
+  }
+
+  return details.join(" · ");
+}
 
 function HealthGauge({ score, band }) {
   return (
@@ -191,6 +212,7 @@ function ProjectDashboardPage({
       recentChangeOrders: [...changeOrders]
         .sort((left, right) => String(right.date).localeCompare(String(left.date)))
         .slice(0, 4),
+      changeOrderMetrics: getChangeOrderMetrics(changeOrders),
       changeOrderTotals: getChangeOrderTotalsByCompany(changeOrders),
       rfiMetrics: getRFIMetrics(rfis, now),
       submittalMetrics: getSubmittalMetrics(submittals, now),
@@ -220,6 +242,7 @@ function ProjectDashboardPage({
     recentDailyLogs,
     recentActivity,
     recentChangeOrders,
+    changeOrderMetrics,
     changeOrderTotals,
     rfiMetrics,
     submittalMetrics,
@@ -371,14 +394,55 @@ function ProjectDashboardPage({
           />
 
           <KpiTile
-            label="Open change orders"
+            label="Change Orders"
             loading={isLoadingChangeOrders}
-            value={metrics.pendingChangeOrders}
-            sub={currencyFormatter.format(metrics.pendingChangeOrderValue)}
+            value={
+              <span className="change-order-kpi__metrics">
+                <span>
+                  <span>Active</span>
+                  <strong>{changeOrderMetrics.activeChangeOrders}</strong>
+                </span>
+                <span>
+                  <span>Approved</span>
+                  <strong>{changeOrderMetrics.approvedChangeOrders}</strong>
+                </span>
+                <span>
+                  <span>Rejected</span>
+                  <strong>{changeOrderMetrics.rejectedChangeOrders}</strong>
+                </span>
+                <span>
+                  <span>Proposed Cost</span>
+                  <strong>
+                    {formatCurrency(changeOrderMetrics.proposedCost)}
+                  </strong>
+                </span>
+                <span>
+                  <span>Approved Cost</span>
+                  <strong>
+                    {formatCurrency(changeOrderMetrics.approvedCost)}
+                  </strong>
+                </span>
+                <span>
+                  <span>Schedule Impact</span>
+                  <strong>
+                    {formatScheduleImpact(
+                      changeOrderMetrics.scheduleImpactDays
+                    )}
+                  </strong>
+                </span>
+              </span>
+            }
             tone={
-              !isLoadingChangeOrders && metrics.pendingChangeOrders
+              !isLoadingChangeOrders &&
+              changeOrderMetrics.activeChangeOrders
                 ? "warning"
                 : undefined
+            }
+            onClick={() => onNavigate("changeOrders")}
+            ariaLabel={
+              isLoadingChangeOrders
+                ? "Change Order health, loading"
+                : `Change Order health: ${changeOrderMetrics.activeChangeOrders} active, ${changeOrderMetrics.approvedChangeOrders} approved, ${changeOrderMetrics.rejectedChangeOrders} rejected, ${formatCurrency(changeOrderMetrics.proposedCost)} proposed cost, ${formatCurrency(changeOrderMetrics.approvedCost)} approved cost, ${formatScheduleImpact(changeOrderMetrics.scheduleImpactDays)} schedule impact`
             }
           />
 
@@ -581,7 +645,7 @@ function ProjectDashboardPage({
                     <span className="stack-item__main">
                       {changeOrder.co_number}
                       <span className="stack-item__meta">
-                        {changeOrder.company || "Unassigned"}
+                        {getRecentChangeOrderMeta(changeOrder)}
                       </span>
                     </span>
                     <StatusBadge value={changeOrder.status} />
@@ -594,13 +658,20 @@ function ProjectDashboardPage({
                   aria-label="Change-order value by company"
                 >
                   {changeOrderTotals.map((entry) => {
-                    const maxTotal = Math.max(
-                      ...changeOrderTotals.map((candidate) => candidate.total)
+                    const maxTotal = changeOrderTotals.reduce(
+                      (maximum, candidate) =>
+                        candidate.totalCents > maximum
+                          ? candidate.totalCents
+                          : maximum,
+                      0n
                     );
                     const percent =
-                      maxTotal > 0
+                      maxTotal > 0n
                         ? Math.max(
-                            Math.round((entry.total / maxTotal) * 100),
+                            Number(
+                              (entry.totalCents * 100n + maxTotal / 2n) /
+                                maxTotal
+                            ),
                             2
                           )
                         : 0;
@@ -617,7 +688,7 @@ function ProjectDashboardPage({
                           />
                         </span>
                         <span className="bar-list__value">
-                          {currencyFormatter.format(entry.total)}
+                          {formatCurrency(entry.total)}
                         </span>
                       </li>
                     );
