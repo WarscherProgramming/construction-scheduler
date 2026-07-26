@@ -5,6 +5,7 @@ import {
   parseLocalDateInputValue,
   toLocalDateInputValue,
 } from "./date";
+import { isPunchItemOverdue } from "./punchItem";
 import { isSubmittalOverdue } from "./submittal";
 
 const INSPECTION_ISSUE_STATUSES = new Set(["Pending", "Fail", "Partial Pass"]);
@@ -13,6 +14,8 @@ const ACTIVE_SUBMITTAL_STATUSES = new Set([
   "Submitted",
   "Under Review",
 ]);
+const OPEN_PUNCH_ITEM_STATUSES = new Set(["Open", "In Progress"]);
+const COMPLETED_PUNCH_ITEM_STATUSES = new Set(["Completed", "Verified"]);
 
 function parseCurrencyAmount(value) {
   const amount = Number(String(value || "0").replace(/[$,\s]/g, ""));
@@ -78,6 +81,23 @@ export function getSubmittalMetrics(
     ).length,
     approvedSubmittals: submittals.filter(
       (submittal) => submittal.status === "Approved"
+    ).length,
+  };
+}
+
+export function getPunchItemMetrics(
+  punchItems = [],
+  referenceDate = new Date()
+) {
+  return {
+    openPunchItems: punchItems.filter((punchItem) =>
+      OPEN_PUNCH_ITEM_STATUSES.has(punchItem.status)
+    ).length,
+    overduePunchItems: punchItems.filter((punchItem) =>
+      isPunchItemOverdue(punchItem, referenceDate)
+    ).length,
+    completedPunchItems: punchItems.filter((punchItem) =>
+      COMPLETED_PUNCH_ITEM_STATUSES.has(punchItem.status)
     ).length,
   };
 }

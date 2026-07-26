@@ -162,12 +162,19 @@ describe("App integration (hooks wiring)", () => {
     await screen.findByRole("button", {
       name: "Submittal health: 0 active, 0 overdue, 0 approved",
     });
+    await screen.findByRole("button", {
+      name: "Punch List health: 0 open, 0 overdue, 0 completed",
+    });
     expect(fetchRFIs).toHaveBeenCalledTimes(1);
     expect(fetchRFIs).toHaveBeenCalledWith(1);
     await waitFor(() => {
       expect(fetchSubmittals).toHaveBeenCalledTimes(1);
     });
     expect(fetchSubmittals).toHaveBeenCalledWith(1);
+    await waitFor(() => {
+      expect(fetchPunchItems).toHaveBeenCalledTimes(1);
+    });
+    expect(fetchPunchItems).toHaveBeenCalledWith(1);
   });
 
   it("clears RFI dashboard metrics while switching projects", async () => {
@@ -359,6 +366,192 @@ describe("App integration (hooks wiring)", () => {
       await screen.findByRole("heading", { name: "Submittals" })
     ).toBeInTheDocument();
     expect(window.location.hash).toBe("#/projects/1/submittals");
+  });
+
+  it("clears Punch List dashboard metrics while switching projects", async () => {
+    const user = userEvent.setup();
+    let resolveSecondProject;
+
+    fetchProjects.mockResolvedValue({
+      projects: [
+        { id: 1, name: "Riverside" },
+        { id: 2, name: "North Ridge" },
+      ],
+    });
+    fetchPunchItems.mockImplementation((projectId) => {
+      if (projectId === 1) {
+        return Promise.resolve({
+          punch_items: [
+            {
+              id: 1,
+              status: "Open",
+              due_date: null,
+            },
+          ],
+        });
+      }
+
+      return new Promise((resolve) => {
+        resolveSecondProject = resolve;
+      });
+    });
+
+    renderApp();
+
+    await screen.findByRole("option", { name: "Riverside" });
+    await user.selectOptions(screen.getByLabelText("Project"), "1");
+    expect(
+      await screen.findByRole("button", {
+        name: "Punch List health: 1 open, 0 overdue, 0 completed",
+      })
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Back to Home" }));
+    await user.selectOptions(screen.getByLabelText("Project"), "2");
+
+    expect(
+      await screen.findByRole("button", {
+        name: "Punch List health, loading",
+      })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", {
+        name: "Punch List health: 1 open, 0 overdue, 0 completed",
+      })
+    ).not.toBeInTheDocument();
+
+    await act(async () => {
+      resolveSecondProject({ punch_items: [] });
+    });
+
+    expect(
+      await screen.findByRole("button", {
+        name: "Punch List health: 0 open, 0 overdue, 0 completed",
+      })
+    ).toBeInTheDocument();
+    expect(
+      fetchPunchItems.mock.calls.map(([projectId]) => projectId)
+    ).toEqual([1, 2]);
+  });
+
+  it("keeps the dashboard usable when its Punch Items request fails", async () => {
+    fetchProjects.mockResolvedValue({
+      projects: [{ id: 1, name: "Riverside" }],
+    });
+    fetchPunchItems.mockRejectedValue(
+      new ApiError("Service unavailable", 503)
+    );
+    window.location.hash = "#/projects/1/dashboard";
+
+    renderApp();
+
+    expect(
+      await screen.findByRole("heading", { name: "Riverside Dashboard" })
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText(
+        "Unable to load Punch Items. Service unavailable"
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Open Schedule" })
+    ).toBeEnabled();
+    expect(
+      screen.getByRole("button", {
+        name: "RFI health: 0 open, 0 overdue, 0 closed",
+      })
+    ).toBeEnabled();
+    expect(fetchPunchItems).toHaveBeenCalledTimes(1);
+  });
+
+  it("navigates from the dashboard KPI to the Punch List", async () => {
+    const user = userEvent.setup();
+    fetchProjects.mockResolvedValue({
+      projects: [{ id: 1, name: "Riverside" }],
+    });
+    window.location.hash = "#/projects/1/dashboard";
+
+    renderApp();
+
+    const punchListKpi = await screen.findByRole("button", {
+      name: "Punch List health: 0 open, 0 overdue, 0 completed",
+    });
+    expect(fetchPunchItems).toHaveBeenCalledTimes(1);
+
+    await user.click(punchListKpi);
+
+    expect(
+      await screen.findByRole("heading", { name: "Punch List" })
+    ).toBeInTheDocument();
+    expect(window.location.hash).toBe("#/projects/1/punch-items");
+  });
+
+  it("drops a late Punch Items dashboard response after a project switch", async () => {
+    let resolveFirstProject;
+
+    fetchProjects.mockResolvedValue({
+      projects: [
+        { id: 1, name: "Riverside" },
+        { id: 2, name: "North Ridge" },
+      ],
+    });
+    fetchPunchItems.mockImplementation((projectId) => {
+      if (projectId === 1) {
+        return new Promise((resolve) => {
+          resolveFirstProject = resolve;
+        });
+      }
+
+      return Promise.resolve({
+        punch_items: [
+          {
+            id: 2,
+            status: "Verified",
+            due_date: "2026-07-01",
+          },
+        ],
+      });
+    });
+    window.location.hash = "#/projects/1/dashboard";
+
+    renderApp();
+
+    await waitFor(() => {
+      expect(fetchPunchItems).toHaveBeenCalledWith(1);
+    });
+    await act(async () => {
+      window.history.pushState({}, "", "#/projects/2/dashboard");
+      window.dispatchEvent(new HashChangeEvent("hashchange"));
+    });
+
+    await waitFor(() => {
+      expect(
+        fetchPunchItems.mock.calls.map(([projectId]) => projectId)
+      ).toEqual([1, 2]);
+    });
+
+    await act(async () => {
+      resolveFirstProject({
+        punch_items: [
+          {
+            id: 9,
+            status: "Open",
+            due_date: "2000-01-01",
+          },
+        ],
+      });
+    });
+
+    expect(
+      screen.getByRole("button", {
+        name: "Punch List health: 0 open, 0 overdue, 1 completed",
+      })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", {
+        name: "Punch List health: 1 open, 1 overdue, 0 completed",
+      })
+    ).not.toBeInTheDocument();
   });
 
   it("suppresses toast errors for expired-session (401) failures", async () => {
@@ -650,8 +843,10 @@ describe("App integration (hooks wiring)", () => {
       await screen.findByRole("heading", { name: "Submittals" })
     ).toBeInTheDocument();
     expect(window.location.hash).toBe("#/projects/1/submittals");
-    expect(document.title).toContain("Riverside");
-    expect(document.title).toContain("Submittals | FieldFlow");
+    await waitFor(() => {
+      expect(document.title).toContain("Riverside");
+      expect(document.title).toContain("Submittals | FieldFlow");
+    });
     await waitFor(() => {
       expect(fetchSubmittals).toHaveBeenCalledTimes(1);
     });
@@ -1035,7 +1230,11 @@ describe("App integration (hooks wiring)", () => {
     const punchListLink = await screen.findByRole("button", {
       name: "Punch List",
     });
-    expect(fetchPunchItems).not.toHaveBeenCalled();
+    await screen.findByRole("button", {
+      name: "Punch List health: 0 open, 0 overdue, 0 completed",
+    });
+    expect(fetchPunchItems).toHaveBeenCalledTimes(1);
+    fetchPunchItems.mockClear();
 
     await user.click(punchListLink);
 

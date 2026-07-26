@@ -334,6 +334,7 @@ function useProjectResource({
         loadDailyLogs,
         loadRFIs,
         loadSubmittals,
+        loadPunchItems,
       ],
       dailyLogs: [loadDailyLogs],
       inspections: [loadInspections],

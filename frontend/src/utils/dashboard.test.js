@@ -5,6 +5,7 @@ import {
   getChangeOrderTotalsByCompany,
   getDashboardMetrics,
   getInspectionIssueCount,
+  getPunchItemMetrics,
   getProjectHealthScore,
   getRecentActivity,
   getRFIMetrics,
@@ -116,6 +117,35 @@ describe("getSubmittalMetrics", () => {
       activeSubmittals: 0,
       overdueSubmittals: 0,
       approvedSubmittals: 0,
+    });
+  });
+});
+
+describe("getPunchItemMetrics", () => {
+  it("counts open, overdue, and completed workflow states", () => {
+    expect(
+      getPunchItemMetrics(
+        [
+          { status: "Open", due_date: "2026-06-29" },
+          { status: "In Progress", due_date: "2026-06-28" },
+          { status: "Open", due_date: "2026-07-02" },
+          { status: "Completed", due_date: "2026-06-20" },
+          { status: "Verified", due_date: "2026-06-20" },
+        ],
+        REFERENCE
+      )
+    ).toEqual({
+      openPunchItems: 3,
+      overduePunchItems: 2,
+      completedPunchItems: 2,
+    });
+  });
+
+  it("returns zero counts for an empty Punch Items collection", () => {
+    expect(getPunchItemMetrics([], REFERENCE)).toEqual({
+      openPunchItems: 0,
+      overduePunchItems: 0,
+      completedPunchItems: 0,
     });
   });
 });

@@ -12,6 +12,7 @@ import {
   getChangeOrderTotalsByCompany,
   getDashboardMetrics,
   getInspectionIssueCount,
+  getPunchItemMetrics,
   getProjectHealthScore,
   getRecentActivity,
   getRFIMetrics,
@@ -124,6 +125,7 @@ function ProjectDashboardPage({
   dailyLogs = [],
   rfis = [],
   submittals = [],
+  punchItems = [],
   referenceDate,
   isLoadingTasks = false,
   isLoadingChangeOrders = false,
@@ -132,6 +134,7 @@ function ProjectDashboardPage({
   isLoadingDailyLogs = false,
   isLoadingRFIs = false,
   isLoadingSubmittals = false,
+  isLoadingPunchItems = false,
   formatDate,
   onNavigate,
   onLogout,
@@ -191,6 +194,7 @@ function ProjectDashboardPage({
       changeOrderTotals: getChangeOrderTotalsByCompany(changeOrders),
       rfiMetrics: getRFIMetrics(rfis, now),
       submittalMetrics: getSubmittalMetrics(submittals, now),
+      punchItemMetrics: getPunchItemMetrics(punchItems, now),
     };
   }, [
     tasks,
@@ -200,6 +204,7 @@ function ProjectDashboardPage({
     dailyLogs,
     rfis,
     submittals,
+    punchItems,
     now,
   ]);
 
@@ -218,6 +223,7 @@ function ProjectDashboardPage({
     changeOrderTotals,
     rfiMetrics,
     submittalMetrics,
+    punchItemMetrics,
   } = insights;
 
   const overviewLoading =
@@ -409,6 +415,24 @@ function ProjectDashboardPage({
               isLoadingSubmittals
                 ? "Submittal health, loading"
                 : `Submittal health: ${submittalMetrics.activeSubmittals} active, ${submittalMetrics.overdueSubmittals} overdue, ${submittalMetrics.approvedSubmittals} approved`
+            }
+          />
+
+          <KpiTile
+            label="Open Punch Items"
+            loading={isLoadingPunchItems}
+            value={punchItemMetrics.openPunchItems}
+            sub={`${punchItemMetrics.overduePunchItems} overdue · ${punchItemMetrics.completedPunchItems} completed`}
+            tone={
+              !isLoadingPunchItems && punchItemMetrics.overduePunchItems
+                ? "alert"
+                : undefined
+            }
+            onClick={() => onNavigate("punchItems")}
+            ariaLabel={
+              isLoadingPunchItems
+                ? "Punch List health, loading"
+                : `Punch List health: ${punchItemMetrics.openPunchItems} open, ${punchItemMetrics.overduePunchItems} overdue, ${punchItemMetrics.completedPunchItems} completed`
             }
           />
 

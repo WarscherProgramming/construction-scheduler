@@ -110,6 +110,7 @@ function AppRouter({
         dailyLogs={dailyLogs}
         rfis={rfis}
         submittals={submittals}
+        punchItems={punchItems}
         isLoadingTasks={loading("tasks")}
         isLoadingChangeOrders={loading("changeOrders")}
         isLoadingDelays={loading("notesDelays")}
@@ -117,6 +118,7 @@ function AppRouter({
         isLoadingDailyLogs={loading("dailyLogs")}
         isLoadingRFIs={loading("rfis")}
         isLoadingSubmittals={loading("submittals")}
+        isLoadingPunchItems={loading("punchItems")}
         formatDate={formatDate}
         {...navProps}
       />

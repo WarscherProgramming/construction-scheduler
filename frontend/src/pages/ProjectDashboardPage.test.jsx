@@ -61,6 +61,13 @@ const populated = {
     },
     { id: 6, status: "Rejected", required_by_date: "2026-06-20" },
   ],
+  punchItems: [
+    { id: 1, status: "Open", due_date: "2026-06-29" },
+    { id: 2, status: "In Progress", due_date: "2026-06-28" },
+    { id: 3, status: "Open", due_date: "2026-07-05" },
+    { id: 4, status: "Completed", due_date: "2026-06-20" },
+    { id: 5, status: "Verified", due_date: "2026-06-20" },
+  ],
 };
 
 describe("ProjectDashboardPage", () => {
@@ -91,6 +98,13 @@ describe("ProjectDashboardPage", () => {
         name: "Submittal health: 3 active, 2 overdue, 1 approved",
       })
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", {
+        name: "Punch List health: 3 open, 2 overdue, 2 completed",
+      })
+    ).toBeInTheDocument();
+    expect(screen.getByText("Open Punch Items")).toBeInTheDocument();
+    expect(screen.getByText("2 overdue · 2 completed")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Open Schedule" }));
     expect(onNavigate).toHaveBeenCalledWith("scheduler");
@@ -109,6 +123,11 @@ describe("ProjectDashboardPage", () => {
         name: "Submittal health: 3 active, 2 overdue, 1 approved",
       })
     );
+    await user.click(
+      screen.getByRole("button", {
+        name: "Punch List health: 3 open, 2 overdue, 2 completed",
+      })
+    );
 
     expect(onNavigate.mock.calls).toEqual([
       ["scheduler"],
@@ -118,6 +137,7 @@ describe("ProjectDashboardPage", () => {
       ["changeOrders"],
       ["rfis"],
       ["submittals"],
+      ["punchItems"],
     ]);
   });
 
@@ -137,6 +157,7 @@ describe("ProjectDashboardPage", () => {
         isLoadingDailyLogs
         isLoadingRFIs
         isLoadingSubmittals
+        isLoadingPunchItems
       />
     );
 
@@ -155,6 +176,9 @@ describe("ProjectDashboardPage", () => {
     expect(
       screen.getByRole("button", { name: "Submittal health, loading" })
     ).toHaveAttribute("aria-busy", "true");
+    expect(
+      screen.getByRole("button", { name: "Punch List health, loading" })
+    ).toHaveAttribute("aria-busy", "true");
   });
 
   it("shows zeroed record health without changing the empty dashboard", () => {
@@ -168,6 +192,11 @@ describe("ProjectDashboardPage", () => {
     expect(
       screen.getByRole("button", {
         name: "Submittal health: 0 active, 0 overdue, 0 approved",
+      })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", {
+        name: "Punch List health: 0 open, 0 overdue, 0 completed",
       })
     ).toBeInTheDocument();
     expect(screen.getByText("No recent activity")).toBeInTheDocument();
@@ -188,6 +217,28 @@ describe("ProjectDashboardPage", () => {
     expect(
       screen.getByRole("button", {
         name: "RFI health: 2 open, 1 overdue, 1 closed",
+      })
+    ).not.toHaveAttribute("aria-busy", "true");
+    expect(
+      screen.getByRole("button", { name: "Open Schedule" })
+    ).toBeEnabled();
+  });
+
+  it("isolates Punch List loading from unrelated dashboard controls", () => {
+    render(
+      <ProjectDashboardPage
+        {...baseProps}
+        {...populated}
+        isLoadingPunchItems
+      />
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Punch List health, loading" })
+    ).toHaveAttribute("aria-busy", "true");
+    expect(
+      screen.getByRole("button", {
+        name: "Submittal health: 3 active, 2 overdue, 1 approved",
       })
     ).not.toHaveAttribute("aria-busy", "true");
     expect(
