@@ -5,12 +5,12 @@
 FieldFlow gives superintendents, project managers, and project engineers a
 single source of truth for the schedule, the field, and the paper trail —
 a spreadsheet-fast scheduler, an executive dashboard, and complete field
-records (daily logs, inspections, delays, change orders).
+records (daily logs, inspections, delays, change orders, and RFIs).
 
 ![React 19](https://img.shields.io/badge/React-19-61dafb?logo=react&logoColor=white&labelColor=20232a)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.1x-009688?logo=fastapi&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169e1?logo=postgresql&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-140%20passing-2ea44f)
+![Tests](https://img.shields.io/badge/tests-163%20passing-2ea44f)
 ![Vite](https://img.shields.io/badge/Vite-8-646cff?logo=vite&logoColor=white)
 
 ![FieldFlow executive dashboard](docs/screenshots/dashboard.png)
@@ -63,8 +63,12 @@ question — *"what needs my attention today?"* — has a one-screen answer.
 - **Dynamic Gantt chart** rendered from the same task data, plus one-click PDF
   export.
 - **Executive dashboard** of derived insights — project-health gauge,
-  timeline-elapsed schedule health, attention lists, and a merged activity
-  feed — computed client-side from existing APIs (no bespoke endpoints).
+  timeline-elapsed schedule health, RFI health, attention lists, and a merged
+  activity feed — computed client-side from existing APIs (no bespoke
+  endpoints).
+- **Project-scoped RFI workflow** with server-assigned sequential numbering,
+  Open/Pending/Closed states, responsible-company assignment, due-date and
+  overdue tracking, and authenticated ownership enforcement.
 - **Accessible design system**: tokens, reusable UI primitives (Button, Card,
   Sidebar, PageHeader, Icon, ConfirmDialog, Skeleton), skip links, focus
   management, `aria-current` navigation, and screen-reader-labeled loading
@@ -74,8 +78,8 @@ question — *"what needs my attention today?"* — has a one-screen answer.
 - **Client-side onboarding**: first-run detection seeds a realistic demo
   project through the public API with visible progress — the app is never
   empty.
-- **Automated testing: 140 tests** — 98 frontend (Vitest + React Testing
-  Library, behavior- and accessibility-focused) and 42 backend (pytest,
+- **Automated testing: 163 tests** — 114 frontend (Vitest + React Testing
+  Library, behavior- and accessibility-focused) and 49 backend (pytest,
   covering the scheduling engine, critical path, services, migrations, CORS,
   and TestClient API integration).
 
@@ -85,7 +89,7 @@ question — *"what needs my attention today?"* — has a one-screen answer.
 ┌────────────────────┐        HTTPS / JSON        ┌─────────────────────┐
 │   React 19 SPA     │  ───── REST + JWT ─────▶   │   FastAPI (Python)  │
 │   Vite · dnd-kit   │  ◀──── JSON responses ──   │   api → services →  │
-│   Recharts         │                            │   domain → models   │
+│   Accessible UI    │                            │   domain → models   │
 │   (Vercel)         │                            │   (Render)          │
 └────────────────────┘                            └──────────┬──────────┘
         │                                                    │ SQLAlchemy
@@ -99,13 +103,15 @@ question — *"what needs my attention today?"* — has a one-screen answer.
 **How data flows:** the SPA authenticates against `/auth` and stores a JWT;
 every request carries it via a small fetch wrapper that also centralizes
 401 handling. Page containers call REST endpoints (`/projects/{id}/tasks`,
-`/daily-logs`, `/inspections`, `/notes-delays`, `/change-orders`, …); the
+`/daily-logs`, `/inspections`, `/notes-delays`, `/change-orders`, `/rfis`,
+…); the
 FastAPI service layer applies the scheduling rules (dependencies, lag,
 workday/holiday calendars) and persists through SQLAlchemy models managed by
 Alembic migrations. Responses return the full recalculated task set, so the
 grid, Gantt, and dashboard always render from one consistent source. Dashboard
-insights (health score, attention lists, activity feed) are **derived
-client-side** in pure, unit-tested functions — no duplicate reporting API.
+insights (health score, RFI health, attention lists, activity feed) are
+**derived client-side** in pure, unit-tested functions — no duplicate
+reporting API.
 
 ## Features
 
@@ -122,10 +128,15 @@ client-side** in pure, unit-tested functions — no duplicate reporting API.
 - Today's Focus: activities starting today, inspections due, delays, pending COs
 - Project-health gauge (green / amber / red) from a transparent heuristic
 - Schedule health, attention list, upcoming tasks and inspections
+- Open, overdue, and closed RFI health metrics with direct RFI navigation
 - Unified project activity feed with "what changed since yesterday" markers
 
 **Field records**
 - Daily logs, inspections, notes & delays, and change orders
+- Project-scoped RFI creation, editing, and deletion with responsible-company
+  assignment and Open, Pending, or Closed workflow
+- Sequential per-project RFI numbering with due-date and overdue tracking
+- Authenticated ownership enforcement across project RFI operations
 - Search, filtering, status badges, and responsive record cards
 - Project-company management
 
@@ -149,27 +160,27 @@ client-side** in pure, unit-tested functions — no duplicate reporting API.
 
 | Layer | Technology |
 |---|---|
-| Frontend | React 19, Vite 8, dnd-kit, Recharts, Inter (self-hosted) |
+| Frontend | React 19, Vite 8, dnd-kit, Inter (self-hosted) |
 | Backend | FastAPI, SQLAlchemy, Alembic, Pydantic |
 | Database | PostgreSQL |
 | Auth | JWT (OAuth2 password flow) |
-| Testing | Vitest + React Testing Library (98), pytest (42) |
+| Testing | Vitest + React Testing Library (114), pytest (49) |
 | Hosting | Vercel (frontend) · Render (API + migrations) |
 
 ## Testing
 
-**140 automated tests.**
+**163 automated tests.**
 
-- **Frontend (98)** — Vitest + React Testing Library. Tests target behavior
+- **Frontend (114)** — Vitest + React Testing Library. Tests target behavior
   and accessibility: roles and names, keyboard flows (Enter/Escape editing,
   grid cursor navigation, focus traps), derived dashboard metrics,
   demo-seeding orchestration, App-level integration wiring, the HTTP
   transport layer, and loading/empty/error states.
-- **Backend (42)** — pytest. Covers the workday scheduling engine
+- **Backend (49)** — pytest. Covers the workday scheduling engine
   (dependencies, lag, federal holidays), critical path and total float,
   task services, relationship migrations, CORS configuration, and
   TestClient API integration (auth, ownership enforcement, task lifecycle,
-  and field records over HTTP).
+  RFIs, and field records over HTTP).
 
 ```bash
 # frontend
@@ -228,6 +239,8 @@ Set `VITE_API_URL` when pointing at a deployed API.
 - ✅ Design system, tokens, and reusable UI component layer
 - ✅ Persistent project navigation shell with active-page state
 - ✅ Executive dashboard with derived health/attention insights
+- ✅ Project-scoped RFI workflow with sequential numbering, due-date tracking,
+  ownership enforcement, and dashboard health metrics
 - ✅ Branded landing page and first-run demo seeding
 - ✅ Icon system, confirmation dialogs, notifications, loading skeletons
 - ✅ Scheduler showcase: WBS numbering, inline validation, critical path +
@@ -238,7 +251,7 @@ Set `VITE_API_URL` when pointing at a deployed API.
   DRY cleanup with TestClient API integration coverage
 
 **Next**
-- RFIs and submittals, punch lists, document management
+- Submittals, punch lists, document management
 - Weather-delay integration and resource loading
 - Milestone tasks, Gantt dependency arrows, and timeline zoom
 

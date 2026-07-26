@@ -1,8 +1,8 @@
 # FieldFlow — Portfolio Copy
 
 Ready-to-use descriptions for resumes, portfolio sites, and LinkedIn.
-Keep the metrics in sync with the repo (currently **140 tests: 98 frontend +
-42 backend**).
+Keep the metrics in sync with the repo (currently **163 tests: 114 frontend +
+49 backend**).
 
 ---
 
@@ -12,7 +12,7 @@ Keep the metrics in sync with the repo (currently **140 tests: 98 frontend +
 
 > FieldFlow — full-stack construction scheduling and field-management SaaS
 > (React 19, FastAPI, PostgreSQL) with a drag-and-drop CPM-style scheduler,
-> executive dashboard, and 140 automated tests.
+> executive dashboard, project-scoped RFI workflow, and 163 automated tests.
 
 ### Resume bullets
 
@@ -26,8 +26,12 @@ Keep the metrics in sync with the repo (currently **140 tests: 98 frontend +
 >   with focus traps, skeleton loading, toasts, icon system) and an executive
 >   dashboard of client-side derived insights — health scoring, attention
 >   lists, and an activity feed — without adding backend endpoints.
+> - Delivered a project-scoped RFI register with permanent sequential
+>   numbering, Open/Pending/Closed workflow, due-date and overdue tracking,
+>   responsible-company assignment, dashboard health metrics, and
+>   authenticated ownership enforcement.
 > - Implemented JWT authentication with expiry-aware session UX, client-side
->   demo-data onboarding through the public API, and 140 automated tests
+>   demo-data onboarding through the public API, and 163 automated tests
 >   (Vitest/RTL + pytest) run against every change.
 
 ### Portfolio-site paragraph
@@ -39,11 +43,12 @@ Keep the metrics in sync with the repo (currently **140 tests: 98 frontend +
 > holiday calendars, task hierarchy, and drag-and-drop reordering that works
 > from the keyboard — rendered as both an editable grid and a Gantt chart with
 > PDF export. Around it sits a complete field-management suite (daily logs,
-> inspections, delays, change orders) and an executive dashboard that answers
+> inspections, delays, change orders, RFIs) and an executive dashboard that
+> answers
 > a superintendent's first question of the day: what needs my attention? The
 > project emphasizes production polish: a token-based accessible design
 > system, first-run onboarding that seeds a realistic demo project, JWT auth
-> with graceful session expiry, and 140 automated tests across the stack.
+> with graceful session expiry, and 163 automated tests across the stack.
 
 ---
 
@@ -61,10 +66,10 @@ Keep the metrics in sync with the repo (currently **140 tests: 98 frontend +
 > lag, workday/holiday-aware dates, hierarchy, and drag-and-drop reordering
 > ▦ A Gantt view and one-click PDF export
 > 📊 An executive dashboard that answers "what needs my attention today?"
-> 📝 Daily logs, inspections, delays, and change orders with search and filters
+> 📝 Daily logs, inspections, delays, change orders, and project-scoped RFIs
 >
 > Under the hood: React 19 + Vite, FastAPI + SQLAlchemy + PostgreSQL, JWT
-> auth, an accessible component design system, and 140 automated tests.
+> auth, an accessible component design system, and 163 automated tests.
 >
 > The demo seeds a full sample project in ~10 seconds — no signup friction:
 > 👉 https://construction-scheduler-eight.vercel.app
@@ -76,8 +81,8 @@ Keep the metrics in sync with the repo (currently **140 tests: 98 frontend +
 
 > FieldFlow — full-stack construction scheduling SaaS. React 19 · FastAPI ·
 > PostgreSQL. Drag-and-drop CPM-style scheduler, Gantt + PDF export, executive
-> dashboard, accessible design system, 140 automated tests. Live demo seeds a
-> complete sample project in seconds.
+> dashboard, project-scoped RFI workflow, accessible design system, 163
+> automated tests. Live demo seeds a complete sample project in seconds.
 
 ---
 

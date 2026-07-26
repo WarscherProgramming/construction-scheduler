@@ -16,7 +16,7 @@ with these exact names and the README completes itself.
 
 | File | View / state to capture |
 |---|---|
-| `dashboard.png` | Project dashboard, top of page: Today's Focus card with items, health gauge, all 5 KPI tiles visible. Hero image — make it count. |
+| `dashboard.png` | Project dashboard, top of page: Today's Focus card with items, health gauge, and all KPI tiles visible. Hero image — make it count. |
 | `schedule-grid.png` | Schedule table view: a row selected (brand accent visible), one cell in inline-edit mode, at least one parent task with indented children. |
 | `schedule-dnd.gif` | ~5 s: grab a task's drag handle, drag it two rows, drop; dates recalculate. |
 | `login.png` | Logged-out landing page at desktop width: split panel with marketing copy, highlights, app preview, and the auth card. |
