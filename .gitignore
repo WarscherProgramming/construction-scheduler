@@ -13,6 +13,7 @@ frontend/node_modules/
 # Build files
 dist/
 build/
+backend/.attachment_storage/
 
 # VS Code
 .vscode/

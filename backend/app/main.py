@@ -9,6 +9,7 @@ from app.api.routes_project import router as project_router
 from app.api.routes_template import router as template_router
 from app.api.routes_export import router as export_router
 from app.api.routes_auth import router as auth_router
+from app.api.routes_attachment import router as attachment_router
 from app.api.routes_daily_log import router as daily_log_router
 from app.api.routes_inspection import router as inspection_router
 from app.api.routes_note_delay import router as note_delay_router
@@ -40,6 +41,7 @@ app.add_middleware(
 # ----------------------------------------------------
 
 app.include_router(auth_router)
+app.include_router(attachment_router)
 app.include_router(project_router)
 app.include_router(task_router)
 app.include_router(template_router)

@@ -8,6 +8,7 @@ from sqlalchemy import pool
 from alembic import context
 
 from app.db.database import Base
+from app.models.attachment import Attachment  # noqa: F401
 from app.models.change_order import (  # noqa: F401
     ChangeOrder,
     ChangeOrderNumberSequence,
