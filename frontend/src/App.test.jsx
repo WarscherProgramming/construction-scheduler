@@ -1,4 +1,10 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -140,8 +146,15 @@ describe("App integration (hooks wiring)", () => {
     await screen.findByRole("button", {
       name: "RFI health: 0 open, 0 overdue, 0 closed",
     });
+    await screen.findByRole("button", {
+      name: "Submittal health: 0 active, 0 overdue, 0 approved",
+    });
     expect(fetchRFIs).toHaveBeenCalledTimes(1);
     expect(fetchRFIs).toHaveBeenCalledWith(1);
+    await waitFor(() => {
+      expect(fetchSubmittals).toHaveBeenCalledTimes(1);
+    });
+    expect(fetchSubmittals).toHaveBeenCalledWith(1);
   });
 
   it("clears RFI dashboard metrics while switching projects", async () => {
@@ -220,6 +233,119 @@ describe("App integration (hooks wiring)", () => {
     expect(
       screen.getByRole("button", { name: "Open Schedule" })
     ).toBeEnabled();
+  });
+
+  it("clears Submittal dashboard metrics while switching projects", async () => {
+    const user = userEvent.setup();
+    let resolveSecondProject;
+
+    fetchProjects.mockResolvedValue({
+      projects: [
+        { id: 1, name: "Riverside" },
+        { id: 2, name: "North Ridge" },
+      ],
+    });
+    fetchSubmittals.mockImplementation((projectId) => {
+      if (projectId === 1) {
+        return Promise.resolve({
+          submittals: [
+            {
+              id: 1,
+              status: "Draft",
+              required_by_date: null,
+            },
+          ],
+        });
+      }
+
+      return new Promise((resolve) => {
+        resolveSecondProject = resolve;
+      });
+    });
+
+    renderApp();
+
+    await screen.findByRole("option", { name: "Riverside" });
+    await user.selectOptions(screen.getByLabelText("Project"), "1");
+    expect(
+      await screen.findByRole("button", {
+        name: "Submittal health: 1 active, 0 overdue, 0 approved",
+      })
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Back to Home" }));
+    await user.selectOptions(screen.getByLabelText("Project"), "2");
+
+    expect(
+      await screen.findByRole("button", {
+        name: "Submittal health, loading",
+      })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", {
+        name: "Submittal health: 1 active, 0 overdue, 0 approved",
+      })
+    ).not.toBeInTheDocument();
+
+    await act(async () => {
+      resolveSecondProject({ submittals: [] });
+    });
+
+    expect(
+      await screen.findByRole("button", {
+        name: "Submittal health: 0 active, 0 overdue, 0 approved",
+      })
+    ).toBeInTheDocument();
+    expect(
+      fetchSubmittals.mock.calls.map(([projectId]) => projectId)
+    ).toEqual([1, 2]);
+  });
+
+  it("keeps the dashboard usable when its Submittals request fails", async () => {
+    fetchProjects.mockResolvedValue({
+      projects: [{ id: 1, name: "Riverside" }],
+    });
+    fetchSubmittals.mockRejectedValue(
+      new ApiError("Service unavailable", 503)
+    );
+    window.location.hash = "#/projects/1/dashboard";
+
+    renderApp();
+
+    expect(
+      await screen.findByRole("heading", { name: "Riverside Dashboard" })
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText(
+        "Unable to load Submittals. Service unavailable"
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Open Schedule" })
+    ).toBeEnabled();
+    expect(fetchSubmittals).toHaveBeenCalledTimes(1);
+  });
+
+  it("navigates from the dashboard KPI to Submittals", async () => {
+    const user = userEvent.setup();
+    fetchProjects.mockResolvedValue({
+      projects: [{ id: 1, name: "Riverside" }],
+    });
+    window.location.hash = "#/projects/1/dashboard";
+
+    renderApp();
+
+    const submittalKpi = await screen.findByRole("button", {
+      name: "Submittal health: 0 active, 0 overdue, 0 approved",
+    });
+    expect(fetchSubmittals).toHaveBeenCalledTimes(1);
+
+    await user.click(submittalKpi);
+
+    expect(
+      await screen.findByRole("heading", { name: "Submittals" })
+    ).toBeInTheDocument();
+    expect(window.location.hash).toBe("#/projects/1/submittals");
   });
 
   it("suppresses toast errors for expired-session (401) failures", async () => {
@@ -499,18 +625,13 @@ describe("App integration (hooks wiring)", () => {
     ).toBeInTheDocument();
   });
 
-  it("navigates to the selected project's Submittals route once", async () => {
-    const user = userEvent.setup();
+  it("loads the selected project's refresh-safe Submittals route once", async () => {
     fetchProjects.mockResolvedValue({
       projects: [{ id: 1, name: "Riverside" }],
     });
+    window.location.hash = "#/projects/1/submittals";
 
     renderApp();
-
-    await screen.findByRole("option", { name: "Riverside" });
-    await user.selectOptions(screen.getByLabelText("Project"), "1");
-    await screen.findByText("Riverside Dashboard");
-    await user.click(screen.getByRole("button", { name: "Submittals" }));
 
     expect(
       await screen.findByRole("heading", { name: "Submittals" })
@@ -518,7 +639,9 @@ describe("App integration (hooks wiring)", () => {
     expect(window.location.hash).toBe("#/projects/1/submittals");
     expect(document.title).toContain("Riverside");
     expect(document.title).toContain("Submittals | FieldFlow");
-    expect(fetchSubmittals).toHaveBeenCalledTimes(1);
+    await waitFor(() => {
+      expect(fetchSubmittals).toHaveBeenCalledTimes(1);
+    });
     expect(fetchSubmittals).toHaveBeenCalledWith(1);
     expect(
       screen.getByText(
@@ -822,7 +945,6 @@ describe("App integration (hooks wiring)", () => {
   });
 
   it("clears Submittals while switching projects and drops stale data", async () => {
-    const user = userEvent.setup();
     let resolveSecondProject;
 
     fetchProjects.mockResolvedValue({
@@ -862,13 +984,15 @@ describe("App integration (hooks wiring)", () => {
     renderApp();
 
     expect(await screen.findByText("SUB-001")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Back to Home" }));
-    await user.selectOptions(screen.getByLabelText("Project"), "2");
-    await screen.findByText("North Ridge Dashboard");
-    await user.click(screen.getByRole("button", { name: "Submittals" }));
+    await act(async () => {
+      window.history.pushState({}, "", "#/projects/2/submittals");
+      window.dispatchEvent(new HashChangeEvent("hashchange"));
+    });
 
-    expect(screen.queryByText("SUB-001")).not.toBeInTheDocument();
-    expect(screen.getByRole("status")).toHaveTextContent(
+    await waitFor(() => {
+      expect(screen.queryByText("SUB-001")).not.toBeInTheDocument();
+    });
+    expect(await screen.findByRole("status")).toHaveTextContent(
       "Loading Submittals..."
     );
 

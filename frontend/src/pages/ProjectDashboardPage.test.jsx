@@ -49,6 +49,18 @@ const populated = {
     { id: 2, status: "Pending", due_date: "2026-07-05" },
     { id: 3, status: "Closed", due_date: "2026-06-20" },
   ],
+  submittals: [
+    { id: 1, status: "Draft", required_by_date: "2026-06-29" },
+    { id: 2, status: "Submitted", required_by_date: "2026-07-05" },
+    { id: 3, status: "Under Review", required_by_date: "2026-06-28" },
+    { id: 4, status: "Approved", required_by_date: "2026-06-20" },
+    {
+      id: 5,
+      status: "Revise and Resubmit",
+      required_by_date: "2026-06-20",
+    },
+    { id: 6, status: "Rejected", required_by_date: "2026-06-20" },
+  ],
 };
 
 describe("ProjectDashboardPage", () => {
@@ -74,6 +86,11 @@ describe("ProjectDashboardPage", () => {
         name: "RFI health: 2 open, 1 overdue, 1 closed",
       })
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", {
+        name: "Submittal health: 3 active, 2 overdue, 1 approved",
+      })
+    ).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Open Schedule" }));
     expect(onNavigate).toHaveBeenCalledWith("scheduler");
@@ -87,6 +104,11 @@ describe("ProjectDashboardPage", () => {
         name: "RFI health: 2 open, 1 overdue, 1 closed",
       })
     );
+    await user.click(
+      screen.getByRole("button", {
+        name: "Submittal health: 3 active, 2 overdue, 1 approved",
+      })
+    );
 
     expect(onNavigate.mock.calls).toEqual([
       ["scheduler"],
@@ -95,6 +117,7 @@ describe("ProjectDashboardPage", () => {
       ["inspections"],
       ["changeOrders"],
       ["rfis"],
+      ["submittals"],
     ]);
   });
 
@@ -113,6 +136,7 @@ describe("ProjectDashboardPage", () => {
         isLoadingInspections
         isLoadingDailyLogs
         isLoadingRFIs
+        isLoadingSubmittals
       />
     );
 
@@ -128,9 +152,12 @@ describe("ProjectDashboardPage", () => {
     expect(
       screen.getByRole("button", { name: "RFI health, loading" })
     ).toHaveAttribute("aria-busy", "true");
+    expect(
+      screen.getByRole("button", { name: "Submittal health, loading" })
+    ).toHaveAttribute("aria-busy", "true");
   });
 
-  it("shows zeroed RFI health without changing the empty dashboard", () => {
+  it("shows zeroed record health without changing the empty dashboard", () => {
     render(<ProjectDashboardPage {...baseProps} />);
 
     expect(
@@ -138,6 +165,33 @@ describe("ProjectDashboardPage", () => {
         name: "RFI health: 0 open, 0 overdue, 0 closed",
       })
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", {
+        name: "Submittal health: 0 active, 0 overdue, 0 approved",
+      })
+    ).toBeInTheDocument();
     expect(screen.getByText("No recent activity")).toBeInTheDocument();
+  });
+
+  it("isolates Submittal loading from unrelated dashboard controls", () => {
+    render(
+      <ProjectDashboardPage
+        {...baseProps}
+        {...populated}
+        isLoadingSubmittals
+      />
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Submittal health, loading" })
+    ).toHaveAttribute("aria-busy", "true");
+    expect(
+      screen.getByRole("button", {
+        name: "RFI health: 2 open, 1 overdue, 1 closed",
+      })
+    ).not.toHaveAttribute("aria-busy", "true");
+    expect(
+      screen.getByRole("button", { name: "Open Schedule" })
+    ).toBeEnabled();
   });
 });

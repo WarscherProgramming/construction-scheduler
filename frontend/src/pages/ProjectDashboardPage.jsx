@@ -16,6 +16,7 @@ import {
   getRecentActivity,
   getRFIMetrics,
   getScheduleHealth,
+  getSubmittalMetrics,
   getThisWeekProgress,
   getTodaysFocus,
   getUpcomingInspections,
@@ -122,6 +123,7 @@ function ProjectDashboardPage({
   inspections = [],
   dailyLogs = [],
   rfis = [],
+  submittals = [],
   referenceDate,
   isLoadingTasks = false,
   isLoadingChangeOrders = false,
@@ -129,6 +131,7 @@ function ProjectDashboardPage({
   isLoadingInspections = false,
   isLoadingDailyLogs = false,
   isLoadingRFIs = false,
+  isLoadingSubmittals = false,
   formatDate,
   onNavigate,
   onLogout,
@@ -187,8 +190,18 @@ function ProjectDashboardPage({
         .slice(0, 4),
       changeOrderTotals: getChangeOrderTotalsByCompany(changeOrders),
       rfiMetrics: getRFIMetrics(rfis, now),
+      submittalMetrics: getSubmittalMetrics(submittals, now),
     };
-  }, [tasks, inspections, notesDelays, changeOrders, dailyLogs, rfis, now]);
+  }, [
+    tasks,
+    inspections,
+    notesDelays,
+    changeOrders,
+    dailyLogs,
+    rfis,
+    submittals,
+    now,
+  ]);
 
   const {
     schedule,
@@ -204,6 +217,7 @@ function ProjectDashboardPage({
     recentChangeOrders,
     changeOrderTotals,
     rfiMetrics,
+    submittalMetrics,
   } = insights;
 
   const overviewLoading =
@@ -377,6 +391,24 @@ function ProjectDashboardPage({
               isLoadingRFIs
                 ? "RFI health, loading"
                 : `RFI health: ${rfiMetrics.openRFIs} open, ${rfiMetrics.overdueRFIs} overdue, ${rfiMetrics.closedRFIs} closed`
+            }
+          />
+
+          <KpiTile
+            label="Active Submittals"
+            loading={isLoadingSubmittals}
+            value={submittalMetrics.activeSubmittals}
+            sub={`${submittalMetrics.overdueSubmittals} overdue · ${submittalMetrics.approvedSubmittals} approved`}
+            tone={
+              !isLoadingSubmittals && submittalMetrics.overdueSubmittals
+                ? "alert"
+                : undefined
+            }
+            onClick={() => onNavigate("submittals")}
+            ariaLabel={
+              isLoadingSubmittals
+                ? "Submittal health, loading"
+                : `Submittal health: ${submittalMetrics.activeSubmittals} active, ${submittalMetrics.overdueSubmittals} overdue, ${submittalMetrics.approvedSubmittals} approved`
             }
           />
 

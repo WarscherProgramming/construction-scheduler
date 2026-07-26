@@ -5,8 +5,14 @@ import {
   parseLocalDateInputValue,
   toLocalDateInputValue,
 } from "./date";
+import { isSubmittalOverdue } from "./submittal";
 
 const INSPECTION_ISSUE_STATUSES = new Set(["Pending", "Fail", "Partial Pass"]);
+const ACTIVE_SUBMITTAL_STATUSES = new Set([
+  "Draft",
+  "Submitted",
+  "Under Review",
+]);
 
 function parseCurrencyAmount(value) {
   const amount = Number(String(value || "0").replace(/[$,\s]/g, ""));
@@ -56,6 +62,23 @@ export function getRFIMetrics(rfis = [], referenceDate = new Date()) {
         isPastLocalDate(rfi.due_date, referenceDate)
     ).length,
     closedRFIs: rfis.filter((rfi) => rfi.status === "Closed").length,
+  };
+}
+
+export function getSubmittalMetrics(
+  submittals = [],
+  referenceDate = new Date()
+) {
+  return {
+    activeSubmittals: submittals.filter((submittal) =>
+      ACTIVE_SUBMITTAL_STATUSES.has(submittal.status)
+    ).length,
+    overdueSubmittals: submittals.filter((submittal) =>
+      isSubmittalOverdue(submittal, referenceDate)
+    ).length,
+    approvedSubmittals: submittals.filter(
+      (submittal) => submittal.status === "Approved"
+    ).length,
   };
 }
 

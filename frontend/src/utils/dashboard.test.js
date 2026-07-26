@@ -9,6 +9,7 @@ import {
   getRecentActivity,
   getRFIMetrics,
   getScheduleHealth,
+  getSubmittalMetrics,
   getThisWeekProgress,
   getTodaysFocus,
   getUpcomingInspections,
@@ -82,6 +83,39 @@ describe("getRFIMetrics", () => {
       openRFIs: 0,
       overdueRFIs: 0,
       closedRFIs: 0,
+    });
+  });
+});
+
+describe("getSubmittalMetrics", () => {
+  it("counts active, overdue, and approved workflow states", () => {
+    expect(
+      getSubmittalMetrics(
+        [
+          { status: "Draft", required_by_date: "2026-06-29" },
+          { status: "Submitted", required_by_date: "2026-07-02" },
+          { status: "Under Review", required_by_date: "2026-06-28" },
+          { status: "Approved", required_by_date: "2026-06-20" },
+          {
+            status: "Revise and Resubmit",
+            required_by_date: "2026-06-20",
+          },
+          { status: "Rejected", required_by_date: "2026-06-20" },
+        ],
+        REFERENCE
+      )
+    ).toEqual({
+      activeSubmittals: 3,
+      overdueSubmittals: 2,
+      approvedSubmittals: 1,
+    });
+  });
+
+  it("returns zero counts for an empty Submittal collection", () => {
+    expect(getSubmittalMetrics([], REFERENCE)).toEqual({
+      activeSubmittals: 0,
+      overdueSubmittals: 0,
+      approvedSubmittals: 0,
     });
   });
 });
