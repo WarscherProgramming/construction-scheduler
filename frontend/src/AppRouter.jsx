@@ -16,6 +16,7 @@ const ProjectSettingsPage = lazy(
 );
 const RFIsPage = lazy(() => import("./pages/RFIsPage"));
 const SchedulerPage = lazy(() => import("./pages/SchedulerPage"));
+const SubmittalsPage = lazy(() => import("./pages/SubmittalsPage"));
 
 /**
  * Selects and wires the page for the current route. Pure presentation
@@ -34,6 +35,7 @@ function AppRouter({
   onDeleteTask,
   onDeleteChangeOrder,
   onDeleteRFI,
+  onDeleteSubmittal,
 }) {
   const {
     projects,
@@ -45,6 +47,7 @@ function AppRouter({
     notesDelays,
     changeOrders,
     rfis,
+    submittals,
     projectCompanies,
     isOperationActive,
     isResourceLoading,
@@ -256,6 +259,50 @@ function AppRouter({
         isSaving={isOperationActive("saveRFI")}
         isRefreshing={isOperationActive("refreshRFIs")}
         isLoading={loading("rfis")}
+      />
+    );
+  }
+
+  if (currentPage === "submittals") {
+    return (
+      <SubmittalsPage
+        projectName={projectName}
+        submittals={submittals}
+        projectCompanies={projectCompanies}
+        editingSubmittalId={forms.editingSubmittalId}
+        editingSubmittalNumber={forms.editingSubmittalNumber}
+        specificationSection={forms.submittalSpecificationSection}
+        title={forms.submittalTitle}
+        responsibleCompany={forms.submittalResponsibleCompany}
+        submittedDate={forms.submittalSubmittedDate}
+        requiredByDate={forms.submittalRequiredByDate}
+        reviewedDate={forms.submittalReviewedDate}
+        status={forms.submittalStatus}
+        reviewer={forms.submittalReviewer}
+        remarks={forms.submittalRemarks}
+        formatDate={formatDate}
+        {...navProps}
+        onRefresh={forms.handleRefreshSubmittals}
+        onSave={forms.handleSaveSubmittal}
+        onEdit={forms.handleEditSubmittal}
+        onCancelEdit={forms.resetSubmittalForm}
+        onDelete={onDeleteSubmittal}
+        onSpecificationSectionChange={
+          forms.setSubmittalSpecificationSection
+        }
+        onTitleChange={forms.setSubmittalTitle}
+        onResponsibleCompanyChange={
+          forms.setSubmittalResponsibleCompany
+        }
+        onSubmittedDateChange={forms.setSubmittalSubmittedDate}
+        onRequiredByDateChange={forms.setSubmittalRequiredByDate}
+        onReviewedDateChange={forms.setSubmittalReviewedDate}
+        onStatusChange={forms.setSubmittalStatus}
+        onReviewerChange={forms.setSubmittalReviewer}
+        onRemarksChange={forms.setSubmittalRemarks}
+        isSaving={isOperationActive("saveSubmittal")}
+        isRefreshing={isOperationActive("refreshSubmittals")}
+        isLoading={loading("submittals")}
       />
     );
   }

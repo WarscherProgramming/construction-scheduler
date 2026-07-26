@@ -8,6 +8,7 @@ import {
   fetchProjectCompanies,
   fetchProjects,
   fetchRFIs,
+  fetchSubmittals,
   fetchTasks,
   fetchTemplates,
 } from "../services/api";
@@ -39,6 +40,7 @@ function useProjectResource({
   const [notesDelays, setNotesDelays] = useState([]);
   const [changeOrders, setChangeOrders] = useState([]);
   const [rfis, setRFIs] = useState([]);
+  const [submittals, setSubmittals] = useState([]);
   const [projectCompanies, setProjectCompanies] = useState([]);
 
   const [activeOperations, setActiveOperations] = useState([]);
@@ -231,6 +233,17 @@ function useProjectResource({
     [loadProjectResource]
   );
 
+  const loadSubmittals = useCallback(
+    () =>
+      loadProjectResource(
+        "submittals",
+        fetchSubmittals,
+        (data) => setSubmittals(data.submittals || []),
+        "Unable to load Submittals"
+      ),
+    [loadProjectResource]
+  );
+
   const loadProjectCompanies = useCallback(
     () =>
       loadProjectResource(
@@ -252,6 +265,7 @@ function useProjectResource({
     setNotesDelays([]);
     setChangeOrders([]);
     setRFIs([]);
+    setSubmittals([]);
     setProjectCompanies([]);
   }, []);
 
@@ -277,6 +291,7 @@ function useProjectResource({
       setNotesDelays([]);
       setChangeOrders([]);
       setRFIs([]);
+      setSubmittals([]);
       setProjectCompanies([]);
 
       void Promise.all([loadTasks(), loadProjectCompanies()]);
@@ -309,6 +324,7 @@ function useProjectResource({
       notesDelays: [loadNotesDelays],
       changeOrders: [loadChangeOrders],
       rfis: [loadRFIs],
+      submittals: [loadSubmittals],
       projectSettings: [loadProjectCompanies],
     };
 
@@ -328,6 +344,7 @@ function useProjectResource({
     loadNotesDelays,
     loadProjectCompanies,
     loadRFIs,
+    loadSubmittals,
     selectedProjectId,
   ]);
 
@@ -344,6 +361,7 @@ function useProjectResource({
     notesDelays,
     changeOrders,
     rfis,
+    submittals,
     projectCompanies,
     loadProjects,
     loadTemplates,
@@ -353,6 +371,7 @@ function useProjectResource({
     loadNotesDelays,
     loadChangeOrders,
     loadRFIs,
+    loadSubmittals,
     loadProjectCompanies,
     clearAllData,
     runOperation,

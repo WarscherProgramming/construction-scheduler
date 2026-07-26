@@ -6,6 +6,7 @@ const PAGE_SEGMENTS = {
   notesDelays: "notes-delays",
   changeOrders: "change-orders",
   rfis: "rfis",
+  submittals: "submittals",
   projectSettings: "settings",
 };
 

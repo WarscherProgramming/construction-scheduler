@@ -28,6 +28,10 @@ vi.mock("./services/api", () => ({
   createRFI: vi.fn(),
   updateRFI: vi.fn(),
   deleteRFI: vi.fn(),
+  fetchSubmittals: vi.fn(),
+  createSubmittal: vi.fn(),
+  updateSubmittal: vi.fn(),
+  deleteSubmittal: vi.fn(),
   reorderTasks: vi.fn(),
   loginUser: vi.fn(),
   registerUser: vi.fn(),
@@ -41,7 +45,9 @@ import App from "./App";
 import AuthProvider from "./auth/AuthProvider";
 import {
   createRFI,
+  createSubmittal,
   deleteRFI,
+  deleteSubmittal,
   fetchChangeOrders,
   fetchDailyLogs,
   fetchInspections,
@@ -49,9 +55,11 @@ import {
   fetchProjectCompanies,
   fetchProjects,
   fetchRFIs,
+  fetchSubmittals,
   fetchTasks,
   fetchTemplates,
   updateRFI,
+  updateSubmittal,
 } from "./services/api";
 import { ApiError } from "./services/httpClient";
 
@@ -82,6 +90,10 @@ describe("App integration (hooks wiring)", () => {
     createRFI.mockResolvedValue({});
     updateRFI.mockResolvedValue({});
     deleteRFI.mockResolvedValue({ message: "RFI deleted" });
+    fetchSubmittals.mockResolvedValue({ submittals: [] });
+    createSubmittal.mockResolvedValue({});
+    updateSubmittal.mockResolvedValue({});
+    deleteSubmittal.mockResolvedValue({ message: "Submittal deleted" });
   });
 
   it("shows the login experience when unauthenticated", () => {
@@ -485,5 +497,392 @@ describe("App integration (hooks wiring)", () => {
     expect(
       await screen.findByText("Unable to load RFIs. Service unavailable")
     ).toBeInTheDocument();
+  });
+
+  it("navigates to the selected project's Submittals route once", async () => {
+    const user = userEvent.setup();
+    fetchProjects.mockResolvedValue({
+      projects: [{ id: 1, name: "Riverside" }],
+    });
+
+    renderApp();
+
+    await screen.findByRole("option", { name: "Riverside" });
+    await user.selectOptions(screen.getByLabelText("Project"), "1");
+    await screen.findByText("Riverside Dashboard");
+    await user.click(screen.getByRole("button", { name: "Submittals" }));
+
+    expect(
+      await screen.findByRole("heading", { name: "Submittals" })
+    ).toBeInTheDocument();
+    expect(window.location.hash).toBe("#/projects/1/submittals");
+    expect(document.title).toContain("Riverside");
+    expect(document.title).toContain("Submittals | FieldFlow");
+    expect(fetchSubmittals).toHaveBeenCalledTimes(1);
+    expect(fetchSubmittals).toHaveBeenCalledWith(1);
+    expect(
+      screen.getByText(
+        "No submittals yet. Create the first submittal above."
+      )
+    ).toBeInTheDocument();
+  });
+
+  it("validates and creates a Draft Submittal without a submitted date", async () => {
+    const user = userEvent.setup();
+    const createdSubmittal = {
+      id: 1,
+      project_id: 1,
+      number: "SUB-001",
+      specification_section: "08 41 13",
+      title: "Aluminum-framed entrances",
+      responsible_company: "Desert Glass",
+      submitted_date: null,
+      required_by_date: null,
+      reviewed_date: null,
+      status: "Draft",
+      reviewer: null,
+      remarks: null,
+      created_at: "2026-07-25T12:00:00Z",
+      updated_at: "2026-07-25T12:00:00Z",
+    };
+    let records = [];
+
+    fetchProjects.mockResolvedValue({
+      projects: [{ id: 1, name: "Riverside" }],
+    });
+    fetchSubmittals.mockImplementation(async () => ({
+      submittals: records,
+    }));
+    createSubmittal.mockImplementation(async () => {
+      records = [createdSubmittal];
+      return createdSubmittal;
+    });
+    window.location.hash = "#/projects/1/submittals";
+
+    renderApp();
+
+    await screen.findByRole("heading", { name: "Submittals" });
+    await user.type(screen.getByLabelText("Specification section *"), "   ");
+    await user.type(
+      screen.getByLabelText("Title *"),
+      "Aluminum-framed entrances"
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Create Submittal" })
+    );
+
+    expect(
+      await screen.findByText(
+        "Complete the specification section and title before saving."
+      )
+    ).toBeInTheDocument();
+    expect(createSubmittal).not.toHaveBeenCalled();
+
+    await user.clear(screen.getByLabelText("Specification section *"));
+    await user.type(
+      screen.getByLabelText("Specification section *"),
+      "  08 41 13  "
+    );
+    await user.type(
+      screen.getByLabelText("Responsible company"),
+      "  Desert Glass  "
+    );
+    await user.type(screen.getByLabelText("Submitted date"), "2026-07-25");
+    await user.type(screen.getByLabelText("Required-by date"), "2026-07-24");
+    fireEvent.submit(
+      screen
+        .getByRole("heading", { name: "Create Submittal" })
+        .closest("form")
+    );
+
+    expect(
+      await screen.findByText(
+        "Required-by date cannot be earlier than submitted date."
+      )
+    ).toBeInTheDocument();
+    expect(createSubmittal).not.toHaveBeenCalled();
+
+    await user.clear(screen.getByLabelText("Required-by date"));
+    await user.type(screen.getByLabelText("Reviewed date"), "2026-07-24");
+    fireEvent.submit(
+      screen
+        .getByRole("heading", { name: "Create Submittal" })
+        .closest("form")
+    );
+
+    expect(
+      await screen.findByText(
+        "Reviewed date cannot be earlier than submitted date."
+      )
+    ).toBeInTheDocument();
+    expect(createSubmittal).not.toHaveBeenCalled();
+
+    await user.clear(screen.getByLabelText("Submitted date"));
+    await user.clear(screen.getByLabelText("Reviewed date"));
+    await user.click(
+      screen.getByRole("button", { name: "Create Submittal" })
+    );
+
+    expect(createSubmittal).toHaveBeenCalledWith(1, {
+      specification_section: "08 41 13",
+      title: "Aluminum-framed entrances",
+      responsible_company: "Desert Glass",
+      submitted_date: null,
+      required_by_date: null,
+      reviewed_date: null,
+      status: "Draft",
+      reviewer: null,
+      remarks: null,
+    });
+    expect(await screen.findByText("SUB-001")).toBeInTheDocument();
+    expect(screen.getByText("Submittal created.")).toBeInTheDocument();
+  });
+
+  it("edits a Submittal and supports the complete status workflow", async () => {
+    const user = userEvent.setup();
+    const submitted = {
+      id: 7,
+      project_id: 1,
+      number: "SUB-007",
+      specification_section: "08 41 13",
+      title: "Storefront package",
+      responsible_company: "Desert Glass",
+      submitted_date: "2026-07-20",
+      required_by_date: "2026-07-30",
+      reviewed_date: null,
+      status: "Under Review",
+      reviewer: "Project Architect",
+      remarks: "Initial package",
+    };
+    const revised = {
+      ...submitted,
+      status: "Revise and Resubmit",
+      reviewed_date: "2026-07-25",
+      remarks: "Revise anchorage details.",
+    };
+    let records = [submitted];
+
+    fetchProjects.mockResolvedValue({
+      projects: [{ id: 1, name: "Riverside" }],
+    });
+    fetchSubmittals.mockImplementation(async () => ({
+      submittals: records,
+    }));
+    updateSubmittal.mockImplementation(async () => {
+      records = [revised];
+      return revised;
+    });
+    window.location.hash = "#/projects/1/submittals";
+
+    renderApp();
+
+    await user.click(
+      await screen.findByRole("button", { name: "Edit SUB-007" })
+    );
+
+    expect(
+      screen.getByRole("heading", { name: "Edit SUB-007" })
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Title *")).toHaveValue(
+      "Storefront package"
+    );
+    expect(screen.getByLabelText("Reviewer")).toHaveValue(
+      "Project Architect"
+    );
+
+    await user.selectOptions(
+      screen.getByLabelText("Status"),
+      "Revise and Resubmit"
+    );
+    await user.type(screen.getByLabelText("Reviewed date"), "2026-07-25");
+    await user.clear(screen.getByLabelText("Remarks"));
+    await user.type(
+      screen.getByLabelText("Remarks"),
+      "  Revise anchorage details.  "
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Update Submittal" })
+    );
+
+    expect(updateSubmittal).toHaveBeenCalledWith(
+      1,
+      7,
+      expect.objectContaining({
+        specification_section: "08 41 13",
+        title: "Storefront package",
+        reviewed_date: "2026-07-25",
+        status: "Revise and Resubmit",
+        remarks: "Revise anchorage details.",
+      })
+    );
+    expect(await screen.findByText("Submittal updated.")).toBeInTheDocument();
+    expect(screen.getByText("Revise anchorage details.")).toBeInTheDocument();
+  });
+
+  it("deletes a Submittal through the confirmation workflow", async () => {
+    const user = userEvent.setup();
+    const submittal = {
+      id: 3,
+      project_id: 1,
+      number: "SUB-003",
+      specification_section: "09 29 00",
+      title: "Gypsum board package",
+      responsible_company: null,
+      submitted_date: null,
+      required_by_date: null,
+      reviewed_date: null,
+      status: "Draft",
+      reviewer: null,
+      remarks: null,
+    };
+    let records = [submittal];
+
+    fetchProjects.mockResolvedValue({
+      projects: [{ id: 1, name: "Riverside" }],
+    });
+    fetchSubmittals.mockImplementation(async () => ({
+      submittals: records,
+    }));
+    deleteSubmittal.mockImplementation(async () => {
+      records = [];
+      return { message: "Submittal deleted" };
+    });
+    window.location.hash = "#/projects/1/submittals";
+
+    renderApp();
+
+    await user.click(
+      await screen.findByRole("button", { name: "Delete SUB-003" })
+    );
+
+    expect(
+      screen.getByRole("alertdialog", { name: "Delete SUB-003?" })
+    ).toBeInTheDocument();
+    expect(deleteSubmittal).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Delete" }));
+
+    expect(deleteSubmittal).toHaveBeenCalledWith(1, 3);
+    expect(await screen.findByText("Submittal deleted.")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "No submittals yet. Create the first submittal above."
+      )
+    ).toBeInTheDocument();
+  });
+
+  it("announces failures while loading the selected project's Submittals", async () => {
+    fetchProjects.mockResolvedValue({
+      projects: [{ id: 1, name: "Riverside" }],
+    });
+    fetchSubmittals.mockRejectedValue(
+      new ApiError("Service unavailable", 503)
+    );
+    window.location.hash = "#/projects/1/submittals";
+
+    renderApp();
+
+    expect(
+      await screen.findByText(
+        "Unable to load Submittals. Service unavailable"
+      )
+    ).toBeInTheDocument();
+  });
+
+  it("announces Submittal mutation failures through the feedback banner", async () => {
+    const user = userEvent.setup();
+    fetchProjects.mockResolvedValue({
+      projects: [{ id: 1, name: "Riverside" }],
+    });
+    createSubmittal.mockRejectedValue(
+      new ApiError("Service unavailable", 503)
+    );
+    window.location.hash = "#/projects/1/submittals";
+
+    renderApp();
+
+    await screen.findByRole("heading", { name: "Submittals" });
+    await user.type(
+      screen.getByLabelText("Specification section *"),
+      "08 41 13"
+    );
+    await user.type(
+      screen.getByLabelText("Title *"),
+      "Aluminum-framed entrances"
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Create Submittal" })
+    );
+
+    expect(
+      await screen.findByText(
+        "Unable to create Submittal. Service unavailable"
+      )
+    ).toBeInTheDocument();
+  });
+
+  it("clears Submittals while switching projects and drops stale data", async () => {
+    const user = userEvent.setup();
+    let resolveSecondProject;
+
+    fetchProjects.mockResolvedValue({
+      projects: [
+        { id: 1, name: "Riverside" },
+        { id: 2, name: "North Ridge" },
+      ],
+    });
+    fetchSubmittals.mockImplementation((projectId) => {
+      if (projectId === 1) {
+        return Promise.resolve({
+          submittals: [
+            {
+              id: 1,
+              project_id: 1,
+              number: "SUB-001",
+              specification_section: "08 41 13",
+              title: "Storefront package",
+              responsible_company: null,
+              submitted_date: null,
+              required_by_date: null,
+              reviewed_date: null,
+              status: "Draft",
+              reviewer: null,
+              remarks: null,
+            },
+          ],
+        });
+      }
+
+      return new Promise((resolve) => {
+        resolveSecondProject = resolve;
+      });
+    });
+    window.location.hash = "#/projects/1/submittals";
+
+    renderApp();
+
+    expect(await screen.findByText("SUB-001")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Back to Home" }));
+    await user.selectOptions(screen.getByLabelText("Project"), "2");
+    await screen.findByText("North Ridge Dashboard");
+    await user.click(screen.getByRole("button", { name: "Submittals" }));
+
+    expect(screen.queryByText("SUB-001")).not.toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Loading Submittals..."
+    );
+
+    await act(async () => {
+      resolveSecondProject({ submittals: [] });
+    });
+
+    expect(
+      await screen.findByText(
+        "No submittals yet. Create the first submittal above."
+      )
+    ).toBeInTheDocument();
+    expect(
+      fetchSubmittals.mock.calls.map(([projectId]) => projectId)
+    ).toEqual([1, 2]);
   });
 });

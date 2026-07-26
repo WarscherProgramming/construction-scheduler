@@ -12,6 +12,7 @@ const NAV_ITEMS = [
   { id: "notesDelays", label: "Notes & Delays", icon: "alert-triangle" },
   { id: "changeOrders", label: "Change Orders", icon: "dollar-sign" },
   { id: "rfis", label: "RFIs", icon: "message-square" },
+  { id: "submittals", label: "Submittals", icon: "file-text" },
   { id: "projectSettings", label: "Project Settings", icon: "settings" },
 ];
 

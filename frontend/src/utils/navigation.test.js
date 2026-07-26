@@ -15,6 +15,9 @@ describe("navigation utilities", () => {
   it("builds stable project module hashes", () => {
     expect(buildAppHash("dailyLogs", 42)).toBe("#/projects/42/daily-logs");
     expect(buildAppHash("rfis", 42)).toBe("#/projects/42/rfis");
+    expect(buildAppHash("submittals", 42)).toBe(
+      "#/projects/42/submittals"
+    );
     expect(buildAppHash("home", 42)).toBe("#/");
   });
 
@@ -25,6 +28,10 @@ describe("navigation utilities", () => {
     });
     expect(parseAppHash("#/projects/42/rfis")).toEqual({
       page: "rfis",
+      projectId: 42,
+    });
+    expect(parseAppHash("#/projects/42/submittals")).toEqual({
+      page: "submittals",
       projectId: 42,
     });
     expect(parseAppHash("#/projects/nope/dashboard")).toEqual({

@@ -149,6 +149,29 @@ export function deleteRFI(projectId, rfiId) {
   });
 }
 
+export function fetchSubmittals(projectId) {
+  return authenticatedRequest(`/projects/${projectId}/submittals`);
+}
+
+export function createSubmittal(projectId, submittal) {
+  return jsonRequest(`/projects/${projectId}/submittals`, "POST", submittal);
+}
+
+export function updateSubmittal(projectId, submittalId, submittal) {
+  return jsonRequest(
+    `/projects/${projectId}/submittals/${submittalId}`,
+    "PUT",
+    submittal
+  );
+}
+
+export function deleteSubmittal(projectId, submittalId) {
+  return authenticatedRequest(
+    `/projects/${projectId}/submittals/${submittalId}`,
+    { method: "DELETE" }
+  );
+}
+
 export function reorderTasks(projectId, taskIds) {
   return jsonRequest(`/projects/${projectId}/tasks/reorder`, "PUT", {
     task_ids: taskIds,

@@ -2073,25 +2073,29 @@ button:disabled {
   max-width: 720px;
 }
 
-.rfi-form-actions {
+.rfi-form-actions,
+.submittal-form-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
 }
 
-.rfi-status {
+.rfi-status,
+.submittal-status {
   display: inline-grid;
   justify-items: start;
   gap: 5px;
 }
 
-.rfi-overdue {
+.rfi-overdue,
+.submittal-overdue {
   color: var(--danger);
   font-size: 0.78rem;
   font-weight: 700;
 }
 
-.rfi-response-summary {
+.rfi-response-summary,
+.submittal-remarks-summary {
   max-width: 32ch;
   white-space: normal;
 }
@@ -2357,10 +2361,18 @@ textarea.field-control {
   background: #fffbeb;
 }
 
-.status-open {
+.status-open,
+.status-submitted {
   border-color: #bfdbfe;
   color: #1d4ed8;
   background: #eff6ff;
+}
+
+.status-under-review,
+.status-revise-and-resubmit {
+  border-color: #fde68a;
+  color: #854d0e;
+  background: #fffbeb;
 }
 
 .status-rejected,

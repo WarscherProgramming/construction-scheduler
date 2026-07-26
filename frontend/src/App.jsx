@@ -25,6 +25,7 @@ const PAGE_TITLES = {
   notesDelays: "Notes & Delays",
   changeOrders: "Change Orders",
   rfis: "RFIs",
+  submittals: "Submittals",
   projectSettings: "Settings",
 };
 
@@ -92,6 +93,7 @@ function App() {
     loadNotesDelays: data.loadNotesDelays,
     loadChangeOrders: data.loadChangeOrders,
     loadRFIs: data.loadRFIs,
+    loadSubmittals: data.loadSubmittals,
     loadProjectCompanies: data.loadProjectCompanies,
   });
 
@@ -238,6 +240,16 @@ function App() {
     });
   };
 
+  const handleDeleteSubmittal = (id, number) => {
+    setPendingDelete({
+      kind: "submittal",
+      id,
+      title: `Delete ${number}?`,
+      message:
+        "The submittal will be permanently removed. This action cannot be undone.",
+    });
+  };
+
   const handleConfirmDelete = async () => {
     const pending = pendingDelete;
     setPendingDelete(null);
@@ -253,7 +265,12 @@ function App() {
       return;
     }
 
-    await forms.performRFIDelete(pending.id);
+    if (pending.kind === "rfi") {
+      await forms.performRFIDelete(pending.id);
+      return;
+    }
+
+    await forms.performSubmittalDelete(pending.id);
   };
 
   return (
@@ -294,6 +311,7 @@ function App() {
               onDeleteTask={handleDeleteTask}
               onDeleteChangeOrder={handleDeleteChangeOrder}
               onDeleteRFI={handleDeleteRFI}
+              onDeleteSubmittal={handleDeleteSubmittal}
             />
           ) : (
             <AuthPage

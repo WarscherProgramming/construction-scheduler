@@ -8,9 +8,12 @@ import {
   createProject,
   createProjectCompany,
   createRFI,
+  createSubmittal,
   deleteChangeOrder,
   deleteRFI,
+  deleteSubmittal,
   updateRFI,
+  updateSubmittal,
 } from "../services/api";
 import { toLocalDateInputValue } from "../utils/date";
 
@@ -33,6 +36,7 @@ function useRecordForms({
   loadNotesDelays,
   loadChangeOrders,
   loadRFIs,
+  loadSubmittals,
   loadProjectCompanies,
 }) {
   const [newProjectName, setNewProjectName] = useState("");
@@ -67,6 +71,21 @@ function useRecordForms({
   const [rfiResponse, setRFIResponse] = useState("");
   const [rfiStatus, setRFIStatus] = useState("Open");
   const [rfiProjectId, setRFIProjectId] = useState(selectedProjectId);
+  const [editingSubmittalId, setEditingSubmittalId] = useState(null);
+  const [editingSubmittalNumber, setEditingSubmittalNumber] = useState("");
+  const [submittalSpecificationSection, setSubmittalSpecificationSection] =
+    useState("");
+  const [submittalTitle, setSubmittalTitle] = useState("");
+  const [submittalResponsibleCompany, setSubmittalResponsibleCompany] =
+    useState("");
+  const [submittalSubmittedDate, setSubmittalSubmittedDate] = useState("");
+  const [submittalRequiredByDate, setSubmittalRequiredByDate] = useState("");
+  const [submittalReviewedDate, setSubmittalReviewedDate] = useState("");
+  const [submittalStatus, setSubmittalStatus] = useState("Draft");
+  const [submittalReviewer, setSubmittalReviewer] = useState("");
+  const [submittalRemarks, setSubmittalRemarks] = useState("");
+  const [submittalProjectId, setSubmittalProjectId] =
+    useState(selectedProjectId);
   const [companyName, setCompanyName] = useState("");
   const [companyTrade, setCompanyTrade] = useState("");
 
@@ -81,6 +100,21 @@ function useRecordForms({
     setRFIDueDate("");
     setRFIResponse("");
     setRFIStatus("Open");
+  }
+
+  if (submittalProjectId !== selectedProjectId) {
+    setSubmittalProjectId(selectedProjectId);
+    setEditingSubmittalId(null);
+    setEditingSubmittalNumber("");
+    setSubmittalSpecificationSection("");
+    setSubmittalTitle("");
+    setSubmittalResponsibleCompany("");
+    setSubmittalSubmittedDate("");
+    setSubmittalRequiredByDate("");
+    setSubmittalReviewedDate("");
+    setSubmittalStatus("Draft");
+    setSubmittalReviewer("");
+    setSubmittalRemarks("");
   }
 
   const handleCreateProject = async () => {
@@ -324,6 +358,122 @@ function useRecordForms({
     }
   };
 
+  const resetSubmittalForm = () => {
+    setEditingSubmittalId(null);
+    setEditingSubmittalNumber("");
+    setSubmittalSpecificationSection("");
+    setSubmittalTitle("");
+    setSubmittalResponsibleCompany("");
+    setSubmittalSubmittedDate("");
+    setSubmittalRequiredByDate("");
+    setSubmittalReviewedDate("");
+    setSubmittalStatus("Draft");
+    setSubmittalReviewer("");
+    setSubmittalRemarks("");
+  };
+
+  const handleEditSubmittal = (submittal) => {
+    setEditingSubmittalId(submittal.id);
+    setEditingSubmittalNumber(submittal.number);
+    setSubmittalSpecificationSection(submittal.specification_section);
+    setSubmittalTitle(submittal.title);
+    setSubmittalResponsibleCompany(
+      submittal.responsible_company || ""
+    );
+    setSubmittalSubmittedDate(submittal.submitted_date || "");
+    setSubmittalRequiredByDate(submittal.required_by_date || "");
+    setSubmittalReviewedDate(submittal.reviewed_date || "");
+    setSubmittalStatus(submittal.status);
+    setSubmittalReviewer(submittal.reviewer || "");
+    setSubmittalRemarks(submittal.remarks || "");
+  };
+
+  const handleSaveSubmittal = async () => {
+    const specificationSection = submittalSpecificationSection.trim();
+    const title = submittalTitle.trim();
+
+    if (!specificationSection || !title) {
+      reportValidationError(
+        "Complete the specification section and title before saving."
+      );
+      return;
+    }
+
+    if (
+      submittalSubmittedDate &&
+      submittalRequiredByDate &&
+      submittalRequiredByDate < submittalSubmittedDate
+    ) {
+      reportValidationError(
+        "Required-by date cannot be earlier than submitted date."
+      );
+      return;
+    }
+
+    if (
+      submittalSubmittedDate &&
+      submittalReviewedDate &&
+      submittalReviewedDate < submittalSubmittedDate
+    ) {
+      reportValidationError(
+        "Reviewed date cannot be earlier than submitted date."
+      );
+      return;
+    }
+
+    return runOperation("saveSubmittal", async () => {
+      const payload = {
+        specification_section: specificationSection,
+        title,
+        responsible_company:
+          submittalResponsibleCompany.trim() || null,
+        submitted_date: submittalSubmittedDate || null,
+        required_by_date: submittalRequiredByDate || null,
+        reviewed_date: submittalReviewedDate || null,
+        status: submittalStatus,
+        reviewer: submittalReviewer.trim() || null,
+        remarks: submittalRemarks.trim() || null,
+      };
+      const isEditing = editingSubmittalId !== null;
+
+      try {
+        if (isEditing) {
+          await updateSubmittal(
+            selectedProjectId,
+            editingSubmittalId,
+            payload
+          );
+        } else {
+          await createSubmittal(selectedProjectId, payload);
+        }
+
+        resetSubmittalForm();
+        await loadSubmittals();
+        showNotice(
+          "success",
+          isEditing ? "Submittal updated." : "Submittal created."
+        );
+      } catch (error) {
+        reportRequestError(
+          isEditing
+            ? "Unable to update Submittal"
+            : "Unable to create Submittal",
+          error
+        );
+      }
+    });
+  };
+
+  const performSubmittalDelete = async (id) => {
+    try {
+      await deleteSubmittal(selectedProjectId, id);
+      await loadSubmittals();
+      showNotice("success", "Submittal deleted.");
+    } catch (error) {
+      reportRequestError("Unable to delete Submittal", error);
+    }
+  };
+
   const handleCreateProjectCompany = async () => {
     if (!companyName.trim()) {
       reportValidationError("Enter a company name before adding it.");
@@ -356,6 +506,8 @@ function useRecordForms({
   const handleRefreshChangeOrders = () =>
     runOperation("refreshChangeOrders", loadChangeOrders);
   const handleRefreshRFIs = () => runOperation("refreshRFIs", loadRFIs);
+  const handleRefreshSubmittals = () =>
+    runOperation("refreshSubmittals", loadSubmittals);
 
   return {
     newProjectName,
@@ -414,6 +566,26 @@ function useRecordForms({
     setRFIResponse,
     rfiStatus,
     setRFIStatus,
+    editingSubmittalId,
+    editingSubmittalNumber,
+    submittalSpecificationSection,
+    setSubmittalSpecificationSection,
+    submittalTitle,
+    setSubmittalTitle,
+    submittalResponsibleCompany,
+    setSubmittalResponsibleCompany,
+    submittalSubmittedDate,
+    setSubmittalSubmittedDate,
+    submittalRequiredByDate,
+    setSubmittalRequiredByDate,
+    submittalReviewedDate,
+    setSubmittalReviewedDate,
+    submittalStatus,
+    setSubmittalStatus,
+    submittalReviewer,
+    setSubmittalReviewer,
+    submittalRemarks,
+    setSubmittalRemarks,
     companyName,
     setCompanyName,
     companyTrade,
@@ -428,12 +600,17 @@ function useRecordForms({
     resetRFIForm,
     handleSaveRFI,
     performRFIDelete,
+    handleEditSubmittal,
+    resetSubmittalForm,
+    handleSaveSubmittal,
+    performSubmittalDelete,
     handleCreateProjectCompany,
     handleRefreshDailyLogs,
     handleRefreshInspections,
     handleRefreshNotesDelays,
     handleRefreshChangeOrders,
     handleRefreshRFIs,
+    handleRefreshSubmittals,
   };
 }
 
