@@ -9,6 +9,7 @@ from app.api.dependencies import get_db
 from app.db.database import Base
 from app.main import app
 from app.models.rfi import RFINumberSequence
+from app.models.submittal import SubmittalNumberSequence
 
 
 class ApiTestCase(unittest.TestCase):
@@ -565,6 +566,258 @@ class RFIApiTests(ApiTestCase):
             headers=headers,
         )
         self.assertEqual(wrong_project.status_code, 404)
+
+
+class SubmittalApiTests(ApiTestCase):
+    def submittal_payload(self, **overrides):
+        payload = {
+            "specification_section": "08 41 13",
+            "title": "Aluminum-framed entrances",
+            "responsible_company": "Desert Glass",
+            "submitted_date": "2026-07-20",
+            "required_by_date": "2026-07-30",
+            "status": "Submitted",
+            "reviewer": "Project Architect",
+            "remarks": "Initial package",
+        }
+        payload.update(overrides)
+        return payload
+
+    def test_submittal_routes_require_authentication(self):
+        self.assertEqual(
+            self.client.get("/projects/1/submittals").status_code,
+            401,
+        )
+        self.assertEqual(
+            self.client.post(
+                "/projects/1/submittals",
+                json=self.submittal_payload(),
+            ).status_code,
+            401,
+        )
+
+    def test_submittal_create_list_update_and_delete(self):
+        headers = self.register_and_login()
+        project_id = self.create_project(headers)
+        url = f"/projects/{project_id}/submittals"
+
+        create_response = self.client.post(
+            url,
+            json=self.submittal_payload(),
+            headers=headers,
+        )
+        self.assertEqual(create_response.status_code, 201)
+        created = create_response.json()
+        self.assertEqual(created["number"], "SUB-001")
+        self.assertEqual(created["specification_section"], "08 41 13")
+        self.assertEqual(created["title"], "Aluminum-framed entrances")
+        self.assertEqual(created["status"], "Submitted")
+        self.assertIsNotNone(created["created_at"])
+        self.assertIsNotNone(created["updated_at"])
+
+        listing = self.client.get(url, headers=headers)
+        self.assertEqual(listing.status_code, 200)
+        self.assertEqual(
+            [item["id"] for item in listing.json()["submittals"]],
+            [created["id"]],
+        )
+
+        update_response = self.client.put(
+            f"{url}/{created['id']}",
+            json={
+                "status": "Approved",
+                "reviewed_date": "2026-07-25",
+                "reviewer": "Design Team",
+            },
+            headers=headers,
+        )
+        self.assertEqual(update_response.status_code, 200)
+        updated = update_response.json()
+        self.assertEqual(updated["status"], "Approved")
+        self.assertEqual(updated["reviewed_date"], "2026-07-25")
+        self.assertEqual(updated["reviewer"], "Design Team")
+        self.assertEqual(updated["number"], "SUB-001")
+
+        delete_response = self.client.delete(
+            f"{url}/{created['id']}",
+            headers=headers,
+        )
+        self.assertEqual(delete_response.status_code, 200)
+        self.assertEqual(
+            delete_response.json(),
+            {"message": "Submittal deleted"},
+        )
+
+        replacement = self.client.post(
+            url,
+            json=self.submittal_payload(title="Replacement package"),
+            headers=headers,
+        )
+        self.assertEqual(replacement.status_code, 201)
+        self.assertEqual(replacement.json()["number"], "SUB-002")
+
+    def test_submittal_validation_rejects_invalid_values(self):
+        headers = self.register_and_login()
+        project_id = self.create_project(headers)
+        url = f"/projects/{project_id}/submittals"
+
+        invalid_payloads = (
+            self.submittal_payload(status="Completed"),
+            self.submittal_payload(title=" "),
+            self.submittal_payload(specification_section=" "),
+            self.submittal_payload(required_by_date="2026-07-19"),
+            self.submittal_payload(reviewed_date="2026-07-19"),
+        )
+        for payload in invalid_payloads:
+            with self.subTest(payload=payload):
+                response = self.client.post(
+                    url,
+                    json=payload,
+                    headers=headers,
+                )
+                self.assertEqual(response.status_code, 422)
+
+        created = self.client.post(
+            url,
+            json=self.submittal_payload(reviewed_date="2026-07-25"),
+            headers=headers,
+        )
+        self.assertEqual(created.status_code, 201)
+
+        invalid_update = self.client.put(
+            f"{url}/{created.json()['id']}",
+            json={"submitted_date": "2026-08-01"},
+            headers=headers,
+        )
+        self.assertEqual(invalid_update.status_code, 422)
+        self.assertEqual(
+            invalid_update.json()["detail"],
+            "required_by_date cannot be earlier than submitted_date",
+        )
+
+    def test_submittal_numbering_restarts_for_each_project(self):
+        headers = self.register_and_login()
+        first_project_id = self.create_project(headers, "Riverside")
+        second_project_id = self.create_project(headers, "North Ridge")
+
+        first = self.client.post(
+            f"/projects/{first_project_id}/submittals",
+            json=self.submittal_payload(),
+            headers=headers,
+        )
+        second = self.client.post(
+            f"/projects/{second_project_id}/submittals",
+            json=self.submittal_payload(),
+            headers=headers,
+        )
+
+        self.assertEqual(first.status_code, 201)
+        self.assertEqual(second.status_code, 201)
+        self.assertEqual(first.json()["number"], "SUB-001")
+        self.assertEqual(second.json()["number"], "SUB-001")
+
+    def test_duplicate_submittal_number_is_prevented(self):
+        headers = self.register_and_login()
+        project_id = self.create_project(headers)
+        url = f"/projects/{project_id}/submittals"
+
+        first = self.client.post(
+            url,
+            json=self.submittal_payload(),
+            headers=headers,
+        )
+        self.assertEqual(first.status_code, 201)
+
+        with self.TestingSession() as db:
+            sequence = db.query(SubmittalNumberSequence).filter_by(
+                project_id=project_id
+            ).one()
+            sequence.last_number = 0
+            db.commit()
+
+        duplicate = self.client.post(
+            url,
+            json=self.submittal_payload(title="Duplicate number"),
+            headers=headers,
+        )
+        self.assertEqual(duplicate.status_code, 409)
+        self.assertEqual(
+            duplicate.json()["detail"],
+            "Submittal number already exists for this project",
+        )
+
+        listing = self.client.get(url, headers=headers)
+        self.assertEqual(len(listing.json()["submittals"]), 1)
+
+    def test_submittal_ownership_is_enforced(self):
+        owner = self.register_and_login("submittal-owner@example.com")
+        intruder = self.register_and_login("submittal-intruder@example.com")
+        project_id = self.create_project(owner)
+
+        created = self.client.post(
+            f"/projects/{project_id}/submittals",
+            json=self.submittal_payload(),
+            headers=owner,
+        ).json()
+
+        self.assertEqual(
+            self.client.get(
+                f"/projects/{project_id}/submittals",
+                headers=intruder,
+            ).status_code,
+            403,
+        )
+        self.assertEqual(
+            self.client.put(
+                f"/projects/{project_id}/submittals/{created['id']}",
+                json={"status": "Approved"},
+                headers=intruder,
+            ).status_code,
+            403,
+        )
+        self.assertEqual(
+            self.client.delete(
+                f"/projects/{project_id}/submittals/{created['id']}",
+                headers=intruder,
+            ).status_code,
+            403,
+        )
+
+    def test_missing_or_wrong_project_submittal_returns_not_found(self):
+        headers = self.register_and_login()
+        first_project_id = self.create_project(headers, "Riverside")
+        second_project_id = self.create_project(headers, "North Ridge")
+        created = self.client.post(
+            f"/projects/{first_project_id}/submittals",
+            json=self.submittal_payload(),
+            headers=headers,
+        ).json()
+
+        missing_update = self.client.put(
+            f"/projects/{first_project_id}/submittals/9999",
+            json={"status": "Approved"},
+            headers=headers,
+        )
+        self.assertEqual(missing_update.status_code, 404)
+
+        missing_delete = self.client.delete(
+            f"/projects/{first_project_id}/submittals/9999",
+            headers=headers,
+        )
+        self.assertEqual(missing_delete.status_code, 404)
+
+        wrong_project_update = self.client.put(
+            f"/projects/{second_project_id}/submittals/{created['id']}",
+            json={"status": "Approved"},
+            headers=headers,
+        )
+        self.assertEqual(wrong_project_update.status_code, 404)
+
+        wrong_project_delete = self.client.delete(
+            f"/projects/{second_project_id}/submittals/{created['id']}",
+            headers=headers,
+        )
+        self.assertEqual(wrong_project_delete.status_code, 404)
 
 
 if __name__ == "__main__":
