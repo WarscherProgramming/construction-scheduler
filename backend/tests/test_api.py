@@ -8,6 +8,7 @@ from sqlalchemy.pool import StaticPool
 from app.api.dependencies import get_db
 from app.db.database import Base
 from app.main import app
+from app.models.punch_item import PunchItemNumberSequence
 from app.models.rfi import RFINumberSequence
 from app.models.submittal import SubmittalNumberSequence
 
@@ -815,6 +816,266 @@ class SubmittalApiTests(ApiTestCase):
 
         wrong_project_delete = self.client.delete(
             f"/projects/{second_project_id}/submittals/{created['id']}",
+            headers=headers,
+        )
+        self.assertEqual(wrong_project_delete.status_code, 404)
+
+
+class PunchItemApiTests(ApiTestCase):
+    def punch_item_payload(self, **overrides):
+        payload = {
+            "location": "Level 2 - Room 204",
+            "trade": "Drywall",
+            "description": "Repair damaged gypsum board",
+            "responsible_company": "Desert Interiors",
+            "assigned_to": "A. Rivera",
+            "priority": "High",
+            "status": "Open",
+            "due_date": "2026-08-01",
+            "completed_date": None,
+        }
+        payload.update(overrides)
+        return payload
+
+    def test_punch_item_routes_require_authentication(self):
+        self.assertEqual(
+            self.client.get("/projects/1/punch-items").status_code,
+            401,
+        )
+        self.assertEqual(
+            self.client.post(
+                "/projects/1/punch-items",
+                json=self.punch_item_payload(),
+            ).status_code,
+            401,
+        )
+
+    def test_punch_item_create_list_update_and_delete(self):
+        headers = self.register_and_login()
+        project_id = self.create_project(headers)
+        url = f"/projects/{project_id}/punch-items"
+
+        create_response = self.client.post(
+            url,
+            json=self.punch_item_payload(),
+            headers=headers,
+        )
+        self.assertEqual(create_response.status_code, 201)
+        created = create_response.json()
+        self.assertEqual(created["number"], "PUNCH-001")
+        self.assertEqual(created["location"], "Level 2 - Room 204")
+        self.assertEqual(created["description"], "Repair damaged gypsum board")
+        self.assertEqual(created["priority"], "High")
+        self.assertEqual(created["status"], "Open")
+        self.assertIsNotNone(created["created_at"])
+        self.assertIsNotNone(created["updated_at"])
+
+        listing = self.client.get(url, headers=headers)
+        self.assertEqual(listing.status_code, 200)
+        self.assertEqual(
+            [item["id"] for item in listing.json()["punch_items"]],
+            [created["id"]],
+        )
+
+        update_response = self.client.put(
+            f"{url}/{created['id']}",
+            json={
+                "priority": "Critical",
+                "status": "Completed",
+                "completed_date": "2026-08-02",
+                "assigned_to": "J. Chen",
+            },
+            headers=headers,
+        )
+        self.assertEqual(update_response.status_code, 200)
+        updated = update_response.json()
+        self.assertEqual(updated["priority"], "Critical")
+        self.assertEqual(updated["status"], "Completed")
+        self.assertEqual(updated["completed_date"], "2026-08-02")
+        self.assertEqual(updated["assigned_to"], "J. Chen")
+        self.assertEqual(updated["number"], "PUNCH-001")
+
+        delete_response = self.client.delete(
+            f"{url}/{created['id']}",
+            headers=headers,
+        )
+        self.assertEqual(delete_response.status_code, 200)
+        self.assertEqual(
+            delete_response.json(),
+            {"message": "Punch Item deleted"},
+        )
+
+        replacement = self.client.post(
+            url,
+            json=self.punch_item_payload(
+                description="Replace missing corner bead"
+            ),
+            headers=headers,
+        )
+        self.assertEqual(replacement.status_code, 201)
+        self.assertEqual(replacement.json()["number"], "PUNCH-002")
+
+    def test_punch_item_validation_rejects_invalid_values(self):
+        headers = self.register_and_login()
+        project_id = self.create_project(headers)
+        url = f"/projects/{project_id}/punch-items"
+
+        invalid_payloads = (
+            self.punch_item_payload(priority="Urgent"),
+            self.punch_item_payload(status="Closed"),
+            self.punch_item_payload(location=" "),
+            self.punch_item_payload(description=" "),
+            self.punch_item_payload(completed_date="2026-07-31"),
+        )
+        for payload in invalid_payloads:
+            with self.subTest(payload=payload):
+                response = self.client.post(
+                    url,
+                    json=payload,
+                    headers=headers,
+                )
+                self.assertEqual(response.status_code, 422)
+
+        created = self.client.post(
+            url,
+            json=self.punch_item_payload(completed_date="2026-08-02"),
+            headers=headers,
+        )
+        self.assertEqual(created.status_code, 201)
+
+        invalid_update = self.client.put(
+            f"{url}/{created.json()['id']}",
+            json={"due_date": "2026-08-03"},
+            headers=headers,
+        )
+        self.assertEqual(invalid_update.status_code, 422)
+        self.assertEqual(
+            invalid_update.json()["detail"],
+            "completed_date cannot be earlier than due_date",
+        )
+
+    def test_punch_item_numbering_restarts_for_each_project(self):
+        headers = self.register_and_login()
+        first_project_id = self.create_project(headers, "Riverside")
+        second_project_id = self.create_project(headers, "North Ridge")
+
+        first = self.client.post(
+            f"/projects/{first_project_id}/punch-items",
+            json=self.punch_item_payload(),
+            headers=headers,
+        )
+        second = self.client.post(
+            f"/projects/{second_project_id}/punch-items",
+            json=self.punch_item_payload(),
+            headers=headers,
+        )
+
+        self.assertEqual(first.status_code, 201)
+        self.assertEqual(second.status_code, 201)
+        self.assertEqual(first.json()["number"], "PUNCH-001")
+        self.assertEqual(second.json()["number"], "PUNCH-001")
+
+    def test_duplicate_punch_item_number_is_prevented(self):
+        headers = self.register_and_login()
+        project_id = self.create_project(headers)
+        url = f"/projects/{project_id}/punch-items"
+
+        first = self.client.post(
+            url,
+            json=self.punch_item_payload(),
+            headers=headers,
+        )
+        self.assertEqual(first.status_code, 201)
+
+        with self.TestingSession() as db:
+            sequence = db.query(PunchItemNumberSequence).filter_by(
+                project_id=project_id
+            ).one()
+            sequence.last_number = 0
+            db.commit()
+
+        duplicate = self.client.post(
+            url,
+            json=self.punch_item_payload(
+                description="Duplicate number"
+            ),
+            headers=headers,
+        )
+        self.assertEqual(duplicate.status_code, 409)
+        self.assertEqual(
+            duplicate.json()["detail"],
+            "Punch Item number already exists for this project",
+        )
+
+        listing = self.client.get(url, headers=headers)
+        self.assertEqual(len(listing.json()["punch_items"]), 1)
+
+    def test_punch_item_ownership_is_enforced(self):
+        owner = self.register_and_login("punch-owner@example.com")
+        intruder = self.register_and_login("punch-intruder@example.com")
+        project_id = self.create_project(owner)
+
+        created = self.client.post(
+            f"/projects/{project_id}/punch-items",
+            json=self.punch_item_payload(),
+            headers=owner,
+        ).json()
+
+        self.assertEqual(
+            self.client.get(
+                f"/projects/{project_id}/punch-items",
+                headers=intruder,
+            ).status_code,
+            403,
+        )
+        self.assertEqual(
+            self.client.put(
+                f"/projects/{project_id}/punch-items/{created['id']}",
+                json={"status": "In Progress"},
+                headers=intruder,
+            ).status_code,
+            403,
+        )
+        self.assertEqual(
+            self.client.delete(
+                f"/projects/{project_id}/punch-items/{created['id']}",
+                headers=intruder,
+            ).status_code,
+            403,
+        )
+
+    def test_missing_or_wrong_project_punch_item_returns_not_found(self):
+        headers = self.register_and_login()
+        first_project_id = self.create_project(headers, "Riverside")
+        second_project_id = self.create_project(headers, "North Ridge")
+        created = self.client.post(
+            f"/projects/{first_project_id}/punch-items",
+            json=self.punch_item_payload(),
+            headers=headers,
+        ).json()
+
+        missing_update = self.client.put(
+            f"/projects/{first_project_id}/punch-items/9999",
+            json={"status": "In Progress"},
+            headers=headers,
+        )
+        self.assertEqual(missing_update.status_code, 404)
+
+        missing_delete = self.client.delete(
+            f"/projects/{first_project_id}/punch-items/9999",
+            headers=headers,
+        )
+        self.assertEqual(missing_delete.status_code, 404)
+
+        wrong_project_update = self.client.put(
+            f"/projects/{second_project_id}/punch-items/{created['id']}",
+            json={"status": "In Progress"},
+            headers=headers,
+        )
+        self.assertEqual(wrong_project_update.status_code, 404)
+
+        wrong_project_delete = self.client.delete(
+            f"/projects/{second_project_id}/punch-items/{created['id']}",
             headers=headers,
         )
         self.assertEqual(wrong_project_delete.status_code, 404)
