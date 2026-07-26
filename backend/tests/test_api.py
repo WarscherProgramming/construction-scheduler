@@ -8,6 +8,7 @@ from sqlalchemy.pool import StaticPool
 from app.api.dependencies import get_db
 from app.db.database import Base
 from app.main import app
+from app.models.change_order import ChangeOrder, ChangeOrderNumberSequence
 from app.models.punch_item import PunchItemNumberSequence
 from app.models.rfi import RFINumberSequence
 from app.models.submittal import SubmittalNumberSequence
@@ -321,6 +322,437 @@ class RecordApiTests(ApiTestCase):
             headers=headers,
         )
         self.assertEqual(missing.status_code, 404)
+
+
+class ChangeOrderApiTests(ApiTestCase):
+    def change_order_payload(self, **overrides):
+        payload = {
+            "date": "2026-07-20",
+            "status": "Pending",
+            "description": "Added curb and drainage revision",
+        }
+        payload.update(overrides)
+        return payload
+
+    def create_change_order(self, headers, project_id, **overrides):
+        return self.client.post(
+            f"/projects/{project_id}/change-orders",
+            json=self.change_order_payload(**overrides),
+            headers=headers,
+        )
+
+    def test_change_order_routes_require_authentication(self):
+        self.assertEqual(
+            self.client.get("/projects/1/change-orders").status_code,
+            401,
+        )
+        self.assertEqual(
+            self.client.post(
+                "/projects/1/change-orders",
+                json=self.change_order_payload(),
+            ).status_code,
+            401,
+        )
+        self.assertEqual(
+            self.client.put(
+                "/projects/1/change-orders/1",
+                json={"status": "Approved"},
+            ).status_code,
+            401,
+        )
+        self.assertEqual(
+            self.client.delete(
+                "/projects/1/change-orders/1",
+            ).status_code,
+            401,
+        )
+
+    def test_create_and_list_generate_number_and_normalize_values(self):
+        headers = self.register_and_login()
+        project_id = self.create_project(headers)
+
+        created = self.create_change_order(
+            headers,
+            project_id,
+            co_number="USER-999",
+            status="  Pending  ",
+            title="  North entrance revision  ",
+            description=None,
+            company="  Desert Concrete  ",
+            responsible_party="   ",
+            reason="   ",
+            amount="  $1,234.50  ",
+        )
+
+        self.assertEqual(created.status_code, 201)
+        body = created.json()
+        self.assertEqual(body["co_number"], "CO-001")
+        self.assertEqual(body["status"], "Pending")
+        self.assertEqual(body["title"], "North entrance revision")
+        self.assertIsNone(body["description"])
+        self.assertEqual(body["company"], "Desert Concrete")
+        self.assertIsNone(body["responsible_party"])
+        self.assertIsNone(body["reason"])
+        self.assertEqual(body["amount"], "$1,234.50")
+        self.assertEqual(body["proposed_amount"], "1234.50")
+        self.assertIsNotNone(body["created_at"])
+        self.assertIsNotNone(body["updated_at"])
+
+        listing = self.client.get(
+            f"/projects/{project_id}/change-orders",
+            headers=headers,
+        )
+        self.assertEqual(listing.status_code, 200)
+        self.assertEqual(
+            [item["id"] for item in listing.json()["change_orders"]],
+            [body["id"]],
+        )
+
+    def test_all_compatible_statuses_are_accepted(self):
+        headers = self.register_and_login()
+        project_id = self.create_project(headers)
+        statuses = (
+            "Draft",
+            "Pending",
+            "Submitted",
+            "Under Review",
+            "Approved",
+            "Rejected",
+            "Executed",
+            "Void",
+        )
+
+        for change_order_status in statuses:
+            with self.subTest(status=change_order_status):
+                response = self.create_change_order(
+                    headers,
+                    project_id,
+                    status=change_order_status,
+                )
+                self.assertEqual(response.status_code, 201)
+                self.assertEqual(
+                    response.json()["status"],
+                    change_order_status,
+                )
+
+    def test_invalid_status_and_missing_content_are_rejected(self):
+        headers = self.register_and_login()
+        project_id = self.create_project(headers)
+
+        for invalid_status in ("Unknown", "   "):
+            with self.subTest(status=invalid_status):
+                response = self.create_change_order(
+                    headers,
+                    project_id,
+                    status=invalid_status,
+                )
+                self.assertEqual(response.status_code, 422)
+
+        missing_content = self.create_change_order(
+            headers,
+            project_id,
+            title="   ",
+            description="   ",
+        )
+        self.assertEqual(missing_content.status_code, 422)
+
+    def test_partial_update_uses_final_state_and_preserves_number(self):
+        headers = self.register_and_login()
+        project_id = self.create_project(headers)
+        created = self.create_change_order(
+            headers,
+            project_id,
+            title="Original title",
+            description=None,
+        ).json()
+
+        updated = self.client.put(
+            f"/projects/{project_id}/change-orders/{created['id']}",
+            json={
+                "co_number": "CO-999",
+                "title": "  Revised title  ",
+                "description": "   ",
+                "status": "Under Review",
+                "approved_amount": "100.25",
+            },
+            headers=headers,
+        )
+        self.assertEqual(updated.status_code, 200)
+        self.assertEqual(updated.json()["co_number"], "CO-001")
+        self.assertEqual(updated.json()["title"], "Revised title")
+        self.assertIsNone(updated.json()["description"])
+        self.assertEqual(updated.json()["status"], "Under Review")
+        self.assertEqual(updated.json()["approved_amount"], "100.25")
+
+        invalid = self.client.put(
+            f"/projects/{project_id}/change-orders/{created['id']}",
+            json={"title": None},
+            headers=headers,
+        )
+        self.assertEqual(invalid.status_code, 422)
+        self.assertEqual(
+            invalid.json()["detail"],
+            "title or description is required",
+        )
+
+    def test_money_validation_and_precision(self):
+        headers = self.register_and_login()
+        project_id = self.create_project(headers)
+
+        valid = self.create_change_order(
+            headers,
+            project_id,
+            proposed_amount=0,
+            approved_amount="123456789012.34",
+        )
+        self.assertEqual(valid.status_code, 201)
+        self.assertEqual(valid.json()["proposed_amount"], "0.00")
+        self.assertEqual(
+            valid.json()["approved_amount"],
+            "123456789012.34",
+        )
+
+        invalid_values = (
+            ("proposed_amount", -1),
+            ("approved_amount", "-0.01"),
+            ("proposed_amount", "not-money"),
+            ("proposed_amount", "1.234"),
+        )
+        for field, value in invalid_values:
+            with self.subTest(field=field, value=value):
+                response = self.create_change_order(
+                    headers,
+                    project_id,
+                    **{field: value},
+                )
+                self.assertEqual(response.status_code, 422)
+
+        unparseable_legacy_amount = self.create_change_order(
+            headers,
+            project_id,
+            amount="1e-999999",
+        )
+        self.assertEqual(unparseable_legacy_amount.status_code, 201)
+        self.assertEqual(
+            unparseable_legacy_amount.json()["amount"],
+            "1e-999999",
+        )
+        self.assertIsNone(
+            unparseable_legacy_amount.json()["proposed_amount"]
+        )
+
+    def test_schedule_impact_requires_whole_days(self):
+        headers = self.register_and_login()
+        project_id = self.create_project(headers)
+
+        for impact in (-3, 0, 5):
+            with self.subTest(impact=impact):
+                response = self.create_change_order(
+                    headers,
+                    project_id,
+                    schedule_impact_days=impact,
+                )
+                self.assertEqual(response.status_code, 201)
+                self.assertEqual(
+                    response.json()["schedule_impact_days"],
+                    impact,
+                )
+
+        fractional = self.create_change_order(
+            headers,
+            project_id,
+            schedule_impact_days=1.5,
+        )
+        self.assertEqual(fractional.status_code, 422)
+
+    def test_lifecycle_dates_validate_create_and_partial_update(self):
+        headers = self.register_and_login()
+        project_id = self.create_project(headers)
+
+        valid = self.create_change_order(
+            headers,
+            project_id,
+            requested_date="2026-07-20",
+            submitted_date="2026-07-21",
+            approved_date="2026-07-22",
+            executed_date="2026-07-23",
+        )
+        self.assertEqual(valid.status_code, 201)
+
+        invalid_pairs = (
+            {
+                "requested_date": "2026-07-21",
+                "submitted_date": "2026-07-20",
+            },
+            {
+                "submitted_date": "2026-07-22",
+                "approved_date": "2026-07-21",
+            },
+            {
+                "approved_date": "2026-07-23",
+                "executed_date": "2026-07-22",
+            },
+        )
+        for dates in invalid_pairs:
+            with self.subTest(dates=dates):
+                response = self.create_change_order(
+                    headers,
+                    project_id,
+                    **dates,
+                )
+                self.assertEqual(response.status_code, 422)
+
+        partial_invalid = self.client.put(
+            f"/projects/{project_id}/change-orders/{valid.json()['id']}",
+            json={"submitted_date": "2026-07-19"},
+            headers=headers,
+        )
+        self.assertEqual(partial_invalid.status_code, 422)
+
+        legacy_date_only = self.create_change_order(
+            headers,
+            project_id,
+            status="Approved",
+        )
+        self.assertEqual(legacy_date_only.status_code, 201)
+        self.assertIsNone(legacy_date_only.json()["approved_date"])
+
+    def test_numbering_is_project_scoped_and_never_reuses_deletions(self):
+        headers = self.register_and_login()
+        first_project = self.create_project(headers, "Riverside")
+        second_project = self.create_project(headers, "North Ridge")
+
+        first = self.create_change_order(headers, first_project).json()
+        second = self.create_change_order(headers, first_project).json()
+        other = self.create_change_order(headers, second_project).json()
+
+        self.assertEqual(first["co_number"], "CO-001")
+        self.assertEqual(second["co_number"], "CO-002")
+        self.assertEqual(other["co_number"], "CO-001")
+
+        deleted = self.client.delete(
+            f"/projects/{first_project}/change-orders/{first['id']}",
+            headers=headers,
+        )
+        self.assertEqual(deleted.status_code, 200)
+
+        after_delete = self.create_change_order(
+            headers,
+            first_project,
+        )
+        self.assertEqual(after_delete.json()["co_number"], "CO-003")
+
+    def test_sequence_initializes_from_legacy_numbers(self):
+        headers = self.register_and_login()
+        project_id = self.create_project(headers)
+
+        with self.TestingSession() as db:
+            db.add(
+                ChangeOrder(
+                    project_id=project_id,
+                    date="2026-07-01",
+                    co_number="CO-007",
+                    status="Pending",
+                    description="Legacy record",
+                )
+            )
+            db.commit()
+
+        created = self.create_change_order(headers, project_id)
+        self.assertEqual(created.status_code, 201)
+        self.assertEqual(created.json()["co_number"], "CO-008")
+
+    def test_uniqueness_conflicts_return_409(self):
+        headers = self.register_and_login()
+        project_id = self.create_project(headers)
+        self.create_change_order(headers, project_id)
+
+        with self.TestingSession() as db:
+            sequence = db.get(ChangeOrderNumberSequence, project_id)
+            sequence.last_number = 0
+            db.commit()
+
+        conflict = self.create_change_order(headers, project_id)
+        self.assertEqual(conflict.status_code, 409)
+        self.assertEqual(
+            conflict.json()["detail"],
+            "Change order number already exists for this project",
+        )
+
+    def test_ownership_and_project_scoped_missing_behavior(self):
+        owner_headers = self.register_and_login("owner@example.com")
+        owner_project = self.create_project(owner_headers, "Owner Project")
+        created = self.create_change_order(
+            owner_headers,
+            owner_project,
+        ).json()
+
+        other_headers = self.register_and_login("other@example.com")
+        other_project = self.create_project(other_headers, "Other Project")
+
+        forbidden = self.client.get(
+            f"/projects/{owner_project}/change-orders",
+            headers=other_headers,
+        )
+        self.assertEqual(forbidden.status_code, 403)
+
+        wrong_project = self.client.put(
+            f"/projects/{other_project}/change-orders/{created['id']}",
+            json={"status": "Approved"},
+            headers=other_headers,
+        )
+        self.assertEqual(wrong_project.status_code, 404)
+
+        missing = self.client.delete(
+            f"/projects/{owner_project}/change-orders/999",
+            headers=owner_headers,
+        )
+        self.assertEqual(missing.status_code, 404)
+
+    def test_legacy_records_remain_readable(self):
+        headers = self.register_and_login()
+        project_id = self.create_project(headers)
+
+        with self.TestingSession() as db:
+            db.add_all(
+                [
+                    ChangeOrder(
+                        project_id=project_id,
+                        date="2026-06-01",
+                        co_number="legacy-1",
+                        status="Pending",
+                        description="Legacy pending",
+                        amount="$4,500",
+                    ),
+                    ChangeOrder(
+                        project_id=project_id,
+                        date="2026-06-02",
+                        co_number="legacy-2",
+                        status="Void",
+                        description="Legacy void",
+                        amount="not parsed",
+                    ),
+                ]
+            )
+            db.commit()
+
+        response = self.client.get(
+            f"/projects/{project_id}/change-orders",
+            headers=headers,
+        )
+        self.assertEqual(response.status_code, 200)
+        records = response.json()["change_orders"]
+        self.assertEqual({record["status"] for record in records}, {
+            "Pending",
+            "Void",
+        })
+        self.assertEqual(
+            {record["amount"] for record in records},
+            {"$4,500", "not parsed"},
+        )
+        self.assertTrue(
+            all(record["proposed_amount"] is None for record in records)
+        )
 
 
 class RFIApiTests(ApiTestCase):

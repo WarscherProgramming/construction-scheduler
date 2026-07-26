@@ -8,7 +8,10 @@ from sqlalchemy import pool
 from alembic import context
 
 from app.db.database import Base
-from app.models.change_order import ChangeOrder  # noqa: F401
+from app.models.change_order import (  # noqa: F401
+    ChangeOrder,
+    ChangeOrderNumberSequence,
+)
 from app.models.daily_log import DailyLog  # noqa: F401
 from app.models.inspection import Inspection  # noqa: F401
 from app.models.note_delay import NoteDelay  # noqa: F401
