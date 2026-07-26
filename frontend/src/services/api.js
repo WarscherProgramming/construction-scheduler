@@ -172,6 +172,29 @@ export function deleteSubmittal(projectId, submittalId) {
   );
 }
 
+export function fetchPunchItems(projectId) {
+  return authenticatedRequest(`/projects/${projectId}/punch-items`);
+}
+
+export function createPunchItem(projectId, punchItem) {
+  return jsonRequest(`/projects/${projectId}/punch-items`, "POST", punchItem);
+}
+
+export function updatePunchItem(projectId, punchItemId, punchItem) {
+  return jsonRequest(
+    `/projects/${projectId}/punch-items/${punchItemId}`,
+    "PUT",
+    punchItem
+  );
+}
+
+export function deletePunchItem(projectId, punchItemId) {
+  return authenticatedRequest(
+    `/projects/${projectId}/punch-items/${punchItemId}`,
+    { method: "DELETE" }
+  );
+}
+
 export function reorderTasks(projectId, taskIds) {
   return jsonRequest(`/projects/${projectId}/tasks/reorder`, "PUT", {
     task_ids: taskIds,

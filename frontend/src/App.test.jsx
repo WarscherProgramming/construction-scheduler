@@ -38,6 +38,10 @@ vi.mock("./services/api", () => ({
   createSubmittal: vi.fn(),
   updateSubmittal: vi.fn(),
   deleteSubmittal: vi.fn(),
+  fetchPunchItems: vi.fn(),
+  createPunchItem: vi.fn(),
+  updatePunchItem: vi.fn(),
+  deletePunchItem: vi.fn(),
   reorderTasks: vi.fn(),
   loginUser: vi.fn(),
   registerUser: vi.fn(),
@@ -51,13 +55,16 @@ import App from "./App";
 import AuthProvider from "./auth/AuthProvider";
 import {
   createRFI,
+  createPunchItem,
   createSubmittal,
+  deletePunchItem,
   deleteRFI,
   deleteSubmittal,
   fetchChangeOrders,
   fetchDailyLogs,
   fetchInspections,
   fetchNotesDelays,
+  fetchPunchItems,
   fetchProjectCompanies,
   fetchProjects,
   fetchRFIs,
@@ -65,6 +72,7 @@ import {
   fetchTasks,
   fetchTemplates,
   updateRFI,
+  updatePunchItem,
   updateSubmittal,
 } from "./services/api";
 import { ApiError } from "./services/httpClient";
@@ -100,6 +108,10 @@ describe("App integration (hooks wiring)", () => {
     createSubmittal.mockResolvedValue({});
     updateSubmittal.mockResolvedValue({});
     deleteSubmittal.mockResolvedValue({ message: "Submittal deleted" });
+    fetchPunchItems.mockResolvedValue({ punch_items: [] });
+    createPunchItem.mockResolvedValue({});
+    updatePunchItem.mockResolvedValue({});
+    deletePunchItem.mockResolvedValue({ message: "Punch Item deleted" });
   });
 
   it("shows the login experience when unauthenticated", () => {
@@ -111,6 +123,7 @@ describe("App integration (hooks wiring)", () => {
       screen.getByRole("heading", { name: "Welcome back" })
     ).toBeInTheDocument();
     expect(fetchProjects).not.toHaveBeenCalled();
+    expect(fetchPunchItems).not.toHaveBeenCalled();
   });
 
   it("loads projects and shows first-run onboarding for an empty account", async () => {
@@ -1007,6 +1020,477 @@ describe("App integration (hooks wiring)", () => {
     ).toBeInTheDocument();
     expect(
       fetchSubmittals.mock.calls.map(([projectId]) => projectId)
+    ).toEqual([1, 2]);
+  });
+
+  it("navigates to a refresh-safe Punch List route with one request", async () => {
+    const user = userEvent.setup();
+    fetchProjects.mockResolvedValue({
+      projects: [{ id: 1, name: "Riverside" }],
+    });
+    window.location.hash = "#/projects/1/dashboard";
+
+    renderApp();
+
+    const punchListLink = await screen.findByRole("button", {
+      name: "Punch List",
+    });
+    expect(fetchPunchItems).not.toHaveBeenCalled();
+
+    await user.click(punchListLink);
+
+    expect(
+      await screen.findByRole("heading", { name: "Punch List" })
+    ).toBeInTheDocument();
+    expect(window.location.hash).toBe("#/projects/1/punch-items");
+    expect(document.title).toContain("Riverside");
+    expect(document.title).toContain("Punch List | FieldFlow");
+    await waitFor(() => {
+      expect(fetchPunchItems).toHaveBeenCalledTimes(1);
+    });
+    expect(fetchPunchItems).toHaveBeenCalledWith(1);
+    expect(
+      screen.getByText(
+        "No punch items yet. Create the first punch item above."
+      )
+    ).toBeInTheDocument();
+  });
+
+  it("validates and creates a Punch Item with normalized values", async () => {
+    const user = userEvent.setup();
+    const createdPunchItem = {
+      id: 1,
+      project_id: 1,
+      number: "PUNCH-001",
+      location: "Level 2 - Corridor",
+      trade: "Drywall",
+      description: "Patch damaged gypsum board",
+      responsible_company: "Desert Drywall",
+      assigned_to: "A. Rivera",
+      priority: "Critical",
+      status: "In Progress",
+      due_date: "2026-07-25",
+      completed_date: "2026-07-26",
+    };
+    let records = [];
+
+    fetchProjects.mockResolvedValue({
+      projects: [{ id: 1, name: "Riverside" }],
+    });
+    fetchPunchItems.mockImplementation(async () => ({
+      punch_items: records,
+    }));
+    createPunchItem.mockImplementation(async () => {
+      records = [createdPunchItem];
+      return createdPunchItem;
+    });
+    window.location.hash = "#/projects/1/punch-items";
+
+    renderApp();
+
+    await screen.findByRole("heading", { name: "Punch List" });
+    await user.type(screen.getByLabelText("Location *"), "   ");
+    await user.type(
+      screen.getByLabelText("Description *"),
+      "Patch damaged gypsum board"
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Create Punch Item" })
+    );
+
+    expect(
+      await screen.findByText(
+        "Complete the location and description before saving."
+      )
+    ).toBeInTheDocument();
+    expect(createPunchItem).not.toHaveBeenCalled();
+
+    await user.clear(screen.getByLabelText("Location *"));
+    await user.type(
+      screen.getByLabelText("Location *"),
+      "  Level 2 - Corridor  "
+    );
+    await user.clear(screen.getByLabelText("Description *"));
+    await user.type(screen.getByLabelText("Description *"), "   ");
+    await user.click(
+      screen.getByRole("button", { name: "Create Punch Item" })
+    );
+
+    expect(createPunchItem).not.toHaveBeenCalled();
+
+    await user.clear(screen.getByLabelText("Description *"));
+    await user.type(
+      screen.getByLabelText("Description *"),
+      "  Patch damaged gypsum board  "
+    );
+    await user.type(screen.getByLabelText("Trade"), "  Drywall  ");
+    await user.type(
+      screen.getByLabelText("Responsible company"),
+      "  Desert Drywall  "
+    );
+    await user.type(screen.getByLabelText("Assigned to"), "  A. Rivera  ");
+    await user.selectOptions(screen.getByLabelText("Priority"), "Critical");
+    await user.selectOptions(
+      screen.getByLabelText("Status"),
+      "In Progress"
+    );
+    await user.type(screen.getByLabelText("Due date"), "2026-07-25");
+    await user.type(screen.getByLabelText("Completed date"), "2026-07-24");
+    fireEvent.submit(
+      screen
+        .getByRole("heading", { name: "Create Punch Item" })
+        .closest("form")
+    );
+
+    expect(
+      await screen.findByText(
+        "Completed date cannot be earlier than due date."
+      )
+    ).toBeInTheDocument();
+    expect(createPunchItem).not.toHaveBeenCalled();
+
+    await user.clear(screen.getByLabelText("Completed date"));
+    await user.type(screen.getByLabelText("Completed date"), "2026-07-26");
+    await user.click(
+      screen.getByRole("button", { name: "Create Punch Item" })
+    );
+
+    expect(createPunchItem).toHaveBeenCalledWith(1, {
+      location: "Level 2 - Corridor",
+      trade: "Drywall",
+      description: "Patch damaged gypsum board",
+      responsible_company: "Desert Drywall",
+      assigned_to: "A. Rivera",
+      priority: "Critical",
+      status: "In Progress",
+      due_date: "2026-07-25",
+      completed_date: "2026-07-26",
+    });
+    expect(await screen.findByText("PUNCH-001")).toBeInTheDocument();
+    expect(screen.getByText("Punch Item created.")).toBeInTheDocument();
+  });
+
+  it("edits a Punch Item priority and status", async () => {
+    const user = userEvent.setup();
+    const openItem = {
+      id: 7,
+      project_id: 1,
+      number: "PUNCH-007",
+      location: "Level 1 Lobby",
+      trade: "Electrical",
+      description: "Align device cover",
+      responsible_company: "Desert Electric",
+      assigned_to: "M. Chen",
+      priority: "Medium",
+      status: "Open",
+      due_date: "2026-07-30",
+      completed_date: null,
+    };
+    const verifiedItem = {
+      ...openItem,
+      priority: "High",
+      status: "Verified",
+      completed_date: "2026-07-30",
+    };
+    let records = [openItem];
+
+    fetchProjects.mockResolvedValue({
+      projects: [{ id: 1, name: "Riverside" }],
+    });
+    fetchPunchItems.mockImplementation(async () => ({
+      punch_items: records,
+    }));
+    updatePunchItem.mockImplementation(async () => {
+      records = [verifiedItem];
+      return verifiedItem;
+    });
+    window.location.hash = "#/projects/1/punch-items";
+
+    renderApp();
+
+    await user.click(
+      await screen.findByRole("button", { name: "Edit PUNCH-007" })
+    );
+
+    expect(
+      screen.getByRole("heading", { name: "Edit PUNCH-007" })
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Location *")).toHaveValue(
+      "Level 1 Lobby"
+    );
+    expect(screen.getByLabelText("Assigned to")).toHaveValue("M. Chen");
+
+    await user.selectOptions(screen.getByLabelText("Priority"), "High");
+    await user.selectOptions(screen.getByLabelText("Status"), "Verified");
+    await user.type(screen.getByLabelText("Completed date"), "2026-07-30");
+    await user.click(
+      screen.getByRole("button", { name: "Update Punch Item" })
+    );
+
+    expect(updatePunchItem).toHaveBeenCalledWith(
+      1,
+      7,
+      expect.objectContaining({
+        priority: "High",
+        status: "Verified",
+        completed_date: "2026-07-30",
+      })
+    );
+    expect(await screen.findByText("Punch Item updated.")).toBeInTheDocument();
+  });
+
+  it("deletes a Punch Item through the confirmation workflow", async () => {
+    const user = userEvent.setup();
+    const punchItem = {
+      id: 3,
+      project_id: 1,
+      number: "PUNCH-003",
+      location: "Roof",
+      trade: null,
+      description: "Remove temporary protection",
+      responsible_company: null,
+      assigned_to: null,
+      priority: "Low",
+      status: "Open",
+      due_date: null,
+      completed_date: null,
+    };
+    let records = [punchItem];
+
+    fetchProjects.mockResolvedValue({
+      projects: [{ id: 1, name: "Riverside" }],
+    });
+    fetchPunchItems.mockImplementation(async () => ({
+      punch_items: records,
+    }));
+    deletePunchItem.mockImplementation(async () => {
+      records = [];
+      return { message: "Punch Item deleted" };
+    });
+    window.location.hash = "#/projects/1/punch-items";
+
+    renderApp();
+
+    await user.click(
+      await screen.findByRole("button", { name: "Delete PUNCH-003" })
+    );
+
+    expect(
+      screen.getByRole("alertdialog", { name: "Delete PUNCH-003?" })
+    ).toBeInTheDocument();
+    expect(deletePunchItem).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Delete" }));
+
+    expect(deletePunchItem).toHaveBeenCalledWith(1, 3);
+    expect(await screen.findByText("Punch Item deleted.")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "No punch items yet. Create the first punch item above."
+      )
+    ).toBeInTheDocument();
+  });
+
+  it("announces failures while loading the selected project's Punch Items", async () => {
+    fetchProjects.mockResolvedValue({
+      projects: [{ id: 1, name: "Riverside" }],
+    });
+    fetchPunchItems.mockRejectedValue(
+      new ApiError("Service unavailable", 503)
+    );
+    window.location.hash = "#/projects/1/punch-items";
+
+    renderApp();
+
+    expect(
+      await screen.findByText(
+        "Unable to load Punch Items. Service unavailable"
+      )
+    ).toBeInTheDocument();
+  });
+
+  it("announces Punch Item mutation failures through the feedback banner", async () => {
+    const user = userEvent.setup();
+    fetchProjects.mockResolvedValue({
+      projects: [{ id: 1, name: "Riverside" }],
+    });
+    createPunchItem.mockRejectedValue(
+      new ApiError("Service unavailable", 503)
+    );
+    window.location.hash = "#/projects/1/punch-items";
+
+    renderApp();
+
+    await screen.findByRole("heading", { name: "Punch List" });
+    await user.type(screen.getByLabelText("Location *"), "Level 1 Lobby");
+    await user.type(
+      screen.getByLabelText("Description *"),
+      "Align device cover"
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Create Punch Item" })
+    );
+
+    expect(
+      await screen.findByText(
+        "Unable to create Punch Item. Service unavailable"
+      )
+    ).toBeInTheDocument();
+  });
+
+  it("clears Punch Items while switching projects", async () => {
+    let resolveSecondProject;
+
+    fetchProjects.mockResolvedValue({
+      projects: [
+        { id: 1, name: "Riverside" },
+        { id: 2, name: "North Ridge" },
+      ],
+    });
+    fetchPunchItems.mockImplementation((projectId) => {
+      if (projectId === 1) {
+        return Promise.resolve({
+          punch_items: [
+            {
+              id: 1,
+              project_id: 1,
+              number: "PUNCH-001",
+              location: "Riverside Lobby",
+              trade: null,
+              description: "First project item",
+              responsible_company: null,
+              assigned_to: null,
+              priority: "Medium",
+              status: "Open",
+              due_date: null,
+              completed_date: null,
+            },
+          ],
+        });
+      }
+
+      return new Promise((resolve) => {
+        resolveSecondProject = resolve;
+      });
+    });
+    window.location.hash = "#/projects/1/punch-items";
+
+    renderApp();
+
+    expect(await screen.findByText("PUNCH-001")).toBeInTheDocument();
+    await act(async () => {
+      window.history.pushState({}, "", "#/projects/2/punch-items");
+      window.dispatchEvent(new HashChangeEvent("hashchange"));
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByText("PUNCH-001")).not.toBeInTheDocument();
+    });
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "Loading Punch Items..."
+    );
+
+    await act(async () => {
+      resolveSecondProject({
+        punch_items: [
+          {
+            id: 2,
+            project_id: 2,
+            number: "PUNCH-002",
+            location: "North Ridge Roof",
+            trade: null,
+            description: "Second project item",
+            responsible_company: null,
+            assigned_to: null,
+            priority: "High",
+            status: "In Progress",
+            due_date: null,
+            completed_date: null,
+          },
+        ],
+      });
+    });
+
+    expect(await screen.findByText("PUNCH-002")).toBeInTheDocument();
+    expect(
+      fetchPunchItems.mock.calls.map(([projectId]) => projectId)
+    ).toEqual([1, 2]);
+  });
+
+  it("drops a late Punch Items response after a project switch", async () => {
+    let resolveFirstProject;
+
+    fetchProjects.mockResolvedValue({
+      projects: [
+        { id: 1, name: "Riverside" },
+        { id: 2, name: "North Ridge" },
+      ],
+    });
+    fetchPunchItems.mockImplementation((projectId) => {
+      if (projectId === 1) {
+        return new Promise((resolve) => {
+          resolveFirstProject = resolve;
+        });
+      }
+
+      return Promise.resolve({
+        punch_items: [
+          {
+            id: 2,
+            project_id: 2,
+            number: "PUNCH-002",
+            location: "North Ridge Roof",
+            trade: null,
+            description: "Second project item",
+            responsible_company: null,
+            assigned_to: null,
+            priority: "High",
+            status: "In Progress",
+            due_date: null,
+            completed_date: null,
+          },
+        ],
+      });
+    });
+    window.location.hash = "#/projects/1/punch-items";
+
+    renderApp();
+
+    await waitFor(() => {
+      expect(fetchPunchItems).toHaveBeenCalledWith(1);
+    });
+    await act(async () => {
+      window.history.pushState({}, "", "#/projects/2/punch-items");
+      window.dispatchEvent(new HashChangeEvent("hashchange"));
+    });
+
+    expect(await screen.findByText("PUNCH-002")).toBeInTheDocument();
+
+    await act(async () => {
+      resolveFirstProject({
+        punch_items: [
+          {
+            id: 9,
+            project_id: 1,
+            number: "PUNCH-009",
+            location: "Stale location",
+            trade: null,
+            description: "Late first project response",
+            responsible_company: null,
+            assigned_to: null,
+            priority: "Critical",
+            status: "Open",
+            due_date: null,
+            completed_date: null,
+          },
+        ],
+      });
+    });
+
+    expect(screen.getByText("PUNCH-002")).toBeInTheDocument();
+    expect(screen.queryByText("PUNCH-009")).not.toBeInTheDocument();
+    expect(
+      fetchPunchItems.mock.calls.map(([projectId]) => projectId)
     ).toEqual([1, 2]);
   });
 });

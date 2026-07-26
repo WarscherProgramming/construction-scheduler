@@ -14,6 +14,7 @@ const ProjectDashboardPage = lazy(
 const ProjectSettingsPage = lazy(
   () => import("./pages/ProjectSettingsPage")
 );
+const PunchItemsPage = lazy(() => import("./pages/PunchItemsPage"));
 const RFIsPage = lazy(() => import("./pages/RFIsPage"));
 const SchedulerPage = lazy(() => import("./pages/SchedulerPage"));
 const SubmittalsPage = lazy(() => import("./pages/SubmittalsPage"));
@@ -36,6 +37,7 @@ function AppRouter({
   onDeleteChangeOrder,
   onDeleteRFI,
   onDeleteSubmittal,
+  onDeletePunchItem,
 }) {
   const {
     projects,
@@ -48,6 +50,7 @@ function AppRouter({
     changeOrders,
     rfis,
     submittals,
+    punchItems,
     projectCompanies,
     isOperationActive,
     isResourceLoading,
@@ -305,6 +308,48 @@ function AppRouter({
         isSaving={isOperationActive("saveSubmittal")}
         isRefreshing={isOperationActive("refreshSubmittals")}
         isLoading={loading("submittals")}
+      />
+    );
+  }
+
+  if (currentPage === "punchItems") {
+    return (
+      <PunchItemsPage
+        projectName={projectName}
+        punchItems={punchItems}
+        projectCompanies={projectCompanies}
+        editingPunchItemId={forms.editingPunchItemId}
+        editingPunchItemNumber={forms.editingPunchItemNumber}
+        location={forms.punchItemLocation}
+        trade={forms.punchItemTrade}
+        description={forms.punchItemDescription}
+        responsibleCompany={forms.punchItemResponsibleCompany}
+        assignedTo={forms.punchItemAssignedTo}
+        priority={forms.punchItemPriority}
+        status={forms.punchItemStatus}
+        dueDate={forms.punchItemDueDate}
+        completedDate={forms.punchItemCompletedDate}
+        formatDate={formatDate}
+        {...navProps}
+        onRefresh={forms.handleRefreshPunchItems}
+        onSave={forms.handleSavePunchItem}
+        onEdit={forms.handleEditPunchItem}
+        onCancelEdit={forms.resetPunchItemForm}
+        onDelete={onDeletePunchItem}
+        onLocationChange={forms.setPunchItemLocation}
+        onTradeChange={forms.setPunchItemTrade}
+        onDescriptionChange={forms.setPunchItemDescription}
+        onResponsibleCompanyChange={
+          forms.setPunchItemResponsibleCompany
+        }
+        onAssignedToChange={forms.setPunchItemAssignedTo}
+        onPriorityChange={forms.setPunchItemPriority}
+        onStatusChange={forms.setPunchItemStatus}
+        onDueDateChange={forms.setPunchItemDueDate}
+        onCompletedDateChange={forms.setPunchItemCompletedDate}
+        isSaving={isOperationActive("savePunchItem")}
+        isRefreshing={isOperationActive("refreshPunchItems")}
+        isLoading={loading("punchItems")}
       />
     );
   }

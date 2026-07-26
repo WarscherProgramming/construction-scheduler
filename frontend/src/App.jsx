@@ -26,6 +26,7 @@ const PAGE_TITLES = {
   changeOrders: "Change Orders",
   rfis: "RFIs",
   submittals: "Submittals",
+  punchItems: "Punch List",
   projectSettings: "Settings",
 };
 
@@ -94,6 +95,7 @@ function App() {
     loadChangeOrders: data.loadChangeOrders,
     loadRFIs: data.loadRFIs,
     loadSubmittals: data.loadSubmittals,
+    loadPunchItems: data.loadPunchItems,
     loadProjectCompanies: data.loadProjectCompanies,
   });
 
@@ -250,6 +252,16 @@ function App() {
     });
   };
 
+  const handleDeletePunchItem = (id, number) => {
+    setPendingDelete({
+      kind: "punchItem",
+      id,
+      title: `Delete ${number}?`,
+      message:
+        "The punch item will be permanently removed. This action cannot be undone.",
+    });
+  };
+
   const handleConfirmDelete = async () => {
     const pending = pendingDelete;
     setPendingDelete(null);
@@ -270,7 +282,12 @@ function App() {
       return;
     }
 
-    await forms.performSubmittalDelete(pending.id);
+    if (pending.kind === "submittal") {
+      await forms.performSubmittalDelete(pending.id);
+      return;
+    }
+
+    await forms.performPunchItemDelete(pending.id);
   };
 
   return (
@@ -312,6 +329,7 @@ function App() {
               onDeleteChangeOrder={handleDeleteChangeOrder}
               onDeleteRFI={handleDeleteRFI}
               onDeleteSubmittal={handleDeleteSubmittal}
+              onDeletePunchItem={handleDeletePunchItem}
             />
           ) : (
             <AuthPage

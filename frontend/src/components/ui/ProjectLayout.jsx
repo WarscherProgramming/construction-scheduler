@@ -13,6 +13,7 @@ const NAV_ITEMS = [
   { id: "changeOrders", label: "Change Orders", icon: "dollar-sign" },
   { id: "rfis", label: "RFIs", icon: "message-square" },
   { id: "submittals", label: "Submittals", icon: "file-text" },
+  { id: "punchItems", label: "Punch List", icon: "clipboard-check" },
   { id: "projectSettings", label: "Project Settings", icon: "settings" },
 ];
 

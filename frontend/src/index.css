@@ -2074,28 +2074,32 @@ button:disabled {
 }
 
 .rfi-form-actions,
-.submittal-form-actions {
+.submittal-form-actions,
+.punch-item-form-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
 }
 
 .rfi-status,
-.submittal-status {
+.submittal-status,
+.punch-item-status {
   display: inline-grid;
   justify-items: start;
   gap: 5px;
 }
 
 .rfi-overdue,
-.submittal-overdue {
+.submittal-overdue,
+.punch-item-overdue {
   color: var(--danger);
   font-size: 0.78rem;
   font-weight: 700;
 }
 
 .rfi-response-summary,
-.submittal-remarks-summary {
+.submittal-remarks-summary,
+.punch-item-description-summary {
   max-width: 32ch;
   white-space: normal;
 }
@@ -2347,7 +2351,10 @@ textarea.field-control {
 
 .status-approved,
 .status-pass,
-.status-closed {
+.status-closed,
+.status-completed,
+.status-verified,
+.status-low {
   border-color: #bbf7d0;
   color: #166534;
   background: #f0fdf4;
@@ -2362,14 +2369,17 @@ textarea.field-control {
 }
 
 .status-open,
-.status-submitted {
+.status-submitted,
+.status-in-progress,
+.status-medium {
   border-color: #bfdbfe;
   color: #1d4ed8;
   background: #eff6ff;
 }
 
 .status-under-review,
-.status-revise-and-resubmit {
+.status-revise-and-resubmit,
+.status-high {
   border-color: #fde68a;
   color: #854d0e;
   background: #fffbeb;
@@ -2377,7 +2387,8 @@ textarea.field-control {
 
 .status-rejected,
 .status-fail,
-.status-delay {
+.status-delay,
+.status-critical {
   border-color: #fecaca;
   color: #991b1b;
   background: #fef2f2;

@@ -5,6 +5,7 @@ import {
   fetchDailyLogs,
   fetchInspections,
   fetchNotesDelays,
+  fetchPunchItems,
   fetchProjectCompanies,
   fetchProjects,
   fetchRFIs,
@@ -41,6 +42,7 @@ function useProjectResource({
   const [changeOrders, setChangeOrders] = useState([]);
   const [rfis, setRFIs] = useState([]);
   const [submittals, setSubmittals] = useState([]);
+  const [punchItems, setPunchItems] = useState([]);
   const [projectCompanies, setProjectCompanies] = useState([]);
 
   const [activeOperations, setActiveOperations] = useState([]);
@@ -244,6 +246,17 @@ function useProjectResource({
     [loadProjectResource]
   );
 
+  const loadPunchItems = useCallback(
+    () =>
+      loadProjectResource(
+        "punchItems",
+        fetchPunchItems,
+        (data) => setPunchItems(data.punch_items || []),
+        "Unable to load Punch Items"
+      ),
+    [loadProjectResource]
+  );
+
   const loadProjectCompanies = useCallback(
     () =>
       loadProjectResource(
@@ -266,6 +279,7 @@ function useProjectResource({
     setChangeOrders([]);
     setRFIs([]);
     setSubmittals([]);
+    setPunchItems([]);
     setProjectCompanies([]);
   }, []);
 
@@ -292,6 +306,7 @@ function useProjectResource({
       setChangeOrders([]);
       setRFIs([]);
       setSubmittals([]);
+      setPunchItems([]);
       setProjectCompanies([]);
 
       void Promise.all([loadTasks(), loadProjectCompanies()]);
@@ -326,6 +341,7 @@ function useProjectResource({
       changeOrders: [loadChangeOrders],
       rfis: [loadRFIs],
       submittals: [loadSubmittals],
+      punchItems: [loadPunchItems],
       projectSettings: [loadProjectCompanies],
     };
 
@@ -344,6 +360,7 @@ function useProjectResource({
     loadInspections,
     loadNotesDelays,
     loadProjectCompanies,
+    loadPunchItems,
     loadRFIs,
     loadSubmittals,
     selectedProjectId,
@@ -363,6 +380,7 @@ function useProjectResource({
     changeOrders,
     rfis,
     submittals,
+    punchItems,
     projectCompanies,
     loadProjects,
     loadTemplates,
@@ -373,6 +391,7 @@ function useProjectResource({
     loadChangeOrders,
     loadRFIs,
     loadSubmittals,
+    loadPunchItems,
     loadProjectCompanies,
     clearAllData,
     runOperation,

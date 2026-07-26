@@ -7,6 +7,7 @@ const PAGE_SEGMENTS = {
   changeOrders: "change-orders",
   rfis: "rfis",
   submittals: "submittals",
+  punchItems: "punch-items",
   projectSettings: "settings",
 };
 

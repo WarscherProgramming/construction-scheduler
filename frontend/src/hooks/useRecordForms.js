@@ -5,14 +5,17 @@ import {
   createDailyLog,
   createInspection,
   createNoteDelay,
+  createPunchItem,
   createProject,
   createProjectCompany,
   createRFI,
   createSubmittal,
   deleteChangeOrder,
+  deletePunchItem,
   deleteRFI,
   deleteSubmittal,
   updateRFI,
+  updatePunchItem,
   updateSubmittal,
 } from "../services/api";
 import { toLocalDateInputValue } from "../utils/date";
@@ -37,6 +40,7 @@ function useRecordForms({
   loadChangeOrders,
   loadRFIs,
   loadSubmittals,
+  loadPunchItems,
   loadProjectCompanies,
 }) {
   const [newProjectName, setNewProjectName] = useState("");
@@ -86,6 +90,20 @@ function useRecordForms({
   const [submittalRemarks, setSubmittalRemarks] = useState("");
   const [submittalProjectId, setSubmittalProjectId] =
     useState(selectedProjectId);
+  const [editingPunchItemId, setEditingPunchItemId] = useState(null);
+  const [editingPunchItemNumber, setEditingPunchItemNumber] = useState("");
+  const [punchItemLocation, setPunchItemLocation] = useState("");
+  const [punchItemTrade, setPunchItemTrade] = useState("");
+  const [punchItemDescription, setPunchItemDescription] = useState("");
+  const [punchItemResponsibleCompany, setPunchItemResponsibleCompany] =
+    useState("");
+  const [punchItemAssignedTo, setPunchItemAssignedTo] = useState("");
+  const [punchItemPriority, setPunchItemPriority] = useState("Medium");
+  const [punchItemStatus, setPunchItemStatus] = useState("Open");
+  const [punchItemDueDate, setPunchItemDueDate] = useState("");
+  const [punchItemCompletedDate, setPunchItemCompletedDate] = useState("");
+  const [punchItemProjectId, setPunchItemProjectId] =
+    useState(selectedProjectId);
   const [companyName, setCompanyName] = useState("");
   const [companyTrade, setCompanyTrade] = useState("");
 
@@ -115,6 +133,21 @@ function useRecordForms({
     setSubmittalStatus("Draft");
     setSubmittalReviewer("");
     setSubmittalRemarks("");
+  }
+
+  if (punchItemProjectId !== selectedProjectId) {
+    setPunchItemProjectId(selectedProjectId);
+    setEditingPunchItemId(null);
+    setEditingPunchItemNumber("");
+    setPunchItemLocation("");
+    setPunchItemTrade("");
+    setPunchItemDescription("");
+    setPunchItemResponsibleCompany("");
+    setPunchItemAssignedTo("");
+    setPunchItemPriority("Medium");
+    setPunchItemStatus("Open");
+    setPunchItemDueDate("");
+    setPunchItemCompletedDate("");
   }
 
   const handleCreateProject = async () => {
@@ -474,6 +507,111 @@ function useRecordForms({
     }
   };
 
+  const resetPunchItemForm = () => {
+    setEditingPunchItemId(null);
+    setEditingPunchItemNumber("");
+    setPunchItemLocation("");
+    setPunchItemTrade("");
+    setPunchItemDescription("");
+    setPunchItemResponsibleCompany("");
+    setPunchItemAssignedTo("");
+    setPunchItemPriority("Medium");
+    setPunchItemStatus("Open");
+    setPunchItemDueDate("");
+    setPunchItemCompletedDate("");
+  };
+
+  const handleEditPunchItem = (punchItem) => {
+    setEditingPunchItemId(punchItem.id);
+    setEditingPunchItemNumber(punchItem.number);
+    setPunchItemLocation(punchItem.location);
+    setPunchItemTrade(punchItem.trade || "");
+    setPunchItemDescription(punchItem.description);
+    setPunchItemResponsibleCompany(
+      punchItem.responsible_company || ""
+    );
+    setPunchItemAssignedTo(punchItem.assigned_to || "");
+    setPunchItemPriority(punchItem.priority);
+    setPunchItemStatus(punchItem.status);
+    setPunchItemDueDate(punchItem.due_date || "");
+    setPunchItemCompletedDate(punchItem.completed_date || "");
+  };
+
+  const handleSavePunchItem = async () => {
+    const location = punchItemLocation.trim();
+    const description = punchItemDescription.trim();
+
+    if (!location || !description) {
+      reportValidationError(
+        "Complete the location and description before saving."
+      );
+      return;
+    }
+
+    if (
+      punchItemDueDate &&
+      punchItemCompletedDate &&
+      punchItemCompletedDate < punchItemDueDate
+    ) {
+      reportValidationError(
+        "Completed date cannot be earlier than due date."
+      );
+      return;
+    }
+
+    return runOperation("savePunchItem", async () => {
+      const payload = {
+        location,
+        trade: punchItemTrade.trim() || null,
+        description,
+        responsible_company:
+          punchItemResponsibleCompany.trim() || null,
+        assigned_to: punchItemAssignedTo.trim() || null,
+        priority: punchItemPriority,
+        status: punchItemStatus,
+        due_date: punchItemDueDate || null,
+        completed_date: punchItemCompletedDate || null,
+      };
+      const isEditing = editingPunchItemId !== null;
+
+      try {
+        if (isEditing) {
+          await updatePunchItem(
+            selectedProjectId,
+            editingPunchItemId,
+            payload
+          );
+        } else {
+          await createPunchItem(selectedProjectId, payload);
+        }
+
+        resetPunchItemForm();
+        await loadPunchItems();
+        showNotice(
+          "success",
+          isEditing ? "Punch Item updated." : "Punch Item created."
+        );
+      } catch (error) {
+        reportRequestError(
+          isEditing
+            ? "Unable to update Punch Item"
+            : "Unable to create Punch Item",
+          error
+        );
+      }
+    });
+  };
+
+  const performPunchItemDelete = async (id) => {
+    try {
+      await deletePunchItem(selectedProjectId, id);
+      await loadPunchItems();
+      showNotice("success", "Punch Item deleted.");
+    } catch (error) {
+      reportRequestError("Unable to delete Punch Item", error);
+    }
+  };
+
   const handleCreateProjectCompany = async () => {
     if (!companyName.trim()) {
       reportValidationError("Enter a company name before adding it.");
@@ -508,6 +646,8 @@ function useRecordForms({
   const handleRefreshRFIs = () => runOperation("refreshRFIs", loadRFIs);
   const handleRefreshSubmittals = () =>
     runOperation("refreshSubmittals", loadSubmittals);
+  const handleRefreshPunchItems = () =>
+    runOperation("refreshPunchItems", loadPunchItems);
 
   return {
     newProjectName,
@@ -586,6 +726,26 @@ function useRecordForms({
     setSubmittalReviewer,
     submittalRemarks,
     setSubmittalRemarks,
+    editingPunchItemId,
+    editingPunchItemNumber,
+    punchItemLocation,
+    setPunchItemLocation,
+    punchItemTrade,
+    setPunchItemTrade,
+    punchItemDescription,
+    setPunchItemDescription,
+    punchItemResponsibleCompany,
+    setPunchItemResponsibleCompany,
+    punchItemAssignedTo,
+    setPunchItemAssignedTo,
+    punchItemPriority,
+    setPunchItemPriority,
+    punchItemStatus,
+    setPunchItemStatus,
+    punchItemDueDate,
+    setPunchItemDueDate,
+    punchItemCompletedDate,
+    setPunchItemCompletedDate,
     companyName,
     setCompanyName,
     companyTrade,
@@ -604,6 +764,10 @@ function useRecordForms({
     resetSubmittalForm,
     handleSaveSubmittal,
     performSubmittalDelete,
+    handleEditPunchItem,
+    resetPunchItemForm,
+    handleSavePunchItem,
+    performPunchItemDelete,
     handleCreateProjectCompany,
     handleRefreshDailyLogs,
     handleRefreshInspections,
@@ -611,6 +775,7 @@ function useRecordForms({
     handleRefreshChangeOrders,
     handleRefreshRFIs,
     handleRefreshSubmittals,
+    handleRefreshPunchItems,
   };
 }
 
