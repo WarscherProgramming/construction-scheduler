@@ -8,6 +8,7 @@ from sqlalchemy.pool import StaticPool
 from app.api.dependencies import get_db
 from app.db.database import Base
 from app.main import app
+from app.models.rfi import RFINumberSequence
 
 
 class ApiTestCase(unittest.TestCase):
@@ -23,6 +24,7 @@ class ApiTestCase(unittest.TestCase):
         TestingSession = sessionmaker(
             bind=self.engine, autoflush=False, autocommit=False
         )
+        self.TestingSession = TestingSession
 
         def override_get_db():
             db = TestingSession()
@@ -317,6 +319,252 @@ class RecordApiTests(ApiTestCase):
             headers=headers,
         )
         self.assertEqual(missing.status_code, 404)
+
+
+class RFIApiTests(ApiTestCase):
+    def rfi_payload(self, **overrides):
+        payload = {
+            "subject": "Confirm storefront dimensions",
+            "question": "Which rough opening dimensions should be used?",
+            "responsible_company": "Desert Glass",
+            "submitted_date": "2026-07-20",
+            "due_date": "2026-07-27",
+            "status": "Open",
+        }
+        payload.update(overrides)
+        return payload
+
+    def test_rfi_routes_require_authentication(self):
+        self.assertEqual(
+            self.client.get("/projects/1/rfis").status_code,
+            401,
+        )
+        self.assertEqual(
+            self.client.post(
+                "/projects/1/rfis",
+                json=self.rfi_payload(),
+            ).status_code,
+            401,
+        )
+
+    def test_rfi_create_list_update_and_delete(self):
+        headers = self.register_and_login()
+        project_id = self.create_project(headers)
+
+        created = self.client.post(
+            f"/projects/{project_id}/rfis",
+            json=self.rfi_payload(),
+            headers=headers,
+        )
+        self.assertEqual(created.status_code, 201)
+        rfi = created.json()
+        self.assertEqual(rfi["number"], "RFI-001")
+        self.assertEqual(rfi["status"], "Open")
+        self.assertIsNotNone(rfi["created_at"])
+        self.assertIsNotNone(rfi["updated_at"])
+
+        listing = self.client.get(
+            f"/projects/{project_id}/rfis",
+            headers=headers,
+        )
+        self.assertEqual(listing.status_code, 200)
+        self.assertEqual(
+            [item["number"] for item in listing.json()["rfis"]],
+            ["RFI-001"],
+        )
+
+        updated = self.client.put(
+            f"/projects/{project_id}/rfis/{rfi['id']}",
+            json={
+                "response": "Use the dimensions shown on A6.2.",
+                "status": "Closed",
+            },
+            headers=headers,
+        )
+        self.assertEqual(updated.status_code, 200)
+        self.assertEqual(updated.json()["status"], "Closed")
+        self.assertEqual(updated.json()["number"], "RFI-001")
+
+        deleted = self.client.delete(
+            f"/projects/{project_id}/rfis/{rfi['id']}",
+            headers=headers,
+        )
+        self.assertEqual(deleted.status_code, 200)
+        self.assertEqual(deleted.json(), {"message": "RFI deleted"})
+
+        replacement = self.client.post(
+            f"/projects/{project_id}/rfis",
+            json=self.rfi_payload(subject="Confirm finish color"),
+            headers=headers,
+        )
+        self.assertEqual(replacement.status_code, 201)
+        self.assertEqual(replacement.json()["number"], "RFI-002")
+
+    def test_rfi_validation_rejects_invalid_status_dates_and_required_text(self):
+        headers = self.register_and_login()
+        project_id = self.create_project(headers)
+        url = f"/projects/{project_id}/rfis"
+
+        invalid_status = self.client.post(
+            url,
+            json=self.rfi_payload(status="Answered"),
+            headers=headers,
+        )
+        self.assertEqual(invalid_status.status_code, 422)
+
+        invalid_dates = self.client.post(
+            url,
+            json=self.rfi_payload(due_date="2026-07-19"),
+            headers=headers,
+        )
+        self.assertEqual(invalid_dates.status_code, 422)
+
+        missing_subject = self.client.post(
+            url,
+            json=self.rfi_payload(subject="   "),
+            headers=headers,
+        )
+        self.assertEqual(missing_subject.status_code, 422)
+
+        missing_question = self.client.post(
+            url,
+            json=self.rfi_payload(question=""),
+            headers=headers,
+        )
+        self.assertEqual(missing_question.status_code, 422)
+
+        created = self.client.post(
+            url,
+            json=self.rfi_payload(),
+            headers=headers,
+        ).json()
+        invalid_update = self.client.put(
+            f"{url}/{created['id']}",
+            json={"submitted_date": "2026-07-28"},
+            headers=headers,
+        )
+        self.assertEqual(invalid_update.status_code, 422)
+        self.assertEqual(
+            invalid_update.json()["detail"],
+            "due_date cannot be earlier than submitted_date",
+        )
+
+    def test_rfi_numbering_restarts_for_each_project(self):
+        headers = self.register_and_login()
+        first_project_id = self.create_project(headers, "Riverside")
+        second_project_id = self.create_project(headers, "North Ridge")
+
+        first = self.client.post(
+            f"/projects/{first_project_id}/rfis",
+            json=self.rfi_payload(),
+            headers=headers,
+        )
+        second = self.client.post(
+            f"/projects/{second_project_id}/rfis",
+            json=self.rfi_payload(),
+            headers=headers,
+        )
+
+        self.assertEqual(first.status_code, 201)
+        self.assertEqual(second.status_code, 201)
+        self.assertEqual(first.json()["number"], "RFI-001")
+        self.assertEqual(second.json()["number"], "RFI-001")
+
+    def test_duplicate_rfi_number_is_prevented(self):
+        headers = self.register_and_login()
+        project_id = self.create_project(headers)
+        url = f"/projects/{project_id}/rfis"
+
+        first = self.client.post(
+            url,
+            json=self.rfi_payload(),
+            headers=headers,
+        )
+        self.assertEqual(first.status_code, 201)
+
+        with self.TestingSession() as db:
+            sequence = db.query(RFINumberSequence).filter_by(
+                project_id=project_id
+            ).one()
+            sequence.last_number = 0
+            db.commit()
+
+        duplicate = self.client.post(
+            url,
+            json=self.rfi_payload(subject="Second question"),
+            headers=headers,
+        )
+        self.assertEqual(duplicate.status_code, 409)
+        self.assertEqual(
+            duplicate.json()["detail"],
+            "RFI number already exists for this project",
+        )
+
+        listing = self.client.get(url, headers=headers)
+        self.assertEqual(len(listing.json()["rfis"]), 1)
+
+    def test_rfi_ownership_is_enforced(self):
+        owner = self.register_and_login("rfi-owner@example.com")
+        intruder = self.register_and_login("rfi-intruder@example.com")
+        project_id = self.create_project(owner)
+
+        created = self.client.post(
+            f"/projects/{project_id}/rfis",
+            json=self.rfi_payload(),
+            headers=owner,
+        ).json()
+
+        self.assertEqual(
+            self.client.get(
+                f"/projects/{project_id}/rfis",
+                headers=intruder,
+            ).status_code,
+            403,
+        )
+        self.assertEqual(
+            self.client.put(
+                f"/projects/{project_id}/rfis/{created['id']}",
+                json={"status": "Pending"},
+                headers=intruder,
+            ).status_code,
+            403,
+        )
+        self.assertEqual(
+            self.client.delete(
+                f"/projects/{project_id}/rfis/{created['id']}",
+                headers=intruder,
+            ).status_code,
+            403,
+        )
+
+    def test_missing_or_wrong_project_rfi_returns_not_found(self):
+        headers = self.register_and_login()
+        first_project_id = self.create_project(headers, "Riverside")
+        second_project_id = self.create_project(headers, "North Ridge")
+        created = self.client.post(
+            f"/projects/{first_project_id}/rfis",
+            json=self.rfi_payload(),
+            headers=headers,
+        ).json()
+
+        missing_update = self.client.put(
+            f"/projects/{first_project_id}/rfis/9999",
+            json={"status": "Pending"},
+            headers=headers,
+        )
+        self.assertEqual(missing_update.status_code, 404)
+
+        missing_delete = self.client.delete(
+            f"/projects/{first_project_id}/rfis/9999",
+            headers=headers,
+        )
+        self.assertEqual(missing_delete.status_code, 404)
+
+        wrong_project = self.client.delete(
+            f"/projects/{second_project_id}/rfis/{created['id']}",
+            headers=headers,
+        )
+        self.assertEqual(wrong_project.status_code, 404)
 
 
 if __name__ == "__main__":
