@@ -14,12 +14,17 @@ describe("navigation utilities", () => {
 
   it("builds stable project module hashes", () => {
     expect(buildAppHash("dailyLogs", 42)).toBe("#/projects/42/daily-logs");
+    expect(buildAppHash("rfis", 42)).toBe("#/projects/42/rfis");
     expect(buildAppHash("home", 42)).toBe("#/");
   });
 
   it("parses known routes and rejects invalid routes", () => {
     expect(parseAppHash("#/projects/42/change-orders")).toEqual({
       page: "changeOrders",
+      projectId: 42,
+    });
+    expect(parseAppHash("#/projects/42/rfis")).toEqual({
+      page: "rfis",
       projectId: 42,
     });
     expect(parseAppHash("#/projects/nope/dashboard")).toEqual({

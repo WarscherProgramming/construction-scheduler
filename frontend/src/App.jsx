@@ -24,6 +24,7 @@ const PAGE_TITLES = {
   inspections: "Inspections",
   notesDelays: "Notes & Delays",
   changeOrders: "Change Orders",
+  rfis: "RFIs",
   projectSettings: "Settings",
 };
 
@@ -90,6 +91,7 @@ function App() {
     loadInspections: data.loadInspections,
     loadNotesDelays: data.loadNotesDelays,
     loadChangeOrders: data.loadChangeOrders,
+    loadRFIs: data.loadRFIs,
     loadProjectCompanies: data.loadProjectCompanies,
   });
 
@@ -226,6 +228,16 @@ function App() {
     });
   };
 
+  const handleDeleteRFI = (id, number) => {
+    setPendingDelete({
+      kind: "rfi",
+      id,
+      title: `Delete ${number}?`,
+      message:
+        "The RFI will be permanently removed. This action cannot be undone.",
+    });
+  };
+
   const handleConfirmDelete = async () => {
     const pending = pendingDelete;
     setPendingDelete(null);
@@ -236,7 +248,12 @@ function App() {
       return;
     }
 
-    await forms.performChangeOrderDelete(pending.id);
+    if (pending.kind === "changeOrder") {
+      await forms.performChangeOrderDelete(pending.id);
+      return;
+    }
+
+    await forms.performRFIDelete(pending.id);
   };
 
   return (
@@ -276,6 +293,7 @@ function App() {
               }}
               onDeleteTask={handleDeleteTask}
               onDeleteChangeOrder={handleDeleteChangeOrder}
+              onDeleteRFI={handleDeleteRFI}
             />
           ) : (
             <AuthPage

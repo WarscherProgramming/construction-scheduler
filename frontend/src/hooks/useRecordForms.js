@@ -7,7 +7,10 @@ import {
   createNoteDelay,
   createProject,
   createProjectCompany,
+  createRFI,
   deleteChangeOrder,
+  deleteRFI,
+  updateRFI,
 } from "../services/api";
 import { toLocalDateInputValue } from "../utils/date";
 
@@ -29,6 +32,7 @@ function useRecordForms({
   loadInspections,
   loadNotesDelays,
   loadChangeOrders,
+  loadRFIs,
   loadProjectCompanies,
 }) {
   const [newProjectName, setNewProjectName] = useState("");
@@ -52,8 +56,32 @@ function useRecordForms({
   const [changeOrderAmount, setChangeOrderAmount] = useState("");
   const [changeOrderResponsibleParty, setChangeOrderResponsibleParty] =
     useState("");
+  const [editingRFIId, setEditingRFIId] = useState(null);
+  const [editingRFINumber, setEditingRFINumber] = useState("");
+  const [rfiSubject, setRFISubject] = useState("");
+  const [rfiQuestion, setRFIQuestion] = useState("");
+  const [rfiResponsibleCompany, setRFIResponsibleCompany] = useState("");
+  const [rfiSubmittedDate, setRFISubmittedDate] =
+    useState(toLocalDateInputValue);
+  const [rfiDueDate, setRFIDueDate] = useState("");
+  const [rfiResponse, setRFIResponse] = useState("");
+  const [rfiStatus, setRFIStatus] = useState("Open");
+  const [rfiProjectId, setRFIProjectId] = useState(selectedProjectId);
   const [companyName, setCompanyName] = useState("");
   const [companyTrade, setCompanyTrade] = useState("");
+
+  if (rfiProjectId !== selectedProjectId) {
+    setRFIProjectId(selectedProjectId);
+    setEditingRFIId(null);
+    setEditingRFINumber("");
+    setRFISubject("");
+    setRFIQuestion("");
+    setRFIResponsibleCompany("");
+    setRFISubmittedDate(toLocalDateInputValue());
+    setRFIDueDate("");
+    setRFIResponse("");
+    setRFIStatus("Open");
+  }
 
   const handleCreateProject = async () => {
     if (!newProjectName.trim()) {
@@ -213,6 +241,89 @@ function useRecordForms({
     }
   };
 
+  const resetRFIForm = () => {
+    setEditingRFIId(null);
+    setEditingRFINumber("");
+    setRFISubject("");
+    setRFIQuestion("");
+    setRFIResponsibleCompany("");
+    setRFISubmittedDate(toLocalDateInputValue());
+    setRFIDueDate("");
+    setRFIResponse("");
+    setRFIStatus("Open");
+  };
+
+  const handleEditRFI = (rfi) => {
+    setEditingRFIId(rfi.id);
+    setEditingRFINumber(rfi.number);
+    setRFISubject(rfi.subject);
+    setRFIQuestion(rfi.question);
+    setRFIResponsibleCompany(rfi.responsible_company || "");
+    setRFISubmittedDate(rfi.submitted_date);
+    setRFIDueDate(rfi.due_date || "");
+    setRFIResponse(rfi.response || "");
+    setRFIStatus(rfi.status);
+  };
+
+  const handleSaveRFI = async () => {
+    const subject = rfiSubject.trim();
+    const question = rfiQuestion.trim();
+
+    if (!subject || !question || !rfiSubmittedDate) {
+      reportValidationError(
+        "Complete the subject, question, and submitted date before saving."
+      );
+      return;
+    }
+
+    if (rfiDueDate && rfiDueDate < rfiSubmittedDate) {
+      reportValidationError(
+        "Due date cannot be earlier than submitted date."
+      );
+      return;
+    }
+
+    return runOperation("saveRFI", async () => {
+      const payload = {
+        subject,
+        question,
+        responsible_company: rfiResponsibleCompany.trim() || null,
+        submitted_date: rfiSubmittedDate,
+        due_date: rfiDueDate || null,
+        response: rfiResponse.trim() || null,
+        status: rfiStatus,
+      };
+      const isEditing = editingRFIId !== null;
+
+      try {
+        if (isEditing) {
+          await updateRFI(selectedProjectId, editingRFIId, payload);
+        } else {
+          await createRFI(selectedProjectId, payload);
+        }
+
+        resetRFIForm();
+        await loadRFIs();
+        showNotice("success", isEditing ? "RFI updated." : "RFI created.");
+      } catch (error) {
+        reportRequestError(
+          isEditing ? "Unable to update RFI" : "Unable to create RFI",
+          error
+        );
+      }
+    });
+  };
+
+  const performRFIDelete = async (id) => {
+    try {
+      await deleteRFI(selectedProjectId, id);
+      await loadRFIs();
+      showNotice("success", "RFI deleted.");
+    } catch (error) {
+      reportRequestError("Unable to delete RFI", error);
+    }
+  };
+
   const handleCreateProjectCompany = async () => {
     if (!companyName.trim()) {
       reportValidationError("Enter a company name before adding it.");
@@ -244,6 +355,7 @@ function useRecordForms({
     runOperation("refreshNotesDelays", loadNotesDelays);
   const handleRefreshChangeOrders = () =>
     runOperation("refreshChangeOrders", loadChangeOrders);
+  const handleRefreshRFIs = () => runOperation("refreshRFIs", loadRFIs);
 
   return {
     newProjectName,
@@ -286,6 +398,22 @@ function useRecordForms({
     setChangeOrderAmount,
     changeOrderResponsibleParty,
     setChangeOrderResponsibleParty,
+    editingRFIId,
+    editingRFINumber,
+    rfiSubject,
+    setRFISubject,
+    rfiQuestion,
+    setRFIQuestion,
+    rfiResponsibleCompany,
+    setRFIResponsibleCompany,
+    rfiSubmittedDate,
+    setRFISubmittedDate,
+    rfiDueDate,
+    setRFIDueDate,
+    rfiResponse,
+    setRFIResponse,
+    rfiStatus,
+    setRFIStatus,
     companyName,
     setCompanyName,
     companyTrade,
@@ -296,11 +424,16 @@ function useRecordForms({
     handleCreateNoteDelay,
     handleCreateChangeOrder,
     performChangeOrderDelete,
+    handleEditRFI,
+    resetRFIForm,
+    handleSaveRFI,
+    performRFIDelete,
     handleCreateProjectCompany,
     handleRefreshDailyLogs,
     handleRefreshInspections,
     handleRefreshNotesDelays,
     handleRefreshChangeOrders,
+    handleRefreshRFIs,
   };
 }
 

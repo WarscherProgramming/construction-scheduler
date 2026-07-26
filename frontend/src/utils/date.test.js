@@ -4,6 +4,7 @@ import {
   addDays,
   formatDisplayDate,
   getCurrentWeekRange,
+  isPastLocalDate,
   parseLocalDateInputValue,
   sortByDateDescending,
   toLocalDateInputValue,
@@ -51,6 +52,14 @@ describe("date utilities", () => {
     expect(parsed.getFullYear()).toBe(2026);
     expect(parsed.getMonth()).toBe(5);
     expect(parsed.getDate()).toBe(20);
+  });
+
+  it("identifies ISO dates before the current local date", () => {
+    const today = new Date(2026, 6, 25, 15);
+
+    expect(isPastLocalDate("2026-07-24", today)).toBe(true);
+    expect(isPastLocalDate("2026-07-25", today)).toBe(false);
+    expect(isPastLocalDate(null, today)).toBe(false);
   });
 
   it("returns inclusive Sunday-through-Saturday week bounds", () => {

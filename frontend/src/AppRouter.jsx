@@ -14,6 +14,7 @@ const ProjectDashboardPage = lazy(
 const ProjectSettingsPage = lazy(
   () => import("./pages/ProjectSettingsPage")
 );
+const RFIsPage = lazy(() => import("./pages/RFIsPage"));
 const SchedulerPage = lazy(() => import("./pages/SchedulerPage"));
 
 /**
@@ -32,6 +33,7 @@ function AppRouter({
   onboarding,
   onDeleteTask,
   onDeleteChangeOrder,
+  onDeleteRFI,
 }) {
   const {
     projects,
@@ -42,6 +44,7 @@ function AppRouter({
     inspections,
     notesDelays,
     changeOrders,
+    rfis,
     projectCompanies,
     isOperationActive,
     isResourceLoading,
@@ -215,6 +218,42 @@ function AppRouter({
         onDescriptionChange={forms.setChangeOrderDescription}
         onAmountChange={forms.setChangeOrderAmount}
         onResponsiblePartyChange={forms.setChangeOrderResponsibleParty}
+      />
+    );
+  }
+
+  if (currentPage === "rfis") {
+    return (
+      <RFIsPage
+        projectName={projectName}
+        rfis={rfis}
+        projectCompanies={projectCompanies}
+        editingRFIId={forms.editingRFIId}
+        editingRFINumber={forms.editingRFINumber}
+        rfiSubject={forms.rfiSubject}
+        rfiQuestion={forms.rfiQuestion}
+        rfiResponsibleCompany={forms.rfiResponsibleCompany}
+        rfiSubmittedDate={forms.rfiSubmittedDate}
+        rfiDueDate={forms.rfiDueDate}
+        rfiResponse={forms.rfiResponse}
+        rfiStatus={forms.rfiStatus}
+        formatDate={formatDate}
+        {...navProps}
+        onRefresh={forms.handleRefreshRFIs}
+        onSave={forms.handleSaveRFI}
+        onEdit={forms.handleEditRFI}
+        onCancelEdit={forms.resetRFIForm}
+        onDelete={onDeleteRFI}
+        onSubjectChange={forms.setRFISubject}
+        onQuestionChange={forms.setRFIQuestion}
+        onResponsibleCompanyChange={forms.setRFIResponsibleCompany}
+        onSubmittedDateChange={forms.setRFISubmittedDate}
+        onDueDateChange={forms.setRFIDueDate}
+        onResponseChange={forms.setRFIResponse}
+        onStatusChange={forms.setRFIStatus}
+        isSaving={isOperationActive("saveRFI")}
+        isRefreshing={isOperationActive("refreshRFIs")}
+        isLoading={loading("rfis")}
       />
     );
   }

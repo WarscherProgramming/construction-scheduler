@@ -131,6 +131,24 @@ export function deleteChangeOrder(projectId, changeOrderId) {
   );
 }
 
+export function fetchRFIs(projectId) {
+  return authenticatedRequest(`/projects/${projectId}/rfis`);
+}
+
+export function createRFI(projectId, rfi) {
+  return jsonRequest(`/projects/${projectId}/rfis`, "POST", rfi);
+}
+
+export function updateRFI(projectId, rfiId, rfi) {
+  return jsonRequest(`/projects/${projectId}/rfis/${rfiId}`, "PUT", rfi);
+}
+
+export function deleteRFI(projectId, rfiId) {
+  return authenticatedRequest(`/projects/${projectId}/rfis/${rfiId}`, {
+    method: "DELETE",
+  });
+}
+
 export function reorderTasks(projectId, taskIds) {
   return jsonRequest(`/projects/${projectId}/tasks/reorder`, "PUT", {
     task_ids: taskIds,

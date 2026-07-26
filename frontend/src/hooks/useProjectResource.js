@@ -7,6 +7,7 @@ import {
   fetchNotesDelays,
   fetchProjectCompanies,
   fetchProjects,
+  fetchRFIs,
   fetchTasks,
   fetchTemplates,
 } from "../services/api";
@@ -14,7 +15,7 @@ import { sortByDateDescending } from "../utils/date";
 import { parseAppHash } from "../utils/navigation";
 
 /**
- * Owns every server-backed resource (projects, templates, and the six
+ * Owns every server-backed resource (projects, templates, and the
  * project-scoped collections), the concurrency gates, and the loading
  * effects. Project-scoped loaders share one factory: they guard on the
  * selected project, track per-resource loading state, drop stale responses
@@ -37,6 +38,7 @@ function useProjectResource({
   const [inspections, setInspections] = useState([]);
   const [notesDelays, setNotesDelays] = useState([]);
   const [changeOrders, setChangeOrders] = useState([]);
+  const [rfis, setRFIs] = useState([]);
   const [projectCompanies, setProjectCompanies] = useState([]);
 
   const [activeOperations, setActiveOperations] = useState([]);
@@ -218,6 +220,17 @@ function useProjectResource({
     [loadProjectResource]
   );
 
+  const loadRFIs = useCallback(
+    () =>
+      loadProjectResource(
+        "rfis",
+        fetchRFIs,
+        (data) => setRFIs(data.rfis || []),
+        "Unable to load RFIs"
+      ),
+    [loadProjectResource]
+  );
+
   const loadProjectCompanies = useCallback(
     () =>
       loadProjectResource(
@@ -238,6 +251,7 @@ function useProjectResource({
     setInspections([]);
     setNotesDelays([]);
     setChangeOrders([]);
+    setRFIs([]);
     setProjectCompanies([]);
   }, []);
 
@@ -262,6 +276,7 @@ function useProjectResource({
       setInspections([]);
       setNotesDelays([]);
       setChangeOrders([]);
+      setRFIs([]);
       setProjectCompanies([]);
 
       void Promise.all([loadTasks(), loadProjectCompanies()]);
@@ -292,6 +307,7 @@ function useProjectResource({
       inspections: [loadInspections],
       notesDelays: [loadNotesDelays],
       changeOrders: [loadChangeOrders],
+      rfis: [loadRFIs],
       projectSettings: [loadProjectCompanies],
     };
 
@@ -310,6 +326,7 @@ function useProjectResource({
     loadInspections,
     loadNotesDelays,
     loadProjectCompanies,
+    loadRFIs,
     selectedProjectId,
   ]);
 
@@ -325,6 +342,7 @@ function useProjectResource({
     inspections,
     notesDelays,
     changeOrders,
+    rfis,
     projectCompanies,
     loadProjects,
     loadTemplates,
@@ -333,6 +351,7 @@ function useProjectResource({
     loadInspections,
     loadNotesDelays,
     loadChangeOrders,
+    loadRFIs,
     loadProjectCompanies,
     clearAllData,
     runOperation,

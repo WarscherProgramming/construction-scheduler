@@ -34,6 +34,10 @@ export function parseLocalDateInputValue(value) {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
+export function isPastLocalDate(value, today = new Date()) {
+  return Boolean(value) && value < toLocalDateInputValue(today);
+}
+
 export function getCurrentWeekRange(date = new Date()) {
   const start = new Date(date);
   start.setHours(0, 0, 0, 0);
