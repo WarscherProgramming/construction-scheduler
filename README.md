@@ -5,13 +5,13 @@
 FieldFlow gives superintendents, project managers, and project engineers a
 single source of truth for the schedule, the field, and the paper trail —
 a spreadsheet-fast scheduler, an executive dashboard, and complete field
-records (daily logs, inspections, delays, change orders, RFIs, and
-Submittals).
+records (daily logs, inspections, delays, change orders, RFIs, Submittals,
+and Punch Lists).
 
 ![React 19](https://img.shields.io/badge/React-19-61dafb?logo=react&logoColor=white&labelColor=20232a)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.1x-009688?logo=fastapi&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169e1?logo=postgresql&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-189%20passing-2ea44f)
+![Tests](https://img.shields.io/badge/tests-217%20passing-2ea44f)
 ![Vite](https://img.shields.io/badge/Vite-8-646cff?logo=vite&logoColor=white)
 
 ![FieldFlow executive dashboard](docs/screenshots/dashboard.png)
@@ -64,9 +64,9 @@ question — *"what needs my attention today?"* — has a one-screen answer.
 - **Dynamic Gantt chart** rendered from the same task data, plus one-click PDF
   export.
 - **Executive dashboard** of derived insights — project-health gauge,
-  timeline-elapsed schedule health, RFI and Submittal health, attention lists,
-  and a merged activity feed — computed client-side from existing APIs (no
-  bespoke endpoints).
+  timeline-elapsed schedule health, RFI, Submittal, and Punch List health,
+  attention lists, and a merged activity feed — computed client-side from
+  existing APIs (no bespoke endpoints).
 - **Project-scoped RFI workflow** with server-assigned sequential numbering,
   Open/Pending/Closed states, responsible-company assignment, due-date and
   overdue tracking, and authenticated ownership enforcement.
@@ -75,6 +75,11 @@ question — *"what needs my attention today?"* — has a one-screen answer.
   and Rejected states; responsible-company and reviewer tracking; required-by,
   reviewed-date, and overdue tracking; dashboard health metrics; and
   authenticated ownership enforcement.
+- **Project-scoped Punch Lists workflow** with permanent sequential `PUNCH`
+  numbering; Open, In Progress, Completed, and Verified states; Low, Medium,
+  High, and Critical priorities; location, trade, responsible-company, and
+  assignee tracking; due-date, completion-date, and overdue tracking;
+  dashboard health metrics; and authenticated ownership enforcement.
 - **Accessible design system**: tokens, reusable UI primitives (Button, Card,
   Sidebar, PageHeader, Icon, ConfirmDialog, Skeleton), skip links, focus
   management, `aria-current` navigation, and screen-reader-labeled loading
@@ -84,8 +89,8 @@ question — *"what needs my attention today?"* — has a one-screen answer.
 - **Client-side onboarding**: first-run detection seeds a realistic demo
   project through the public API with visible progress — the app is never
   empty.
-- **Automated testing: 189 tests** — 133 frontend (Vitest + React Testing
-  Library, behavior- and accessibility-focused) and 56 backend (pytest,
+- **Automated testing: 217 tests** — 154 frontend (Vitest + React Testing
+  Library, behavior- and accessibility-focused) and 63 backend (pytest,
   covering the scheduling engine, critical path, services, migrations, CORS,
   and TestClient API integration).
 
@@ -110,14 +115,14 @@ question — *"what needs my attention today?"* — has a one-screen answer.
 every request carries it via a small fetch wrapper that also centralizes
 401 handling. Page containers call REST endpoints (`/projects/{id}/tasks`,
 `/daily-logs`, `/inspections`, `/notes-delays`, `/change-orders`, `/rfis`,
-`/submittals`, …); the
+`/submittals`, `/punch-items`, …); the
 FastAPI service layer applies the scheduling rules (dependencies, lag,
 workday/holiday calendars) and persists through SQLAlchemy models managed by
 Alembic migrations. Responses return the full recalculated task set, so the
 grid, Gantt, and dashboard always render from one consistent source. Dashboard
-insights (health score, RFI and Submittal health, attention lists, activity
-feed) are **derived client-side** in pure, unit-tested functions — no
-duplicate reporting API.
+insights (health score, RFI, Submittal, and Punch List health, attention
+lists, activity feed) are **derived client-side** in pure, unit-tested
+functions — no duplicate reporting API.
 
 ## Features
 
@@ -137,6 +142,8 @@ duplicate reporting API.
 - Open, overdue, and closed RFI health metrics with direct RFI navigation
 - Active, overdue, and approved Submittal health metrics with direct
   Submittals navigation
+- Open, overdue, and completed Punch List health metrics with direct Punch
+  Lists navigation
 - Unified project activity feed with "what changed since yesterday" markers
 
 **Field records**
@@ -149,8 +156,13 @@ duplicate reporting API.
 - Sequential per-project `SUB` numbering; Draft, Submitted, Under Review,
   Approved, Revise and Resubmit, and Rejected workflow
 - Required-by and reviewed-date tracking with overdue Submittal detection
-- Authenticated ownership enforcement across project RFI and Submittal
-  operations
+- Project-scoped Punch Item creation, editing, and deletion with location,
+  trade, responsible-company, and assignee tracking
+- Sequential per-project `PUNCH` numbering; Open, In Progress, Completed, and
+  Verified workflow; Low, Medium, High, and Critical priorities
+- Due-date and completion-date tracking with overdue Punch Item detection
+- Authenticated ownership enforcement across project RFI, Submittal, and
+  Punch Item operations
 - Search, filtering, status badges, and responsive record cards
 - Project-company management
 
@@ -178,23 +190,23 @@ duplicate reporting API.
 | Backend | FastAPI, SQLAlchemy, Alembic, Pydantic |
 | Database | PostgreSQL |
 | Auth | JWT (OAuth2 password flow) |
-| Testing | Vitest + React Testing Library (133), pytest (56) |
+| Testing | Vitest + React Testing Library (154), pytest (63) |
 | Hosting | Vercel (frontend) · Render (API + migrations) |
 
 ## Testing
 
-**189 automated tests.**
+**217 automated tests.**
 
-- **Frontend (133)** — Vitest + React Testing Library. Tests target behavior
+- **Frontend (154)** — Vitest + React Testing Library. Tests target behavior
   and accessibility: roles and names, keyboard flows (Enter/Escape editing,
   grid cursor navigation, focus traps), derived dashboard metrics,
   demo-seeding orchestration, App-level integration wiring, the HTTP
   transport layer, and loading/empty/error states.
-- **Backend (56)** — pytest. Covers the workday scheduling engine
+- **Backend (63)** — pytest. Covers the workday scheduling engine
   (dependencies, lag, federal holidays), critical path and total float,
   task services, relationship migrations, CORS configuration, and
   TestClient API integration (auth, ownership enforcement, task lifecycle,
-  RFIs, Submittals, and field records over HTTP).
+  RFIs, Submittals, Punch Lists, and field records over HTTP).
 
 ```bash
 # frontend
@@ -258,6 +270,9 @@ Set `VITE_API_URL` when pointing at a deployed API.
 - ✅ Project-scoped Submittals workflow with sequential numbering, complete
   review states, date validation, ownership enforcement, and dashboard health
   metrics
+- ✅ Project-scoped Punch Lists workflow with sequential numbering, complete
+  priority and status handling, date validation, ownership enforcement, and
+  dashboard health metrics
 - ✅ Branded landing page and first-run demo seeding
 - ✅ Icon system, confirmation dialogs, notifications, loading skeletons
 - ✅ Scheduler showcase: WBS numbering, inline validation, critical path +
@@ -268,7 +283,7 @@ Set `VITE_API_URL` when pointing at a deployed API.
   DRY cleanup with TestClient API integration coverage
 
 **Next**
-- Punch lists and document management
+- Document management
 - Weather-delay integration and resource loading
 - Milestone tasks, Gantt dependency arrows, and timeline zoom
 

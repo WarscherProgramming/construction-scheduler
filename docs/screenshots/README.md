@@ -1,7 +1,7 @@
 # Screenshot capture checklist
 
-The root README references the files below. Drop captures into this folder
-with these exact names and the README completes itself.
+The root README references the primary captures below. Use these exact names
+for both referenced and planned module screenshots.
 
 ## Setup (all captures)
 
@@ -16,13 +16,14 @@ with these exact names and the README completes itself.
 
 | File | View / state to capture |
 |---|---|
-| `dashboard.png` | Project dashboard, top of page: Today's Focus card with items, health gauge, and all KPI tiles visible, including RFI and Submittal health. Hero image — make it count. |
+| `dashboard.png` | Project dashboard, top of page: Today's Focus card with items, health gauge, and all KPI tiles visible, including RFI, Submittal, and Punch List health. Hero image — make it count. |
 | `schedule-grid.png` | Schedule table view: a row selected (brand accent visible), one cell in inline-edit mode, at least one parent task with indented children. |
 | `schedule-dnd.gif` | ~5 s: grab a task's drag handle, drag it two rows, drop; dates recalculate. |
 | `login.png` | Logged-out landing page at desktop width: split panel with marketing copy, highlights, app preview, and the auth card. |
 | `gantt.png` | Schedule → Gantt view of the demo project. |
 | `first-run.gif` | ~6 s: first-run welcome screen → click "Load Sample Project" → progress bar filling → dashboard appears. Requires a fresh account. |
 | `change-orders.png` | Change Orders page: records visible with status badges, a filter applied, and the delete confirmation dialog open. |
+| `punch-lists.png` | Punch Lists page: populated Punch Items table with visible status and priority labels, an overdue indicator, and the create or edit workflow visible. |
 | `mobile.png` | Dashboard or a record page at ~390 px width: collapsed horizontal nav and stacked record cards. (Optional composite of two views side by side.) |
 
 ## Tips
@@ -31,4 +32,6 @@ with these exact names and the README completes itself.
 - Take captures after data loads — no skeletons visible unless intentional.
 - Re-capture `dashboard.png` whenever the dashboard design changes; it is the
   first image recruiters see.
-- M10 adds the Submittal health KPI, so `dashboard.png` now needs recapturing.
+- M11 adds the Punch List health KPI alongside the Submittal KPI, so
+  `dashboard.png` now needs recapturing and `punch-lists.png` needs its first
+  capture.
