@@ -11,7 +11,7 @@ and Punch Lists).
 ![React 19](https://img.shields.io/badge/React-19-61dafb?logo=react&logoColor=white&labelColor=20232a)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.1x-009688?logo=fastapi&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169e1?logo=postgresql&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-217%20passing-2ea44f)
+![Tests](https://img.shields.io/badge/tests-266%20passing-2ea44f)
 ![Vite](https://img.shields.io/badge/Vite-8-646cff?logo=vite&logoColor=white)
 
 ![FieldFlow executive dashboard](docs/screenshots/dashboard.png)
@@ -37,8 +37,8 @@ and Punch Lists).
 2. **Schedule** — click any cell to edit inline (Enter saves, Escape cancels),
    select a row, **drag to reorder**, indent/outdent to build a hierarchy.
 3. Toggle the **Gantt** view, then **Export Schedule as PDF**.
-4. **Change Orders** — filter by status, delete a record, and meet the
-   accessible confirmation dialog.
+4. **Change Orders** — create or edit a numbered record, track cost and
+   schedule impact, filter by status, and use the accessible delete flow.
 5. Shrink the window — the persistent rail and record tables adapt down to
    phone widths.
 
@@ -80,6 +80,13 @@ question — *"what needs my attention today?"* — has a one-screen answer.
   High, and Critical priorities; location, trade, responsible-company, and
   assignee tracking; due-date, completion-date, and overdue tracking;
   dashboard health metrics; and authenticated ownership enforcement.
+- **Enhanced project-scoped Change Orders workflow** with backend-assigned,
+  permanent `CO` numbering; eight lifecycle statuses; proposed and approved
+  fixed-precision amounts; schedule impact, lifecycle dates, title,
+  description, reason, company, and responsible-party tracking; full
+  create/edit/delete and filtering flows; legacy-record compatibility;
+  dashboard health and cost metrics; recent activity; and authenticated
+  ownership enforcement.
 - **Accessible design system**: tokens, reusable UI primitives (Button, Card,
   Sidebar, PageHeader, Icon, ConfirmDialog, Skeleton), skip links, focus
   management, `aria-current` navigation, and screen-reader-labeled loading
@@ -89,8 +96,8 @@ question — *"what needs my attention today?"* — has a one-screen answer.
 - **Client-side onboarding**: first-run detection seeds a realistic demo
   project through the public API with visible progress — the app is never
   empty.
-- **Automated testing: 217 tests** — 154 frontend (Vitest + React Testing
-  Library, behavior- and accessibility-focused) and 63 backend (pytest,
+- **Automated testing: 266 tests** — 188 frontend (Vitest + React Testing
+  Library, behavior- and accessibility-focused) and 78 backend (pytest,
   covering the scheduling engine, critical path, services, migrations, CORS,
   and TestClient API integration).
 
@@ -120,9 +127,18 @@ FastAPI service layer applies the scheduling rules (dependencies, lag,
 workday/holiday calendars) and persists through SQLAlchemy models managed by
 Alembic migrations. Responses return the full recalculated task set, so the
 grid, Gantt, and dashboard always render from one consistent source. Dashboard
-insights (health score, RFI, Submittal, and Punch List health, attention
-lists, activity feed) are **derived client-side** in pure, unit-tested
-functions — no duplicate reporting API.
+insights (health score; Change Order, RFI, Submittal, and Punch List health;
+attention lists; activity feed) are **derived client-side** in pure,
+unit-tested functions — no duplicate reporting API.
+
+Change Orders use a focused service layer for validation and project-scoped
+`CO-###` allocation. A persistent per-project sequence table prevents deleted
+numbers from being reused, while a database constraint enforces number
+uniqueness within each project. The enhancement migration preserves existing
+rows and unique nonstandard numbers, repairs only missing or duplicate
+numbers, backfills safely parseable legacy amounts into fixed-precision
+`NUMERIC(14,2)` fields, and retains the original `amount` field for
+compatibility.
 
 ## Features
 
@@ -144,10 +160,22 @@ functions — no duplicate reporting API.
   Submittals navigation
 - Open, overdue, and completed Punch List health metrics with direct Punch
   Lists navigation
+- Change Order Active, Approved, and Rejected counts; exact Proposed and
+  Approved Cost totals; and whole-day Schedule Impact with direct navigation
 - Unified project activity feed with "what changed since yesterday" markers
 
 **Field records**
-- Daily logs, inspections, notes & delays, and change orders
+- Daily logs, inspections, and notes & delays
+- Project-scoped Change Order creation, editing, and deletion with
+  backend-generated permanent `CO` numbering and authenticated ownership
+  enforcement
+- Draft, Pending, Submitted, Under Review, Approved, Rejected, Executed, and
+  Void workflow with title, description, reason, company, and
+  responsible-party tracking
+- Fixed-precision proposed and approved amounts, whole-day schedule impact,
+  and requested, submitted, approved, and executed lifecycle dates
+- Legacy Change Order compatibility, status filtering, validation, recent
+  Change Order display, and merged activity-feed support
 - Project-scoped RFI creation, editing, and deletion with responsible-company
   assignment and Open, Pending, or Closed workflow
 - Sequential per-project RFI numbering with due-date and overdue tracking
@@ -161,8 +189,8 @@ functions — no duplicate reporting API.
 - Sequential per-project `PUNCH` numbering; Open, In Progress, Completed, and
   Verified workflow; Low, Medium, High, and Critical priorities
 - Due-date and completion-date tracking with overdue Punch Item detection
-- Authenticated ownership enforcement across project RFI, Submittal, and
-  Punch Item operations
+- Authenticated ownership enforcement across project Change Order, RFI,
+  Submittal, and Punch Item operations
 - Search, filtering, status badges, and responsive record cards
 - Project-company management
 
@@ -178,7 +206,7 @@ functions — no duplicate reporting API.
 | ![Executive dashboard](docs/screenshots/dashboard.png) *Executive dashboard — Today's Focus, health gauge, KPIs* | ![Schedule grid](docs/screenshots/schedule-grid.png) *Spreadsheet-style schedule with hierarchy and inline editing* |
 | ![Drag-and-drop reordering](docs/screenshots/schedule-dnd.gif) *Drag-and-drop task reordering* | ![Landing page](docs/screenshots/login.png) *Split-panel landing and login* |
 | ![Gantt view](docs/screenshots/gantt.png) *Gantt visualization* | ![First-run onboarding](docs/screenshots/first-run.gif) *First-run onboarding seeds a full sample project* |
-| ![Change orders](docs/screenshots/change-orders.png) *Change orders — filters, badges, confirm dialog* | ![Responsive layout](docs/screenshots/mobile.png) *Responsive rail and record cards* |
+| ![Change orders](docs/screenshots/change-orders.png) *Change orders — generated numbers, lifecycle, cost, schedule impact, and status workflow* | ![Responsive layout](docs/screenshots/mobile.png) *Responsive rail and record cards* |
 
 *(Capture checklist: [docs/screenshots/README.md](docs/screenshots/README.md))*
 
@@ -190,23 +218,23 @@ functions — no duplicate reporting API.
 | Backend | FastAPI, SQLAlchemy, Alembic, Pydantic |
 | Database | PostgreSQL |
 | Auth | JWT (OAuth2 password flow) |
-| Testing | Vitest + React Testing Library (154), pytest (63) |
+| Testing | Vitest + React Testing Library (188), pytest (78) |
 | Hosting | Vercel (frontend) · Render (API + migrations) |
 
 ## Testing
 
-**217 automated tests.**
+**266 automated tests.**
 
-- **Frontend (154)** — Vitest + React Testing Library. Tests target behavior
+- **Frontend (188)** — Vitest + React Testing Library. Tests target behavior
   and accessibility: roles and names, keyboard flows (Enter/Escape editing,
   grid cursor navigation, focus traps), derived dashboard metrics,
   demo-seeding orchestration, App-level integration wiring, the HTTP
   transport layer, and loading/empty/error states.
-- **Backend (63)** — pytest. Covers the workday scheduling engine
+- **Backend (78)** — pytest. Covers the workday scheduling engine
   (dependencies, lag, federal holidays), critical path and total float,
   task services, relationship migrations, CORS configuration, and
   TestClient API integration (auth, ownership enforcement, task lifecycle,
-  RFIs, Submittals, Punch Lists, and field records over HTTP).
+  Change Orders, RFIs, Submittals, Punch Lists, and field records over HTTP).
 
 ```bash
 # frontend
@@ -273,6 +301,10 @@ Set `VITE_API_URL` when pointing at a deployed API.
 - ✅ Project-scoped Punch Lists workflow with sequential numbering, complete
   priority and status handling, date validation, ownership enforcement, and
   dashboard health metrics
+- ✅ Enhanced project-scoped Change Orders workflow with persistent numbering,
+  data-preserving legacy compatibility, fixed-precision financial fields,
+  lifecycle and schedule-impact tracking, complete frontend CRUD and
+  filtering, and dashboard health and cost metrics
 - ✅ Branded landing page and first-run demo seeding
 - ✅ Icon system, confirmation dialogs, notifications, loading skeletons
 - ✅ Scheduler showcase: WBS numbering, inline validation, critical path +
