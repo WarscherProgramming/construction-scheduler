@@ -2073,12 +2073,37 @@ button:disabled {
   max-width: 720px;
 }
 
+.change-order-form-actions,
 .rfi-form-actions,
 .submittal-form-actions,
 .punch-item-form-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+}
+
+.change-order-detail-list {
+  display: grid;
+  gap: 7px;
+  min-width: 12ch;
+  margin: 0;
+}
+
+.change-order-detail-list div {
+  display: grid;
+  gap: 1px;
+}
+
+.change-order-detail-list dt {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.change-order-detail-list dd {
+  margin: 0;
+  white-space: normal;
 }
 
 .rfi-status,

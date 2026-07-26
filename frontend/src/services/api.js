@@ -116,6 +116,14 @@ export function createChangeOrder(projectId, changeOrder) {
   );
 }
 
+export function updateChangeOrder(projectId, changeOrderId, changeOrder) {
+  return jsonRequest(
+    `/projects/${projectId}/change-orders/${changeOrderId}`,
+    "PUT",
+    changeOrder
+  );
+}
+
 export function fetchProjectCompanies(projectId) {
   return authenticatedRequest(`/projects/${projectId}/companies`);
 }

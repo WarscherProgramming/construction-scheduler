@@ -15,9 +15,16 @@ import {
   deleteRFI,
   deleteSubmittal,
   updateRFI,
+  updateChangeOrder,
   updatePunchItem,
   updateSubmittal,
 } from "../services/api";
+import {
+  normalizeMoneyInput,
+  normalizeOptionalValue,
+  normalizeScheduleImpact,
+  validateChangeOrderForm,
+} from "../utils/changeOrder";
 import { toLocalDateInputValue } from "../utils/date";
 
 /**
@@ -42,6 +49,7 @@ function useRecordForms({
   loadSubmittals,
   loadPunchItems,
   loadProjectCompanies,
+  clearNotice,
 }) {
   const [newProjectName, setNewProjectName] = useState("");
   const [logDate, setLogDate] = useState(toLocalDateInputValue);
@@ -56,14 +64,30 @@ function useRecordForms({
   const [noteDelayCompany, setNoteDelayCompany] = useState("");
   const [noteDelayDescription, setNoteDelayDescription] = useState("");
   const [noteDelayImpact, setNoteDelayImpact] = useState("");
+  const [editingChangeOrderId, setEditingChangeOrderId] = useState(null);
+  const [editingChangeOrderNumber, setEditingChangeOrderNumber] = useState("");
   const [changeOrderDate, setChangeOrderDate] = useState(toLocalDateInputValue);
-  const [changeOrderNumber, setChangeOrderNumber] = useState("");
+  const [changeOrderTitle, setChangeOrderTitle] = useState("");
   const [changeOrderCompany, setChangeOrderCompany] = useState("");
   const [changeOrderStatus, setChangeOrderStatus] = useState("Pending");
   const [changeOrderDescription, setChangeOrderDescription] = useState("");
-  const [changeOrderAmount, setChangeOrderAmount] = useState("");
+  const [changeOrderReason, setChangeOrderReason] = useState("");
+  const [changeOrderProposedAmount, setChangeOrderProposedAmount] =
+    useState("");
+  const [changeOrderApprovedAmount, setChangeOrderApprovedAmount] =
+    useState("");
+  const [changeOrderScheduleImpactDays, setChangeOrderScheduleImpactDays] =
+    useState("");
+  const [changeOrderRequestedDate, setChangeOrderRequestedDate] =
+    useState("");
+  const [changeOrderSubmittedDate, setChangeOrderSubmittedDate] =
+    useState("");
+  const [changeOrderApprovedDate, setChangeOrderApprovedDate] = useState("");
+  const [changeOrderExecutedDate, setChangeOrderExecutedDate] = useState("");
   const [changeOrderResponsibleParty, setChangeOrderResponsibleParty] =
     useState("");
+  const [changeOrderProjectId, setChangeOrderProjectId] =
+    useState(selectedProjectId);
   const [editingRFIId, setEditingRFIId] = useState(null);
   const [editingRFINumber, setEditingRFINumber] = useState("");
   const [rfiSubject, setRFISubject] = useState("");
@@ -106,6 +130,27 @@ function useRecordForms({
     useState(selectedProjectId);
   const [companyName, setCompanyName] = useState("");
   const [companyTrade, setCompanyTrade] = useState("");
+
+  if (changeOrderProjectId !== selectedProjectId) {
+    setChangeOrderProjectId(selectedProjectId);
+    setEditingChangeOrderId(null);
+    setEditingChangeOrderNumber("");
+    setChangeOrderDate(toLocalDateInputValue());
+    setChangeOrderTitle("");
+    setChangeOrderCompany("");
+    setChangeOrderStatus("Pending");
+    setChangeOrderDescription("");
+    setChangeOrderReason("");
+    setChangeOrderProposedAmount("");
+    setChangeOrderApprovedAmount("");
+    setChangeOrderScheduleImpactDays("");
+    setChangeOrderRequestedDate("");
+    setChangeOrderSubmittedDate("");
+    setChangeOrderApprovedDate("");
+    setChangeOrderExecutedDate("");
+    setChangeOrderResponsibleParty("");
+    clearNotice();
+  }
 
   if (rfiProjectId !== selectedProjectId) {
     setRFIProjectId(selectedProjectId);
@@ -262,37 +307,112 @@ function useRecordForms({
     });
   };
 
-  const handleCreateChangeOrder = async () => {
-    if (!changeOrderDate || !changeOrderNumber.trim()) {
-      reportValidationError(
-        "Complete the date and change order number before saving."
-      );
+  const resetChangeOrderForm = () => {
+    setEditingChangeOrderId(null);
+    setEditingChangeOrderNumber("");
+    setChangeOrderDate(toLocalDateInputValue());
+    setChangeOrderTitle("");
+    setChangeOrderCompany("");
+    setChangeOrderStatus("Pending");
+    setChangeOrderDescription("");
+    setChangeOrderReason("");
+    setChangeOrderProposedAmount("");
+    setChangeOrderApprovedAmount("");
+    setChangeOrderScheduleImpactDays("");
+    setChangeOrderRequestedDate("");
+    setChangeOrderSubmittedDate("");
+    setChangeOrderApprovedDate("");
+    setChangeOrderExecutedDate("");
+    setChangeOrderResponsibleParty("");
+  };
+
+  const handleEditChangeOrder = (changeOrder) => {
+    setEditingChangeOrderId(changeOrder.id);
+    setEditingChangeOrderNumber(changeOrder.co_number);
+    setChangeOrderDate(changeOrder.date || toLocalDateInputValue());
+    setChangeOrderTitle(changeOrder.title || "");
+    setChangeOrderCompany(changeOrder.company || "");
+    setChangeOrderStatus(changeOrder.status);
+    setChangeOrderDescription(changeOrder.description || "");
+    setChangeOrderReason(changeOrder.reason || "");
+    setChangeOrderProposedAmount(changeOrder.proposed_amount ?? "");
+    setChangeOrderApprovedAmount(changeOrder.approved_amount ?? "");
+    setChangeOrderScheduleImpactDays(
+      changeOrder.schedule_impact_days ?? ""
+    );
+    setChangeOrderRequestedDate(changeOrder.requested_date || "");
+    setChangeOrderSubmittedDate(changeOrder.submitted_date || "");
+    setChangeOrderApprovedDate(changeOrder.approved_date || "");
+    setChangeOrderExecutedDate(changeOrder.executed_date || "");
+    setChangeOrderResponsibleParty(changeOrder.responsible_party || "");
+  };
+
+  const handleSaveChangeOrder = async () => {
+    const validationMessage = validateChangeOrderForm({
+      date: changeOrderDate,
+      title: changeOrderTitle,
+      description: changeOrderDescription,
+      proposedAmount: changeOrderProposedAmount,
+      approvedAmount: changeOrderApprovedAmount,
+      scheduleImpactDays: changeOrderScheduleImpactDays,
+      requestedDate: changeOrderRequestedDate,
+      submittedDate: changeOrderSubmittedDate,
+      approvedDate: changeOrderApprovedDate,
+      executedDate: changeOrderExecutedDate,
+    });
+
+    if (validationMessage) {
+      reportValidationError(validationMessage);
       return;
     }
 
-    return runOperation("createChangeOrder", async () => {
-      try {
-        await createChangeOrder(selectedProjectId, {
-          date: changeOrderDate,
-          co_number: changeOrderNumber,
-          company: changeOrderCompany,
-          status: changeOrderStatus,
-          description: changeOrderDescription,
-          amount: changeOrderAmount,
-          responsible_party: changeOrderResponsibleParty,
-        });
+    return runOperation("saveChangeOrder", async () => {
+      const payload = {
+        date: changeOrderDate,
+        title: normalizeOptionalValue(changeOrderTitle),
+        company: normalizeOptionalValue(changeOrderCompany),
+        status: changeOrderStatus.trim(),
+        description: normalizeOptionalValue(changeOrderDescription),
+        reason: normalizeOptionalValue(changeOrderReason),
+        proposed_amount: normalizeMoneyInput(changeOrderProposedAmount),
+        approved_amount: normalizeMoneyInput(changeOrderApprovedAmount),
+        schedule_impact_days: normalizeScheduleImpact(
+          changeOrderScheduleImpactDays
+        ),
+        requested_date: normalizeOptionalValue(changeOrderRequestedDate),
+        submitted_date: normalizeOptionalValue(changeOrderSubmittedDate),
+        approved_date: normalizeOptionalValue(changeOrderApprovedDate),
+        executed_date: normalizeOptionalValue(changeOrderExecutedDate),
+        responsible_party: normalizeOptionalValue(
+          changeOrderResponsibleParty
+        ),
+      };
+      const isEditing = editingChangeOrderId !== null;
 
-        setChangeOrderDate(toLocalDateInputValue());
-        setChangeOrderNumber("");
-        setChangeOrderCompany("");
-        setChangeOrderStatus("Pending");
-        setChangeOrderDescription("");
-        setChangeOrderAmount("");
-        setChangeOrderResponsibleParty("");
+      try {
+        if (isEditing) {
+          await updateChangeOrder(
+            selectedProjectId,
+            editingChangeOrderId,
+            payload
+          );
+        } else {
+          await createChangeOrder(selectedProjectId, payload);
+        }
+
+        resetChangeOrderForm();
         await loadChangeOrders();
-        showNotice("success", "Change order saved.");
+        showNotice(
+          "success",
+          isEditing ? "Change order updated." : "Change order created."
+        );
       } catch (error) {
-        reportRequestError("Unable to create change order", error);
+        reportRequestError(
+          isEditing
+            ? "Unable to update change order"
+            : "Unable to create change order",
+          error
+        );
       }
     });
   };
@@ -301,6 +421,9 @@ function useRecordForms({
   const performChangeOrderDelete = async (id) => {
     try {
       await deleteChangeOrder(selectedProjectId, id);
+      if (editingChangeOrderId === id) {
+        resetChangeOrderForm();
+      }
       await loadChangeOrders();
       showNotice("success", "Change order deleted.");
     } catch (error) {
@@ -676,18 +799,34 @@ function useRecordForms({
     setNoteDelayDescription,
     noteDelayImpact,
     setNoteDelayImpact,
+    editingChangeOrderId,
+    editingChangeOrderNumber,
     changeOrderDate,
     setChangeOrderDate,
-    changeOrderNumber,
-    setChangeOrderNumber,
+    changeOrderTitle,
+    setChangeOrderTitle,
     changeOrderCompany,
     setChangeOrderCompany,
     changeOrderStatus,
     setChangeOrderStatus,
     changeOrderDescription,
     setChangeOrderDescription,
-    changeOrderAmount,
-    setChangeOrderAmount,
+    changeOrderReason,
+    setChangeOrderReason,
+    changeOrderProposedAmount,
+    setChangeOrderProposedAmount,
+    changeOrderApprovedAmount,
+    setChangeOrderApprovedAmount,
+    changeOrderScheduleImpactDays,
+    setChangeOrderScheduleImpactDays,
+    changeOrderRequestedDate,
+    setChangeOrderRequestedDate,
+    changeOrderSubmittedDate,
+    setChangeOrderSubmittedDate,
+    changeOrderApprovedDate,
+    setChangeOrderApprovedDate,
+    changeOrderExecutedDate,
+    setChangeOrderExecutedDate,
     changeOrderResponsibleParty,
     setChangeOrderResponsibleParty,
     editingRFIId,
@@ -754,7 +893,9 @@ function useRecordForms({
     handleCreateDailyLog,
     handleCreateInspection,
     handleCreateNoteDelay,
-    handleCreateChangeOrder,
+    handleEditChangeOrder,
+    resetChangeOrderForm,
+    handleSaveChangeOrder,
     performChangeOrderDelete,
     handleEditRFI,
     resetRFIForm,

@@ -10,40 +10,74 @@ import Card from "../components/ui/Card";
 import Icon from "../components/ui/Icon";
 import PageHeader from "../components/ui/PageHeader";
 import ProjectLayout from "../components/ui/ProjectLayout";
+import {
+  CHANGE_ORDER_STATUSES,
+  formatCurrency,
+  formatScheduleImpact,
+} from "../utils/changeOrder";
 
 function CompanyOptions({ companies }) {
   return companies.map((company) => (
-    <option key={company.id} value={company.name}>
-      {company.name}
-    </option>
+    <option key={company.id} value={company.name} />
   ));
+}
+
+function DetailList({ children }) {
+  return <dl className="change-order-detail-list">{children}</dl>;
+}
+
+function Detail({ label, children }) {
+  return (
+    <div>
+      <dt>{label}</dt>
+      <dd>{children}</dd>
+    </div>
+  );
 }
 
 function ChangeOrdersPage({
   projectName,
   changeOrders,
   projectCompanies,
+  editingChangeOrderId,
+  editingChangeOrderNumber,
   changeOrderDate,
-  changeOrderNumber,
+  changeOrderTitle,
   changeOrderCompany,
   changeOrderStatus,
   changeOrderDescription,
-  changeOrderAmount,
+  changeOrderReason,
+  changeOrderProposedAmount,
+  changeOrderApprovedAmount,
+  changeOrderScheduleImpactDays,
+  changeOrderRequestedDate,
+  changeOrderSubmittedDate,
+  changeOrderApprovedDate,
+  changeOrderExecutedDate,
   changeOrderResponsibleParty,
   formatDate,
   onNavigate,
   onLogout,
   onRefresh,
-  onCreate,
+  onSave,
+  onEdit,
+  onCancelEdit,
   onDelete,
   onDateChange,
-  onNumberChange,
+  onTitleChange,
   onCompanyChange,
   onStatusChange,
   onDescriptionChange,
-  onAmountChange,
+  onReasonChange,
+  onProposedAmountChange,
+  onApprovedAmountChange,
+  onScheduleImpactDaysChange,
+  onRequestedDateChange,
+  onSubmittedDateChange,
+  onApprovedDateChange,
+  onExecutedDateChange,
   onResponsiblePartyChange,
-  isCreating = false,
+  isSaving = false,
   isRefreshing = false,
   isLoading = false,
   isLoadingCompanies = false,
@@ -51,6 +85,21 @@ function ChangeOrdersPage({
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [companyFilter, setCompanyFilter] = useState("");
+  const isEditing = editingChangeOrderId !== null;
+  const hasKnownStatus = CHANGE_ORDER_STATUSES.includes(changeOrderStatus);
+
+  const companyFilterOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          [
+            ...projectCompanies.map((company) => company.name),
+            ...changeOrders.map((changeOrder) => changeOrder.company),
+          ].filter(Boolean)
+        )
+      ).sort(),
+    [changeOrders, projectCompanies]
+  );
 
   const filteredChangeOrders = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -64,11 +113,18 @@ function ChangeOrdersPage({
         !query ||
         [
           changeOrder.co_number,
+          changeOrder.title,
           changeOrder.company,
+          changeOrder.status,
           changeOrder.description,
+          changeOrder.reason,
           changeOrder.responsible_party,
           changeOrder.amount,
-        ].some((value) => String(value || "").toLowerCase().includes(query));
+          changeOrder.proposed_amount,
+          changeOrder.approved_amount,
+        ].some((value) =>
+          String(value || "").toLowerCase().includes(query)
+        );
 
       return matchesStatus && matchesCompany && matchesQuery;
     });
@@ -91,7 +147,7 @@ function ChangeOrdersPage({
           >
             <Icon name="refresh" size={17} />
             {isRefreshing
-              ? "Refreshing change orders…"
+              ? "Refreshing change orders..."
               : "Refresh Change Orders"}
           </Button>
         }
@@ -99,14 +155,34 @@ function ChangeOrdersPage({
 
       <Card
         as="form"
-        title="Create Change Order"
+        title={
+          isEditing
+            ? `Edit ${editingChangeOrderNumber}`
+            : "Create Change Order"
+        }
         bodyClassName="form-stack"
         onSubmit={(event) => {
           event.preventDefault();
-          onCreate();
+          onSave();
         }}
       >
-        <FormField label="Date" htmlFor="change-order-date" required>
+        <FormField
+          label="Change order number"
+          htmlFor="change-order-number"
+        >
+          <input
+            id="change-order-number"
+            className="field-control"
+            readOnly
+            value={
+              isEditing
+                ? editingChangeOrderNumber
+                : "Assigned when saved"
+            }
+          />
+        </FormField>
+
+        <FormField label="Record date" htmlFor="change-order-date" required>
           <input
             id="change-order-date"
             className="field-control"
@@ -116,29 +192,35 @@ function ChangeOrdersPage({
             onChange={(event) => onDateChange(event.target.value)}
           />
         </FormField>
-        <FormField label="Change order number" htmlFor="change-order-number" required>
+
+        <FormField
+          label="Title"
+          htmlFor="change-order-title"
+          hint="A title or description is required."
+        >
           <input
-            id="change-order-number"
+            id="change-order-title"
             className="field-control"
-            required
-            value={changeOrderNumber}
-            onChange={(event) => onNumberChange(event.target.value)}
+            maxLength={500}
+            value={changeOrderTitle}
+            onChange={(event) => onTitleChange(event.target.value)}
           />
         </FormField>
+
         <FormField label="Company" htmlFor="change-order-company">
-          <select
+          <input
             id="change-order-company"
             className="field-control"
-            value={changeOrderCompany}
+            list="change-order-company-options"
             disabled={isLoadingCompanies}
+            value={changeOrderCompany}
             onChange={(event) => onCompanyChange(event.target.value)}
-          >
-            <option value="">
-              {isLoadingCompanies ? "Loading companies…" : "Select company"}
-            </option>
+          />
+          <datalist id="change-order-company-options">
             <CompanyOptions companies={projectCompanies} />
-          </select>
+          </datalist>
         </FormField>
+
         <FormField label="Status" htmlFor="change-order-status">
           <select
             id="change-order-status"
@@ -146,37 +228,154 @@ function ChangeOrdersPage({
             value={changeOrderStatus}
             onChange={(event) => onStatusChange(event.target.value)}
           >
-            <option value="Pending">Pending</option>
-            <option value="Approved">Approved</option>
-            <option value="Rejected">Rejected</option>
-            <option value="Void">Void</option>
+            {!hasKnownStatus && (
+              <option value={changeOrderStatus}>
+                {changeOrderStatus || "Unknown"}
+              </option>
+            )}
+            {CHANGE_ORDER_STATUSES.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
           </select>
         </FormField>
-        <FormField label="Amount" htmlFor="change-order-amount">
+
+        <FormField
+          label="Proposed amount"
+          htmlFor="change-order-proposed-amount"
+          hint="U.S. dollars, with up to two decimal places."
+        >
           <input
-            id="change-order-amount"
+            id="change-order-proposed-amount"
             className="field-control"
             inputMode="decimal"
-            value={changeOrderAmount}
-            onChange={(event) => onAmountChange(event.target.value)}
+            placeholder="0.00"
+            value={changeOrderProposedAmount}
+            onChange={(event) =>
+              onProposedAmountChange(event.target.value)
+            }
           />
         </FormField>
+
+        <FormField
+          label="Approved amount"
+          htmlFor="change-order-approved-amount"
+          hint="U.S. dollars, with up to two decimal places."
+        >
+          <input
+            id="change-order-approved-amount"
+            className="field-control"
+            inputMode="decimal"
+            placeholder="0.00"
+            value={changeOrderApprovedAmount}
+            onChange={(event) =>
+              onApprovedAmountChange(event.target.value)
+            }
+          />
+        </FormField>
+
+        <FormField
+          label="Schedule impact"
+          htmlFor="change-order-schedule-impact"
+          hint="Whole days; negative values reduce the schedule."
+        >
+          <input
+            id="change-order-schedule-impact"
+            className="field-control"
+            type="number"
+            step="1"
+            value={changeOrderScheduleImpactDays}
+            onChange={(event) =>
+              onScheduleImpactDaysChange(event.target.value)
+            }
+          />
+        </FormField>
+
+        <FormField
+          label="Requested date"
+          htmlFor="change-order-requested-date"
+        >
+          <input
+            id="change-order-requested-date"
+            className="field-control"
+            type="date"
+            value={changeOrderRequestedDate}
+            onChange={(event) =>
+              onRequestedDateChange(event.target.value)
+            }
+          />
+        </FormField>
+
+        <FormField
+          label="Submitted date"
+          htmlFor="change-order-submitted-date"
+        >
+          <input
+            id="change-order-submitted-date"
+            className="field-control"
+            type="date"
+            min={changeOrderRequestedDate || undefined}
+            value={changeOrderSubmittedDate}
+            onChange={(event) =>
+              onSubmittedDateChange(event.target.value)
+            }
+          />
+        </FormField>
+
+        <FormField
+          label="Approved date"
+          htmlFor="change-order-approved-date"
+        >
+          <input
+            id="change-order-approved-date"
+            className="field-control"
+            type="date"
+            min={changeOrderSubmittedDate || undefined}
+            value={changeOrderApprovedDate}
+            onChange={(event) =>
+              onApprovedDateChange(event.target.value)
+            }
+          />
+        </FormField>
+
+        <FormField
+          label="Executed date"
+          htmlFor="change-order-executed-date"
+        >
+          <input
+            id="change-order-executed-date"
+            className="field-control"
+            type="date"
+            min={changeOrderApprovedDate || undefined}
+            value={changeOrderExecutedDate}
+            onChange={(event) =>
+              onExecutedDateChange(event.target.value)
+            }
+          />
+        </FormField>
+
         <FormField
           label="Responsible party"
           htmlFor="change-order-responsible-party"
         >
-          <select
+          <input
             id="change-order-responsible-party"
             className="field-control"
-            value={changeOrderResponsibleParty}
+            list="change-order-company-options"
             disabled={isLoadingCompanies}
-            onChange={(event) => onResponsiblePartyChange(event.target.value)}
-          >
-            <option value="">Select responsible party</option>
-            <CompanyOptions companies={projectCompanies} />
-          </select>
+            value={changeOrderResponsibleParty}
+            onChange={(event) =>
+              onResponsiblePartyChange(event.target.value)
+            }
+          />
         </FormField>
-        <FormField label="Description" htmlFor="change-order-description">
+
+        <FormField
+          label="Description"
+          htmlFor="change-order-description"
+          hint="A title or description is required."
+        >
           <textarea
             id="change-order-description"
             className="field-control"
@@ -185,14 +384,34 @@ function ChangeOrdersPage({
           />
         </FormField>
 
-        <Button
-          type="submit"
-          variant="primary"
-          disabled={isCreating}
-          aria-busy={isCreating}
-        >
-          {isCreating ? "Saving change order…" : "Save Change Order"}
-        </Button>
+        <FormField label="Reason" htmlFor="change-order-reason">
+          <textarea
+            id="change-order-reason"
+            className="field-control"
+            value={changeOrderReason}
+            onChange={(event) => onReasonChange(event.target.value)}
+          />
+        </FormField>
+
+        <div className="change-order-form-actions">
+          <Button
+            type="submit"
+            variant="primary"
+            disabled={isSaving}
+            aria-busy={isSaving}
+          >
+            {isSaving
+              ? "Saving change order..."
+              : isEditing
+                ? "Update Change Order"
+                : "Create Change Order"}
+          </Button>
+          {isEditing && (
+            <Button onClick={onCancelEdit} disabled={isSaving}>
+              Cancel Edit
+            </Button>
+          )}
+        </div>
       </Card>
 
       <RecordFilters resultCount={filteredChangeOrders.length}>
@@ -201,7 +420,7 @@ function ChangeOrdersPage({
             id="change-order-search"
             className="field-control"
             type="search"
-            placeholder="Number, company, amount, or description"
+            placeholder="Number, title, company, amount, or description"
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
           />
@@ -214,10 +433,11 @@ function ChangeOrdersPage({
             onChange={(event) => setStatusFilter(event.target.value)}
           >
             <option value="">All statuses</option>
-            <option value="Pending">Pending</option>
-            <option value="Approved">Approved</option>
-            <option value="Rejected">Rejected</option>
-            <option value="Void">Void</option>
+            {CHANGE_ORDER_STATUSES.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
           </select>
         </FormField>
         <FormField label="Company" htmlFor="change-order-company-filter">
@@ -229,7 +449,11 @@ function ChangeOrdersPage({
             onChange={(event) => setCompanyFilter(event.target.value)}
           >
             <option value="">All companies</option>
-            <CompanyOptions companies={projectCompanies} />
+            {companyFilterOptions.map((company) => (
+              <option key={company} value={company}>
+                {company}
+              </option>
+            ))}
           </select>
         </FormField>
       </RecordFilters>
@@ -237,54 +461,116 @@ function ChangeOrdersPage({
       <RecordTable
         label="Change orders"
         isLoading={isLoading}
-        loadingMessage="Loading change orders…"
+        loadingMessage="Loading change orders..."
         emptyMessage={
           changeOrders.length
             ? "No change orders match the current filters."
             : "No change orders yet. Create the first change order above."
         }
         headers={[
-          "Date",
-          "CO Number",
+          "Number",
+          "Title",
           "Company",
           "Status",
-          "Amount",
+          "Amounts",
+          "Schedule Impact",
+          "Lifecycle",
           "Responsible Party",
-          "Description",
+          "Details",
           "Actions",
         ]}
       >
-        {filteredChangeOrders.map((changeOrder) => (
-          <tr key={changeOrder.id}>
-            <RecordCell label="Date">
-              {formatDate(changeOrder.date)}
-            </RecordCell>
-            <RecordCell label="CO Number">
-              {changeOrder.co_number}
-            </RecordCell>
-            <RecordCell label="Company">{changeOrder.company}</RecordCell>
-            <RecordCell label="Status">
-              <StatusBadge value={changeOrder.status} />
-            </RecordCell>
-            <RecordCell label="Amount">{changeOrder.amount}</RecordCell>
-            <RecordCell label="Responsible Party">
-              {changeOrder.responsible_party}
-            </RecordCell>
-            <RecordCell label="Description">
-              {changeOrder.description}
-            </RecordCell>
-            <RecordCell label="Actions" className="record-actions">
-              <Button
-                variant="danger"
-                onClick={() => onDelete(changeOrder.id)}
-                aria-label={`Delete change order ${changeOrder.co_number}`}
-              >
-                <Icon name="trash" size={16} />
-                Delete
-              </Button>
-            </RecordCell>
-          </tr>
-        ))}
+        {filteredChangeOrders.map((changeOrder) => {
+          const hasEnhancedAmount =
+            changeOrder.proposed_amount != null ||
+            changeOrder.approved_amount != null;
+
+          return (
+            <tr key={changeOrder.id}>
+              <RecordCell label="Number">
+                {changeOrder.co_number}
+              </RecordCell>
+              <RecordCell label="Title">
+                {changeOrder.title || "Untitled change order"}
+              </RecordCell>
+              <RecordCell label="Company">
+                {changeOrder.company || "Not specified"}
+              </RecordCell>
+              <RecordCell label="Status">
+                <StatusBadge value={changeOrder.status} />
+              </RecordCell>
+              <RecordCell label="Amounts">
+                <DetailList>
+                  <Detail label="Proposed">
+                    {formatCurrency(changeOrder.proposed_amount)}
+                  </Detail>
+                  <Detail label="Approved">
+                    {formatCurrency(changeOrder.approved_amount)}
+                  </Detail>
+                  {!hasEnhancedAmount && changeOrder.amount && (
+                    <Detail label="Legacy amount">
+                      {changeOrder.amount}
+                    </Detail>
+                  )}
+                </DetailList>
+              </RecordCell>
+              <RecordCell label="Schedule Impact">
+                {formatScheduleImpact(changeOrder.schedule_impact_days)}
+              </RecordCell>
+              <RecordCell label="Lifecycle">
+                <DetailList>
+                  <Detail label="Record">
+                    {formatDate(changeOrder.date)}
+                  </Detail>
+                  <Detail label="Requested">
+                    {formatDate(changeOrder.requested_date)}
+                  </Detail>
+                  <Detail label="Submitted">
+                    {formatDate(changeOrder.submitted_date)}
+                  </Detail>
+                  <Detail label="Approved">
+                    {formatDate(changeOrder.approved_date)}
+                  </Detail>
+                  <Detail label="Executed">
+                    {formatDate(changeOrder.executed_date)}
+                  </Detail>
+                </DetailList>
+              </RecordCell>
+              <RecordCell label="Responsible Party">
+                {changeOrder.responsible_party || "Not specified"}
+              </RecordCell>
+              <RecordCell label="Details">
+                <DetailList>
+                  <Detail label="Description">
+                    {changeOrder.description || "No description"}
+                  </Detail>
+                  <Detail label="Reason">
+                    {changeOrder.reason || "No reason"}
+                  </Detail>
+                </DetailList>
+              </RecordCell>
+              <RecordCell label="Actions" className="record-actions">
+                <Button
+                  onClick={() => onEdit(changeOrder)}
+                  aria-label={`Edit change order ${changeOrder.co_number}`}
+                >
+                  <Icon name="pencil" size={16} />
+                  Edit
+                </Button>
+                <Button
+                  variant="danger"
+                  onClick={() =>
+                    onDelete(changeOrder.id, changeOrder.co_number)
+                  }
+                  aria-label={`Delete change order ${changeOrder.co_number}`}
+                >
+                  <Icon name="trash" size={16} />
+                  Delete
+                </Button>
+              </RecordCell>
+            </tr>
+          );
+        })}
       </RecordTable>
     </ProjectLayout>
   );

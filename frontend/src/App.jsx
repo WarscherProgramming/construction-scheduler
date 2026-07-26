@@ -97,6 +97,7 @@ function App() {
     loadSubmittals: data.loadSubmittals,
     loadPunchItems: data.loadPunchItems,
     loadProjectCompanies: data.loadProjectCompanies,
+    clearNotice: () => setNotice(null),
   });
 
   // Authentication form state and onboarding remain app-level concerns.
@@ -222,11 +223,11 @@ function App() {
     });
   };
 
-  const handleDeleteChangeOrder = (id) => {
+  const handleDeleteChangeOrder = (id, number) => {
     setPendingDelete({
       kind: "changeOrder",
       id,
-      title: "Delete this change order?",
+      title: `Delete ${number}?`,
       message:
         "The change order will be permanently removed. This action cannot be undone.",
     });

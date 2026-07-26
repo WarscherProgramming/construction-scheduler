@@ -207,28 +207,50 @@ function AppRouter({
         projectName={projectName}
         changeOrders={changeOrders}
         projectCompanies={projectCompanies}
+        editingChangeOrderId={forms.editingChangeOrderId}
+        editingChangeOrderNumber={forms.editingChangeOrderNumber}
         changeOrderDate={forms.changeOrderDate}
-        changeOrderNumber={forms.changeOrderNumber}
+        changeOrderTitle={forms.changeOrderTitle}
         changeOrderCompany={forms.changeOrderCompany}
         changeOrderStatus={forms.changeOrderStatus}
         changeOrderDescription={forms.changeOrderDescription}
-        changeOrderAmount={forms.changeOrderAmount}
+        changeOrderReason={forms.changeOrderReason}
+        changeOrderProposedAmount={forms.changeOrderProposedAmount}
+        changeOrderApprovedAmount={forms.changeOrderApprovedAmount}
+        changeOrderScheduleImpactDays={
+          forms.changeOrderScheduleImpactDays
+        }
+        changeOrderRequestedDate={forms.changeOrderRequestedDate}
+        changeOrderSubmittedDate={forms.changeOrderSubmittedDate}
+        changeOrderApprovedDate={forms.changeOrderApprovedDate}
+        changeOrderExecutedDate={forms.changeOrderExecutedDate}
         changeOrderResponsibleParty={forms.changeOrderResponsibleParty}
         formatDate={formatDate}
         {...navProps}
         onRefresh={forms.handleRefreshChangeOrders}
-        onCreate={forms.handleCreateChangeOrder}
-        isCreating={isOperationActive("createChangeOrder")}
+        onSave={forms.handleSaveChangeOrder}
+        onEdit={forms.handleEditChangeOrder}
+        onCancelEdit={forms.resetChangeOrderForm}
+        isSaving={isOperationActive("saveChangeOrder")}
         isRefreshing={isOperationActive("refreshChangeOrders")}
         isLoading={loading("changeOrders")}
         isLoadingCompanies={loading("companies")}
         onDelete={onDeleteChangeOrder}
         onDateChange={forms.setChangeOrderDate}
-        onNumberChange={forms.setChangeOrderNumber}
+        onTitleChange={forms.setChangeOrderTitle}
         onCompanyChange={forms.setChangeOrderCompany}
         onStatusChange={forms.setChangeOrderStatus}
         onDescriptionChange={forms.setChangeOrderDescription}
-        onAmountChange={forms.setChangeOrderAmount}
+        onReasonChange={forms.setChangeOrderReason}
+        onProposedAmountChange={forms.setChangeOrderProposedAmount}
+        onApprovedAmountChange={forms.setChangeOrderApprovedAmount}
+        onScheduleImpactDaysChange={
+          forms.setChangeOrderScheduleImpactDays
+        }
+        onRequestedDateChange={forms.setChangeOrderRequestedDate}
+        onSubmittedDateChange={forms.setChangeOrderSubmittedDate}
+        onApprovedDateChange={forms.setChangeOrderApprovedDate}
+        onExecutedDateChange={forms.setChangeOrderExecutedDate}
         onResponsiblePartyChange={forms.setChangeOrderResponsibleParty}
       />
     );

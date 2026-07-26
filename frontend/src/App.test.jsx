@@ -27,6 +27,7 @@ vi.mock("./services/api", () => ({
   createNoteDelay: vi.fn(),
   fetchChangeOrders: vi.fn(),
   createChangeOrder: vi.fn(),
+  updateChangeOrder: vi.fn(),
   fetchProjectCompanies: vi.fn(),
   createProjectCompany: vi.fn(),
   deleteChangeOrder: vi.fn(),
@@ -54,9 +55,11 @@ vi.mock("./services/demoSeeder", () => ({
 import App from "./App";
 import AuthProvider from "./auth/AuthProvider";
 import {
+  createChangeOrder,
   createRFI,
   createPunchItem,
   createSubmittal,
+  deleteChangeOrder,
   deletePunchItem,
   deleteRFI,
   deleteSubmittal,
@@ -72,6 +75,7 @@ import {
   fetchTasks,
   fetchTemplates,
   updateRFI,
+  updateChangeOrder,
   updatePunchItem,
   updateSubmittal,
 } from "./services/api";
@@ -83,6 +87,32 @@ function renderApp() {
       <App />
     </AuthProvider>
   );
+}
+
+function makeChangeOrder(overrides = {}) {
+  return {
+    id: 1,
+    project_id: 1,
+    date: "2026-07-20",
+    co_number: "CO-001",
+    company: "Desert Concrete",
+    status: "Pending",
+    description: "Revise north entrance.",
+    amount: null,
+    responsible_party: "Desert Concrete",
+    title: "North entrance revision",
+    reason: null,
+    proposed_amount: "1250.00",
+    approved_amount: null,
+    schedule_impact_days: 2,
+    requested_date: "2026-07-20",
+    submitted_date: null,
+    approved_date: null,
+    executed_date: null,
+    created_at: "2026-07-26T12:00:00Z",
+    updated_at: "2026-07-26T12:00:00Z",
+    ...overrides,
+  };
 }
 
 describe("App integration (hooks wiring)", () => {
@@ -100,6 +130,11 @@ describe("App integration (hooks wiring)", () => {
     fetchInspections.mockResolvedValue({ inspections: [] });
     fetchNotesDelays.mockResolvedValue({ notes_delays: [] });
     fetchChangeOrders.mockResolvedValue({ change_orders: [] });
+    createChangeOrder.mockResolvedValue({});
+    updateChangeOrder.mockResolvedValue({});
+    deleteChangeOrder.mockResolvedValue({
+      message: "Change order deleted",
+    });
     fetchRFIs.mockResolvedValue({ rfis: [] });
     createRFI.mockResolvedValue({});
     updateRFI.mockResolvedValue({});
@@ -576,6 +611,527 @@ describe("App integration (hooks wiring)", () => {
     expect(
       await screen.findByText(/Unable to load projects\. Server exploded/)
     ).toBeInTheDocument();
+  });
+
+  it("loads the refresh-safe Change Orders route exactly once", async () => {
+    let resolveChangeOrders;
+
+    fetchProjects.mockResolvedValue({
+      projects: [{ id: 1, name: "Riverside" }],
+    });
+    fetchChangeOrders.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveChangeOrders = resolve;
+        })
+    );
+    window.location.hash = "#/projects/1/change-orders";
+
+    renderApp();
+
+    expect(
+      await screen.findByRole("heading", { name: "Change Orders" })
+    ).toBeInTheDocument();
+    expect(window.location.hash).toBe("#/projects/1/change-orders");
+    expect(
+      screen.getByRole("button", { name: "Change Orders" })
+    ).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Loading change orders..."
+    );
+    expect(fetchChangeOrders).toHaveBeenCalledTimes(1);
+    expect(fetchChangeOrders).toHaveBeenCalledWith(1);
+
+    await act(async () => {
+      resolveChangeOrders({ change_orders: [] });
+    });
+
+    expect(
+      await screen.findByText(
+        "No change orders yet. Create the first change order above."
+      )
+    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(document.title).toContain("Riverside");
+      expect(document.title).toContain("Change Orders | FieldFlow");
+    });
+  });
+
+  it("validates and creates a title-only Change Order without a number", async () => {
+    const user = userEvent.setup();
+    const created = makeChangeOrder({
+      proposed_amount: "0.00",
+      schedule_impact_days: -2,
+    });
+    let records = [];
+
+    fetchProjects.mockResolvedValue({
+      projects: [{ id: 1, name: "Riverside" }],
+    });
+    fetchChangeOrders.mockImplementation(async () => ({
+      change_orders: records,
+    }));
+    createChangeOrder.mockImplementation(async () => {
+      records = [created];
+      return created;
+    });
+    window.location.hash = "#/projects/1/change-orders";
+
+    renderApp();
+
+    await screen.findByRole("heading", { name: "Change Orders" });
+    await user.click(
+      screen.getByRole("button", { name: "Create Change Order" })
+    );
+    expect(
+      await screen.findByText("Enter a title or description before saving.")
+    ).toBeInTheDocument();
+    expect(createChangeOrder).not.toHaveBeenCalled();
+
+    await user.type(
+      screen.getByLabelText("Title"),
+      "  North entrance revision  "
+    );
+    await user.type(
+      screen.getByLabelText("Company", {
+        selector: "#change-order-company",
+      }),
+      "  Desert Concrete  "
+    );
+    await user.type(screen.getByLabelText("Proposed amount"), "-1");
+    await user.click(
+      screen.getByRole("button", { name: "Create Change Order" })
+    );
+    expect(
+      await screen.findByText(/Proposed amount must be a nonnegative value/)
+    ).toBeInTheDocument();
+    expect(createChangeOrder).not.toHaveBeenCalled();
+
+    await user.clear(screen.getByLabelText("Proposed amount"));
+    await user.type(screen.getByLabelText("Proposed amount"), "0");
+    await user.type(screen.getByLabelText("Schedule impact"), "-2");
+    await user.selectOptions(
+      screen.getByLabelText("Status", {
+        selector: "#change-order-status",
+      }),
+      "Draft"
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Create Change Order" })
+    );
+
+    expect(createChangeOrder).toHaveBeenCalledWith(1, {
+      date: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+      title: "North entrance revision",
+      company: "Desert Concrete",
+      status: "Draft",
+      description: null,
+      reason: null,
+      proposed_amount: "0",
+      approved_amount: null,
+      schedule_impact_days: -2,
+      requested_date: null,
+      submitted_date: null,
+      approved_date: null,
+      executed_date: null,
+      responsible_party: null,
+    });
+    expect(
+      createChangeOrder.mock.calls[0][1]
+    ).not.toHaveProperty("co_number");
+    expect(createChangeOrder.mock.calls[0][1]).not.toHaveProperty("amount");
+    expect(
+      await screen.findByText("Change order created.")
+    ).toBeInTheDocument();
+    expect(screen.getByText("CO-001")).toBeInTheDocument();
+  });
+
+  it("edits a legacy Change Order without submitting its number or amount", async () => {
+    const user = userEvent.setup();
+    const legacy = makeChangeOrder({
+      id: 3,
+      co_number: "3",
+      title: null,
+      amount: "$4,500",
+      proposed_amount: null,
+      schedule_impact_days: null,
+      requested_date: null,
+    });
+    const updated = {
+      ...legacy,
+      title: "Legacy revision",
+      status: "Void",
+      approved_amount: "4000.00",
+    };
+    let records = [legacy];
+
+    fetchProjects.mockResolvedValue({
+      projects: [{ id: 1, name: "Riverside" }],
+    });
+    fetchChangeOrders.mockImplementation(async () => ({
+      change_orders: records,
+    }));
+    updateChangeOrder.mockImplementation(async () => {
+      records = [updated];
+      return updated;
+    });
+    window.location.hash = "#/projects/1/change-orders";
+
+    renderApp();
+
+    await user.click(
+      await screen.findByRole("button", {
+        name: "Edit change order 3",
+      })
+    );
+    expect(
+      screen.getByRole("heading", { name: "Edit 3" })
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Change order number")).toHaveValue("3");
+    expect(screen.getByLabelText("Change order number")).toHaveAttribute(
+      "readonly"
+    );
+
+    await user.type(screen.getByLabelText("Title"), "Legacy revision");
+    await user.selectOptions(
+      screen.getByLabelText("Status", {
+        selector: "#change-order-status",
+      }),
+      "Void"
+    );
+    await user.type(screen.getByLabelText("Approved amount"), "4000.00");
+    await user.click(
+      screen.getByRole("button", { name: "Update Change Order" })
+    );
+
+    expect(updateChangeOrder).toHaveBeenCalledWith(
+      1,
+      3,
+      expect.objectContaining({
+        title: "Legacy revision",
+        description: "Revise north entrance.",
+        approved_amount: "4000.00",
+        status: "Void",
+      })
+    );
+    expect(updateChangeOrder.mock.calls[0][2]).not.toHaveProperty(
+      "co_number"
+    );
+    expect(updateChangeOrder.mock.calls[0][2]).not.toHaveProperty("amount");
+    expect(
+      await screen.findByText("Change order updated.")
+    ).toBeInTheDocument();
+  });
+
+  it("validates lifecycle dates against the combined edit state", async () => {
+    const user = userEvent.setup();
+    const record = makeChangeOrder({
+      requested_date: "2026-07-20",
+      submitted_date: "2026-07-21",
+    });
+
+    fetchProjects.mockResolvedValue({
+      projects: [{ id: 1, name: "Riverside" }],
+    });
+    fetchChangeOrders.mockResolvedValue({ change_orders: [record] });
+    window.location.hash = "#/projects/1/change-orders";
+
+    renderApp();
+
+    await user.click(
+      await screen.findByRole("button", {
+        name: "Edit change order CO-001",
+      })
+    );
+    fireEvent.change(screen.getByLabelText("Requested date"), {
+      target: { value: "2026-07-22" },
+    });
+    fireEvent.submit(
+      screen
+        .getByRole("heading", { name: "Edit CO-001" })
+        .closest("form")
+    );
+
+    expect(
+      await screen.findByText(
+        "Submitted date cannot be earlier than requested date."
+      )
+    ).toBeInTheDocument();
+    expect(updateChangeOrder).not.toHaveBeenCalled();
+  });
+
+  it("confirms, cancels, and completes Change Order deletion", async () => {
+    const user = userEvent.setup();
+    let records = [makeChangeOrder()];
+
+    fetchProjects.mockResolvedValue({
+      projects: [{ id: 1, name: "Riverside" }],
+    });
+    fetchChangeOrders.mockImplementation(async () => ({
+      change_orders: records,
+    }));
+    deleteChangeOrder.mockImplementation(async () => {
+      records = [];
+      return { message: "Change order deleted" };
+    });
+    window.location.hash = "#/projects/1/change-orders";
+
+    renderApp();
+
+    await user.click(
+      await screen.findByRole("button", {
+        name: "Delete change order CO-001",
+      })
+    );
+    expect(
+      screen.getByRole("alertdialog", { name: "Delete CO-001?" })
+    ).toBeInTheDocument();
+    expect(deleteChangeOrder).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(deleteChangeOrder).not.toHaveBeenCalled();
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "Delete change order CO-001",
+      })
+    );
+    await user.click(screen.getByRole("button", { name: "Delete" }));
+
+    expect(deleteChangeOrder).toHaveBeenCalledWith(1, 1);
+    expect(
+      await screen.findByText("Change order deleted.")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "No change orders yet. Create the first change order above."
+      )
+    ).toBeInTheDocument();
+  });
+
+  it("reports Change Order load and mutation failures globally", async () => {
+    fetchProjects.mockResolvedValue({
+      projects: [{ id: 1, name: "Riverside" }],
+    });
+    fetchChangeOrders.mockRejectedValueOnce(
+      new ApiError("Load unavailable", 503)
+    );
+    window.location.hash = "#/projects/1/change-orders";
+
+    const { unmount } = renderApp();
+
+    expect(
+      await screen.findByText(
+        "Unable to load change orders. Load unavailable"
+      )
+    ).toBeInTheDocument();
+    unmount();
+
+    vi.clearAllMocks();
+    fetchProjects.mockResolvedValue({
+      projects: [{ id: 1, name: "Riverside" }],
+    });
+    fetchTemplates.mockResolvedValue({ templates: [] });
+    fetchTasks.mockResolvedValue({ tasks: [] });
+    fetchProjectCompanies.mockResolvedValue({ companies: [] });
+    fetchChangeOrders.mockResolvedValue({ change_orders: [] });
+    createChangeOrder.mockRejectedValue(
+      new ApiError("Save unavailable", 503)
+    );
+
+    const user = userEvent.setup();
+    renderApp();
+    await screen.findByRole("heading", { name: "Change Orders" });
+    await user.type(screen.getByLabelText("Description"), "Description only");
+    await user.click(
+      screen.getByRole("button", { name: "Create Change Order" })
+    );
+
+    expect(
+      await screen.findByText(
+        "Unable to create change order. Save unavailable"
+      )
+    ).toBeInTheDocument();
+  });
+
+  it("reports Change Order update and delete failures globally", async () => {
+    const user = userEvent.setup();
+    const record = makeChangeOrder();
+
+    fetchProjects.mockResolvedValue({
+      projects: [{ id: 1, name: "Riverside" }],
+    });
+    fetchChangeOrders.mockResolvedValue({ change_orders: [record] });
+    updateChangeOrder.mockRejectedValue(
+      new ApiError("Update unavailable", 503)
+    );
+    deleteChangeOrder.mockRejectedValue(
+      new ApiError("Delete unavailable", 503)
+    );
+    window.location.hash = "#/projects/1/change-orders";
+
+    renderApp();
+
+    await user.click(
+      await screen.findByRole("button", {
+        name: "Edit change order CO-001",
+      })
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Update Change Order" })
+    );
+    expect(
+      await screen.findByText(
+        "Unable to update change order. Update unavailable"
+      )
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Cancel Edit" }));
+    await user.click(
+      screen.getByRole("button", {
+        name: "Delete change order CO-001",
+      })
+    );
+    await user.click(screen.getByRole("button", { name: "Delete" }));
+
+    expect(
+      await screen.findByText(
+        "Unable to delete change order. Delete unavailable"
+      )
+    ).toBeInTheDocument();
+    expect(screen.getByText("CO-001")).toBeInTheDocument();
+  });
+
+  it("clears Change Order data, edit state, and validation on project switch", async () => {
+    const user = userEvent.setup();
+    let resolveSecondProject;
+
+    fetchProjects.mockResolvedValue({
+      projects: [
+        { id: 1, name: "Riverside" },
+        { id: 2, name: "North Ridge" },
+      ],
+    });
+    fetchChangeOrders.mockImplementation((projectId) => {
+      if (projectId === 1) {
+        return Promise.resolve({
+          change_orders: [makeChangeOrder()],
+        });
+      }
+
+      return new Promise((resolve) => {
+        resolveSecondProject = resolve;
+      });
+    });
+    window.location.hash = "#/projects/1/change-orders";
+
+    renderApp();
+
+    await user.click(
+      await screen.findByRole("button", {
+        name: "Edit change order CO-001",
+      })
+    );
+    await user.clear(screen.getByLabelText("Title"));
+    await user.clear(screen.getByLabelText("Description"));
+    await user.click(
+      screen.getByRole("button", { name: "Update Change Order" })
+    );
+    expect(
+      await screen.findByText("Enter a title or description before saving.")
+    ).toBeInTheDocument();
+
+    await act(async () => {
+      window.history.pushState({}, "", "#/projects/2/change-orders");
+      window.dispatchEvent(new HashChangeEvent("hashchange"));
+    });
+
+    expect(
+      await screen.findByRole("heading", { name: "Create Change Order" })
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Title")).toHaveValue("");
+    expect(screen.getByLabelText("Description")).toHaveValue("");
+    expect(screen.getByLabelText("Change order number")).toHaveValue(
+      "Assigned when saved"
+    );
+    expect(screen.queryByText("CO-001")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Enter a title or description before saving.")
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Loading change orders..."
+    );
+
+    await act(async () => {
+      resolveSecondProject({ change_orders: [] });
+    });
+
+    expect(
+      await screen.findByText(
+        "No change orders yet. Create the first change order above."
+      )
+    ).toBeInTheDocument();
+    expect(
+      fetchChangeOrders.mock.calls.map(([projectId]) => projectId)
+    ).toEqual([1, 2]);
+  });
+
+  it("rejects a stale Change Orders response after a project switch", async () => {
+    let resolveFirstProject;
+
+    fetchProjects.mockResolvedValue({
+      projects: [
+        { id: 1, name: "Riverside" },
+        { id: 2, name: "North Ridge" },
+      ],
+    });
+    fetchChangeOrders.mockImplementation((projectId) => {
+      if (projectId === 1) {
+        return new Promise((resolve) => {
+          resolveFirstProject = resolve;
+        });
+      }
+
+      return Promise.resolve({
+        change_orders: [
+          makeChangeOrder({
+            id: 2,
+            project_id: 2,
+            co_number: "CO-002",
+            title: "North Ridge change",
+          }),
+        ],
+      });
+    });
+    window.location.hash = "#/projects/1/change-orders";
+
+    renderApp();
+
+    await screen.findByRole("heading", { name: "Change Orders" });
+    await waitFor(() => {
+      expect(fetchChangeOrders).toHaveBeenCalledWith(1);
+    });
+
+    await act(async () => {
+      window.history.pushState({}, "", "#/projects/2/change-orders");
+      window.dispatchEvent(new HashChangeEvent("hashchange"));
+    });
+
+    expect(await screen.findByText("CO-002")).toBeInTheDocument();
+
+    await act(async () => {
+      resolveFirstProject({
+        change_orders: [
+          makeChangeOrder({ title: "Stale Riverside change" }),
+        ],
+      });
+    });
+
+    expect(screen.queryByText("Stale Riverside change")).not.toBeInTheDocument();
+    expect(screen.getByText("North Ridge change")).toBeInTheDocument();
+    expect(
+      fetchChangeOrders.mock.calls.map(([projectId]) => projectId)
+    ).toEqual([1, 2]);
   });
 
   it("navigates to the selected project's RFI route and loads RFIs", async () => {
