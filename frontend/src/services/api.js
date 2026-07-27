@@ -1,6 +1,7 @@
 import {
   authenticatedRequest,
   downloadAuthenticatedFile,
+  downloadAuthenticatedResponse,
   jsonRequest,
   request,
 } from "./httpClient";
@@ -207,4 +208,64 @@ export function reorderTasks(projectId, taskIds) {
   return jsonRequest(`/projects/${projectId}/tasks/reorder`, "PUT", {
     task_ids: taskIds,
   });
+}
+
+export function listAttachments(
+  projectId,
+  parentType,
+  parentId,
+  options = {}
+) {
+  const query = new URLSearchParams({
+    parent_type: parentType,
+    parent_id: String(parentId),
+  });
+  return authenticatedRequest(
+    `/projects/${projectId}/attachments?${query.toString()}`,
+    { signal: options.signal }
+  );
+}
+
+export function uploadAttachment(
+  projectId,
+  parentType,
+  parentId,
+  file,
+  options = {}
+) {
+  const formData = new FormData();
+  formData.append("parent_type", parentType);
+  formData.append("parent_id", String(parentId));
+  formData.append("file", file);
+
+  return authenticatedRequest(`/projects/${projectId}/attachments`, {
+    method: "POST",
+    body: formData,
+    signal: options.signal,
+  });
+}
+
+export function downloadAttachment(
+  projectId,
+  attachmentId,
+  options = {}
+) {
+  return downloadAuthenticatedResponse(
+    `/projects/${projectId}/attachments/${attachmentId}/download`,
+    { signal: options.signal }
+  );
+}
+
+export function deleteAttachment(
+  projectId,
+  attachmentId,
+  options = {}
+) {
+  return authenticatedRequest(
+    `/projects/${projectId}/attachments/${attachmentId}`,
+    {
+      method: "DELETE",
+      signal: options.signal,
+    }
+  );
 }

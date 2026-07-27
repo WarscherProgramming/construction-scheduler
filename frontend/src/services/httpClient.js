@@ -20,9 +20,9 @@ export function configureAuthentication({ token, onUnauthorized }) {
 }
 
 
-function getAuthHeaders() {
+function getAuthHeaders({ includeContentType = true } = {}) {
   return {
-    "Content-Type": "application/json",
+    ...(includeContentType ? { "Content-Type": "application/json" } : {}),
     ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
   };
 }
@@ -68,6 +68,9 @@ async function fetchResponse(path, options) {
   try {
     return await fetch(`${API_URL}${path}`, options);
   } catch (error) {
+    if (error?.name === "AbortError") {
+      throw error;
+    }
     throw new ApiError("Unable to connect to the API", 0, error);
   }
 }
@@ -109,10 +112,13 @@ export async function request(path, options = {}) {
 
 
 export function authenticatedRequest(path, options = {}) {
+  const isMultipart =
+    typeof FormData !== "undefined" && options.body instanceof FormData;
+
   return request(path, {
     ...options,
     headers: {
-      ...getAuthHeaders(),
+      ...getAuthHeaders({ includeContentType: !isMultipart }),
       ...options.headers,
     },
   });
@@ -127,14 +133,27 @@ export function jsonRequest(path, method, body) {
 }
 
 
-export async function downloadAuthenticatedFile(path) {
+export async function downloadAuthenticatedResponse(path, options = {}) {
   const response = await fetchResponse(path, {
-    headers: getAuthHeaders(),
+    ...options,
+    headers: {
+      ...getAuthHeaders({ includeContentType: false }),
+      ...options.headers,
+    },
   });
 
   if (!response.ok) {
     await handleErrorResponse(response);
   }
 
-  return response.blob();
+  return {
+    blob: await response.blob(),
+    headers: response.headers,
+  };
+}
+
+
+export async function downloadAuthenticatedFile(path, options = {}) {
+  const { blob } = await downloadAuthenticatedResponse(path, options);
+  return blob;
 }
