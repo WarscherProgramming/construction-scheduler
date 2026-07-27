@@ -131,7 +131,8 @@ def remove_attachment(
     db: Session = Depends(get_db),
     project: Project = Depends(get_owned_project),
     storage: AttachmentStorage = Depends(get_attachment_storage),
+    config: AttachmentConfig = Depends(get_attachment_config),
 ):
     attachment = get_project_attachment(db, project_id, attachment_id)
-    delete_attachment(db, storage, attachment)
+    delete_attachment(db, storage, config, attachment)
     return {"message": "Attachment deleted"}

@@ -12,7 +12,7 @@ from fastapi import HTTPException, UploadFile, status
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from app.core.config import AttachmentConfig
+from app.core.config import ATTACHMENT_CONFIG, AttachmentConfig
 from app.models.attachment import Attachment
 from app.models.change_order import ChangeOrder
 from app.models.daily_log import DailyLog
@@ -20,10 +20,17 @@ from app.models.project import Project
 from app.models.punch_item import PunchItem
 from app.models.rfi import RFI
 from app.models.submittal import Submittal
+from app.services.attachment_cleanup import (
+    enqueue_cleanup_job,
+    process_cleanup_job_ids,
+    queue_attachments_for_cleanup,
+    queue_project_attachments_for_cleanup,
+)
 from app.storage.attachment import (
     AttachmentObjectMissing,
     AttachmentStorage,
     AttachmentStorageError,
+    AttachmentStreamTooLarge,
 )
 
 
@@ -349,9 +356,8 @@ def create_attachment(
         while chunk:
             size_bytes += len(chunk)
             if size_bytes > config.max_upload_size:
-                raise HTTPException(
-                    status_code=status.HTTP_413_CONTENT_TOO_LARGE,
-                    detail="Attachment exceeds the maximum upload size",
+                raise AttachmentStreamTooLarge(
+                    "Attachment exceeds the maximum upload size"
                 )
             digest.update(chunk)
             yield chunk
@@ -359,9 +365,16 @@ def create_attachment(
 
     storage_key = uuid.uuid4().hex
     try:
-        storage.put_stream(storage_key, upload_chunks())
-    except HTTPException:
-        raise
+        storage.put_stream(
+            storage_key,
+            upload_chunks(),
+            content_type=mime_type,
+        )
+    except AttachmentStreamTooLarge as error:
+        raise HTTPException(
+            status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+            detail="Attachment exceeds the maximum upload size",
+        ) from error
     except AttachmentStorageError as error:
         logger.exception(
             "Attachment upload failed for provider %s",
@@ -392,12 +405,33 @@ def create_attachment(
         db.rollback()
         try:
             storage.delete(storage_key)
-        except AttachmentStorageError:
+        except AttachmentStorageError as cleanup_error:
             logger.exception(
-                "Attachment metadata failed and storage cleanup also failed "
-                "for key %s",
-                storage_key,
+                "Attachment metadata failed and immediate storage cleanup "
+                "also failed for provider %s",
+                storage.provider_name,
             )
+            try:
+                job = enqueue_cleanup_job(
+                    db,
+                    attachment_id=None,
+                    project_id=project_id,
+                    storage_provider=storage.provider_name,
+                    storage_key=storage_key,
+                )
+                job.last_error = (
+                    f"{cleanup_error.category}: attachment storage "
+                    "operation failed"
+                )[:500]
+                db.commit()
+            except SQLAlchemyError:
+                db.rollback()
+                logger.critical(
+                    "Unable to persist upload rollback cleanup for "
+                    "provider %s",
+                    storage.provider_name,
+                    exc_info=True,
+                )
         else:
             logger.exception(
                 "Attachment metadata persistence failed; stored object was "
@@ -487,39 +521,37 @@ def content_disposition(attachment: Attachment) -> str:
 def delete_attachment(
     db: Session,
     storage: AttachmentStorage,
+    config: AttachmentConfig,
     attachment: Attachment,
 ) -> None:
     try:
-        existed = storage.delete(attachment.storage_key)
-    except AttachmentStorageError as error:
-        logger.exception(
-            "Attachment provider failed while deleting attachment %s",
-            attachment.id,
-        )
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Attachment storage is unavailable",
-        ) from error
-
-    if not existed:
-        logger.warning(
-            "Stored content was already missing for attachment %s",
-            attachment.id,
-        )
-
-    db.delete(attachment)
-    try:
+        plan = queue_attachments_for_cleanup(db, [attachment])
         db.commit()
     except SQLAlchemyError as error:
         db.rollback()
         logger.exception(
-            "Attachment metadata deletion failed after object removal for %s",
+            "Unable to queue cleanup while deleting attachment %s",
             attachment.id,
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Unable to delete attachment metadata",
         ) from error
+
+    try:
+        process_cleanup_job_ids(
+            db,
+            plan.job_ids,
+            storage,
+            config,
+        )
+    except SQLAlchemyError:
+        db.rollback()
+        logger.exception(
+            "Immediate cleanup state update failed for attachment %s; "
+            "the durable job remains recoverable",
+            attachment.id,
+        )
 
 
 def delete_attachments_for_parent(
@@ -529,6 +561,7 @@ def delete_attachments_for_parent(
     parent_type: str,
     parent_id: int,
     *,
+    config: AttachmentConfig = ATTACHMENT_CONFIG,
     commit: bool = True,
 ) -> int:
     attachments = list_attachment_records(
@@ -538,24 +571,57 @@ def delete_attachments_for_parent(
         parent_id,
     )
 
-    try:
-        for attachment in attachments:
-            storage.delete(attachment.storage_key)
-    except AttachmentStorageError as error:
-        logger.exception(
-            "Attachment cleanup failed for parent type %s and ID %s",
-            parent_type,
-            parent_id,
-        )
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Attachment storage is unavailable",
-        ) from error
-
-    for attachment in attachments:
-        db.delete(attachment)
+    plan = queue_attachments_for_cleanup(db, attachments)
 
     if commit:
         db.commit()
+        try:
+            process_cleanup_job_ids(
+                db,
+                plan.job_ids,
+                storage,
+                config,
+            )
+        except SQLAlchemyError:
+            db.rollback()
+            logger.exception(
+                "Immediate attachment cleanup state update failed for "
+                "parent type %s and ID %s",
+                parent_type,
+                parent_id,
+            )
 
-    return len(attachments)
+    return plan.attachment_count
+
+
+def delete_attachments_for_project(
+    db: Session,
+    storage: AttachmentStorage,
+    project_id: int,
+    *,
+    config: AttachmentConfig = ATTACHMENT_CONFIG,
+    batch_size: int | None = None,
+    commit: bool = True,
+) -> int:
+    plan = queue_project_attachments_for_cleanup(
+        db,
+        project_id,
+        batch_size=batch_size or config.cleanup_batch_size,
+    )
+    if commit:
+        db.commit()
+        try:
+            process_cleanup_job_ids(
+                db,
+                plan.job_ids,
+                storage,
+                config,
+            )
+        except SQLAlchemyError:
+            db.rollback()
+            logger.exception(
+                "Immediate attachment cleanup state update failed for "
+                "project %s",
+                project_id,
+            )
+    return plan.attachment_count

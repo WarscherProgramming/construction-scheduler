@@ -51,6 +51,43 @@ def positive_integer_environment_variable(
     return value
 
 
+def boolean_environment_variable(
+    name: str,
+    default: bool,
+) -> bool:
+    raw_value = os.getenv(name, str(default)).strip().lower()
+    if raw_value in {"1", "true", "yes", "on"}:
+        return True
+    if raw_value in {"0", "false", "no", "off"}:
+        return False
+    raise RuntimeError(f"{name} must be true or false")
+
+
+def optional_environment_variable(name: str) -> str | None:
+    value = os.getenv(name)
+    if value is None:
+        return None
+    normalized = value.strip()
+    return normalized or None
+
+
+def normalize_attachment_key_prefix(value: str | None) -> str:
+    normalized = str(value or "").strip().strip("/")
+    if not normalized:
+        return ""
+    if "\\" in normalized:
+        raise RuntimeError(
+            "ATTACHMENT_S3_KEY_PREFIX cannot contain backslashes"
+        )
+
+    parts = [part for part in normalized.split("/") if part]
+    if any(part in {".", ".."} for part in parts):
+        raise RuntimeError(
+            "ATTACHMENT_S3_KEY_PREFIX cannot contain path traversal"
+        )
+    return "/".join(parts)
+
+
 DEFAULT_ATTACHMENT_MIME_TYPES = frozenset(
     {
         "application/msword",
@@ -82,6 +119,24 @@ class AttachmentConfig:
     max_upload_size: int
     upload_chunk_size: int
     permitted_mime_types: frozenset[str]
+    s3_bucket: str | None = None
+    s3_region: str = "us-east-1"
+    s3_endpoint_url: str | None = None
+    s3_access_key_id: str | None = None
+    s3_secret_access_key: str | None = None
+    s3_session_token: str | None = None
+    s3_addressing_style: str = "auto"
+    s3_secure_transport: bool = True
+    s3_connect_timeout: int = 5
+    s3_read_timeout: int = 60
+    s3_max_retries: int = 3
+    s3_key_prefix: str = ""
+    cleanup_batch_size: int = 100
+    cleanup_max_attempts: int = 8
+    cleanup_retry_base_seconds: int = 30
+    cleanup_retry_max_seconds: int = 3600
+    cleanup_lease_seconds: int = 900
+    cleanup_retention_days: int = 30
 
 
 _default_attachment_root = (
@@ -91,6 +146,9 @@ _configured_attachment_root = os.getenv(
     "ATTACHMENT_LOCAL_STORAGE_ROOT",
     "",
 ).strip()
+_configured_s3_endpoint = optional_environment_variable(
+    "ATTACHMENT_S3_ENDPOINT_URL"
+)
 
 ATTACHMENT_CONFIG = AttachmentConfig(
     storage_provider=os.getenv(
@@ -116,5 +174,71 @@ ATTACHMENT_CONFIG = AttachmentConfig(
             ",".join(sorted(DEFAULT_ATTACHMENT_MIME_TYPES)),
         ).split(",")
         if mime_type.strip()
+    ),
+    s3_bucket=optional_environment_variable("ATTACHMENT_S3_BUCKET"),
+    s3_region=os.getenv(
+        "ATTACHMENT_S3_REGION",
+        "us-east-1",
+    ).strip(),
+    s3_endpoint_url=(
+        _configured_s3_endpoint.rstrip("/")
+        if _configured_s3_endpoint
+        else None
+    ),
+    s3_access_key_id=optional_environment_variable(
+        "ATTACHMENT_S3_ACCESS_KEY_ID"
+    ),
+    s3_secret_access_key=optional_environment_variable(
+        "ATTACHMENT_S3_SECRET_ACCESS_KEY"
+    ),
+    s3_session_token=optional_environment_variable(
+        "ATTACHMENT_S3_SESSION_TOKEN"
+    ),
+    s3_addressing_style=os.getenv(
+        "ATTACHMENT_S3_ADDRESSING_STYLE",
+        "auto",
+    ).strip().lower(),
+    s3_secure_transport=boolean_environment_variable(
+        "ATTACHMENT_S3_SECURE_TRANSPORT",
+        True,
+    ),
+    s3_connect_timeout=positive_integer_environment_variable(
+        "ATTACHMENT_S3_CONNECT_TIMEOUT",
+        5,
+    ),
+    s3_read_timeout=positive_integer_environment_variable(
+        "ATTACHMENT_S3_READ_TIMEOUT",
+        60,
+    ),
+    s3_max_retries=positive_integer_environment_variable(
+        "ATTACHMENT_S3_MAX_RETRIES",
+        3,
+    ),
+    s3_key_prefix=normalize_attachment_key_prefix(
+        optional_environment_variable("ATTACHMENT_S3_KEY_PREFIX")
+    ),
+    cleanup_batch_size=positive_integer_environment_variable(
+        "ATTACHMENT_CLEANUP_BATCH_SIZE",
+        100,
+    ),
+    cleanup_max_attempts=positive_integer_environment_variable(
+        "ATTACHMENT_CLEANUP_MAX_ATTEMPTS",
+        8,
+    ),
+    cleanup_retry_base_seconds=positive_integer_environment_variable(
+        "ATTACHMENT_CLEANUP_RETRY_BASE_SECONDS",
+        30,
+    ),
+    cleanup_retry_max_seconds=positive_integer_environment_variable(
+        "ATTACHMENT_CLEANUP_RETRY_MAX_SECONDS",
+        3600,
+    ),
+    cleanup_lease_seconds=positive_integer_environment_variable(
+        "ATTACHMENT_CLEANUP_LEASE_SECONDS",
+        900,
+    ),
+    cleanup_retention_days=positive_integer_environment_variable(
+        "ATTACHMENT_CLEANUP_RETENTION_DAYS",
+        30,
     ),
 )

@@ -9,3 +9,15 @@ services:
     envVars:
       - key: ALLOWED_ORIGINS
         value: https://construction-scheduler-eight.vercel.app
+      - key: ATTACHMENT_STORAGE_PROVIDER
+        value: s3
+      - key: ATTACHMENT_S3_BUCKET
+        sync: false
+      - key: ATTACHMENT_S3_REGION
+        sync: false
+      - key: ATTACHMENT_S3_ACCESS_KEY_ID
+        sync: false
+      - key: ATTACHMENT_S3_SECRET_ACCESS_KEY
+        sync: false
+      - key: ATTACHMENT_S3_KEY_PREFIX
+        value: fieldflow/attachments

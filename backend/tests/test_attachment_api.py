@@ -25,6 +25,7 @@ from app.core.config import (
 from app.db.database import Base
 from app.main import app
 from app.models.attachment import Attachment
+from app.models.attachment_cleanup import AttachmentCleanupJob
 from app.models.change_order import ChangeOrder
 from app.models.daily_log import DailyLog
 from app.models.project import Project
@@ -61,11 +62,21 @@ class TrackingMemoryStorage(MemoryAttachmentStorage):
         self.fail_open = False
         self.fail_delete = False
 
-    def put_stream(self, storage_key, chunks):
+    def put_stream(
+        self,
+        storage_key,
+        chunks,
+        *,
+        content_type=None,
+    ):
         self.put_calls += 1
         if self.fail_put:
             raise AttachmentStorageError("provider unavailable")
-        return super().put_stream(storage_key, chunks)
+        return super().put_stream(
+            storage_key,
+            chunks,
+            content_type=content_type,
+        )
 
     def open_stream(self, storage_key, chunk_size):
         self.open_calls += 1
@@ -634,6 +645,52 @@ class AttachmentApiTests(unittest.TestCase):
         self.assertEqual(self.storage.objects, {})
         self.assertEqual(self.storage.delete_calls, 1)
 
+    def test_upload_rollback_failure_creates_durable_cleanup_job(self):
+        with self.TestingSession() as db:
+            upload = UploadFile(
+                BytesIO(PDF_CONTENT),
+                size=len(PDF_CONTENT),
+                filename="plans.pdf",
+                headers=Headers({"content-type": "application/pdf"}),
+            )
+            original_commit = db.commit
+            commit_calls = 0
+
+            def fail_first_commit():
+                nonlocal commit_calls
+                commit_calls += 1
+                if commit_calls == 1:
+                    raise SQLAlchemyError("database unavailable")
+                return original_commit()
+
+            self.storage.fail_delete = True
+            with patch.object(
+                db,
+                "commit",
+                side_effect=fail_first_commit,
+            ):
+                with self.assertRaises(HTTPException) as context:
+                    create_attachment(
+                        db,
+                        self.storage,
+                        self.config,
+                        project_id=self.project_id,
+                        parent_type="project",
+                        parent_id=self.project_id,
+                        upload=upload,
+                        uploaded_by=self.owner_id,
+                        content_length=None,
+                    )
+
+        self.assertEqual(context.exception.status_code, 500)
+        with self.TestingSession() as db:
+            self.assertEqual(db.query(Attachment).count(), 0)
+            job = db.query(AttachmentCleanupJob).one()
+            self.assertIsNone(job.attachment_id)
+            self.assertEqual(job.status, "Pending")
+            self.assertEqual(job.storage_provider, "memory")
+            self.assertNotIn("database unavailable", job.last_error)
+
     def test_listing_is_parent_scoped_ordered_and_metadata_only(self):
         first = self.upload(filename="first.pdf")
         second = self.upload(filename="second.pdf")
@@ -815,7 +872,7 @@ class AttachmentApiTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIsNone(self.stored_attachment(attachment.id))
 
-    def test_delete_outage_preserves_metadata(self):
+    def test_delete_outage_removes_metadata_and_leaves_cleanup_job(self):
         created = self.upload()
         attachment_id = created.json()["id"]
         self.storage.fail_delete = True
@@ -825,8 +882,12 @@ class AttachmentApiTests(unittest.TestCase):
             headers=self.owner_headers,
         )
 
-        self.assertEqual(response.status_code, 503)
-        self.assertIsNotNone(self.stored_attachment(attachment_id))
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNone(self.stored_attachment(attachment_id))
+        with self.TestingSession() as db:
+            job = db.query(AttachmentCleanupJob).one()
+            self.assertEqual(job.status, "Pending")
+            self.assertEqual(job.attempt_count, 1)
 
     def test_parent_cleanup_helper_lists_and_removes_attachments(self):
         first = self.upload()
@@ -856,24 +917,73 @@ class AttachmentApiTests(unittest.TestCase):
         with self.TestingSession() as db:
             self.assertEqual(db.query(Attachment).count(), 0)
 
-    def test_parent_cleanup_storage_failure_preserves_metadata(self):
+    def test_parent_cleanup_storage_failure_leaves_cleanup_job(self):
         created = self.upload()
         self.storage.fail_delete = True
 
         with self.TestingSession() as db:
-            with self.assertRaises(HTTPException) as context:
-                delete_attachments_for_parent(
+            removed = delete_attachments_for_parent(
+                db,
+                self.storage,
+                self.project_id,
+                "project",
+                self.project_id,
+            )
+
+        self.assertEqual(removed, 1)
+        self.assertIsNone(self.stored_attachment(created.json()["id"]))
+        with self.TestingSession() as db:
+            self.assertEqual(
+                db.query(AttachmentCleanupJob)
+                .filter(AttachmentCleanupJob.status == "Pending")
+                .count(),
+                1,
+            )
+
+    def test_parent_cleanup_supports_every_attachment_parent_type(self):
+        parents = {
+            "project": self.project_id,
+            **self.parents,
+        }
+        for parent_type, parent_id in parents.items():
+            with self.subTest(parent_type=parent_type):
+                response = self.upload(
+                    parent_type=parent_type,
+                    parent_id=parent_id,
+                    filename=f"{parent_type}.pdf",
+                )
+                self.assertEqual(response.status_code, 201)
+
+        with self.TestingSession() as db:
+            for parent_type, parent_id in parents.items():
+                removed = delete_attachments_for_parent(
                     db,
                     self.storage,
                     self.project_id,
-                    "project",
-                    self.project_id,
+                    parent_type,
+                    parent_id,
+                    config=self.config,
+                )
+                self.assertEqual(removed, 1)
+                self.assertEqual(
+                    delete_attachments_for_parent(
+                        db,
+                        self.storage,
+                        self.project_id,
+                        parent_type,
+                        parent_id,
+                        config=self.config,
+                    ),
+                    0,
                 )
 
-        self.assertEqual(context.exception.status_code, 503)
-        self.assertIsNotNone(
-            self.stored_attachment(created.json()["id"])
-        )
+            self.assertEqual(db.query(Attachment).count(), 0)
+            self.assertEqual(
+                db.query(AttachmentCleanupJob)
+                .filter(AttachmentCleanupJob.status == "Completed")
+                .count(),
+                len(parents),
+            )
 
 
 if __name__ == "__main__":

@@ -10,16 +10,55 @@ STORAGE_KEY_PATTERN = re.compile(r"^[A-Za-z0-9_-]{16,128}$")
 class AttachmentStorageError(Exception):
     """Stable boundary for provider-specific storage failures."""
 
+    category = "unknown"
+    retryable = True
+
 
 class AttachmentObjectMissing(AttachmentStorageError):
     """The metadata exists but its stored object does not."""
+
+    category = "not_found"
+    retryable = False
+
+
+class AttachmentStorageAuthenticationError(AttachmentStorageError):
+    category = "authentication"
+    retryable = False
+
+
+class AttachmentStorageTimeoutError(AttachmentStorageError):
+    category = "timeout"
+
+
+class AttachmentStorageConnectionError(AttachmentStorageError):
+    category = "connection"
+
+
+class AttachmentStorageThrottledError(AttachmentStorageError):
+    category = "throttled"
+
+
+class AttachmentStorageConfigurationError(AttachmentStorageError):
+    category = "configuration"
+    retryable = False
+
+
+class AttachmentStreamTooLarge(AttachmentStorageError):
+    category = "validation"
+    retryable = False
 
 
 class AttachmentStorage(ABC):
     provider_name: str
 
     @abstractmethod
-    def put_stream(self, storage_key: str, chunks: Iterable[bytes]) -> None:
+    def put_stream(
+        self,
+        storage_key: str,
+        chunks: Iterable[bytes],
+        *,
+        content_type: str | None = None,
+    ) -> None:
         """Persist every chunk under an opaque key."""
 
     @abstractmethod
@@ -54,7 +93,13 @@ class LocalAttachmentStorage(AttachmentStorage):
         validate_storage_key(storage_key)
         return self.root / storage_key
 
-    def put_stream(self, storage_key: str, chunks: Iterable[bytes]) -> None:
+    def put_stream(
+        self,
+        storage_key: str,
+        chunks: Iterable[bytes],
+        *,
+        content_type: str | None = None,
+    ) -> None:
         destination = self._path_for(storage_key)
 
         try:
@@ -122,7 +167,13 @@ class MemoryAttachmentStorage(AttachmentStorage):
     def __init__(self):
         self.objects: dict[str, bytes] = {}
 
-    def put_stream(self, storage_key: str, chunks: Iterable[bytes]) -> None:
+    def put_stream(
+        self,
+        storage_key: str,
+        chunks: Iterable[bytes],
+        *,
+        content_type: str | None = None,
+    ) -> None:
         validate_storage_key(storage_key)
         if storage_key in self.objects:
             raise AttachmentStorageError(
