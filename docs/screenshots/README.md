@@ -11,6 +11,9 @@ for both referenced and planned module screenshots.
   Phase 2** (First-run → "Load Sample Project") so every view has data.
 - Prefer PNG for stills; GIFs ≤ 8 seconds, ≤ 5 MB (record with e.g. ScreenToGif
   or Kap).
+- Use synthetic project, company, user, and filenames. Never capture
+  credentials, tokens, private endpoints, bucket names, or real customer
+  documents.
 
 ## Manifest
 
@@ -26,6 +29,23 @@ for both referenced and planned module screenshots.
 | `punch-lists.png` | Punch Lists page: populated Punch Items table with visible status and priority labels, an overdue indicator, and the create or edit workflow visible. |
 | `mobile.png` | Dashboard or a record page at ~390 px width: collapsed horizontal nav and stacked record cards. (Optional composite of two views side by side.) |
 
+## Document Management captures
+
+These are planned portfolio captures. M13.6 does not create or replace image
+files.
+
+| File | Page / workflow | State to capture | Viewport | Avoid | Portfolio value |
+|---|---|---|---|---|---|
+| `project-documents.png` | Project Settings → Project Documents | Populated panel with several synthetic file types and the upload target visible | 1440×900 | Real project/client names and confidential filenames | Shows the project-level document hub and reusable panel |
+| `daily-log-attachments.png` | Daily Logs | One persisted log expanded with photos and a PDF; create form remains separate | 1440×900 | Faces, addresses, subcontractor details, and location metadata | Connects field reporting to supporting evidence |
+| `rfi-attachments.png` | RFIs | Selected persisted RFI with a drawing and response exhibit listed | 1440×900 | Proprietary drawings and real RFI content | Demonstrates contextual document access without a new detail route |
+| `submittal-attachments.png` | Submittals | Selected Submittal with product data, PDF package, and download actions | 1440×900 | Manufacturer-confidential or project-specific packages | Shows mixed document formats in a review workflow |
+| `punch-item-attachments.png` | Punch Items | Selected item with synthetic JPEG/PNG evidence and its browser preview opened | 1440×900 | Faces, geolocation, unit numbers, and real deficiency photos | Highlights image evidence and authenticated preview |
+| `change-order-attachments.png` | Change Orders | Selected Change Order with cost backup and drawing exhibit alongside lifecycle data | 1440×900 | Real pricing, signatures, account data, and contract exhibits | Connects financial workflow records to supporting backup |
+| `attachment-upload-results.png` | Any attachment-enabled workflow | Sequential multiple-file upload showing progress or a synthetic partial-success result | 1440×900 | Local filesystem paths and sensitive error details | Demonstrates resilient multi-file UX rather than an idealized happy path |
+| `attachment-delete-confirmation.png` | Any attachment-enabled workflow | Filename-specific accessible confirmation dialog with the background panel visible | 1440×900 | Sensitive filenames or document contents | Shows deliberate destructive-action and focus-management design |
+| `attachment-mobile.png` | RFI, Punch Item, or Daily Log attachments | One open panel with a long synthetic filename and wrapped actions | 390×844 | Notification previews, browser account UI, and real filenames | Proves the shared attachment workflow remains usable on site-sized screens |
+
 ## Tips
 
 - Crop out the browser chrome (or use a clean device frame consistently).
@@ -34,3 +54,7 @@ for both referenced and planned module screenshots.
   first image recruiters see.
 - M12 enhances the Change Orders workflow and dashboard KPI, so
   `change-orders.png` and `dashboard.png` now need recapturing.
+- M13 adds Document Management across six workflows. Capture the listed
+  attachment images above and recapture `change-orders.png` or
+  `punch-lists.png` when their attachment controls should be visible in the
+  primary module story.

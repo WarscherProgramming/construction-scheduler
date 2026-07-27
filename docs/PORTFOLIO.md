@@ -1,8 +1,9 @@
 # FieldFlow — Portfolio Copy
 
 Ready-to-use descriptions for resumes, portfolio sites, and LinkedIn.
-Keep the metrics in sync with the repo (currently **266 tests: 188 frontend +
-78 backend**).
+Keep the metrics in sync with the repo (currently **395 primary tests: 259
+frontend across 36 files + 136 backend**, with 71 backend subtests reported
+separately).
 
 ---
 
@@ -13,7 +14,8 @@ Keep the metrics in sync with the repo (currently **266 tests: 188 frontend +
 > FieldFlow — full-stack construction scheduling and field-management SaaS
 > (React 19, FastAPI, PostgreSQL) with a drag-and-drop CPM-style scheduler,
 > executive dashboard, enhanced project-scoped Change Order, RFI, Submittal,
-> and Punch List workflows, and 266 automated tests.
+> and Punch List workflows, reusable Document Management across six resource
+> types, and 395 automated tests.
 
 ### Resume bullets
 
@@ -47,8 +49,13 @@ Keep the metrics in sync with the repo (currently **266 tests: 188 frontend +
 >   create/edit/delete, filtering and validation flows, and dashboard Active,
 >   Approved, Rejected, Proposed Cost, Approved Cost, and Schedule Impact
 >   metrics with exact decimal aggregation.
+> - Designed one reusable Document Management system across Projects, Daily
+>   Logs, RFIs, Submittals, Punch Items, and Change Orders: authenticated
+>   streamed upload/download, 25 MiB validation, local and private
+>   S3-compatible storage, accessible React attachment UI, and durable
+>   cleanup across database and object-storage failures.
 > - Implemented JWT authentication with expiry-aware session UX, client-side
->   demo-data onboarding through the public API, and 266 automated tests
+>   demo-data onboarding through the public API, and 395 automated tests
 >   (Vitest/RTL + pytest) run against every change.
 
 ### Portfolio-site paragraph
@@ -65,7 +72,52 @@ Keep the metrics in sync with the repo (currently **266 tests: 188 frontend +
 > a superintendent's first question of the day: what needs my attention? The
 > project emphasizes production polish: a token-based accessible design
 > system, first-run onboarding that seeds a realistic demo project, JWT auth
-> with graceful session expiry, and 266 automated tests across the stack.
+> with graceful session expiry, reusable secure attachments across six
+> construction workflows, and 395 automated tests across the stack.
+
+---
+
+## Document Management Case Study
+
+### The problem
+
+Construction records lose context when drawings, exhibits, photos, product
+data, and cost backup live in separate inboxes or shared drives. Teams need
+those documents to remain connected to the project record, protected by the
+same ownership rules, and recoverable when storage providers are unavailable.
+
+### The solution
+
+FieldFlow uses one generic attachment metadata model and an explicit parent
+resolver registry across six resource types: Projects, Daily Logs, RFIs,
+Submittals, Punch Items, and Change Orders. PostgreSQL stores metadata and
+SHA-256 checksums while opaque binary objects stream to local development
+storage or private S3-compatible production storage. A shared React
+`AttachmentPanel` and `useAttachments` hook provide multiple-file upload,
+partial-success feedback, authenticated preview/download, deletion, stale
+response protection, and accessible mobile interaction without duplicating
+resource-specific upload code or growing dashboard requests.
+
+### The transaction-boundary challenge
+
+PostgreSQL and object storage cannot participate in one atomic transaction.
+Deleting metadata first could lose the only durable storage key; deleting the
+object first could block users whenever the provider is unavailable.
+FieldFlow records cleanup work transactionally before attachment metadata or
+its parent commits as deleted. Remote cleanup runs after commit, retryable
+failures remain queued with attempt tracking and exponential backoff, and
+already-missing objects complete idempotently. This keeps user-facing deletion
+available while preserving recoverable cleanup work.
+
+### Measurable outcomes
+
+- Six integrated resource types through one attachment API, model, storage
+  abstraction, hook, and panel
+- 25 MiB per-file limit with PDF, image, text, Word, and Excel support
+- Private authenticated delivery with no public object keys or credentials
+- 259 frontend tests across 36 files and 136 backend tests, for 395 primary
+  tests passed; 71 backend subtests are tracked separately
+- Lazy per-record panel mounting with no dashboard attachment preloading
 
 ---
 
@@ -85,9 +137,11 @@ Keep the metrics in sync with the repo (currently **266 tests: 188 frontend +
 > 📊 An executive dashboard that answers "what needs my attention today?"
 > 📝 Daily logs, inspections, delays, and project-scoped Change Order, RFI,
 > Submittal, and Punch List workflows with dashboard health metrics
+> 📎 Secure project documents and record attachments across six workflows,
+> backed by private object storage and durable cleanup
 >
 > Under the hood: React 19 + Vite, FastAPI + SQLAlchemy + PostgreSQL, JWT
-> auth, an accessible component design system, and 266 automated tests.
+> auth, an accessible component design system, and 395 automated tests.
 >
 > The demo seeds a full sample project in ~10 seconds — no signup friction:
 > 👉 https://construction-scheduler-eight.vercel.app
@@ -100,8 +154,9 @@ Keep the metrics in sync with the repo (currently **266 tests: 188 frontend +
 > FieldFlow — full-stack construction scheduling SaaS. React 19 · FastAPI ·
 > PostgreSQL. Drag-and-drop CPM-style scheduler, Gantt + PDF export, executive
 > dashboard, project-scoped Change Order, RFI, Submittal, and Punch List
-> workflows, accessible design system, 266 automated tests. Live demo seeds a
-> complete sample project in seconds.
+> workflows, secure Document Management across six resource types, accessible
+> design system, 395 automated tests. Live demo seeds a complete sample
+> project in seconds.
 
 ---
 
@@ -124,3 +179,8 @@ Keep the metrics in sync with the repo (currently **266 tests: 188 frontend +
 5. **Accessibility as architecture.** Focus-trapped dialogs, skip links,
    `aria-current` navigation, screen-reader-labeled skeletons, and tests that
    query by role and accessible name — so a11y regressions fail CI, not users.
+6. **Durable cleanup across two systems.** PostgreSQL and object storage
+   cannot share one transaction, so attachment storage keys are persisted in
+   cleanup jobs before metadata or parent deletion commits. Remote failures
+   retry without blocking the user, and missing objects complete
+   idempotently.

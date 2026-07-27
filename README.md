@@ -6,12 +6,12 @@ FieldFlow gives superintendents, project managers, and project engineers a
 single source of truth for the schedule, the field, and the paper trail —
 a spreadsheet-fast scheduler, an executive dashboard, and complete field
 records (daily logs, inspections, delays, change orders, RFIs, Submittals,
-and Punch Lists).
+and Punch Lists) with their supporting documents.
 
 ![React 19](https://img.shields.io/badge/React-19-61dafb?logo=react&logoColor=white&labelColor=20232a)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.1x-009688?logo=fastapi&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169e1?logo=postgresql&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-266%20passing-2ea44f)
+![Tests](https://img.shields.io/badge/tests-395%20passing-2ea44f)
 ![Vite](https://img.shields.io/badge/Vite-8-646cff?logo=vite&logoColor=white)
 
 ![FieldFlow executive dashboard](docs/screenshots/dashboard.png)
@@ -87,6 +87,10 @@ question — *"what needs my attention today?"* — has a one-screen answer.
   create/edit/delete and filtering flows; legacy-record compatibility;
   dashboard health and cost metrics; recent activity; and authenticated
   ownership enforcement.
+- **Reusable Document Management** across Projects, Daily Logs, RFIs,
+  Submittals, Punch Items, and Change Orders, with multiple-file upload,
+  authenticated streaming, secure validation, local or private S3-compatible
+  storage, accessible previews and deletion, and durable object cleanup.
 - **Accessible design system**: tokens, reusable UI primitives (Button, Card,
   Sidebar, PageHeader, Icon, ConfirmDialog, Skeleton), skip links, focus
   management, `aria-current` navigation, and screen-reader-labeled loading
@@ -96,8 +100,9 @@ question — *"what needs my attention today?"* — has a one-screen answer.
 - **Client-side onboarding**: first-run detection seeds a realistic demo
   project through the public API with visible progress — the app is never
   empty.
-- **Automated testing: 266 tests** — 188 frontend (Vitest + React Testing
-  Library, behavior- and accessibility-focused) and 78 backend (pytest,
+- **Automated testing: 395 tests** — 259 frontend across 36 files (Vitest +
+  React Testing Library, behavior- and accessibility-focused) and 136 backend
+  tests plus 71 separately reported subtests (pytest,
   covering the scheduling engine, critical path, services, migrations, CORS,
   and TestClient API integration).
 
@@ -139,6 +144,155 @@ rows and unique nonstandard numbers, repairs only missing or duplicate
 numbers, backfills safely parseable legacy amounts into fixed-precision
 `NUMERIC(14,2)` fields, and retains the original `amount` field for
 compatibility.
+
+## Document Management Architecture
+
+FieldFlow keeps supporting documents attached to the records where teams use
+them: project documents, Daily Log attachments, RFI exhibits, Submittal
+packages, Punch Item evidence, and Change Order backup. Users can upload
+multiple files, retain duplicate display filenames, preview supported PDFs
+and images, download securely, and delete attachments. Deleting an RFI,
+Submittal, Punch Item, or Change Order also schedules durable cleanup of its
+stored objects.
+
+```mermaid
+flowchart LR
+    UI[AttachmentPanel] --> API[Authenticated Attachment API]
+    API --> VALIDATE[Ownership and File Validation]
+    VALIDATE --> STORAGE[Storage Adapter]
+    STORAGE --> LOCAL[Local Storage]
+    STORAGE --> S3[Private S3-Compatible Storage]
+    VALIDATE --> DB[(PostgreSQL Metadata)]
+    DB --> LIST[List Attachment Metadata]
+    API --> DOWNLOAD[Authenticated Streaming Download]
+    DOWNLOAD --> STORAGE
+    DB --> OUTBOX[(Cleanup Jobs)]
+    OUTBOX --> COMMAND[Cleanup Command]
+    COMMAND --> STORAGE
+```
+
+**Upload lifecycle**
+
+1. The user selects one or more files; frontend size and extension checks
+   provide immediate advisory feedback.
+2. Each file is sent sequentially through an authenticated multipart API
+   request, allowing partial success when one file fails.
+3. The backend verifies project ownership and parent identity, then validates
+   size, MIME type, extension, filename, and file signature or container.
+4. The storage adapter streams the file to local or private S3-compatible
+   storage while calculating SHA-256.
+5. PostgreSQL metadata is committed only after storage succeeds. Public API
+   responses never expose credentials or object keys.
+
+**Download and preview lifecycle**
+
+1. The browser requests an attachment through the authenticated API.
+2. The backend verifies project ownership and streams content from storage.
+3. PDF, JPEG, PNG, and WebP files may open inline; other supported formats
+   download as attachments.
+4. The frontend uses temporary Blob URLs for previews and downloads and
+   revokes them after use.
+
+**Deletion lifecycle**
+
+- Standalone deletion records a durable cleanup job and removes attachment
+  metadata transactionally. After commit, object deletion is attempted;
+  provider failures remain queued for retry.
+- Parent deletion first preserves every storage key in cleanup jobs, then
+  removes attachment metadata and the parent in one database transaction.
+  Remote cleanup runs after commit, so a provider outage does not block the
+  successful deletion of the parent record.
+- Missing objects are handled idempotently as completed cleanup work.
+
+The shared authenticated API is intentionally resource-neutral:
+
+- `GET /projects/{project_id}/attachments` lists one parent's metadata.
+- `POST /projects/{project_id}/attachments` uploads multipart file content.
+- `GET /projects/{project_id}/attachments/{attachment_id}/download` streams
+  authenticated preview or download content.
+- `DELETE /projects/{project_id}/attachments/{attachment_id}` removes one
+  attachment and records durable cleanup work.
+
+### Storage and Validation
+
+PostgreSQL stores metadata, checksums, provider names, and opaque storage keys;
+it does not store file contents. Local storage is intended for development,
+lives outside the frontend source tree, uses create-only bounded writes, and
+removes partial files after failures. Local files on an ephemeral production
+instance may be lost during redeployment.
+
+The `s3` adapter stores private objects in AWS S3 or an S3-compatible service.
+Region, endpoint, addressing style, key prefix, transport, timeouts, and
+retries are configurable. Reads and writes are streamed, no public-read ACL
+is applied, and browsers never receive direct object access or storage keys.
+Client construction is lazy, so importing or starting the application does
+not contact S3. Persistent private object storage is recommended for
+production.
+
+The authoritative backend limit is **25 MiB per file**. Supported formats are
+PDF, JPEG, PNG, WebP, HEIC/HEIF, TXT, CSV, DOC, DOCX, XLS, and XLSX.
+Validation includes extension and MIME consistency, strong signatures for PDF
+and supported images, OLE or ZIP container signatures for Office files,
+UTF-8 and NUL-byte checks for text files, zero-byte rejection, filename
+normalization, path-traversal protection, bounded streaming, and SHA-256
+calculation. Browser checks are advisory; backend validation is authoritative.
+FieldFlow does not currently perform antivirus scanning.
+
+### Resource Coverage
+
+| Resource | Parent type | Upload | Preview | Download | Attachment delete | Parent-delete cleanup |
+|---|---|---:|---:|---:|---:|---:|
+| Project | `project` | Yes | Yes | Yes | Yes | Not applicable until project deletion exists |
+| Daily Log | `daily_log` | Yes | Yes | Yes | Yes | Not applicable until Daily Log deletion exists |
+| RFI | `rfi` | Yes | Yes | Yes | Yes | Yes |
+| Submittal | `submittal` | Yes | Yes | Yes | Yes | Yes |
+| Punch Item | `punch_item` | Yes | Yes | Yes | Yes | Yes |
+| Change Order | `change_order` | Yes | Yes | Yes | Yes | Yes |
+
+Preview availability depends on the file type and browser; FieldFlow exposes
+preview controls for PDFs and browser-renderable JPEG, PNG, and WebP images.
+
+### Frontend Design
+
+Shared attachment API functions support list, multipart upload, authenticated
+Blob download, and delete. `useAttachments` owns request state, sequential
+multiple-file uploads, partial-success reporting, stale-response protection,
+Strict Mode request deduplication, `AbortSignal` cancellation, Blob URL
+cleanup, and identity resets. `AttachmentPanel` supplies the reusable upload,
+list, preview, download, error, empty, loading, and confirmation UI.
+
+Each resource lazily mounts at most one active panel, so attachments are not
+preloaded for every visible record or by the dashboard. Attachment state
+stays out of `useProjectResource` and `useRecordForms`; changing projects or
+active parents clears stale state.
+
+Accessibility support includes associated file-input labels,
+keyboard-accessible upload and expansion controls, semantic file lists,
+filename-specific action labels, `aria-expanded`, `aria-controls`, live upload
+and error announcements, accessible confirmation dialogs with focus
+restoration, non-color-only drag feedback, and responsive wrapping for long
+filenames and actions. These practices are tested, but are not presented as a
+formal WCAG certification.
+
+### Durable Cleanup
+
+Cleanup jobs transactionally preserve storage work across the PostgreSQL and
+object-storage boundary. Processing records attempts, applies bounded
+exponential backoff, recovers interrupted `Processing` jobs after a lease,
+treats missing objects idempotently, retains completed jobs for a configurable
+period, and supports reconciliation and pruning. Jobs use the exact statuses
+`Pending`, `Processing`, `Completed`, and `Failed`.
+
+```bash
+python -m app.commands.process_attachment_cleanup
+python -m app.commands.process_attachment_cleanup --batch-size 50 --max-jobs 200
+python -m app.commands.process_attachment_cleanup --prune-completed
+```
+
+Supported options are `--batch-size`, `--max-jobs`, and `--prune-completed`.
+Production must invoke this command through an external recurring scheduled
+job. FieldFlow does not include a built-in worker or scheduler, and
+`render.yaml` does not currently declare a scheduled cleanup job.
 
 ## Features
 
@@ -194,6 +348,17 @@ compatibility.
 - Search, filtering, status badges, and responsive record cards
 - Project-company management
 
+**Document management**
+- Project documents and attachments for Daily Logs, RFIs, Submittals, Punch
+  Items, and Change Orders
+- Multiple-file upload with independent results and duplicate display
+  filename support
+- Authenticated PDF and image previews, streamed downloads, and attachment
+  deletion
+- Secure backend file validation and project ownership enforcement
+- Local development storage and private S3-compatible production storage
+- Durable standalone and parent-deletion object cleanup
+
 **Product quality**
 - Branded landing/login, first-run onboarding with demo seeding
 - Icon system, confirmation dialogs, toast notifications, loading skeletons
@@ -218,23 +383,33 @@ compatibility.
 | Backend | FastAPI, SQLAlchemy, Alembic, Pydantic |
 | Database | PostgreSQL |
 | Auth | JWT (OAuth2 password flow) |
-| Testing | Vitest + React Testing Library (188), pytest (78) |
+| Testing | Vitest + React Testing Library (259), pytest (136) |
 | Hosting | Vercel (frontend) · Render (API + migrations) |
 
 ## Testing
 
-**266 automated tests.**
+**395 primary automated tests passed.** Backend subtests are reported
+separately rather than added to that total.
 
-- **Frontend (188)** — Vitest + React Testing Library. Tests target behavior
-  and accessibility: roles and names, keyboard flows (Enter/Escape editing,
+- **Frontend (259 across 36 files)** — Vitest + React Testing Library. Tests
+  target behavior and accessibility: roles and names, keyboard flows
+  (Enter/Escape editing,
   grid cursor navigation, focus traps), derived dashboard metrics,
   demo-seeding orchestration, App-level integration wiring, the HTTP
-  transport layer, and loading/empty/error states.
-- **Backend (78)** — pytest. Covers the workday scheduling engine
-  (dependencies, lag, federal holidays), critical path and total float,
+  transport layer, and loading/empty/error states. Attachment coverage
+  includes API clients, advisory validation, sequential multiple-file
+  uploads, partial success, stale-response protection, previews, downloads,
+  Blob URL cleanup, confirmation and accessibility behavior, all six resource
+  integrations, and request-count behavior.
+- **Backend (136, plus 71 subtests)** — pytest. Covers the workday scheduling
+  engine (dependencies, lag, federal holidays), critical path and total float,
   task services, relationship migrations, CORS configuration, and
   TestClient API integration (auth, ownership enforcement, task lifecycle,
   Change Orders, RFIs, Submittals, Punch Lists, and field records over HTTP).
+  Attachment coverage includes authentication, ownership and parent
+  resolution, streaming upload/download, file validation, local and S3
+  adapters, S3 error classification, deletion cleanup, retries, leases,
+  reconciliation, migration safety, and parent-deletion cleanup.
 
 ```bash
 # frontend
@@ -260,6 +435,7 @@ Create `backend/.env`:
 DATABASE_URL=postgresql://postgres:YOUR_PASSWORD@localhost:5432/scheduler_db
 SECRET_KEY=replace-with-a-long-random-secret
 ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+ATTACHMENT_STORAGE_PROVIDER=local
 ```
 
 Run migrations and start the API (docs at `http://127.0.0.1:8000/docs`):
@@ -278,6 +454,43 @@ npm run dev        # http://localhost:5173
 
 Set `VITE_API_URL` when pointing at a deployed API.
 
+### Attachment Configuration
+
+Local development should use `ATTACHMENT_STORAGE_PROVIDER=local` unless an
+S3 integration is intentionally being tested. The following variables match
+[`backend/.env.example`](backend/.env.example):
+
+| Group | Variable | Purpose |
+|---|---|---|
+| Provider | `ATTACHMENT_STORAGE_PROVIDER` | `local` or `s3` |
+| Local | `ATTACHMENT_LOCAL_STORAGE_ROOT` | Optional absolute or expanded local root; blank uses `backend/.attachment_storage` |
+| File limits | `ATTACHMENT_MAX_UPLOAD_SIZE` | Maximum bytes per file; default `26214400` |
+| File limits | `ATTACHMENT_UPLOAD_CHUNK_SIZE` | Backend streaming chunk size; default `65536` |
+| S3 | `ATTACHMENT_S3_BUCKET` | Private bucket name; required in `s3` mode |
+| S3 | `ATTACHMENT_S3_REGION` | Bucket region; required in `s3` mode |
+| S3 | `ATTACHMENT_S3_ENDPOINT_URL` | Optional HTTPS endpoint for compatible providers |
+| S3 | `ATTACHMENT_S3_ACCESS_KEY_ID` | Secret access-key identifier; required in `s3` mode |
+| S3 | `ATTACHMENT_S3_SECRET_ACCESS_KEY` | Secret access key; required in `s3` mode |
+| S3 | `ATTACHMENT_S3_SESSION_TOKEN` | Optional temporary session token |
+| S3 | `ATTACHMENT_S3_ADDRESSING_STYLE` | `auto`, `path`, or `virtual` |
+| S3 | `ATTACHMENT_S3_SECURE_TRANSPORT` | Require secure transport; default `true` |
+| S3 | `ATTACHMENT_S3_KEY_PREFIX` | Optional normalized object-key prefix |
+| Timeouts/retries | `ATTACHMENT_S3_CONNECT_TIMEOUT` | Connection timeout in seconds |
+| Timeouts/retries | `ATTACHMENT_S3_READ_TIMEOUT` | Read timeout in seconds |
+| Timeouts/retries | `ATTACHMENT_S3_MAX_RETRIES` | Provider retry limit |
+| Cleanup | `ATTACHMENT_CLEANUP_BATCH_SIZE` | Jobs claimed per cleanup batch |
+| Cleanup | `ATTACHMENT_CLEANUP_MAX_ATTEMPTS` | Maximum attempts before `Failed` |
+| Cleanup | `ATTACHMENT_CLEANUP_RETRY_BASE_SECONDS` | Initial exponential-backoff delay |
+| Cleanup | `ATTACHMENT_CLEANUP_RETRY_MAX_SECONDS` | Backoff ceiling |
+| Cleanup | `ATTACHMENT_CLEANUP_LEASE_SECONDS` | Recovery age for interrupted jobs |
+| Cleanup | `ATTACHMENT_CLEANUP_RETENTION_DAYS` | Completed-job retention before pruning |
+
+Use placeholder values in local `.env` files and configure production
+credentials as secret environment values. Render requires the S3 provider,
+bucket, region, access-key ID, and secret access key shown in
+`render.yaml`; configure an endpoint when the provider is not AWS. Never
+commit production credentials.
+
 ## Deployment
 
 - **Frontend — Vercel.** Hash-based routes keep every module refresh-safe with
@@ -285,7 +498,16 @@ Set `VITE_API_URL` when pointing at a deployed API.
   [construction-scheduler-eight.vercel.app](https://construction-scheduler-eight.vercel.app).
 - **Backend — Render.** [`backend/render.yaml`](backend/render.yaml) defines
   the web service, runs Alembic migrations on deploy, sets the health check,
-  and pins the production CORS origin.
+  pins the production CORS origin, and selects private S3-compatible storage.
+- **Attachment storage.** Production should use persistent object storage;
+  Render's ephemeral local filesystem may be lost during deploys. Keep the
+  bucket private, store credentials as secrets, and grant the application
+  identity only the minimum operations needed to upload, read, delete, and
+  check object existence.
+- **Cleanup scheduling.** Run
+  `python -m app.commands.process_attachment_cleanup` as a recurring external
+  scheduled job. The current Render blueprint configures only the web service,
+  so cleanup scheduling remains an explicit deployment operation.
 
 ## Roadmap
 
@@ -305,6 +527,15 @@ Set `VITE_API_URL` when pointing at a deployed API.
   data-preserving legacy compatibility, fixed-precision financial fields,
   lifecycle and schedule-impact tracking, complete frontend CRUD and
   filtering, and dashboard health and cost metrics
+- ✅ M13 Document Management across Projects, Daily Logs, RFIs, Submittals,
+  Punch Items, and Change Orders:
+  - M13.0 Architecture Audit
+  - M13.1 Backend Foundation
+  - M13.2 Production Storage and Durable Cleanup
+  - M13.3 Reusable Frontend Attachment System
+  - M13.4 Project and Daily Log Pilot
+  - M13.5 Remaining Resource Rollout
+  - M13.6 Documentation and Closeout
 - ✅ Branded landing page and first-run demo seeding
 - ✅ Icon system, confirmation dialogs, notifications, loading skeletons
 - ✅ Scheduler showcase: WBS numbering, inline validation, critical path +
@@ -315,9 +546,16 @@ Set `VITE_API_URL` when pointing at a deployed API.
   DRY cleanup with TestClient API integration coverage
 
 **Next**
-- Document management
 - Weather-delay integration and resource loading
 - Milestone tasks, Gantt dependency arrows, and timeline zoom
+
+**Future possibilities (not committed scope)**
+- Attachment version history, bulk download, thumbnails, and image galleries
+- Drawing annotations, OCR, full-text document search, antivirus integration,
+  and document approvals
+- Direct multipart browser uploads and bucket-wide orphan scanning
+- A built-in background worker and cleanup-job administration interface
+- Project and Daily Log parent-deletion workflows
 
 ## Author
 
