@@ -331,6 +331,7 @@ function App() {
               onDeleteRFI={handleDeleteRFI}
               onDeleteSubmittal={handleDeleteSubmittal}
               onDeletePunchItem={handleDeletePunchItem}
+              onAttachmentError={reportRequestError}
             />
           ) : (
             <AuthPage

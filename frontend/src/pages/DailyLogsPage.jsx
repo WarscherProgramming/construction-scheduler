@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 
+import AttachmentPanel from "../components/AttachmentPanel";
 import FormField from "../components/FormField";
 import RecordCell from "../components/RecordCell";
 import RecordFilters from "../components/RecordFilters";
@@ -11,6 +12,7 @@ import PageHeader from "../components/ui/PageHeader";
 import ProjectLayout from "../components/ui/ProjectLayout";
 
 function DailyLogsPage({
+  projectId,
   projectName,
   dailyLogs,
   projectCompanies,
@@ -27,6 +29,7 @@ function DailyLogsPage({
   onCompanyChange,
   onManpowerChange,
   onNotesChange,
+  onAttachmentError,
   isCreating = false,
   isRefreshing = false,
   isLoading = false,
@@ -34,6 +37,7 @@ function DailyLogsPage({
 }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [companyFilter, setCompanyFilter] = useState("");
+  const [attachmentLogId, setAttachmentLogId] = useState(null);
 
   const filteredLogs = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -50,6 +54,10 @@ function DailyLogsPage({
       return matchesCompany && matchesQuery;
     });
   }, [companyFilter, dailyLogs, searchQuery]);
+
+  const selectedLog = filteredLogs.find(
+    (log) => log.id === attachmentLogId
+  );
 
   return (
     <ProjectLayout
@@ -186,17 +194,60 @@ function DailyLogsPage({
             ? "No daily logs match the current filters."
             : "No daily logs yet. Create the first log above."
         }
-        headers={["Date", "Company", "Manpower", "Notes"]}
+        headers={["Date", "Company", "Manpower", "Notes", "Attachments"]}
       >
-        {filteredLogs.map((log) => (
-          <tr key={log.id}>
-            <RecordCell label="Date">{formatDate(log.date)}</RecordCell>
-            <RecordCell label="Company">{log.company}</RecordCell>
-            <RecordCell label="Manpower">{log.manpower}</RecordCell>
-            <RecordCell label="Notes">{log.notes}</RecordCell>
-          </tr>
-        ))}
+        {filteredLogs.map((log) => {
+          const detailId = `daily-log-attachments-${log.id}`;
+          const isExpanded = selectedLog?.id === log.id;
+          const logLabel = `${formatDate(log.date)} for ${log.company}`;
+
+          return (
+            <tr key={log.id}>
+              <RecordCell label="Date">{formatDate(log.date)}</RecordCell>
+              <RecordCell label="Company">{log.company}</RecordCell>
+              <RecordCell label="Manpower">{log.manpower}</RecordCell>
+              <RecordCell label="Notes">{log.notes}</RecordCell>
+              <RecordCell label="Attachments" className="record-actions">
+                <Button
+                  size="sm"
+                  aria-expanded={isExpanded}
+                  aria-controls={detailId}
+                  aria-label={`${
+                    isExpanded ? "Close attachments" : "Attachments"
+                  } for daily log ${logLabel}`}
+                  onClick={() =>
+                    setAttachmentLogId(isExpanded ? null : log.id)
+                  }
+                >
+                  <Icon name="file-text" size={15} />
+                  {isExpanded ? "Close" : "Attachments"}
+                </Button>
+              </RecordCell>
+            </tr>
+          );
+        })}
       </RecordTable>
+
+      {selectedLog && (
+        <div
+          id={`daily-log-attachments-${selectedLog.id}`}
+          className="daily-log-attachment-detail"
+          role="region"
+          aria-label={`Attachments for daily log ${formatDate(
+            selectedLog.date
+          )} for ${selectedLog.company}`}
+        >
+          <AttachmentPanel
+            projectId={projectId}
+            parentType="daily_log"
+            parentId={selectedLog.id}
+            title="Daily Log Attachments"
+            canUpload
+            canDelete
+            onError={onAttachmentError}
+          />
+        </div>
+      )}
     </ProjectLayout>
   );
 }

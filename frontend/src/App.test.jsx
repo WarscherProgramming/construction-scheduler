@@ -43,6 +43,10 @@ vi.mock("./services/api", () => ({
   createPunchItem: vi.fn(),
   updatePunchItem: vi.fn(),
   deletePunchItem: vi.fn(),
+  listAttachments: vi.fn(),
+  uploadAttachment: vi.fn(),
+  downloadAttachment: vi.fn(),
+  deleteAttachment: vi.fn(),
   reorderTasks: vi.fn(),
   loginUser: vi.fn(),
   registerUser: vi.fn(),
@@ -74,6 +78,7 @@ import {
   fetchSubmittals,
   fetchTasks,
   fetchTemplates,
+  listAttachments,
   updateRFI,
   updateChangeOrder,
   updatePunchItem,
@@ -147,6 +152,7 @@ describe("App integration (hooks wiring)", () => {
     createPunchItem.mockResolvedValue({});
     updatePunchItem.mockResolvedValue({});
     deletePunchItem.mockResolvedValue({ message: "Punch Item deleted" });
+    listAttachments.mockResolvedValue({ attachments: [] });
   });
 
   it("shows the login experience when unauthenticated", () => {
@@ -214,6 +220,39 @@ describe("App integration (hooks wiring)", () => {
       expect(fetchPunchItems).toHaveBeenCalledTimes(1);
     });
     expect(fetchPunchItems).toHaveBeenCalledWith(1);
+  });
+
+  it("loads project documents only from the selected project settings", async () => {
+    const user = userEvent.setup();
+    fetchProjects.mockResolvedValue({
+      projects: [{ id: 1, name: "Riverside" }],
+    });
+
+    renderApp();
+
+    await screen.findByRole("option", { name: "Riverside" });
+    expect(listAttachments).not.toHaveBeenCalled();
+
+    await user.selectOptions(screen.getByLabelText("Project"), "1");
+    await screen.findByText("Riverside Dashboard");
+    expect(listAttachments).not.toHaveBeenCalled();
+
+    await user.click(
+      screen.getByRole("button", { name: "Project Settings" })
+    );
+
+    expect(
+      await screen.findByRole("heading", { name: "Project Documents" })
+    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(listAttachments).toHaveBeenCalledTimes(1);
+    });
+    expect(listAttachments).toHaveBeenCalledWith(
+      1,
+      "project",
+      1,
+      expect.objectContaining({ signal: expect.any(AbortSignal) })
+    );
   });
 
   it("clears Change Order dashboard metrics while switching projects", async () => {

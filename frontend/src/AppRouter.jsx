@@ -38,6 +38,7 @@ function AppRouter({
   onDeleteRFI,
   onDeleteSubmittal,
   onDeletePunchItem,
+  onAttachmentError,
 }) {
   const {
     projects,
@@ -128,6 +129,8 @@ function AppRouter({
   if (currentPage === "dailyLogs") {
     return (
       <DailyLogsPage
+        key={selectedProjectId}
+        projectId={selectedProjectId}
         projectName={projectName}
         dailyLogs={dailyLogs}
         projectCompanies={projectCompanies}
@@ -147,6 +150,7 @@ function AppRouter({
         onCompanyChange={forms.setLogCompany}
         onManpowerChange={forms.setLogManpower}
         onNotesChange={forms.setLogNotes}
+        onAttachmentError={onAttachmentError}
       />
     );
   }
@@ -381,6 +385,7 @@ function AppRouter({
   if (currentPage === "projectSettings") {
     return (
       <ProjectSettingsPage
+        projectId={selectedProjectId}
         projectName={projectName}
         projectCompanies={projectCompanies}
         companyName={forms.companyName}
@@ -391,6 +396,7 @@ function AppRouter({
         isLoading={loading("companies")}
         onNameChange={forms.setCompanyName}
         onTradeChange={forms.setCompanyTrade}
+        onAttachmentError={onAttachmentError}
       />
     );
   }

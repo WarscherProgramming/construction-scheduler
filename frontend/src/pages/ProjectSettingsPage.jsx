@@ -1,3 +1,4 @@
+import AttachmentPanel from "../components/AttachmentPanel";
 import FormField from "../components/FormField";
 import RecordCell from "../components/RecordCell";
 import RecordTable from "../components/RecordTable";
@@ -8,6 +9,7 @@ import PageHeader from "../components/ui/PageHeader";
 import ProjectLayout from "../components/ui/ProjectLayout";
 
 function ProjectSettingsPage({
+  projectId,
   projectName,
   projectCompanies,
   companyName,
@@ -17,6 +19,7 @@ function ProjectSettingsPage({
   onCreate,
   onNameChange,
   onTradeChange,
+  onAttachmentError,
   isCreating = false,
   isLoading = false,
 }) {
@@ -81,6 +84,18 @@ function ProjectSettingsPage({
           </tr>
         ))}
       </RecordTable>
+
+      <div className="project-documents">
+        <AttachmentPanel
+          projectId={projectId}
+          parentType="project"
+          parentId={projectId}
+          title="Project Documents"
+          canUpload
+          canDelete
+          onError={onAttachmentError}
+        />
+      </div>
     </ProjectLayout>
   );
 }
