@@ -16,6 +16,7 @@ from starlette.datastructures import Headers
 from app.api.dependencies import (
     get_attachment_config,
     get_attachment_storage,
+    get_attachment_storage_resolver,
     get_db,
 )
 from app.core.config import (
@@ -36,9 +37,11 @@ from app.models.user import User
 from app.services.attachment import (
     create_attachment,
     delete_attachments_for_parent,
+    delete_parent_with_attachments,
     list_attachment_records,
     sanitize_attachment_filename,
 )
+from app.services.attachment_cleanup import process_cleanup_job_ids
 from app.storage.attachment import (
     AttachmentStorageError,
     MemoryAttachmentStorage,
@@ -131,6 +134,9 @@ class AttachmentApiTests(unittest.TestCase):
         app.dependency_overrides[get_db] = override_get_db
         app.dependency_overrides[get_attachment_storage] = (
             lambda: self.storage
+        )
+        app.dependency_overrides[get_attachment_storage_resolver] = (
+            lambda: lambda provider: self.storage
         )
         app.dependency_overrides[get_attachment_config] = (
             lambda: self.config
@@ -984,6 +990,156 @@ class AttachmentApiTests(unittest.TestCase):
                 .count(),
                 len(parents),
             )
+
+    def test_parent_routes_delete_multiple_attachments_durably(self):
+        routes = {
+            "rfi": "rfis",
+            "submittal": "submittals",
+            "punch_item": "punch-items",
+            "change_order": "change-orders",
+        }
+        messages = {
+            "rfi": {"message": "RFI deleted"},
+            "submittal": {"message": "Submittal deleted"},
+            "punch_item": {"message": "Punch Item deleted"},
+            "change_order": {"message": "Change order deleted"},
+        }
+
+        for parent_type, parent_id in self.parents.items():
+            if parent_type == "daily_log":
+                continue
+            with self.subTest(parent_type=parent_type):
+                self.upload(
+                    parent_type=parent_type,
+                    parent_id=parent_id,
+                    filename=f"{parent_type}-first.pdf",
+                )
+                self.upload(
+                    parent_type=parent_type,
+                    parent_id=parent_id,
+                    filename=f"{parent_type}-second.pdf",
+                )
+                response = self.client.delete(
+                    f"/projects/{self.project_id}/"
+                    f"{routes[parent_type]}/{parent_id}",
+                    headers=self.owner_headers,
+                )
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.json(), messages[parent_type])
+
+        with self.TestingSession() as db:
+            self.assertEqual(db.query(Attachment).count(), 0)
+            jobs = db.query(AttachmentCleanupJob).all()
+            self.assertEqual(len(jobs), 8)
+            self.assertTrue(
+                all(job.status == "Completed" for job in jobs)
+            )
+            self.assertIsNone(db.get(RFI, self.parents["rfi"]))
+            self.assertIsNone(
+                db.get(Submittal, self.parents["submittal"])
+            )
+            self.assertIsNone(
+                db.get(PunchItem, self.parents["punch_item"])
+            )
+            self.assertIsNone(
+                db.get(ChangeOrder, self.parents["change_order"])
+            )
+        self.assertEqual(self.storage.objects, {})
+
+    def test_parent_routes_keep_retryable_jobs_during_storage_outage(self):
+        routes = {
+            "rfi": "rfis",
+            "submittal": "submittals",
+            "punch_item": "punch-items",
+            "change_order": "change-orders",
+        }
+        self.storage.fail_delete = True
+
+        for parent_type, parent_id in self.parents.items():
+            if parent_type == "daily_log":
+                continue
+            self.upload(
+                parent_type=parent_type,
+                parent_id=parent_id,
+                filename=f"{parent_type}.pdf",
+            )
+            response = self.client.delete(
+                f"/projects/{self.project_id}/"
+                f"{routes[parent_type]}/{parent_id}",
+                headers=self.owner_headers,
+            )
+            self.assertEqual(response.status_code, 200)
+
+        with self.TestingSession() as db:
+            self.assertEqual(db.query(Attachment).count(), 0)
+            jobs = db.query(AttachmentCleanupJob).all()
+            job_ids = [job.id for job in jobs]
+            self.assertEqual(len(jobs), 4)
+            self.assertTrue(all(job.status == "Pending" for job in jobs))
+            self.assertTrue(all(job.attempt_count == 1 for job in jobs))
+
+        self.assertEqual(len(self.storage.objects), 4)
+        self.storage.fail_delete = False
+        with self.TestingSession() as db:
+            result = process_cleanup_job_ids(
+                db,
+                job_ids,
+                self.storage,
+                self.config,
+            )
+            self.assertEqual(result.completed, 4)
+            self.assertTrue(
+                all(
+                    job.status == "Completed"
+                    for job in db.query(AttachmentCleanupJob).all()
+                )
+            )
+        self.assertEqual(self.storage.objects, {})
+
+    def test_parent_delete_treats_an_already_missing_object_as_complete(self):
+        parent_id = self.parents["rfi"]
+        self.upload(parent_type="rfi", parent_id=parent_id)
+        self.storage.objects.clear()
+
+        response = self.client.delete(
+            f"/projects/{self.project_id}/rfis/{parent_id}",
+            headers=self.owner_headers,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        with self.TestingSession() as db:
+            job = db.query(AttachmentCleanupJob).one()
+            self.assertEqual(job.status, "Completed")
+
+    def test_parent_delete_database_failure_rolls_back_every_change(self):
+        parent_id = self.parents["rfi"]
+        created = self.upload(parent_type="rfi", parent_id=parent_id)
+
+        with self.TestingSession() as db:
+            parent = db.get(RFI, parent_id)
+            with patch.object(
+                db,
+                "commit",
+                side_effect=SQLAlchemyError("database unavailable"),
+            ):
+                with self.assertRaises(HTTPException) as raised:
+                    delete_parent_with_attachments(
+                        db,
+                        parent,
+                        self.project_id,
+                        "rfi",
+                        parent_id,
+                        config=self.config,
+                        storage_resolver=lambda provider: self.storage,
+                    )
+
+        self.assertEqual(raised.exception.status_code, 500)
+        with self.TestingSession() as db:
+            self.assertIsNotNone(db.get(RFI, parent_id))
+            self.assertIsNotNone(
+                db.get(Attachment, created.json()["id"])
+            )
+            self.assertEqual(db.query(AttachmentCleanupJob).count(), 0)
 
 
 if __name__ == "__main__":

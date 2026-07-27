@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 
+import AttachmentPanel from "../components/AttachmentPanel";
 import FormField from "../components/FormField";
 import RecordCell from "../components/RecordCell";
 import RecordFilters from "../components/RecordFilters";
@@ -36,6 +37,7 @@ function Detail({ label, children }) {
 }
 
 function ChangeOrdersPage({
+  projectId,
   projectName,
   changeOrders,
   projectCompanies,
@@ -77,6 +79,7 @@ function ChangeOrdersPage({
   onApprovedDateChange,
   onExecutedDateChange,
   onResponsiblePartyChange,
+  onAttachmentError,
   isSaving = false,
   isRefreshing = false,
   isLoading = false,
@@ -85,6 +88,8 @@ function ChangeOrdersPage({
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [companyFilter, setCompanyFilter] = useState("");
+  const [attachmentChangeOrderId, setAttachmentChangeOrderId] =
+    useState(null);
   const isEditing = editingChangeOrderId !== null;
   const hasKnownStatus = CHANGE_ORDER_STATUSES.includes(changeOrderStatus);
 
@@ -129,6 +134,9 @@ function ChangeOrdersPage({
       return matchesStatus && matchesCompany && matchesQuery;
     });
   }, [changeOrders, companyFilter, searchQuery, statusFilter]);
+  const selectedChangeOrder = filteredChangeOrders.find(
+    (changeOrder) => changeOrder.id === attachmentChangeOrderId
+  );
 
   return (
     <ProjectLayout
@@ -551,6 +559,29 @@ function ChangeOrdersPage({
               </RecordCell>
               <RecordCell label="Actions" className="record-actions">
                 <Button
+                  aria-expanded={
+                    selectedChangeOrder?.id === changeOrder.id
+                  }
+                  aria-controls={`change-order-attachments-${changeOrder.id}`}
+                  aria-label={`${
+                    selectedChangeOrder?.id === changeOrder.id
+                      ? "Close attachments"
+                      : "Attachments"
+                  } for change order ${changeOrder.co_number}`}
+                  onClick={() =>
+                    setAttachmentChangeOrderId(
+                      selectedChangeOrder?.id === changeOrder.id
+                        ? null
+                        : changeOrder.id
+                    )
+                  }
+                >
+                  <Icon name="file-text" size={16} />
+                  {selectedChangeOrder?.id === changeOrder.id
+                    ? "Close"
+                    : "Attachments"}
+                </Button>
+                <Button
                   onClick={() => onEdit(changeOrder)}
                   aria-label={`Edit change order ${changeOrder.co_number}`}
                 >
@@ -572,6 +603,25 @@ function ChangeOrdersPage({
           );
         })}
       </RecordTable>
+
+      {selectedChangeOrder && (
+        <div
+          id={`change-order-attachments-${selectedChangeOrder.id}`}
+          className="record-attachment-detail"
+          role="region"
+          aria-label={`Attachments for change order ${selectedChangeOrder.co_number}`}
+        >
+          <AttachmentPanel
+            projectId={projectId}
+            parentType="change_order"
+            parentId={selectedChangeOrder.id}
+            title="Change Order Attachments"
+            canUpload
+            canDelete
+            onError={onAttachmentError}
+          />
+        </div>
+      )}
     </ProjectLayout>
   );
 }

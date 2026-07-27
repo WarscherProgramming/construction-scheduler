@@ -11,7 +11,10 @@ from app.storage.attachment import (
     AttachmentStorage,
     AttachmentStorageConfigurationError,
 )
-from app.storage.factory import build_attachment_storage
+from app.storage.factory import (
+    build_attachment_storage,
+    build_storage_resolver,
+)
 
 
 def get_db() -> Generator[Session, None, None]:
@@ -59,3 +62,9 @@ def get_attachment_storage(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Attachment storage is unavailable",
         ) from error
+
+
+def get_attachment_storage_resolver(
+    config: AttachmentConfig = Depends(get_attachment_config),
+):
+    return build_storage_resolver(config)

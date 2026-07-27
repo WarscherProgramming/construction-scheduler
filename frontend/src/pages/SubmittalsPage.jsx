@@ -1,3 +1,6 @@
+import { useState } from "react";
+
+import AttachmentPanel from "../components/AttachmentPanel";
 import FormField from "../components/FormField";
 import RecordCell from "../components/RecordCell";
 import RecordTable from "../components/RecordTable";
@@ -19,6 +22,7 @@ const STATUS_OPTIONS = [
 ];
 
 function SubmittalsPage({
+  projectId,
   projectName,
   submittals,
   projectCompanies,
@@ -50,11 +54,16 @@ function SubmittalsPage({
   onStatusChange,
   onReviewerChange,
   onRemarksChange,
+  onAttachmentError,
   isSaving = false,
   isRefreshing = false,
   isLoading = false,
 }) {
   const isEditing = editingSubmittalId !== null;
+  const [attachmentSubmittalId, setAttachmentSubmittalId] = useState(null);
+  const selectedSubmittal = submittals.find(
+    (submittal) => submittal.id === attachmentSubmittalId
+  );
 
   return (
     <ProjectLayout
@@ -293,6 +302,27 @@ function SubmittalsPage({
               </RecordCell>
               <RecordCell label="Actions" className="record-actions">
                 <Button
+                  aria-expanded={selectedSubmittal?.id === submittal.id}
+                  aria-controls={`submittal-attachments-${submittal.id}`}
+                  aria-label={`${
+                    selectedSubmittal?.id === submittal.id
+                      ? "Close attachments"
+                      : "Attachments"
+                  } for Submittal ${submittal.number}`}
+                  onClick={() =>
+                    setAttachmentSubmittalId(
+                      selectedSubmittal?.id === submittal.id
+                        ? null
+                        : submittal.id
+                    )
+                  }
+                >
+                  <Icon name="file-text" size={16} />
+                  {selectedSubmittal?.id === submittal.id
+                    ? "Close"
+                    : "Attachments"}
+                </Button>
+                <Button
                   onClick={() => onEdit(submittal)}
                   aria-label={`Edit ${submittal.number}`}
                 >
@@ -314,6 +344,25 @@ function SubmittalsPage({
           );
         })}
       </RecordTable>
+
+      {selectedSubmittal && (
+        <div
+          id={`submittal-attachments-${selectedSubmittal.id}`}
+          className="record-attachment-detail"
+          role="region"
+          aria-label={`Attachments for Submittal ${selectedSubmittal.number}`}
+        >
+          <AttachmentPanel
+            projectId={projectId}
+            parentType="submittal"
+            parentId={selectedSubmittal.id}
+            title="Submittal Attachments"
+            canUpload
+            canDelete
+            onError={onAttachmentError}
+          />
+        </div>
+      )}
     </ProjectLayout>
   );
 }

@@ -1,8 +1,11 @@
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.core.config import AttachmentConfig
 from app.models.project import Project
 from app.models.submittal import Submittal, SubmittalNumberSequence
+from app.services.attachment import delete_parent_with_attachments
+from app.services.attachment_cleanup import StorageResolver
 
 
 def allocate_submittal_number(db: Session, project_id: int) -> str:
@@ -65,3 +68,20 @@ def validate_submittal_dates(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="reviewed_date cannot be earlier than submitted_date",
         )
+
+
+def delete_submittal(
+    db: Session,
+    submittal: Submittal,
+    config: AttachmentConfig,
+    storage_resolver: StorageResolver,
+) -> None:
+    delete_parent_with_attachments(
+        db,
+        submittal,
+        submittal.project_id,
+        "submittal",
+        submittal.id,
+        config=config,
+        storage_resolver=storage_resolver,
+    )

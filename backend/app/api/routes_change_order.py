@@ -1,7 +1,13 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import get_db, get_owned_project
+from app.api.dependencies import (
+    get_attachment_config,
+    get_attachment_storage_resolver,
+    get_db,
+    get_owned_project,
+)
+from app.core.config import AttachmentConfig
 from app.models.project import Project
 from app.schemas.change_order import (
     ChangeOrderCreate,
@@ -17,6 +23,7 @@ from app.services.change_order import (
     list_change_orders,
     update_change_order as update_change_order_record,
 )
+from app.services.attachment_cleanup import StorageResolver
 
 router = APIRouter()
 
@@ -75,11 +82,20 @@ def delete_change_order(
     change_order_id: int,
     db: Session = Depends(get_db),
     project: Project = Depends(get_owned_project),
+    config: AttachmentConfig = Depends(get_attachment_config),
+    storage_resolver: StorageResolver = Depends(
+        get_attachment_storage_resolver
+    ),
 ):
     change_order = get_project_change_order(
         db,
         project_id,
         change_order_id,
     )
-    delete_change_order_record(db, change_order)
+    delete_change_order_record(
+        db,
+        change_order,
+        config,
+        storage_resolver,
+    )
     return {"message": "Change order deleted"}

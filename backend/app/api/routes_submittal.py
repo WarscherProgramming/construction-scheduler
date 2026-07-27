@@ -2,7 +2,13 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import get_db, get_owned_project
+from app.api.dependencies import (
+    get_attachment_config,
+    get_attachment_storage_resolver,
+    get_db,
+    get_owned_project,
+)
+from app.core.config import AttachmentConfig
 from app.models.project import Project
 from app.models.submittal import Submittal
 from app.schemas.common import MessageResponse
@@ -14,8 +20,10 @@ from app.schemas.submittal import (
 )
 from app.services.submittal import (
     allocate_submittal_number,
+    delete_submittal as delete_submittal_record,
     validate_submittal_dates,
 )
+from app.services.attachment_cleanup import StorageResolver
 
 router = APIRouter()
 
@@ -143,10 +151,18 @@ def delete_submittal(
     submittal_id: int,
     db: Session = Depends(get_db),
     project: Project = Depends(get_owned_project),
+    config: AttachmentConfig = Depends(get_attachment_config),
+    storage_resolver: StorageResolver = Depends(
+        get_attachment_storage_resolver
+    ),
 ):
     submittal = get_project_submittal(db, project_id, submittal_id)
 
-    db.delete(submittal)
-    db.commit()
+    delete_submittal_record(
+        db,
+        submittal,
+        config,
+        storage_resolver,
+    )
 
     return {"message": "Submittal deleted"}

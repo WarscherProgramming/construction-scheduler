@@ -1,3 +1,6 @@
+import { useState } from "react";
+
+import AttachmentPanel from "../components/AttachmentPanel";
 import FormField from "../components/FormField";
 import RecordCell from "../components/RecordCell";
 import RecordTable from "../components/RecordTable";
@@ -10,6 +13,7 @@ import ProjectLayout from "../components/ui/ProjectLayout";
 import { isPastLocalDate } from "../utils/date";
 
 function RFIsPage({
+  projectId,
   projectName,
   rfis,
   projectCompanies,
@@ -37,11 +41,14 @@ function RFIsPage({
   onDueDateChange,
   onResponseChange,
   onStatusChange,
+  onAttachmentError,
   isSaving = false,
   isRefreshing = false,
   isLoading = false,
 }) {
   const isEditing = editingRFIId !== null;
+  const [attachmentRFIId, setAttachmentRFIId] = useState(null);
+  const selectedRFI = rfis.find((rfi) => rfi.id === attachmentRFIId);
 
   return (
     <ProjectLayout
@@ -234,6 +241,23 @@ function RFIsPage({
               </RecordCell>
               <RecordCell label="Actions" className="record-actions">
                 <Button
+                  aria-expanded={selectedRFI?.id === rfi.id}
+                  aria-controls={`rfi-attachments-${rfi.id}`}
+                  aria-label={`${
+                    selectedRFI?.id === rfi.id
+                      ? "Close attachments"
+                      : "Attachments"
+                  } for RFI ${rfi.number}`}
+                  onClick={() =>
+                    setAttachmentRFIId(
+                      selectedRFI?.id === rfi.id ? null : rfi.id
+                    )
+                  }
+                >
+                  <Icon name="file-text" size={16} />
+                  {selectedRFI?.id === rfi.id ? "Close" : "Attachments"}
+                </Button>
+                <Button
                   onClick={() => onEdit(rfi)}
                   aria-label={`Edit ${rfi.number}`}
                 >
@@ -253,6 +277,25 @@ function RFIsPage({
           );
         })}
       </RecordTable>
+
+      {selectedRFI && (
+        <div
+          id={`rfi-attachments-${selectedRFI.id}`}
+          className="record-attachment-detail"
+          role="region"
+          aria-label={`Attachments for RFI ${selectedRFI.number}`}
+        >
+          <AttachmentPanel
+            projectId={projectId}
+            parentType="rfi"
+            parentId={selectedRFI.id}
+            title="RFI Attachments"
+            canUpload
+            canDelete
+            onError={onAttachmentError}
+          />
+        </div>
+      )}
     </ProjectLayout>
   );
 }

@@ -208,6 +208,8 @@ function AppRouter({
   if (currentPage === "changeOrders") {
     return (
       <ChangeOrdersPage
+        key={selectedProjectId}
+        projectId={selectedProjectId}
         projectName={projectName}
         changeOrders={changeOrders}
         projectCompanies={projectCompanies}
@@ -256,6 +258,7 @@ function AppRouter({
         onApprovedDateChange={forms.setChangeOrderApprovedDate}
         onExecutedDateChange={forms.setChangeOrderExecutedDate}
         onResponsiblePartyChange={forms.setChangeOrderResponsibleParty}
+        onAttachmentError={onAttachmentError}
       />
     );
   }
@@ -263,6 +266,8 @@ function AppRouter({
   if (currentPage === "rfis") {
     return (
       <RFIsPage
+        key={selectedProjectId}
+        projectId={selectedProjectId}
         projectName={projectName}
         rfis={rfis}
         projectCompanies={projectCompanies}
@@ -292,6 +297,7 @@ function AppRouter({
         isSaving={isOperationActive("saveRFI")}
         isRefreshing={isOperationActive("refreshRFIs")}
         isLoading={loading("rfis")}
+        onAttachmentError={onAttachmentError}
       />
     );
   }
@@ -299,6 +305,8 @@ function AppRouter({
   if (currentPage === "submittals") {
     return (
       <SubmittalsPage
+        key={selectedProjectId}
+        projectId={selectedProjectId}
         projectName={projectName}
         submittals={submittals}
         projectCompanies={projectCompanies}
@@ -336,6 +344,7 @@ function AppRouter({
         isSaving={isOperationActive("saveSubmittal")}
         isRefreshing={isOperationActive("refreshSubmittals")}
         isLoading={loading("submittals")}
+        onAttachmentError={onAttachmentError}
       />
     );
   }
@@ -343,6 +352,8 @@ function AppRouter({
   if (currentPage === "punchItems") {
     return (
       <PunchItemsPage
+        key={selectedProjectId}
+        projectId={selectedProjectId}
         projectName={projectName}
         punchItems={punchItems}
         projectCompanies={projectCompanies}
@@ -378,6 +389,7 @@ function AppRouter({
         isSaving={isOperationActive("savePunchItem")}
         isRefreshing={isOperationActive("refreshPunchItems")}
         isLoading={loading("punchItems")}
+        onAttachmentError={onAttachmentError}
       />
     );
   }

@@ -2,7 +2,13 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import get_db, get_owned_project
+from app.api.dependencies import (
+    get_attachment_config,
+    get_attachment_storage_resolver,
+    get_db,
+    get_owned_project,
+)
+from app.core.config import AttachmentConfig
 from app.models.project import Project
 from app.models.punch_item import PunchItem
 from app.schemas.common import MessageResponse
@@ -14,8 +20,10 @@ from app.schemas.punch_item import (
 )
 from app.services.punch_item import (
     allocate_punch_item_number,
+    delete_punch_item as delete_punch_item_record,
     validate_punch_item_dates,
 )
+from app.services.attachment_cleanup import StorageResolver
 
 router = APIRouter()
 
@@ -132,10 +140,18 @@ def delete_punch_item(
     item_id: int,
     db: Session = Depends(get_db),
     project: Project = Depends(get_owned_project),
+    config: AttachmentConfig = Depends(get_attachment_config),
+    storage_resolver: StorageResolver = Depends(
+        get_attachment_storage_resolver
+    ),
 ):
     punch_item = get_project_punch_item(db, project_id, item_id)
 
-    db.delete(punch_item)
-    db.commit()
+    delete_punch_item_record(
+        db,
+        punch_item,
+        config,
+        storage_resolver,
+    )
 
     return {"message": "Punch Item deleted"}

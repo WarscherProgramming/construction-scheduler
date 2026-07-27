@@ -2,7 +2,13 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import get_db, get_owned_project
+from app.api.dependencies import (
+    get_attachment_config,
+    get_attachment_storage_resolver,
+    get_db,
+    get_owned_project,
+)
+from app.core.config import AttachmentConfig
 from app.models.project import Project
 from app.models.rfi import RFI
 from app.schemas.common import MessageResponse
@@ -12,7 +18,12 @@ from app.schemas.rfi import (
     RFIResponse,
     RFIUpdate,
 )
-from app.services.rfi import allocate_rfi_number, validate_rfi_dates
+from app.services.attachment_cleanup import StorageResolver
+from app.services.rfi import (
+    allocate_rfi_number,
+    delete_rfi as delete_rfi_record,
+    validate_rfi_dates,
+)
 
 router = APIRouter()
 
@@ -121,10 +132,13 @@ def delete_rfi(
     rfi_id: int,
     db: Session = Depends(get_db),
     project: Project = Depends(get_owned_project),
+    config: AttachmentConfig = Depends(get_attachment_config),
+    storage_resolver: StorageResolver = Depends(
+        get_attachment_storage_resolver
+    ),
 ):
     rfi = get_project_rfi(db, project_id, rfi_id)
 
-    db.delete(rfi)
-    db.commit()
+    delete_rfi_record(db, rfi, config, storage_resolver)
 
     return {"message": "RFI deleted"}

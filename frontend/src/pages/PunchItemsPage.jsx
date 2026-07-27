@@ -1,3 +1,6 @@
+import { useState } from "react";
+
+import AttachmentPanel from "../components/AttachmentPanel";
 import FormField from "../components/FormField";
 import RecordCell from "../components/RecordCell";
 import RecordTable from "../components/RecordTable";
@@ -13,6 +16,7 @@ const PRIORITY_OPTIONS = ["Low", "Medium", "High", "Critical"];
 const STATUS_OPTIONS = ["Open", "In Progress", "Completed", "Verified"];
 
 function PunchItemsPage({
+  projectId,
   projectName,
   punchItems,
   projectCompanies,
@@ -44,11 +48,16 @@ function PunchItemsPage({
   onStatusChange,
   onDueDateChange,
   onCompletedDateChange,
+  onAttachmentError,
   isSaving = false,
   isRefreshing = false,
   isLoading = false,
 }) {
   const isEditing = editingPunchItemId !== null;
+  const [attachmentPunchItemId, setAttachmentPunchItemId] = useState(null);
+  const selectedPunchItem = punchItems.find(
+    (punchItem) => punchItem.id === attachmentPunchItemId
+  );
 
   return (
     <ProjectLayout
@@ -283,6 +292,27 @@ function PunchItemsPage({
               </RecordCell>
               <RecordCell label="Actions" className="record-actions">
                 <Button
+                  aria-expanded={selectedPunchItem?.id === punchItem.id}
+                  aria-controls={`punch-item-attachments-${punchItem.id}`}
+                  aria-label={`${
+                    selectedPunchItem?.id === punchItem.id
+                      ? "Close attachments"
+                      : "Attachments"
+                  } for Punch Item ${punchItem.number}`}
+                  onClick={() =>
+                    setAttachmentPunchItemId(
+                      selectedPunchItem?.id === punchItem.id
+                        ? null
+                        : punchItem.id
+                    )
+                  }
+                >
+                  <Icon name="file-text" size={16} />
+                  {selectedPunchItem?.id === punchItem.id
+                    ? "Close"
+                    : "Attachments"}
+                </Button>
+                <Button
                   onClick={() => onEdit(punchItem)}
                   aria-label={`Edit ${punchItem.number}`}
                 >
@@ -304,6 +334,25 @@ function PunchItemsPage({
           );
         })}
       </RecordTable>
+
+      {selectedPunchItem && (
+        <div
+          id={`punch-item-attachments-${selectedPunchItem.id}`}
+          className="record-attachment-detail"
+          role="region"
+          aria-label={`Attachments for Punch Item ${selectedPunchItem.number}`}
+        >
+          <AttachmentPanel
+            projectId={projectId}
+            parentType="punch_item"
+            parentId={selectedPunchItem.id}
+            title="Punch Item Attachments"
+            canUpload
+            canDelete
+            onError={onAttachmentError}
+          />
+        </div>
+      )}
     </ProjectLayout>
   );
 }

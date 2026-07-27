@@ -1,8 +1,11 @@
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.core.config import AttachmentConfig
 from app.models.project import Project
 from app.models.rfi import RFI, RFINumberSequence
+from app.services.attachment import delete_parent_with_attachments
+from app.services.attachment_cleanup import StorageResolver
 
 
 def allocate_rfi_number(db: Session, project_id: int) -> str:
@@ -48,3 +51,20 @@ def validate_rfi_dates(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="due_date cannot be earlier than submitted_date",
         )
+
+
+def delete_rfi(
+    db: Session,
+    rfi: RFI,
+    config: AttachmentConfig,
+    storage_resolver: StorageResolver,
+) -> None:
+    delete_parent_with_attachments(
+        db,
+        rfi,
+        rfi.project_id,
+        "rfi",
+        rfi.id,
+        config=config,
+        storage_resolver=storage_resolver,
+    )

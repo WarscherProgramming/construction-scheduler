@@ -5,9 +5,12 @@ from fastapi import HTTPException, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core.config import AttachmentConfig
 from app.models.change_order import ChangeOrder, ChangeOrderNumberSequence
 from app.models.project import Project
 from app.schemas.change_order import ChangeOrderCreate, ChangeOrderUpdate
+from app.services.attachment import delete_parent_with_attachments
+from app.services.attachment_cleanup import StorageResolver
 
 
 CHANGE_ORDER_NUMBER_PATTERN = re.compile(r"^CO-(\d+)$")
@@ -214,6 +217,18 @@ def update_change_order(
     return change_order
 
 
-def delete_change_order(db: Session, change_order: ChangeOrder) -> None:
-    db.delete(change_order)
-    db.commit()
+def delete_change_order(
+    db: Session,
+    change_order: ChangeOrder,
+    config: AttachmentConfig,
+    storage_resolver: StorageResolver,
+) -> None:
+    delete_parent_with_attachments(
+        db,
+        change_order,
+        change_order.project_id,
+        "change_order",
+        change_order.id,
+        config=config,
+        storage_resolver=storage_resolver,
+    )

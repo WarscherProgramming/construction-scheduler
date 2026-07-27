@@ -1,8 +1,11 @@
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.core.config import AttachmentConfig
 from app.models.project import Project
 from app.models.punch_item import PunchItem, PunchItemNumberSequence
+from app.services.attachment import delete_parent_with_attachments
+from app.services.attachment_cleanup import StorageResolver
 
 
 def allocate_punch_item_number(db: Session, project_id: int) -> str:
@@ -48,3 +51,20 @@ def validate_punch_item_dates(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="completed_date cannot be earlier than due_date",
         )
+
+
+def delete_punch_item(
+    db: Session,
+    punch_item: PunchItem,
+    config: AttachmentConfig,
+    storage_resolver: StorageResolver,
+) -> None:
+    delete_parent_with_attachments(
+        db,
+        punch_item,
+        punch_item.project_id,
+        "punch_item",
+        punch_item.id,
+        config=config,
+        storage_resolver=storage_resolver,
+    )

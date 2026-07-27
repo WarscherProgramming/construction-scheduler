@@ -21,6 +21,8 @@ from app.models.punch_item import PunchItem
 from app.models.rfi import RFI
 from app.models.submittal import Submittal
 from app.services.attachment_cleanup import (
+    CleanupPlan,
+    StorageResolver,
     enqueue_cleanup_job,
     process_cleanup_job_ids,
     queue_attachments_for_cleanup,
@@ -32,6 +34,7 @@ from app.storage.attachment import (
     AttachmentStorageError,
     AttachmentStreamTooLarge,
 )
+from app.storage.factory import build_storage_resolver
 
 
 logger = logging.getLogger(__name__)
@@ -624,4 +627,70 @@ def delete_attachments_for_project(
                 "project %s",
                 project_id,
             )
+    return plan.attachment_count
+
+
+def delete_parent_with_attachments(
+    db: Session,
+    parent,
+    project_id: int,
+    parent_type: str,
+    parent_id: int,
+    *,
+    config: AttachmentConfig = ATTACHMENT_CONFIG,
+    storage_resolver: StorageResolver | None = None,
+) -> int:
+    attachments = list_attachment_records(
+        db,
+        project_id,
+        parent_type,
+        parent_id,
+    )
+    providers = {attachment.storage_provider for attachment in attachments}
+
+    try:
+        plan: CleanupPlan = queue_attachments_for_cleanup(db, attachments)
+        db.delete(parent)
+        db.commit()
+    except SQLAlchemyError as error:
+        db.rollback()
+        logger.exception(
+            "Unable to delete parent type %s and ID %s with attachments",
+            parent_type,
+            parent_id,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Unable to delete record",
+        ) from error
+
+    resolver = storage_resolver or build_storage_resolver(config)
+    for provider in providers:
+        try:
+            storage = resolver(provider)
+        except AttachmentStorageError:
+            logger.warning(
+                "Attachment storage is unavailable for immediate cleanup "
+                "after deleting parent type %s and ID %s",
+                parent_type,
+                parent_id,
+            )
+            continue
+
+        try:
+            process_cleanup_job_ids(
+                db,
+                plan.job_ids,
+                storage,
+                config,
+            )
+        except SQLAlchemyError:
+            db.rollback()
+            logger.exception(
+                "Immediate cleanup state update failed after deleting "
+                "parent type %s and ID %s; durable jobs remain recoverable",
+                parent_type,
+                parent_id,
+            )
+
     return plan.attachment_count
