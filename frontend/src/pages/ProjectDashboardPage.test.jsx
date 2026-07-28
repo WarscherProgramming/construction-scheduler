@@ -1,333 +1,252 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import ProjectDashboardPage from "./ProjectDashboardPage";
 
-const REFERENCE = new Date("2026-06-30T09:00:00");
 
-const baseProps = {
-  projectName: "North Ridge",
-  referenceDate: REFERENCE,
-  formatDate: (value) => value,
+const hookMocks = vi.hoisted(() => ({
+  useProjectDashboard: vi.fn(),
+}));
+
+vi.mock("../hooks/useProjectDashboard", () => ({
+  default: hookMocks.useProjectDashboard,
+}));
+
+
+const DASHBOARD = {
+  as_of: "2026-07-27",
+  generated_at: "2026-07-27T23:00:00Z",
+  project: { id: 1, name: "Apex Clubhouse" },
+  schedule: {
+    task_count: 18,
+    planned_start: "2026-01-01",
+    planned_finish: "2026-12-15",
+    past_planned_finish_count: 3,
+    upcoming_start_count: 4,
+  },
+  rfis: { total: 7, open: 5, overdue: 2, due_soon: 1 },
+  submittals: { total: 9, pending: 4, overdue: 1, due_soon: 2 },
+  punch_items: {
+    total: 12,
+    open: 6,
+    overdue: 3,
+    completed_last_7_days: 2,
+  },
+  change_orders: {
+    total: 5,
+    active: 2,
+    approved: 2,
+    rejected: 1,
+    unknown_status: 0,
+    active_value: "1234567.89",
+    approved_value: "100.30",
+  },
+  daily_logs: {
+    total: 20,
+    latest_log_date: "2026-07-27",
+    today_count: 2,
+    today_manpower: 17,
+    last_7_days_count: 6,
+  },
+  documents: {
+    total: 10,
+    uploaded_last_7_days: 3,
+    recent: [],
+  },
+  attention_items: [],
+  upcoming_tasks: [],
+  recent_updates: [],
+};
+
+const BASE_PROPS = {
+  projectId: 1,
+  projectName: "Loading project",
   onNavigate: vi.fn(),
+  onLogout: vi.fn(),
+  onRequestError: vi.fn(),
 };
 
-const populated = {
-  tasks: [
-    { id: 1, name: "Sitework", start_date: "2026-06-20", end_date: "2026-06-25" },
-    { id: 2, name: "Foundations", start_date: "2026-06-30", end_date: "2026-07-05" },
-    { id: 3, name: "Steel", start_date: "2026-07-06", end_date: "2026-07-10" },
-  ],
-  changeOrders: [
-    {
-      id: 1,
-      date: "2026-06-28",
-      co_number: "CO-102",
-      company: "ClearView Glazing",
-      status: "Pending",
-      amount: "12500",
-      proposed_amount: null,
-      approved_amount: "10000.50",
-      schedule_impact_days: 5,
-      title: "Storefront revision",
-    },
-  ],
-  notesDelays: [
-    {
-      id: 1,
-      date: "2026-06-25",
-      entry_type: "Delay",
-      company: "Desert Concrete",
-      description: "Rain",
-    },
-  ],
-  inspections: [
-    { id: 1, date: "2026-06-30", inspection_type: "Framing", status: "Pending" },
-  ],
-  dailyLogs: [
-    { id: 1, date: "2026-06-29", company: "Desert Concrete", manpower: 8 },
-  ],
-  rfis: [
-    { id: 1, status: "Open", due_date: "2026-06-29" },
-    { id: 2, status: "Pending", due_date: "2026-07-05" },
-    { id: 3, status: "Closed", due_date: "2026-06-20" },
-  ],
-  submittals: [
-    { id: 1, status: "Draft", required_by_date: "2026-06-29" },
-    { id: 2, status: "Submitted", required_by_date: "2026-07-05" },
-    { id: 3, status: "Under Review", required_by_date: "2026-06-28" },
-    { id: 4, status: "Approved", required_by_date: "2026-06-20" },
-    {
-      id: 5,
-      status: "Revise and Resubmit",
-      required_by_date: "2026-06-20",
-    },
-    { id: 6, status: "Rejected", required_by_date: "2026-06-20" },
-  ],
-  punchItems: [
-    { id: 1, status: "Open", due_date: "2026-06-29" },
-    { id: 2, status: "In Progress", due_date: "2026-06-28" },
-    { id: 3, status: "Open", due_date: "2026-07-05" },
-    { id: 4, status: "Completed", due_date: "2026-06-20" },
-    { id: 5, status: "Verified", due_date: "2026-06-20" },
-  ],
-};
 
 describe("ProjectDashboardPage", () => {
-  it("surfaces today's focus, health, and routes frequent field actions", async () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    hookMocks.useProjectDashboard.mockReturnValue({
+      dashboard: DASHBOARD,
+      isLoading: false,
+      error: null,
+      retry: vi.fn(),
+      asOf: "2026-07-27",
+    });
+  });
+
+  it("renders one project-focused heading and local date context", () => {
+    render(<ProjectDashboardPage {...BASE_PROPS} />);
+
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect(
+      screen.getByRole("heading", { name: "Project Dashboard" })
+    ).toBeInTheDocument();
+    expect(screen.getAllByText("Apex Clubhouse").length).toBeGreaterThan(0);
+    expect(screen.getByText("July 27, 2026")).toHaveAttribute(
+      "datetime",
+      "2026-07-27"
+    );
+  });
+
+  it("renders reliable aggregate metrics without legacy health claims", () => {
+    render(<ProjectDashboardPage {...BASE_PROPS} />);
+
+    expect(screen.getByLabelText("Past Planned Finish: 3")).toBeInTheDocument();
+    expect(screen.getByLabelText("Upcoming Starts: 4")).toBeInTheDocument();
+    expect(screen.getByLabelText("Open RFIs: 5")).toBeInTheDocument();
+    expect(screen.getByLabelText("Overdue RFIs: 2")).toBeInTheDocument();
+    expect(screen.getByLabelText("Pending Submittals: 4")).toBeInTheDocument();
+    expect(screen.getByLabelText("Open Punch Items: 6")).toBeInTheDocument();
+    expect(
+      screen.getByLabelText("Active Change Order Value: $1,234,567.89")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText("Approved Change Order Value: $100.30")
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Today's Daily Logs: 2")).toBeInTheDocument();
+    expect(screen.getByLabelText("Documents Uploaded: 3")).toBeInTheDocument();
+    expect(screen.queryByText(/project health/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/schedule health/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/critical activities/i)).not.toBeInTheDocument();
+  });
+
+  it("uses explicit page-level links for supported resources", async () => {
     const user = userEvent.setup();
     const onNavigate = vi.fn();
-
     render(
-      <ProjectDashboardPage {...baseProps} {...populated} onNavigate={onNavigate} />
+      <ProjectDashboardPage
+        {...BASE_PROPS}
+        onNavigate={onNavigate}
+      />
     );
 
-    // Today's Focus summary and Open Schedule action.
-    expect(screen.getByText(/Today.s Focus/)).toBeInTheDocument();
-    expect(screen.getByText(/4 items need/)).toBeInTheDocument();
+    const rfiLink = screen.getByRole("link", { name: "View RFIs" });
+    expect(rfiLink).toHaveAttribute("href", "#/projects/1/rfis");
+    await user.click(rfiLink);
+    await user.click(
+      screen.getByRole("link", { name: "View Change Orders" })
+    );
 
-    // Health gauge (score 77 → At Risk) and change-order exposure.
-    expect(screen.getByText("77")).toBeInTheDocument();
-    expect(screen.getByText("At Risk")).toBeInTheDocument();
-    const changeOrderKpi = screen.getByRole("button", {
-      name: "Change Order health: 1 active, 0 approved, 0 rejected, $12,500.00 proposed cost, $10,000.50 approved cost, +5 days schedule impact",
+    expect(onNavigate.mock.calls).toEqual([["rfis"], ["changeOrders"]]);
+  });
+
+  it("preserves the header and summary structure while loading", () => {
+    hookMocks.useProjectDashboard.mockReturnValue({
+      dashboard: null,
+      isLoading: true,
+      error: null,
+      retry: vi.fn(),
+      asOf: "2026-07-27",
     });
-    expect(changeOrderKpi).toBeInTheDocument();
-    expect(changeOrderKpi).toHaveTextContent("Active1");
-    expect(changeOrderKpi).toHaveTextContent("Approved0");
-    expect(changeOrderKpi).toHaveTextContent("Rejected0");
-    expect(changeOrderKpi).toHaveTextContent("Proposed Cost$12,500.00");
-    expect(changeOrderKpi).toHaveTextContent("Approved Cost$10,000.50");
-    expect(changeOrderKpi).toHaveTextContent("Schedule Impact+5 days");
-    expect(
-      screen.getByRole("button", {
-        name: "RFI health: 2 open, 1 overdue, 1 closed",
-      })
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", {
-        name: "Submittal health: 3 active, 2 overdue, 1 approved",
-      })
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", {
-        name: "Punch List health: 3 open, 2 overdue, 2 completed",
-      })
-    ).toBeInTheDocument();
-    expect(screen.getByText("Open Punch Items")).toBeInTheDocument();
-    expect(screen.getByText("2 overdue · 2 completed")).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Open Schedule" }));
-    expect(onNavigate).toHaveBeenCalledWith("scheduler");
+    render(<ProjectDashboardPage {...BASE_PROPS} />);
 
-    await user.click(screen.getByRole("button", { name: "Add Daily Log" }));
-    await user.click(screen.getByRole("button", { name: "Report Delay" }));
-    await user.click(screen.getByRole("button", { name: "Add Inspection" }));
-    await user.click(screen.getByRole("button", { name: "Add Change Order" }));
-    await user.click(changeOrderKpi);
+    expect(
+      screen.getByRole("heading", { name: "Project Dashboard" })
+    ).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Loading project summary"
+    );
+    expect(screen.queryByText("Project Summary")).not.toBeInTheDocument();
+  });
+
+  it("replaces metrics with an accessible retry state after failure", async () => {
+    const user = userEvent.setup();
+    const retry = vi.fn();
+    hookMocks.useProjectDashboard.mockReturnValue({
+      dashboard: null,
+      isLoading: false,
+      error: new Error("Service unavailable"),
+      retry,
+      asOf: "2026-07-27",
+    });
+
+    render(<ProjectDashboardPage {...BASE_PROPS} />);
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Project dashboard data could not be loaded"
+    );
+    expect(screen.queryByText("Open RFIs")).not.toBeInTheDocument();
     await user.click(
-      screen.getByRole("button", {
-        name: "RFI health: 2 open, 1 overdue, 1 closed",
-      })
+      screen.getByRole("button", { name: "Retry dashboard" })
     );
-    await user.click(
-      screen.getByRole("button", {
-        name: "Submittal health: 3 active, 2 overdue, 1 approved",
-      })
-    );
-    await user.click(
-      screen.getByRole("button", {
-        name: "Punch List health: 3 open, 2 overdue, 2 completed",
-      })
-    );
-
-    expect(onNavigate.mock.calls).toEqual([
-      ["scheduler"],
-      ["dailyLogs"],
-      ["notesDelays"],
-      ["inspections"],
-      ["changeOrders"],
-      ["changeOrders"],
-      ["rfis"],
-      ["submittals"],
-      ["punchItems"],
-    ]);
+    expect(retry).toHaveBeenCalledOnce();
   });
 
-  it("distinguishes loading dashboard data from empty data", () => {
-    render(
-      <ProjectDashboardPage
-        {...baseProps}
-        tasks={[]}
-        changeOrders={[]}
-        notesDelays={[]}
-        inspections={[]}
-        dailyLogs={[]}
-        isLoadingTasks
-        isLoadingChangeOrders
-        isLoadingDelays
-        isLoadingInspections
-        isLoadingDailyLogs
-        isLoadingRFIs
-        isLoadingSubmittals
-        isLoadingPunchItems
-      />
+  it("distinguishes no project and reliable zero metrics from errors", () => {
+    hookMocks.useProjectDashboard.mockReturnValue({
+      dashboard: null,
+      isLoading: false,
+      error: null,
+      retry: vi.fn(),
+      asOf: "2026-07-27",
+    });
+    const { rerender } = render(
+      <ProjectDashboardPage {...BASE_PROPS} projectId={null} />
     );
-
     expect(
-      screen.getByRole("region", { name: "Project Overview" })
-    ).toHaveAttribute("aria-busy", "true");
-    expect(screen.getByText(/Loading today.s focus/)).toBeInTheDocument();
-    expect(screen.getByText("Loading inspections…")).toBeInTheDocument();
-    expect(screen.getByText("Loading daily logs…")).toBeInTheDocument();
-    expect(
-      screen.queryByText("You're all clear for today")
-    ).not.toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Change Order health, loading" })
-    ).toHaveAttribute("aria-busy", "true");
-    expect(
-      screen.getByRole("button", { name: "RFI health, loading" })
-    ).toHaveAttribute("aria-busy", "true");
-    expect(
-      screen.getByRole("button", { name: "Submittal health, loading" })
-    ).toHaveAttribute("aria-busy", "true");
-    expect(
-      screen.getByRole("button", { name: "Punch List health, loading" })
-    ).toHaveAttribute("aria-busy", "true");
-  });
-
-  it("shows zeroed record health without changing the empty dashboard", () => {
-    render(<ProjectDashboardPage {...baseProps} />);
-
-    expect(
-      screen.getByRole("button", {
-        name: "Change Order health: 0 active, 0 approved, 0 rejected, $0.00 proposed cost, $0.00 approved cost, 0 days schedule impact",
-      })
+      screen.getByText("Select a project to view its dashboard")
     ).toBeInTheDocument();
+
+    const emptyDashboard = {
+      ...DASHBOARD,
+      schedule: {
+        ...DASHBOARD.schedule,
+        task_count: 0,
+        past_planned_finish_count: 0,
+        upcoming_start_count: 0,
+      },
+      rfis: { total: 0, open: 0, overdue: 0, due_soon: 0 },
+      submittals: { total: 0, pending: 0, overdue: 0, due_soon: 0 },
+      punch_items: {
+        total: 0,
+        open: 0,
+        overdue: 0,
+        completed_last_7_days: 0,
+      },
+      change_orders: {
+        ...DASHBOARD.change_orders,
+        total: 0,
+        active: 0,
+        approved: 0,
+        active_value: "0.00",
+        approved_value: "0.00",
+      },
+      daily_logs: {
+        ...DASHBOARD.daily_logs,
+        total: 0,
+        today_count: 0,
+        today_manpower: 0,
+      },
+      documents: {
+        ...DASHBOARD.documents,
+        total: 0,
+        uploaded_last_7_days: 0,
+      },
+    };
+    hookMocks.useProjectDashboard.mockReturnValue({
+      dashboard: emptyDashboard,
+      isLoading: false,
+      error: null,
+      retry: vi.fn(),
+      asOf: "2026-07-27",
+    });
+
+    rerender(<ProjectDashboardPage {...BASE_PROPS} />);
+
+    expect(screen.getByLabelText("Open RFIs: 0")).toBeInTheDocument();
     expect(
-      screen.getByRole("button", {
-        name: "RFI health: 0 open, 0 overdue, 0 closed",
-      })
+      screen.getAllByText("No RFIs have been added.")
+    ).toHaveLength(2);
+    expect(
+      screen.getByLabelText("Active Change Order Value: $0.00")
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", {
-        name: "Submittal health: 0 active, 0 overdue, 0 approved",
-      })
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", {
-        name: "Punch List health: 0 open, 0 overdue, 0 completed",
-      })
-    ).toBeInTheDocument();
-    expect(screen.getByText("No recent activity")).toBeInTheDocument();
-  });
-
-  it("isolates Submittal loading from unrelated dashboard controls", () => {
-    render(
-      <ProjectDashboardPage
-        {...baseProps}
-        {...populated}
-        isLoadingSubmittals
-      />
-    );
-
-    expect(
-      screen.getByRole("button", { name: "Submittal health, loading" })
-    ).toHaveAttribute("aria-busy", "true");
-    expect(
-      screen.getByRole("button", {
-        name: "RFI health: 2 open, 1 overdue, 1 closed",
-      })
-    ).not.toHaveAttribute("aria-busy", "true");
-    expect(
-      screen.getByRole("button", { name: "Open Schedule" })
-    ).toBeEnabled();
-  });
-
-  it("isolates Punch List loading from unrelated dashboard controls", () => {
-    render(
-      <ProjectDashboardPage
-        {...baseProps}
-        {...populated}
-        isLoadingPunchItems
-      />
-    );
-
-    expect(
-      screen.getByRole("button", { name: "Punch List health, loading" })
-    ).toHaveAttribute("aria-busy", "true");
-    expect(
-      screen.getByRole("button", {
-        name: "Submittal health: 3 active, 2 overdue, 1 approved",
-      })
-    ).not.toHaveAttribute("aria-busy", "true");
-    expect(
-      screen.getByRole("button", { name: "Open Schedule" })
-    ).toBeEnabled();
-  });
-
-  it("isolates Change Order loading from unrelated dashboard controls", () => {
-    render(
-      <ProjectDashboardPage
-        {...baseProps}
-        {...populated}
-        isLoadingChangeOrders
-      />
-    );
-
-    expect(
-      screen.getByRole("button", { name: "Change Order health, loading" })
-    ).toHaveAttribute("aria-busy", "true");
-    expect(
-      screen.getByRole("button", {
-        name: "RFI health: 2 open, 1 overdue, 1 closed",
-      })
-    ).not.toHaveAttribute("aria-busy", "true");
-    expect(
-      screen.getByRole("button", { name: "Open Schedule" })
-    ).toBeEnabled();
-  });
-
-  it("keeps enhanced and unknown legacy recent changes readable", () => {
-    render(
-      <ProjectDashboardPage
-        {...baseProps}
-        changeOrders={[
-          {
-            id: 1,
-            date: "2026-06-30",
-            co_number: "3",
-            company: "Legacy Builder",
-            status: "Legacy Review",
-            amount: "$4,500",
-          },
-          {
-            id: 2,
-            date: "2026-06-29",
-            co_number: "CO-002",
-            title: "Executed entry revision",
-            company: "Desert Concrete",
-            status: "Executed",
-            proposed_amount: "5000.00",
-            approved_amount: "4500.25",
-            schedule_impact_days: -2,
-          },
-        ]}
-      />
-    );
-
-    expect(screen.getByText("3")).toBeInTheDocument();
-    expect(screen.getAllByText("Legacy Review").length).toBeGreaterThan(0);
-    expect(
-      screen.getByText("Legacy Builder · Legacy amount $4,500")
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "Executed entry revision · Desert Concrete · Approved $4,500.25 · -2 days"
-      )
-    ).toBeInTheDocument();
-    expect(screen.getAllByText("$9,500.00").length).toBeGreaterThan(0);
+    expect(screen.queryByText(/all clear|on track|no risk/i)).not.toBeInTheDocument();
   });
 });

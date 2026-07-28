@@ -34,6 +34,16 @@ export function fetchProjects() {
   return authenticatedRequest("/projects");
 }
 
+export function fetchProjectDashboard(projectId, asOf, options = {}) {
+  const encodedProjectId = encodeURIComponent(String(projectId));
+  const query = new URLSearchParams({ as_of: asOf });
+
+  return authenticatedRequest(
+    `/projects/${encodedProjectId}/dashboard?${query.toString()}`,
+    { signal: options.signal }
+  );
+}
+
 export function createProject(project) {
   return jsonRequest("/projects", "POST", project);
 }

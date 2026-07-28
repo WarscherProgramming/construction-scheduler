@@ -39,6 +39,7 @@ function AppRouter({
   onDeleteSubmittal,
   onDeletePunchItem,
   onAttachmentError,
+  onDashboardError,
 }) {
   const {
     projects,
@@ -103,24 +104,10 @@ function AppRouter({
   if (currentPage === "projectDashboard") {
     return (
       <ProjectDashboardPage
+        key={selectedProjectId}
+        projectId={selectedProjectId}
         projectName={projectName}
-        tasks={tasks}
-        changeOrders={changeOrders}
-        notesDelays={notesDelays}
-        inspections={inspections}
-        dailyLogs={dailyLogs}
-        rfis={rfis}
-        submittals={submittals}
-        punchItems={punchItems}
-        isLoadingTasks={loading("tasks")}
-        isLoadingChangeOrders={loading("changeOrders")}
-        isLoadingDelays={loading("notesDelays")}
-        isLoadingInspections={loading("inspections")}
-        isLoadingDailyLogs={loading("dailyLogs")}
-        isLoadingRFIs={loading("rfis")}
-        isLoadingSubmittals={loading("submittals")}
-        isLoadingPunchItems={loading("punchItems")}
-        formatDate={formatDate}
+        onRequestError={onDashboardError}
         {...navProps}
       />
     );

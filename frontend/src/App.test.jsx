@@ -10,6 +10,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("./services/api", () => ({
   fetchProjects: vi.fn(),
+  fetchProjectDashboard: vi.fn(),
   createProject: vi.fn(),
   fetchTasks: vi.fn(),
   createTask: vi.fn(),
@@ -73,6 +74,7 @@ import {
   fetchNotesDelays,
   fetchPunchItems,
   fetchProjectCompanies,
+  fetchProjectDashboard,
   fetchProjects,
   fetchRFIs,
   fetchSubmittals,
@@ -120,6 +122,54 @@ function makeChangeOrder(overrides = {}) {
   };
 }
 
+function makeDashboard(projectId = 1, projectName = "Riverside", overrides = {}) {
+  return {
+    as_of: "2026-07-27",
+    generated_at: "2026-07-27T23:00:00Z",
+    project: { id: projectId, name: projectName },
+    schedule: {
+      task_count: 0,
+      planned_start: null,
+      planned_finish: null,
+      past_planned_finish_count: 0,
+      upcoming_start_count: 0,
+    },
+    rfis: { total: 0, open: 0, overdue: 0, due_soon: 0 },
+    submittals: { total: 0, pending: 0, overdue: 0, due_soon: 0 },
+    punch_items: {
+      total: 0,
+      open: 0,
+      overdue: 0,
+      completed_last_7_days: 0,
+    },
+    change_orders: {
+      total: 0,
+      active: 0,
+      approved: 0,
+      rejected: 0,
+      unknown_status: 0,
+      active_value: "0.00",
+      approved_value: "0.00",
+    },
+    daily_logs: {
+      total: 0,
+      latest_log_date: null,
+      today_count: 0,
+      today_manpower: 0,
+      last_7_days_count: 0,
+    },
+    documents: {
+      total: 0,
+      uploaded_last_7_days: 0,
+      recent: [],
+    },
+    attention_items: [],
+    upcoming_tasks: [],
+    recent_updates: [],
+    ...overrides,
+  };
+}
+
 describe("App integration (hooks wiring)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -128,6 +178,7 @@ describe("App integration (hooks wiring)", () => {
     window.location.hash = "";
 
     fetchProjects.mockResolvedValue({ projects: [] });
+    fetchProjectDashboard.mockResolvedValue(makeDashboard());
     fetchTemplates.mockResolvedValue({ templates: [] });
     fetchTasks.mockResolvedValue({ tasks: [] });
     fetchProjectCompanies.mockResolvedValue({ companies: [] });
@@ -180,7 +231,7 @@ describe("App integration (hooks wiring)", () => {
     expect(fetchTemplates).toHaveBeenCalledOnce();
   });
 
-  it("navigates from home to a project dashboard and loads its data", async () => {
+  it("loads one aggregate request and no dashboard collections", async () => {
     const user = userEvent.setup();
     fetchProjects.mockResolvedValue({
       projects: [{ id: 1, name: "Riverside" }],
@@ -192,34 +243,26 @@ describe("App integration (hooks wiring)", () => {
     await user.selectOptions(screen.getByLabelText("Project"), "1");
 
     expect(
-      await screen.findByText("Riverside Dashboard")
+      await screen.findByRole("heading", { name: "Project Dashboard" })
     ).toBeInTheDocument();
-    expect(fetchTasks).toHaveBeenCalledWith(1);
-    expect(fetchDailyLogs).toHaveBeenCalledWith(1);
-    await screen.findByRole("button", {
-      name: "Change Order health: 0 active, 0 approved, 0 rejected, $0.00 proposed cost, $0.00 approved cost, 0 days schedule impact",
-    });
-    expect(fetchChangeOrders).toHaveBeenCalledTimes(1);
-    expect(fetchChangeOrders).toHaveBeenCalledWith(1);
-    await screen.findByRole("button", {
-      name: "RFI health: 0 open, 0 overdue, 0 closed",
-    });
-    await screen.findByRole("button", {
-      name: "Submittal health: 0 active, 0 overdue, 0 approved",
-    });
-    await screen.findByRole("button", {
-      name: "Punch List health: 0 open, 0 overdue, 0 completed",
-    });
-    expect(fetchRFIs).toHaveBeenCalledTimes(1);
-    expect(fetchRFIs).toHaveBeenCalledWith(1);
     await waitFor(() => {
-      expect(fetchSubmittals).toHaveBeenCalledTimes(1);
+      expect(fetchProjectDashboard).toHaveBeenCalledTimes(1);
     });
-    expect(fetchSubmittals).toHaveBeenCalledWith(1);
-    await waitFor(() => {
-      expect(fetchPunchItems).toHaveBeenCalledTimes(1);
-    });
-    expect(fetchPunchItems).toHaveBeenCalledWith(1);
+    expect(fetchProjectDashboard).toHaveBeenCalledWith(
+      1,
+      expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+      expect.objectContaining({ signal: expect.any(AbortSignal) })
+    );
+    expect(fetchTasks).not.toHaveBeenCalled();
+    expect(fetchProjectCompanies).not.toHaveBeenCalled();
+    expect(fetchDailyLogs).not.toHaveBeenCalled();
+    expect(fetchInspections).not.toHaveBeenCalled();
+    expect(fetchNotesDelays).not.toHaveBeenCalled();
+    expect(fetchChangeOrders).not.toHaveBeenCalled();
+    expect(fetchRFIs).not.toHaveBeenCalled();
+    expect(fetchSubmittals).not.toHaveBeenCalled();
+    expect(fetchPunchItems).not.toHaveBeenCalled();
+    expect(listAttachments).not.toHaveBeenCalled();
   });
 
   it("loads project documents only from the selected project settings", async () => {
@@ -231,10 +274,8 @@ describe("App integration (hooks wiring)", () => {
     renderApp();
 
     await screen.findByRole("option", { name: "Riverside" });
-    expect(listAttachments).not.toHaveBeenCalled();
-
     await user.selectOptions(screen.getByLabelText("Project"), "1");
-    await screen.findByText("Riverside Dashboard");
+    await screen.findByRole("heading", { name: "Project Dashboard" });
     expect(listAttachments).not.toHaveBeenCalled();
 
     await user.click(
@@ -247,596 +288,99 @@ describe("App integration (hooks wiring)", () => {
     await waitFor(() => {
       expect(listAttachments).toHaveBeenCalledTimes(1);
     });
-    expect(listAttachments).toHaveBeenCalledWith(
-      1,
-      "project",
-      1,
-      expect.objectContaining({ signal: expect.any(AbortSignal) })
-    );
   });
 
-  it("clears Change Order dashboard metrics while switching projects", async () => {
-    const user = userEvent.setup();
-    let resolveSecondProject;
-
+  it("clears dashboard data, aborts the old request, and rejects stale results", async () => {
+    const first = {};
+    const second = {};
+    first.promise = new Promise((resolve) => {
+      first.resolve = resolve;
+    });
+    second.promise = new Promise((resolve) => {
+      second.resolve = resolve;
+    });
     fetchProjects.mockResolvedValue({
       projects: [
         { id: 1, name: "Riverside" },
         { id: 2, name: "North Ridge" },
       ],
     });
-    fetchChangeOrders.mockImplementation((projectId) => {
-      if (projectId === 1) {
-        return Promise.resolve({
-          change_orders: [
-            {
-              id: 1,
-              status: "Draft",
-              proposed_amount: "100.25",
-              approved_amount: null,
-              schedule_impact_days: 5,
-            },
-          ],
-        });
-      }
-
-      return new Promise((resolve) => {
-        resolveSecondProject = resolve;
-      });
-    });
+    fetchProjectDashboard
+      .mockReturnValueOnce(first.promise)
+      .mockReturnValueOnce(second.promise);
+    window.location.hash = "#/projects/1/dashboard";
 
     renderApp();
 
-    await screen.findByRole("option", { name: "Riverside" });
-    await user.selectOptions(screen.getByLabelText("Project"), "1");
-    expect(
-      await screen.findByRole("button", {
-        name: "Change Order health: 1 active, 0 approved, 0 rejected, $100.25 proposed cost, $0.00 approved cost, +5 days schedule impact",
-      })
-    ).toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: "Back to Home" }));
-    await user.selectOptions(screen.getByLabelText("Project"), "2");
-
-    expect(
-      await screen.findByRole("button", {
-        name: "Change Order health, loading",
-      })
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", {
-        name: "Change Order health: 1 active, 0 approved, 0 rejected, $100.25 proposed cost, $0.00 approved cost, +5 days schedule impact",
-      })
-    ).not.toBeInTheDocument();
-
-    await act(async () => {
-      resolveSecondProject({
-        change_orders: [
-          {
-            id: 2,
-            status: "Approved",
-            proposed_amount: "80.00",
-            approved_amount: "75.50",
-            schedule_impact_days: -2,
-          },
-        ],
-      });
-    });
-
-    expect(
-      await screen.findByRole("button", {
-        name: "Change Order health: 0 active, 1 approved, 0 rejected, $80.00 proposed cost, $75.50 approved cost, -2 days schedule impact",
-      })
-    ).toBeInTheDocument();
-    expect(
-      fetchChangeOrders.mock.calls.map(([projectId]) => projectId)
-    ).toEqual([1, 2]);
-  });
-
-  it("keeps the dashboard usable when Change Orders fail to load", async () => {
-    fetchProjects.mockResolvedValue({
-      projects: [{ id: 1, name: "Riverside" }],
-    });
-    fetchChangeOrders.mockRejectedValue(
-      new ApiError("Service unavailable", 503)
+    await waitFor(() =>
+      expect(fetchProjectDashboard).toHaveBeenCalledTimes(1)
     );
-    window.location.hash = "#/projects/1/dashboard";
+    const firstSignal = fetchProjectDashboard.mock.calls[0][2].signal;
 
-    renderApp();
-
-    expect(
-      await screen.findByText(
-        "Unable to load change orders. Service unavailable"
-      )
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Open Schedule" })
-    ).toBeEnabled();
-    expect(
-      screen.getByRole("button", {
-        name: "RFI health: 0 open, 0 overdue, 0 closed",
-      })
-    ).toBeEnabled();
-    expect(fetchChangeOrders).toHaveBeenCalledTimes(1);
-  });
-
-  it("navigates from the dashboard KPI to Change Orders", async () => {
-    const user = userEvent.setup();
-    fetchProjects.mockResolvedValue({
-      projects: [{ id: 1, name: "Riverside" }],
-    });
-    window.location.hash = "#/projects/1/dashboard";
-
-    renderApp();
-
-    const changeOrderKpi = await screen.findByRole("button", {
-      name: "Change Order health: 0 active, 0 approved, 0 rejected, $0.00 proposed cost, $0.00 approved cost, 0 days schedule impact",
-    });
-    expect(fetchChangeOrders).toHaveBeenCalledTimes(1);
-
-    await user.click(changeOrderKpi);
-
-    expect(
-      await screen.findByRole("heading", { name: "Change Orders" })
-    ).toBeInTheDocument();
-    expect(window.location.hash).toBe("#/projects/1/change-orders");
-  });
-
-  it("drops a late Change Orders dashboard response after a project switch", async () => {
-    let resolveFirstProject;
-
-    fetchProjects.mockResolvedValue({
-      projects: [
-        { id: 1, name: "Riverside" },
-        { id: 2, name: "North Ridge" },
-      ],
-    });
-    fetchChangeOrders.mockImplementation((projectId) => {
-      if (projectId === 1) {
-        return new Promise((resolve) => {
-          resolveFirstProject = resolve;
-        });
-      }
-
-      return Promise.resolve({
-        change_orders: [
-          {
-            id: 2,
-            status: "Void",
-            amount: "$50.00",
-            schedule_impact_days: 0,
-          },
-        ],
-      });
-    });
-    window.location.hash = "#/projects/1/dashboard";
-
-    renderApp();
-
-    await waitFor(() => {
-      expect(fetchChangeOrders).toHaveBeenCalledWith(1);
-    });
     await act(async () => {
       window.history.pushState({}, "", "#/projects/2/dashboard");
       window.dispatchEvent(new HashChangeEvent("hashchange"));
     });
 
+    expect(firstSignal.aborted).toBe(true);
     expect(
-      await screen.findByRole("button", {
-        name: "Change Order health, loading",
-      })
+      await screen.findByText("Loading project summary…")
     ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", {
-        name: "Change Order health: 1 active, 0 approved, 0 rejected, $999.00 proposed cost, $0.00 approved cost, +10 days schedule impact",
-      })
-    ).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Open RFIs: 5")).not.toBeInTheDocument();
 
     await act(async () => {
-      resolveFirstProject({
-        change_orders: [
-          {
-            id: 9,
-            status: "Pending",
-            proposed_amount: "999.00",
-            schedule_impact_days: 10,
-          },
-        ],
-      });
+      second.resolve(
+        makeDashboard(2, "North Ridge", {
+          rfis: { total: 1, open: 1, overdue: 0, due_soon: 0 },
+        })
+      );
+      await second.promise;
     });
+    expect(await screen.findByLabelText("Open RFIs: 1")).toBeInTheDocument();
 
-    expect(
-      await screen.findByRole("button", {
-        name: "Change Order health: 0 active, 0 approved, 1 rejected, $50.00 proposed cost, $0.00 approved cost, 0 days schedule impact",
-      })
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", {
-        name: "Change Order health: 1 active, 0 approved, 0 rejected, $999.00 proposed cost, $0.00 approved cost, +10 days schedule impact",
-      })
-    ).not.toBeInTheDocument();
-    expect(
-      fetchChangeOrders.mock.calls.map(([projectId]) => projectId)
-    ).toEqual([1, 2]);
+    await act(async () => {
+      first.resolve(
+        makeDashboard(1, "Riverside", {
+          rfis: { total: 5, open: 5, overdue: 2, due_soon: 0 },
+        })
+      );
+      await first.promise;
+    });
+    expect(screen.getByLabelText("Open RFIs: 1")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Open RFIs: 5")).not.toBeInTheDocument();
   });
 
-  it("clears RFI dashboard metrics while switching projects", async () => {
+  it("shows global and local feedback and retries without reloading the app", async () => {
     const user = userEvent.setup();
-    let resolveSecondProject;
-
-    fetchProjects.mockResolvedValue({
-      projects: [
-        { id: 1, name: "Riverside" },
-        { id: 2, name: "North Ridge" },
-      ],
-    });
-    fetchRFIs.mockImplementation((projectId) => {
-      if (projectId === 1) {
-        return Promise.resolve({
-          rfis: [{ id: 1, status: "Open", due_date: null }],
-        });
-      }
-
-      return new Promise((resolve) => {
-        resolveSecondProject = resolve;
-      });
-    });
-
-    renderApp();
-
-    await screen.findByRole("option", { name: "Riverside" });
-    await user.selectOptions(screen.getByLabelText("Project"), "1");
-    expect(
-      await screen.findByRole("button", {
-        name: "RFI health: 1 open, 0 overdue, 0 closed",
-      })
-    ).toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: "Back to Home" }));
-    await user.selectOptions(screen.getByLabelText("Project"), "2");
-
-    expect(
-      await screen.findByRole("button", { name: "RFI health, loading" })
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", {
-        name: "RFI health: 1 open, 0 overdue, 0 closed",
-      })
-    ).not.toBeInTheDocument();
-
-    await act(async () => {
-      resolveSecondProject({ rfis: [] });
-    });
-
-    expect(
-      await screen.findByRole("button", {
-        name: "RFI health: 0 open, 0 overdue, 0 closed",
-      })
-    ).toBeInTheDocument();
-    expect(fetchRFIs.mock.calls.map(([projectId]) => projectId)).toEqual([
-      1, 2,
-    ]);
-  });
-
-  it("keeps the dashboard usable when its RFI request fails", async () => {
     fetchProjects.mockResolvedValue({
       projects: [{ id: 1, name: "Riverside" }],
     });
-    fetchRFIs.mockRejectedValue(new ApiError("Service unavailable", 503));
+    fetchProjectDashboard
+      .mockRejectedValueOnce(new ApiError("Service unavailable", 503))
+      .mockResolvedValueOnce(makeDashboard());
     window.location.hash = "#/projects/1/dashboard";
 
     renderApp();
 
-    expect(
-      await screen.findByRole("heading", { name: "Riverside Dashboard" })
-    ).toBeInTheDocument();
-    expect(
-      await screen.findByText("Unable to load RFIs. Service unavailable")
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Open Schedule" })
-    ).toBeEnabled();
-  });
-
-  it("clears Submittal dashboard metrics while switching projects", async () => {
-    const user = userEvent.setup();
-    let resolveSecondProject;
-
-    fetchProjects.mockResolvedValue({
-      projects: [
-        { id: 1, name: "Riverside" },
-        { id: 2, name: "North Ridge" },
-      ],
-    });
-    fetchSubmittals.mockImplementation((projectId) => {
-      if (projectId === 1) {
-        return Promise.resolve({
-          submittals: [
-            {
-              id: 1,
-              status: "Draft",
-              required_by_date: null,
-            },
-          ],
-        });
-      }
-
-      return new Promise((resolve) => {
-        resolveSecondProject = resolve;
-      });
-    });
-
-    renderApp();
-
-    await screen.findByRole("option", { name: "Riverside" });
-    await user.selectOptions(screen.getByLabelText("Project"), "1");
-    expect(
-      await screen.findByRole("button", {
-        name: "Submittal health: 1 active, 0 overdue, 0 approved",
-      })
-    ).toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: "Back to Home" }));
-    await user.selectOptions(screen.getByLabelText("Project"), "2");
-
-    expect(
-      await screen.findByRole("button", {
-        name: "Submittal health, loading",
-      })
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", {
-        name: "Submittal health: 1 active, 0 overdue, 0 approved",
-      })
-    ).not.toBeInTheDocument();
-
-    await act(async () => {
-      resolveSecondProject({ submittals: [] });
-    });
-
-    expect(
-      await screen.findByRole("button", {
-        name: "Submittal health: 0 active, 0 overdue, 0 approved",
-      })
-    ).toBeInTheDocument();
-    expect(
-      fetchSubmittals.mock.calls.map(([projectId]) => projectId)
-    ).toEqual([1, 2]);
-  });
-
-  it("keeps the dashboard usable when its Submittals request fails", async () => {
-    fetchProjects.mockResolvedValue({
-      projects: [{ id: 1, name: "Riverside" }],
-    });
-    fetchSubmittals.mockRejectedValue(
-      new ApiError("Service unavailable", 503)
-    );
-    window.location.hash = "#/projects/1/dashboard";
-
-    renderApp();
-
-    expect(
-      await screen.findByRole("heading", { name: "Riverside Dashboard" })
-    ).toBeInTheDocument();
     expect(
       await screen.findByText(
-        "Unable to load Submittals. Service unavailable"
+        "Unable to load project dashboard. Service unavailable"
       )
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Open Schedule" })
-    ).toBeEnabled();
-    expect(fetchSubmittals).toHaveBeenCalledTimes(1);
-  });
-
-  it("navigates from the dashboard KPI to Submittals", async () => {
-    const user = userEvent.setup();
-    fetchProjects.mockResolvedValue({
-      projects: [{ id: 1, name: "Riverside" }],
-    });
-    window.location.hash = "#/projects/1/dashboard";
-
-    renderApp();
-
-    const submittalKpi = await screen.findByRole("button", {
-      name: "Submittal health: 0 active, 0 overdue, 0 approved",
-    });
-    expect(fetchSubmittals).toHaveBeenCalledTimes(1);
-
-    await user.click(submittalKpi);
-
-    expect(
-      await screen.findByRole("heading", { name: "Submittals" })
-    ).toBeInTheDocument();
-    expect(window.location.hash).toBe("#/projects/1/submittals");
-  });
-
-  it("clears Punch List dashboard metrics while switching projects", async () => {
-    const user = userEvent.setup();
-    let resolveSecondProject;
-
-    fetchProjects.mockResolvedValue({
-      projects: [
-        { id: 1, name: "Riverside" },
-        { id: 2, name: "North Ridge" },
-      ],
-    });
-    fetchPunchItems.mockImplementation((projectId) => {
-      if (projectId === 1) {
-        return Promise.resolve({
-          punch_items: [
-            {
-              id: 1,
-              status: "Open",
-              due_date: null,
-            },
-          ],
-        });
-      }
-
-      return new Promise((resolve) => {
-        resolveSecondProject = resolve;
-      });
-    });
-
-    renderApp();
-
-    await screen.findByRole("option", { name: "Riverside" });
-    await user.selectOptions(screen.getByLabelText("Project"), "1");
-    expect(
-      await screen.findByRole("button", {
-        name: "Punch List health: 1 open, 0 overdue, 0 completed",
-      })
-    ).toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: "Back to Home" }));
-    await user.selectOptions(screen.getByLabelText("Project"), "2");
-
-    expect(
-      await screen.findByRole("button", {
-        name: "Punch List health, loading",
-      })
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", {
-        name: "Punch List health: 1 open, 0 overdue, 0 completed",
-      })
-    ).not.toBeInTheDocument();
-
-    await act(async () => {
-      resolveSecondProject({ punch_items: [] });
-    });
-
-    expect(
-      await screen.findByRole("button", {
-        name: "Punch List health: 0 open, 0 overdue, 0 completed",
-      })
-    ).toBeInTheDocument();
-    expect(
-      fetchPunchItems.mock.calls.map(([projectId]) => projectId)
-    ).toEqual([1, 2]);
-  });
-
-  it("keeps the dashboard usable when its Punch Items request fails", async () => {
-    fetchProjects.mockResolvedValue({
-      projects: [{ id: 1, name: "Riverside" }],
-    });
-    fetchPunchItems.mockRejectedValue(
-      new ApiError("Service unavailable", 503)
-    );
-    window.location.hash = "#/projects/1/dashboard";
-
-    renderApp();
-
-    expect(
-      await screen.findByRole("heading", { name: "Riverside Dashboard" })
-    ).toBeInTheDocument();
-    expect(
-      await screen.findByText(
-        "Unable to load Punch Items. Service unavailable"
+      screen.getByText(
+        "Project dashboard data could not be loaded. Other project pages remain available."
       )
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Open Schedule" })
-    ).toBeEnabled();
-    expect(
-      screen.getByRole("button", {
-        name: "RFI health: 0 open, 0 overdue, 0 closed",
-      })
-    ).toBeEnabled();
-    expect(fetchPunchItems).toHaveBeenCalledTimes(1);
+
+    await user.click(
+      screen.getByRole("button", { name: "Retry dashboard" })
+    );
+
+    expect(await screen.findByLabelText("Open RFIs: 0")).toBeInTheDocument();
+    expect(fetchProjectDashboard).toHaveBeenCalledTimes(2);
+    expect(fetchProjects).toHaveBeenCalledOnce();
   });
-
-  it("navigates from the dashboard KPI to the Punch List", async () => {
-    const user = userEvent.setup();
-    fetchProjects.mockResolvedValue({
-      projects: [{ id: 1, name: "Riverside" }],
-    });
-    window.location.hash = "#/projects/1/dashboard";
-
-    renderApp();
-
-    const punchListKpi = await screen.findByRole("button", {
-      name: "Punch List health: 0 open, 0 overdue, 0 completed",
-    });
-    expect(fetchPunchItems).toHaveBeenCalledTimes(1);
-
-    await user.click(punchListKpi);
-
-    expect(
-      await screen.findByRole("heading", { name: "Punch List" })
-    ).toBeInTheDocument();
-    expect(window.location.hash).toBe("#/projects/1/punch-items");
-  });
-
-  it("drops a late Punch Items dashboard response after a project switch", async () => {
-    let resolveFirstProject;
-
-    fetchProjects.mockResolvedValue({
-      projects: [
-        { id: 1, name: "Riverside" },
-        { id: 2, name: "North Ridge" },
-      ],
-    });
-    fetchPunchItems.mockImplementation((projectId) => {
-      if (projectId === 1) {
-        return new Promise((resolve) => {
-          resolveFirstProject = resolve;
-        });
-      }
-
-      return Promise.resolve({
-        punch_items: [
-          {
-            id: 2,
-            status: "Verified",
-            due_date: "2026-07-01",
-          },
-        ],
-      });
-    });
-    window.location.hash = "#/projects/1/dashboard";
-
-    renderApp();
-
-    await waitFor(() => {
-      expect(fetchPunchItems).toHaveBeenCalledWith(1);
-    });
-    await act(async () => {
-      window.history.pushState({}, "", "#/projects/2/dashboard");
-      window.dispatchEvent(new HashChangeEvent("hashchange"));
-    });
-
-    await waitFor(() => {
-      expect(
-        fetchPunchItems.mock.calls.map(([projectId]) => projectId)
-      ).toEqual([1, 2]);
-    });
-
-    await act(async () => {
-      resolveFirstProject({
-        punch_items: [
-          {
-            id: 9,
-            status: "Open",
-            due_date: "2000-01-01",
-          },
-        ],
-      });
-    });
-
-    expect(
-      screen.getByRole("button", {
-        name: "Punch List health: 0 open, 0 overdue, 1 completed",
-      })
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", {
-        name: "Punch List health: 1 open, 1 overdue, 0 completed",
-      })
-    ).not.toBeInTheDocument();
-  });
-
   it("suppresses toast errors for expired-session (401) failures", async () => {
     fetchProjects.mockRejectedValue(new ApiError("Invalid token", 401));
 
@@ -1394,7 +938,7 @@ describe("App integration (hooks wiring)", () => {
 
     await screen.findByRole("option", { name: "Riverside" });
     await user.selectOptions(screen.getByLabelText("Project"), "1");
-    await screen.findByText("Riverside Dashboard");
+    await screen.findByRole("heading", { name: "Project Dashboard" });
     await user.click(screen.getByRole("button", { name: "RFIs" }));
 
     expect(
@@ -2036,11 +1580,8 @@ describe("App integration (hooks wiring)", () => {
     const punchListLink = await screen.findByRole("button", {
       name: "Punch List",
     });
-    await screen.findByRole("button", {
-      name: "Punch List health: 0 open, 0 overdue, 0 completed",
-    });
-    expect(fetchPunchItems).toHaveBeenCalledTimes(1);
-    fetchPunchItems.mockClear();
+    await screen.findByRole("heading", { name: "Project Dashboard" });
+    expect(fetchPunchItems).not.toHaveBeenCalled();
 
     await user.click(punchListLink);
 

@@ -309,15 +309,12 @@ function useProjectResource({
       setPunchItems([]);
       setProjectCompanies([]);
 
-      void Promise.all([loadTasks(), loadProjectCompanies()]);
     }, 0);
 
     return () => window.clearTimeout(timeoutId);
   }, [
     isAuthenticated,
     hasLoadedProjects,
-    loadProjectCompanies,
-    loadTasks,
     selectedProjectId,
   ]);
 
@@ -327,22 +324,14 @@ function useProjectResource({
     }
 
     const pageLoaders = {
-      projectDashboard: [
-        loadChangeOrders,
-        loadNotesDelays,
-        loadInspections,
-        loadDailyLogs,
-        loadRFIs,
-        loadSubmittals,
-        loadPunchItems,
-      ],
-      dailyLogs: [loadDailyLogs],
-      inspections: [loadInspections],
-      notesDelays: [loadNotesDelays],
-      changeOrders: [loadChangeOrders],
-      rfis: [loadRFIs],
-      submittals: [loadSubmittals],
-      punchItems: [loadPunchItems],
+      scheduler: [loadTasks],
+      dailyLogs: [loadDailyLogs, loadProjectCompanies],
+      inspections: [loadInspections, loadProjectCompanies],
+      notesDelays: [loadNotesDelays, loadProjectCompanies],
+      changeOrders: [loadChangeOrders, loadProjectCompanies],
+      rfis: [loadRFIs, loadProjectCompanies],
+      submittals: [loadSubmittals, loadProjectCompanies],
+      punchItems: [loadPunchItems, loadProjectCompanies],
       projectSettings: [loadProjectCompanies],
     };
 
@@ -364,6 +353,7 @@ function useProjectResource({
     loadPunchItems,
     loadRFIs,
     loadSubmittals,
+    loadTasks,
     selectedProjectId,
   ]);
 

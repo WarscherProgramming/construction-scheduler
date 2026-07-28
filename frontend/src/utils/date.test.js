@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   addDays,
   formatDisplayDate,
+  formatLocalDateForApi,
   getCurrentWeekRange,
   isPastLocalDate,
   parseLocalDateInputValue,
@@ -31,6 +32,15 @@ describe("date utilities", () => {
     const date = new Date(2026, 5, 20, 23, 30);
 
     expect(toLocalDateInputValue(date)).toBe("2026-06-20");
+  });
+
+  it("formats the local calendar date for API boundaries", () => {
+    const nearUtcBoundary = new Date(2026, 0, 2, 23, 59, 59);
+
+    expect(formatLocalDateForApi(nearUtcBoundary)).toBe("2026-01-02");
+    expect(formatLocalDateForApi(new Date(2026, 8, 7, 1))).toBe(
+      "2026-09-07"
+    );
   });
 
   it("sorts records newest first and uses ID for same-day records", () => {
