@@ -810,7 +810,7 @@ class DashboardApiTests(ApiTestCase):
 
         self.assertEqual(
             (empty_count, mixed_count, large_count),
-            (12, 12, 12),
+            (13, 13, 13),
         )
         self.assertEqual(
             len(large_response.json()["attention_items"]),

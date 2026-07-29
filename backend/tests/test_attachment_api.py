@@ -767,6 +767,8 @@ class AttachmentApiTests(unittest.TestCase):
             response.headers["content-security-policy"],
             "sandbox",
         )
+        self.assertEqual(response.headers["x-frame-options"], "DENY")
+        self.assertEqual(response.headers["cache-control"], "no-store")
         self.assertTrue(
             response.headers["content-disposition"].startswith("inline;")
         )

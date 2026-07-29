@@ -1,5 +1,5 @@
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 from app.api.dependencies import get_db, get_owned_project
@@ -23,7 +23,12 @@ def get_templates(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
-    templates = db.query(ScheduleTemplate).order_by(ScheduleTemplate.id).all()
+    templates = (
+        db.query(ScheduleTemplate)
+        .filter(ScheduleTemplate.user_id == current_user["id"])
+        .order_by(ScheduleTemplate.id)
+        .all()
+    )
 
     return {
         "templates": [
@@ -51,7 +56,10 @@ def save_project_as_template(
         .all()
     )
 
-    new_template = ScheduleTemplate(name=template.name)
+    new_template = ScheduleTemplate(
+        name=template.name,
+        user_id=project.user_id,
+    )
 
     db.add(new_template)
     db.commit()
@@ -105,6 +113,20 @@ def apply_template_to_project(
     db: Session = Depends(get_db),
     project: Project = Depends(get_owned_project),
 ):
+    template = (
+        db.query(ScheduleTemplate)
+        .filter(
+            ScheduleTemplate.id == template_id,
+            ScheduleTemplate.user_id == project.user_id,
+        )
+        .first()
+    )
+    if template is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Template not found",
+        )
+
     template_tasks = (
         db.query(ScheduleTemplateTask)
         .filter(ScheduleTemplateTask.template_id == template_id)

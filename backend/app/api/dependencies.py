@@ -1,11 +1,9 @@
-from collections.abc import Generator
-
 from fastapi import Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.core.config import ATTACHMENT_CONFIG, AttachmentConfig
 from app.core.security import get_current_user
-from app.db.database import SessionLocal
+from app.db.database import get_db
 from app.models.project import Project
 from app.storage.attachment import (
     AttachmentStorage,
@@ -15,15 +13,6 @@ from app.storage.factory import (
     build_attachment_storage,
     build_storage_resolver,
 )
-
-
-def get_db() -> Generator[Session, None, None]:
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
 
 def get_owned_project(
     project_id: int,

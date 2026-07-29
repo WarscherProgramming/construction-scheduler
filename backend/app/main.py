@@ -2,7 +2,11 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.core.config import ALLOWED_ORIGINS
+from app.core.config import ALLOWED_ORIGINS, MAX_REQUEST_BODY_BYTES
+from app.middleware.security import (
+    RequestBodyLimitMiddleware,
+    SecurityHeadersMiddleware,
+)
 
 from app.api.routes_task import router as task_router
 from app.api.routes_project import router as project_router
@@ -26,9 +30,15 @@ app = FastAPI(
 )
 
 # ----------------------------------------------------
-# CORS
+# Middleware
 # ----------------------------------------------------
 
+# Starlette places the most recently added middleware outermost. The resulting
+# request order is security headers -> CORS -> body limit -> route handling.
+app.add_middleware(
+    RequestBodyLimitMiddleware,
+    max_body_bytes=MAX_REQUEST_BODY_BYTES,
+)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
@@ -36,6 +46,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(SecurityHeadersMiddleware)
 
 # ----------------------------------------------------
 # Routes

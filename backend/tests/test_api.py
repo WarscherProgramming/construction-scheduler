@@ -6,6 +6,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.api.dependencies import get_db
+from app.api.routes_auth import login_rate_limiter, register_rate_limiter
 from app.db.database import Base
 from app.main import app
 from app.models.change_order import ChangeOrder, ChangeOrderNumberSequence
@@ -18,6 +19,8 @@ class ApiTestCase(unittest.TestCase):
     """End-to-end API tests over the real app with an isolated sqlite DB."""
 
     def setUp(self):
+        login_rate_limiter.clear()
+        register_rate_limiter.clear()
         self.engine = create_engine(
             "sqlite://",
             connect_args={"check_same_thread": False},
@@ -77,7 +80,7 @@ class AuthFlowTests(ApiTestCase):
             json={"email": "pm@example.com", "password": "Secret123!"},
         )
         self.assertEqual(duplicate.status_code, 400)
-        self.assertEqual(duplicate.json()["detail"], "Email already registered")
+        self.assertEqual(duplicate.json()["detail"], "Unable to create account")
 
         login = self.client.post(
             "/auth/login",

@@ -17,6 +17,21 @@ def require_environment_variable(name: str) -> str:
     return value.strip()
 
 
+def require_secret_key() -> str:
+    value = require_environment_variable("SECRET_KEY")
+    normalized = value.lower()
+
+    placeholder_markers = ("change-me", "changeme", "replace-with")
+    if len(value) < 32 or any(
+        marker in normalized for marker in placeholder_markers
+    ):
+        raise RuntimeError(
+            "SECRET_KEY must contain at least 32 non-placeholder characters"
+        )
+
+    return value
+
+
 DATABASE_URL = require_environment_variable("DATABASE_URL")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 24 * 60
@@ -241,4 +256,29 @@ ATTACHMENT_CONFIG = AttachmentConfig(
         "ATTACHMENT_CLEANUP_RETENTION_DAYS",
         30,
     ),
+)
+
+MAX_REQUEST_BODY_BYTES = positive_integer_environment_variable(
+    "MAX_REQUEST_BODY_BYTES",
+    ATTACHMENT_CONFIG.max_upload_size + 1_048_576,
+)
+AUTH_LOGIN_RATE_LIMIT = positive_integer_environment_variable(
+    "AUTH_LOGIN_RATE_LIMIT",
+    5,
+)
+AUTH_LOGIN_RATE_WINDOW_SECONDS = positive_integer_environment_variable(
+    "AUTH_LOGIN_RATE_WINDOW_SECONDS",
+    300,
+)
+AUTH_REGISTER_RATE_LIMIT = positive_integer_environment_variable(
+    "AUTH_REGISTER_RATE_LIMIT",
+    3,
+)
+AUTH_REGISTER_RATE_WINDOW_SECONDS = positive_integer_environment_variable(
+    "AUTH_REGISTER_RATE_WINDOW_SECONDS",
+    3600,
+)
+AUTH_RATE_LIMIT_MAX_ENTRIES = positive_integer_environment_variable(
+    "AUTH_RATE_LIMIT_MAX_ENTRIES",
+    10_000,
 )

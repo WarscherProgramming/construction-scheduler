@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_db, get_owned_project
@@ -137,16 +137,29 @@ def reorder_tasks(
     project: Project = Depends(get_owned_project),
 ):
     task_ids = payload.task_ids
-
-    for index, task_id in enumerate(task_ids, start=1):
-        task = (
-            db.query(Task)
-            .filter(Task.id == task_id, Task.project_id == project_id)
-            .first()
+    if len(set(task_ids)) != len(task_ids):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="task_ids must be unique",
         )
 
-        if task:
-            task.order_index = index
+    tasks_to_reorder = (
+        db.query(Task)
+        .filter(
+            Task.project_id == project_id,
+            Task.id.in_(task_ids),
+        )
+        .all()
+    )
+    if len(tasks_to_reorder) != len(task_ids):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found",
+        )
+
+    task_map = {task.id: task for task in tasks_to_reorder}
+    for index, task_id in enumerate(task_ids, start=1):
+        task_map[task_id].order_index = index
 
     tasks = ordered_project_tasks(db, project_id)
     recalculate_schedule(tasks)
@@ -171,39 +184,44 @@ def update_task(
         .first()
     )
 
-    if task:
-        values = updated_task.model_dump(
-            exclude={
-                "predecessor",
-                "predecessor_task_id",
-                "dependency_type",
-                "lag_days",
-            },
-            exclude_unset=True,
+    if task is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found",
         )
-        values.update(dependency_values(updated_task))
 
-        predecessor_task_id = values.get(
+    values = updated_task.model_dump(
+        exclude={
+            "predecessor",
             "predecessor_task_id",
-            task.predecessor_task_id,
-        )
-        validate_dependency_assignment(
+            "dependency_type",
+            "lag_days",
+        },
+        exclude_unset=True,
+    )
+    values.update(dependency_values(updated_task))
+
+    predecessor_task_id = values.get(
+        "predecessor_task_id",
+        task.predecessor_task_id,
+    )
+    validate_dependency_assignment(
+        task,
+        predecessor_task_id,
+        project_id=project_id,
+        db=db,
+    )
+
+    if "parent_task_id" in values:
+        validate_parent_assignment(
             task,
-            predecessor_task_id,
+            values["parent_task_id"],
             project_id=project_id,
             db=db,
         )
 
-        if "parent_task_id" in values:
-            validate_parent_assignment(
-                task,
-                values["parent_task_id"],
-                project_id=project_id,
-                db=db,
-            )
-
-        for field, value in values.items():
-            setattr(task, field, value)
+    for field, value in values.items():
+        setattr(task, field, value)
 
     tasks = ordered_project_tasks(db, project_id)
     recalculate_schedule(tasks)
@@ -228,9 +246,14 @@ def delete_task(
         .first()
     )
 
-    if task:
-        db.delete(task)
-        db.commit()
+    if task is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found",
+        )
+
+    db.delete(task)
+    db.commit()
 
     tasks = ordered_project_tasks(db, project_id)
     recalculate_schedule(tasks)
