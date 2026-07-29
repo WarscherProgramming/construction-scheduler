@@ -1,6 +1,7 @@
 import { buildAppHash } from "../../utils/navigation";
 import {
   formatDashboardDuration,
+  formatDashboardLinkContext,
   formatOptionalDashboardDate,
 } from "../../utils/dashboardSummary";
 
@@ -17,6 +18,7 @@ function UpcomingTaskItem({
   const startDate = formatOptionalDashboardDate(task?.start_date);
   const endDate = formatOptionalDashboardDate(task?.end_date);
   const duration = formatDashboardDuration(task?.duration);
+  const linkContext = formatDashboardLinkContext(name, "upcoming task");
 
   return (
     <li className="dashboard-action-item">
@@ -44,6 +46,7 @@ function UpcomingTaskItem({
         <a
           className="dashboard-action-item__link"
           href={buildAppHash("scheduler", projectId)}
+          aria-label={`View Schedule for upcoming task ${linkContext}`}
           onClick={(event) => {
             event.preventDefault();
             onNavigate?.("scheduler");

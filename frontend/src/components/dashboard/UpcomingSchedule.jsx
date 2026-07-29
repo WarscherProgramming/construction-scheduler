@@ -23,7 +23,7 @@ function UpcomingSchedule({
       </div>
 
       {tasks.length === 0 ? (
-        <EmptyState title={emptyMessage} />
+        <EmptyState title={emptyMessage} announce={false} />
       ) : (
         <ul className="dashboard-action-list">
           {tasks.map((task, index) => (

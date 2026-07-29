@@ -29,7 +29,7 @@ export function formatDashboardCurrency(value) {
   }
 
   const amount = Number(value);
-  return Number.isFinite(amount)
+  return Number.isFinite(amount) && amount >= 0
     ? CURRENCY_FORMATTER.format(amount)
     : "Unavailable";
 }
@@ -50,14 +50,19 @@ export function formatDashboardDuration(value) {
   if (value === null || value === undefined || value === "") return null;
 
   const duration = Number(value);
-  if (!Number.isFinite(duration)) return null;
+  if (!Number.isInteger(duration) || duration < 0) return null;
 
   return `${duration} ${duration === 1 ? "day" : "days"}`;
 }
 
 
 export function formatDashboardTimestamp(value) {
-  if (!value) return null;
+  if (
+    !value ||
+    !/^\d{4}-\d{2}-\d{2}T.+(?:Z|[+-]\d{2}:\d{2})$/i.test(String(value))
+  ) {
+    return null;
+  }
 
   const timestamp = new Date(value);
   if (Number.isNaN(timestamp.getTime())) return null;
@@ -72,7 +77,7 @@ export function formatDashboardCount(value) {
   }
 
   const count = Number(value);
-  return Number.isFinite(count) && count >= 0
+  return Number.isInteger(count) && count >= 0
     ? count
     : "Unavailable";
 }
@@ -83,8 +88,8 @@ export function calculateDistributionValue(count, total) {
   const numericTotal = Number(total);
 
   if (
-    !Number.isFinite(numericCount) ||
-    !Number.isFinite(numericTotal) ||
+    !Number.isInteger(numericCount) ||
+    !Number.isInteger(numericTotal) ||
     numericCount <= 0 ||
     numericTotal <= 0
   ) {
@@ -92,4 +97,14 @@ export function calculateDistributionValue(count, total) {
   }
 
   return Math.min(100, (numericCount / numericTotal) * 100);
+}
+
+
+export function formatDashboardLinkContext(value, fallback) {
+  const normalized =
+    typeof value === "string" ? value.trim() : "";
+  const context = normalized || fallback;
+
+  if (context.length <= 64) return context;
+  return `${context.slice(0, 61).trimEnd()}...`;
 }

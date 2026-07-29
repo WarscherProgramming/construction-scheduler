@@ -4,6 +4,7 @@ function DashboardMetricCard({
   context,
   href,
   linkLabel,
+  linkAriaLabel,
   onNavigate,
 }) {
   return (
@@ -22,6 +23,7 @@ function DashboardMetricCard({
         <a
           className="dashboard-metric-card__link"
           href={href}
+          aria-label={linkAriaLabel}
           onClick={(event) => {
             event.preventDefault();
             onNavigate?.();

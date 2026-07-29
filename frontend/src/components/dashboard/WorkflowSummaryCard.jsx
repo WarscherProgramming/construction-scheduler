@@ -75,6 +75,7 @@ function WorkflowSummaryCard({
       <a
         className="dashboard-insight-link"
         href={buildAppHash(page, projectId)}
+        aria-label={`${linkLabel} in Workflow Analytics`}
         onClick={(event) => {
           event.preventDefault();
           onNavigate?.(page);

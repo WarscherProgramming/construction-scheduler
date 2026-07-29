@@ -21,6 +21,7 @@ function RecentUpdates({
         <EmptyState
           title="No recent record updates are available."
           description="This section reflects update timestamps from supported project records."
+          announce={false}
         />
       ) : (
         <ul className="dashboard-recent-updates__list">

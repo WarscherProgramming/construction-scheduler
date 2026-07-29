@@ -413,7 +413,7 @@ describe("App integration (hooks wiring)", () => {
     expect(screen.getByText("North Ridge recent update")).toBeInTheDocument();
     expect(
       screen
-        .getAllByRole("link", { name: "View RFIs" })
+        .getAllByRole("link", { name: /^View RFIs/ })
         .every(
           (link) =>
             link.getAttribute("href") === "#/projects/2/rfis"

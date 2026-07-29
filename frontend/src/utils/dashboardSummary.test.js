@@ -6,6 +6,7 @@ import {
   formatDashboardCurrency,
   formatDashboardDate,
   formatDashboardDuration,
+  formatDashboardLinkContext,
   formatOptionalDashboardDate,
   formatDashboardTimestamp,
 } from "./dashboardSummary";
@@ -21,6 +22,7 @@ describe("dashboard summary formatting", () => {
   it("does not expose NaN for missing or invalid currency", () => {
     expect(formatDashboardCurrency(null)).toBe("Unavailable");
     expect(formatDashboardCurrency("invalid")).toBe("Unavailable");
+    expect(formatDashboardCurrency("-0.01")).toBe("Unavailable");
   });
 
   it("formats date-only values without UTC conversion", () => {
@@ -37,6 +39,8 @@ describe("dashboard summary formatting", () => {
     expect(formatDashboardDuration(2)).toBe("2 days");
     expect(formatDashboardDuration(null)).toBeNull();
     expect(formatDashboardDuration("invalid")).toBeNull();
+    expect(formatDashboardDuration(-1)).toBeNull();
+    expect(formatDashboardDuration(1.5)).toBeNull();
   });
 
   it("formats aware timestamps in the user's local timezone", () => {
@@ -50,8 +54,19 @@ describe("dashboard summary formatting", () => {
     }).format(new Date(value));
 
     expect(formatDashboardTimestamp(value)).toBe(expected);
+    const offsetValue = "2026-07-28T14:14:00-07:00";
+    expect(formatDashboardTimestamp(offsetValue)).toBe(
+      new Intl.DateTimeFormat("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+      }).format(new Date(offsetValue))
+    );
     expect(formatDashboardTimestamp(null)).toBeNull();
     expect(formatDashboardTimestamp("invalid")).toBeNull();
+    expect(formatDashboardTimestamp("2026-07-28")).toBeNull();
   });
 
   it("fails safely for unavailable aggregate counts", () => {
@@ -59,6 +74,7 @@ describe("dashboard summary formatting", () => {
     expect(formatDashboardCount(12)).toBe(12);
     expect(formatDashboardCount(null)).toBe("Unavailable");
     expect(formatDashboardCount(-1)).toBe("Unavailable");
+    expect(formatDashboardCount(1.5)).toBe("Unavailable");
     expect(formatDashboardCount("invalid")).toBe("Unavailable");
   });
 
@@ -67,7 +83,17 @@ describe("dashboard summary formatting", () => {
     expect(calculateDistributionValue(12, 8)).toBe(100);
     expect(calculateDistributionValue(2, 0)).toBe(0);
     expect(calculateDistributionValue(-1, 8)).toBe(0);
+    expect(calculateDistributionValue(1.5, 8)).toBe(0);
+    expect(calculateDistributionValue(2, -8)).toBe(0);
     expect(calculateDistributionValue(null, 8)).toBe(0);
     expect(calculateDistributionValue("invalid", 8)).toBe(0);
+  });
+
+  it("keeps contextual link names concise", () => {
+    expect(formatDashboardLinkContext("RFI-017", "RFI")).toBe("RFI-017");
+    expect(formatDashboardLinkContext("", "RFI")).toBe("RFI");
+    expect(formatDashboardLinkContext("A".repeat(80), "RFI")).toBe(
+      `${"A".repeat(61)}...`
+    );
   });
 });

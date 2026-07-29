@@ -1,5 +1,8 @@
 import { buildAppHash } from "../../utils/navigation";
-import { formatDashboardTimestamp } from "../../utils/dashboardSummary";
+import {
+  formatDashboardLinkContext,
+  formatDashboardTimestamp,
+} from "../../utils/dashboardSummary";
 
 
 const RESOURCE_LABELS = {
@@ -59,6 +62,10 @@ function RecentUpdateItem({
       ? TARGETS[update?.target_page]
       : null;
   const timestamp = formatDashboardTimestamp(update?.updated_at);
+  const linkContext = formatDashboardLinkContext(
+    identifier || description,
+    resourceLabel
+  );
 
   return (
     <li className="dashboard-recent-update">
@@ -83,6 +90,7 @@ function RecentUpdateItem({
         <a
           className="dashboard-insight-link"
           href={buildAppHash(navigation.page, projectId)}
+          aria-label={`${navigation.label} for recent update ${linkContext}`}
           onClick={(event) => {
             event.preventDefault();
             onNavigate?.(navigation.page);

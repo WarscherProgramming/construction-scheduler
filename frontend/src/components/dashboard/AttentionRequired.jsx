@@ -21,6 +21,7 @@ function AttentionRequired({
         <EmptyState
           title="No attention items were identified for this dashboard date."
           description="This reflects the current dashboard rules and is not a complete risk assessment."
+          announce={false}
         />
       ) : (
         <ul className="dashboard-action-list">

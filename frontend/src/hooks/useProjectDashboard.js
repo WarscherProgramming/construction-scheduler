@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { fetchProjectDashboard } from "../services/api";
 import { formatLocalDateForApi } from "../utils/date";
@@ -27,13 +27,7 @@ function useProjectDashboard({
     errorIdentity: null,
     isLoading: false,
   });
-  const asOf = useMemo(
-    () => {
-      const requestIdentity = `${projectId ?? "none"}:${retryVersion}`;
-      return requestIdentity && formatLocalDateForApi(dateFactory());
-    },
-    [dateFactory, projectId, retryVersion]
-  );
+  const asOf = formatLocalDateForApi(dateFactory());
   const identityKey = projectId ? `${projectId}:${asOf}` : null;
 
   const identityRef = useRef(identityKey);
@@ -84,7 +78,12 @@ function useProjectDashboard({
       signal: controller.signal,
     })
       .then((dashboard) => {
-        if (identityRef.current !== identityKey) return null;
+        if (
+          identityRef.current !== identityKey ||
+          requestRef.current !== requestRecord
+        ) {
+          return null;
+        }
 
         setState({
           dashboard,
@@ -96,7 +95,11 @@ function useProjectDashboard({
         return dashboard;
       })
       .catch((error) => {
-        if (isAbortError(error) || identityRef.current !== identityKey) {
+        if (
+          isAbortError(error) ||
+          identityRef.current !== identityKey ||
+          requestRef.current !== requestRecord
+        ) {
           return null;
         }
 
@@ -112,6 +115,9 @@ function useProjectDashboard({
       })
       .finally(() => {
         requestRecord.settled = true;
+        if (requestRef.current === requestRecord) {
+          requestRef.current = null;
+        }
       });
 
     requestRecord.promise = promise;
@@ -158,7 +164,11 @@ function useProjectDashboard({
 
   useEffect(
     () => () => {
+      if (abortTimerRef.current) {
+        window.clearTimeout(abortTimerRef.current);
+      }
       requestRef.current?.controller.abort();
+      requestRef.current = null;
     },
     []
   );

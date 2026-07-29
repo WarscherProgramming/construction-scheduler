@@ -155,16 +155,19 @@ describe("RecentUpdates", () => {
           recentUpdate({
             resource_type: "submittal",
             record_id: 2,
+            identifier: "SUB-002",
             target_page: "submittals",
           }),
           recentUpdate({
             resource_type: "punch_item",
             record_id: 3,
+            identifier: "PUNCH-003",
             target_page: "punch-items",
           }),
           recentUpdate({
             resource_type: "change_order",
             record_id: 4,
+            identifier: "CO-004",
             target_page: "change-orders",
           }),
           recentUpdate({
@@ -179,13 +182,31 @@ describe("RecentUpdates", () => {
     );
 
     const links = [
-      ["View RFIs", "#/projects/31/rfis", "rfis"],
-      ["View Submittals", "#/projects/31/submittals", "submittals"],
-      ["View Punch Items", "#/projects/31/punch-items", "punchItems"],
-      ["View Change Orders", "#/projects/31/change-orders", "changeOrders"],
+      [
+        "View RFIs for recent update RFI-017",
+        "#/projects/31/rfis",
+        "rfis",
+      ],
+      [
+        "View Submittals for recent update SUB-002",
+        "#/projects/31/submittals",
+        "submittals",
+      ],
+      [
+        "View Punch Items for recent update PUNCH-003",
+        "#/projects/31/punch-items",
+        "punchItems",
+      ],
+      [
+        "View Change Orders for recent update CO-004",
+        "#/projects/31/change-orders",
+        "changeOrders",
+      ],
     ];
     for (const [label, href, page] of links) {
+      await user.tab();
       const link = screen.getByRole("link", { name: label });
+      expect(link).toHaveFocus();
       expect(link).toHaveAttribute("href", href);
       await user.click(link);
       expect(onNavigate).toHaveBeenLastCalledWith(page);
@@ -264,5 +285,6 @@ describe("RecentUpdates", () => {
     ).toBeInTheDocument();
     expect(screen.getByText(/update timestamps/i)).toBeInTheDocument();
     expect(screen.queryByText(/no activity|project inactive/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
 });

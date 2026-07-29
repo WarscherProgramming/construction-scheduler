@@ -1,6 +1,9 @@
 import StatusBadge from "../StatusBadge";
 import { buildAppHash } from "../../utils/navigation";
-import { formatOptionalDashboardDate } from "../../utils/dashboardSummary";
+import {
+  formatDashboardLinkContext,
+  formatOptionalDashboardDate,
+} from "../../utils/dashboardSummary";
 
 
 const RESOURCE_LABELS = {
@@ -77,6 +80,10 @@ function AttentionItem({
     isKnownResource ? TARGETS[item?.target_page] : null;
   const formattedDate = formatOptionalDashboardDate(item?.due_date);
   const reason = textValue(item?.reason);
+  const linkContext = formatDashboardLinkContext(
+    identifier || suppliedTitle,
+    resourceLabel
+  );
 
   return (
     <li className="dashboard-action-item">
@@ -112,6 +119,7 @@ function AttentionItem({
         <a
           className="dashboard-action-item__link"
           href={buildAppHash(navigation.page, projectId)}
+          aria-label={`${navigation.label} for attention item ${linkContext}`}
           onClick={(event) => {
             event.preventDefault();
             onNavigate?.(navigation.page);

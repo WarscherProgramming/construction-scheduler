@@ -126,11 +126,17 @@ describe("ProjectDashboardPage", () => {
       />
     );
 
-    const rfiLink = screen.getAllByRole("link", { name: "View RFIs" })[0];
+    const rfiLink = screen.getByRole("link", {
+      name: "View RFIs from Open RFIs summary",
+    });
+    rfiLink.focus();
+    expect(rfiLink).toHaveFocus();
     expect(rfiLink).toHaveAttribute("href", "#/projects/1/rfis");
     await user.click(rfiLink);
     await user.click(
-      screen.getAllByRole("link", { name: "View Change Orders" })[0]
+      screen.getByRole("link", {
+        name: "View Change Orders from Active Change Order Value summary",
+      })
     );
 
     expect(onNavigate.mock.calls).toEqual([["rfis"], ["changeOrders"]]);
@@ -199,6 +205,11 @@ describe("ProjectDashboardPage", () => {
       screen.getByText("Recently clarified storefront flashing")
     ).toBeInTheDocument();
     expect(screen.getByLabelText("Open RFIs: 5")).toBeInTheDocument();
+
+    const linkNames = screen.getAllByRole("link").map(
+      (link) => link.getAttribute("aria-label") || link.textContent
+    );
+    expect(new Set(linkNames).size).toBe(linkNames.length);
   });
 
   it("preserves the header and summary structure while loading", () => {
@@ -217,6 +228,8 @@ describe("ProjectDashboardPage", () => {
     expect(
       screen.getByRole("heading", { name: "Project Dashboard" })
     ).toBeInTheDocument();
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect(screen.queryByRole("heading", { level: 2 })).not.toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent(
       "Loading project summary"
     );
@@ -260,9 +273,12 @@ describe("ProjectDashboardPage", () => {
     expect(screen.queryByText("Upcoming Schedule")).not.toBeInTheDocument();
     expect(screen.queryByText("Workflow Analytics")).not.toBeInTheDocument();
     expect(screen.queryByText("Recent Updates")).not.toBeInTheDocument();
-    await user.click(
-      screen.getByRole("button", { name: "Retry dashboard" })
-    );
+    const retryButton = screen.getByRole("button", {
+      name: "Retry dashboard",
+    });
+    retryButton.focus();
+    expect(retryButton).toHaveFocus();
+    await user.click(retryButton);
     expect(retry).toHaveBeenCalledOnce();
   });
 

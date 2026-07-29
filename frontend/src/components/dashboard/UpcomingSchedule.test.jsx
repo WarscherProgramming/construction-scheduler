@@ -83,7 +83,11 @@ describe("UpcomingSchedule", () => {
       />
     );
 
-    const link = screen.getByRole("link", { name: "View Schedule" });
+    const link = screen.getByRole("link", {
+      name: "View Schedule for upcoming task Install storefront",
+    });
+    await user.tab();
+    expect(link).toHaveFocus();
     expect(link).toHaveAttribute("href", "#/projects/41/schedule");
     await user.click(link);
     expect(onNavigate).toHaveBeenCalledWith("scheduler");
@@ -118,6 +122,7 @@ describe("UpcomingSchedule", () => {
         "No schedule tasks have been added to this project."
       )
     ).toBeInTheDocument();
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
 
   it("fails safely for missing names and invalid date values", () => {

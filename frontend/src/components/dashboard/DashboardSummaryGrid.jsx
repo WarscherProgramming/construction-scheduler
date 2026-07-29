@@ -13,9 +13,10 @@ function DashboardSummaryGrid({
   projectId,
   onNavigate,
 }) {
-  const link = (page, label) => ({
+  const link = (page, label, context) => ({
     href: buildAppHash(page, projectId),
     linkLabel: label,
+    linkAriaLabel: `${label} from ${context}`,
     onNavigate: () => onNavigate(page),
   });
 
@@ -28,7 +29,7 @@ function DashboardSummaryGrid({
         "No schedule tasks have been added.",
         "Tasks with planned finish dates before the dashboard date."
       ),
-      ...link("scheduler", "View schedule"),
+      ...link("scheduler", "View Schedule", "Past Planned Finish summary"),
     },
     {
       label: "Upcoming Starts",
@@ -38,7 +39,7 @@ function DashboardSummaryGrid({
         "No schedule tasks have been added.",
         "Starts due in the next seven days."
       ),
-      ...link("scheduler", "View upcoming schedule"),
+      ...link("scheduler", "View Schedule", "Upcoming Starts summary"),
     },
     {
       label: "Open RFIs",
@@ -48,7 +49,7 @@ function DashboardSummaryGrid({
         "No RFIs have been added.",
         `${dashboard.rfis.overdue} currently overdue.`
       ),
-      ...link("rfis", "View RFIs"),
+      ...link("rfis", "View RFIs", "Open RFIs summary"),
     },
     {
       label: "Overdue RFIs",
@@ -58,7 +59,7 @@ function DashboardSummaryGrid({
         "No RFIs have been added.",
         `${dashboard.rfis.due_soon} due in the next seven days.`
       ),
-      ...link("rfis", "Review RFI deadlines"),
+      ...link("rfis", "Review RFI deadlines", "Overdue RFIs summary"),
     },
     {
       label: "Pending Submittals",
@@ -68,7 +69,11 @@ function DashboardSummaryGrid({
         "No Submittals have been added.",
         `${dashboard.submittals.overdue} currently overdue.`
       ),
-      ...link("submittals", "View Submittals"),
+      ...link(
+        "submittals",
+        "View Submittals",
+        "Pending Submittals summary"
+      ),
     },
     {
       label: "Open Punch Items",
@@ -78,7 +83,7 @@ function DashboardSummaryGrid({
         "No Punch Items have been added.",
         `${dashboard.punch_items.overdue} currently overdue.`
       ),
-      ...link("punchItems", "View Punch List"),
+      ...link("punchItems", "View Punch Items", "Open Punch Items summary"),
     },
     {
       label: "Active Change Order Value",
@@ -90,7 +95,11 @@ function DashboardSummaryGrid({
         "No Change Orders have been added.",
         `${dashboard.change_orders.active} active Change Orders.`
       ),
-      ...link("changeOrders", "View Change Orders"),
+      ...link(
+        "changeOrders",
+        "View Change Orders",
+        "Active Change Order Value summary"
+      ),
     },
     {
       label: "Today's Daily Logs",
@@ -100,7 +109,7 @@ function DashboardSummaryGrid({
         "No Daily Logs have been added.",
         `${dashboard.daily_logs.today_manpower} workers recorded today.`
       ),
-      ...link("dailyLogs", "View Daily Logs"),
+      ...link("dailyLogs", "View Daily Logs", "Today's Daily Logs summary"),
     },
   ];
 
@@ -109,13 +118,21 @@ function DashboardSummaryGrid({
       label: "Overdue Submittals",
       value: dashboard.submittals.overdue,
       context: `${dashboard.submittals.due_soon} due in the next seven days.`,
-      ...link("submittals", "Review Submittal deadlines"),
+      ...link(
+        "submittals",
+        "Review Submittal deadlines",
+        "Overdue Submittals summary"
+      ),
     },
     {
       label: "Overdue Punch Items",
       value: dashboard.punch_items.overdue,
       context: `${dashboard.punch_items.completed_last_7_days} completed in the last seven days.`,
-      ...link("punchItems", "Review Punch Item deadlines"),
+      ...link(
+        "punchItems",
+        "Review Punch Item deadlines",
+        "Overdue Punch Items summary"
+      ),
     },
     {
       label: "Approved Change Order Value",
@@ -123,7 +140,11 @@ function DashboardSummaryGrid({
         dashboard.change_orders.approved_value
       ),
       context: `${dashboard.change_orders.approved} approved or executed.`,
-      ...link("changeOrders", "Review approved Change Orders"),
+      ...link(
+        "changeOrders",
+        "Review approved Change Orders",
+        "Approved Change Order Value summary"
+      ),
     },
     {
       label: "Documents Uploaded",

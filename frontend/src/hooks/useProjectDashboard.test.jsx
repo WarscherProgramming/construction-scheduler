@@ -207,6 +207,159 @@ describe("useProjectDashboard", () => {
     expect(onError).not.toHaveBeenCalled();
   });
 
+  it("rejects an old response after an A to B to A project switch", async () => {
+    const firstProjectA = deferred();
+    const currentProjectA = deferred();
+    apiMocks.fetchProjectDashboard
+      .mockReturnValueOnce(firstProjectA.promise)
+      .mockResolvedValueOnce({
+        ...DASHBOARD,
+        project: { id: 2, name: "North Ridge" },
+      })
+      .mockReturnValueOnce(currentProjectA.promise);
+    const hook = renderHook(
+      ({ projectId }) =>
+        useProjectDashboard({
+          projectId,
+          dateFactory: DATE_FACTORY,
+        }),
+      { initialProps: { projectId: 1 } }
+    );
+
+    await waitFor(() =>
+      expect(apiMocks.fetchProjectDashboard).toHaveBeenCalledTimes(1)
+    );
+    hook.rerender({ projectId: 2 });
+    await waitFor(() =>
+      expect(hook.result.current.dashboard?.project.id).toBe(2)
+    );
+    hook.rerender({ projectId: 1 });
+    await waitFor(() =>
+      expect(apiMocks.fetchProjectDashboard).toHaveBeenCalledTimes(3)
+    );
+
+    await act(async () => {
+      firstProjectA.resolve({
+        ...DASHBOARD,
+        project: { id: 1, name: "Stale Riverside" },
+      });
+      await firstProjectA.promise;
+    });
+    expect(hook.result.current.dashboard).toBeNull();
+    expect(hook.result.current.isLoading).toBe(true);
+
+    await act(async () => {
+      currentProjectA.resolve({
+        ...DASHBOARD,
+        project: { id: 1, name: "Current Riverside" },
+      });
+      await currentProjectA.promise;
+    });
+    expect(hook.result.current.dashboard?.project.name).toBe(
+      "Current Riverside"
+    );
+  });
+
+  it("ignores an old project rejection after the next project succeeds", async () => {
+    const first = deferred();
+    const onError = vi.fn();
+    apiMocks.fetchProjectDashboard
+      .mockReturnValueOnce(first.promise)
+      .mockResolvedValueOnce({
+        ...DASHBOARD,
+        project: { id: 2, name: "North Ridge" },
+      });
+    const hook = renderHook(
+      ({ projectId }) =>
+        useProjectDashboard({
+          projectId,
+          dateFactory: DATE_FACTORY,
+          onError,
+        }),
+      { initialProps: { projectId: 1 } }
+    );
+
+    await waitFor(() =>
+      expect(apiMocks.fetchProjectDashboard).toHaveBeenCalledTimes(1)
+    );
+    hook.rerender({ projectId: 2 });
+    await waitFor(() =>
+      expect(hook.result.current.dashboard?.project.id).toBe(2)
+    );
+
+    await act(async () => {
+      first.reject(new Error("Old project failed"));
+      await first.promise.catch(() => {});
+    });
+
+    expect(hook.result.current.dashboard?.project.id).toBe(2);
+    expect(hook.result.current.error).toBeNull();
+    expect(onError).not.toHaveBeenCalled();
+  });
+
+  it("coalesces rapid retries and allows a fresh request after success", async () => {
+    const recovered = deferred();
+    apiMocks.fetchProjectDashboard
+      .mockRejectedValueOnce(new Error("Unavailable"))
+      .mockReturnValueOnce(recovered.promise)
+      .mockResolvedValueOnce({
+        ...DASHBOARD,
+        project: { id: 1, name: "Refreshed Riverside" },
+      });
+    const { result } = renderHook(() =>
+      useProjectDashboard({
+        projectId: 1,
+        dateFactory: DATE_FACTORY,
+      })
+    );
+
+    await waitFor(() => expect(result.current.error).toBeTruthy());
+    act(() => {
+      result.current.retry();
+      result.current.retry();
+    });
+    await waitFor(() =>
+      expect(apiMocks.fetchProjectDashboard).toHaveBeenCalledTimes(2)
+    );
+
+    await act(async () => {
+      recovered.resolve(DASHBOARD);
+      await recovered.promise;
+    });
+    await waitFor(() => expect(result.current.dashboard).toEqual(DASHBOARD));
+
+    act(() => result.current.retry());
+    await waitFor(() =>
+      expect(result.current.dashboard?.project.name).toBe(
+        "Refreshed Riverside"
+      )
+    );
+    expect(apiMocks.fetchProjectDashboard).toHaveBeenCalledTimes(3);
+  });
+
+  it("clears state when project selection is removed", async () => {
+    const hook = renderHook(
+      ({ projectId }) =>
+        useProjectDashboard({
+          projectId,
+          dateFactory: DATE_FACTORY,
+        }),
+      { initialProps: { projectId: null } }
+    );
+
+    expect(hook.result.current.isLoading).toBe(false);
+    hook.rerender({ projectId: 1 });
+    await waitFor(() =>
+      expect(hook.result.current.dashboard).toEqual(DASHBOARD)
+    );
+
+    hook.rerender({ projectId: null });
+    expect(hook.result.current.dashboard).toBeNull();
+    expect(hook.result.current.error).toBeNull();
+    expect(hook.result.current.isLoading).toBe(false);
+    expect(apiMocks.fetchProjectDashboard).toHaveBeenCalledOnce();
+  });
+
   it("does not expose or report an AbortError", async () => {
     const onError = vi.fn();
     apiMocks.fetchProjectDashboard

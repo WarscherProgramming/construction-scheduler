@@ -188,13 +188,27 @@ describe("WorkflowAnalytics", () => {
     );
 
     const links = [
-      ["View RFIs", "#/projects/42/rfis", "rfis"],
-      ["View Submittals", "#/projects/42/submittals", "submittals"],
-      ["View Punch Items", "#/projects/42/punch-items", "punchItems"],
-      ["View Change Orders", "#/projects/42/change-orders", "changeOrders"],
+      ["View RFIs in Workflow Analytics", "#/projects/42/rfis", "rfis"],
+      [
+        "View Submittals in Workflow Analytics",
+        "#/projects/42/submittals",
+        "submittals",
+      ],
+      [
+        "View Punch Items in Workflow Analytics",
+        "#/projects/42/punch-items",
+        "punchItems",
+      ],
+      [
+        "View Change Orders in Workflow Analytics",
+        "#/projects/42/change-orders",
+        "changeOrders",
+      ],
     ];
     for (const [label, href, page] of links) {
+      await user.tab();
       const link = screen.getByRole("link", { name: label });
+      expect(link).toHaveFocus();
       expect(link).toHaveAttribute("href", href);
       await user.click(link);
       expect(onNavigate).toHaveBeenLastCalledWith(page);

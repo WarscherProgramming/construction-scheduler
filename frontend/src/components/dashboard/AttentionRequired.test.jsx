@@ -164,14 +164,28 @@ describe("AttentionRequired", () => {
     );
 
     const expectedLinks = [
-      ["View RFIs", "#/projects/29/rfis", "rfis"],
-      ["View Submittals", "#/projects/29/submittals", "submittals"],
-      ["View Punch Items", "#/projects/29/punch-items", "punchItems"],
-      ["View Schedule", "#/projects/29/schedule", "scheduler"],
+      ["View RFIs for attention item RFI-017", "#/projects/29/rfis", "rfis"],
+      [
+        "View Submittals for attention item SUB-002",
+        "#/projects/29/submittals",
+        "submittals",
+      ],
+      [
+        "View Punch Items for attention item PUNCH-003",
+        "#/projects/29/punch-items",
+        "punchItems",
+      ],
+      [
+        "View Schedule for attention item Task 4",
+        "#/projects/29/schedule",
+        "scheduler",
+      ],
     ];
 
     for (const [label, href, page] of expectedLinks) {
+      await user.tab();
       const link = screen.getByRole("link", { name: label });
+      expect(link).toHaveFocus();
       expect(link).toHaveAttribute("href", href);
       await user.click(link);
       expect(onNavigate).toHaveBeenLastCalledWith(page);
@@ -233,5 +247,6 @@ describe("AttentionRequired", () => {
     ).toBeInTheDocument();
     expect(screen.getByText(/not a complete risk assessment/i)).toBeInTheDocument();
     expect(screen.queryByText(/everything is on track|no risks/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
 });

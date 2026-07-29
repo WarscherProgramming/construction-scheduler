@@ -38,6 +38,12 @@ describe("date utilities", () => {
     const nearUtcBoundary = new Date(2026, 0, 2, 23, 59, 59);
 
     expect(formatLocalDateForApi(nearUtcBoundary)).toBe("2026-01-02");
+    expect(formatLocalDateForApi(new Date(2026, 0, 1, 0, 1))).toBe(
+      "2026-01-01"
+    );
+    expect(formatLocalDateForApi(new Date(2026, 0, 31, 23, 59))).toBe(
+      "2026-01-31"
+    );
     expect(formatLocalDateForApi(new Date(2026, 8, 7, 1))).toBe(
       "2026-09-07"
     );
@@ -62,6 +68,9 @@ describe("date utilities", () => {
     expect(parsed.getFullYear()).toBe(2026);
     expect(parsed.getMonth()).toBe(5);
     expect(parsed.getDate()).toBe(20);
+    expect(
+      toLocalDateInputValue(parseLocalDateInputValue("2028-02-29"))
+    ).toBe("2028-02-29");
   });
 
   it("rejects malformed and impossible date-only values", () => {
