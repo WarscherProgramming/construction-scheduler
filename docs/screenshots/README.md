@@ -19,7 +19,7 @@ for both referenced and planned module screenshots.
 
 | File | View / state to capture |
 |---|---|
-| `dashboard.png` | Project dashboard, top of page: Today's Focus, health gauge, existing RFI, Submittal, and Punch List KPIs, and the Change Orders KPI showing Active, Approved, Rejected, Proposed Cost, Approved Cost, and Schedule Impact. Hero image — make it count. |
+| `dashboard.png` | Populated Project Dashboard showing Project Summary, Follow-up Indicators, Attention Required, Upcoming Schedule, Workflow Analytics, and Recent Updates. Include readable RFI, Submittal, Punch Item, and Change Order states plus large Change Order values where practical. |
 | `schedule-grid.png` | Schedule table view: a row selected (brand accent visible), one cell in inline-edit mode, at least one parent task with indented children. |
 | `schedule-dnd.gif` | ~5 s: grab a task's drag handle, drag it two rows, drop; dates recalculate. |
 | `login.png` | Logged-out landing page at desktop width: split panel with marketing copy, highlights, app preview, and the auth card. |
@@ -52,8 +52,9 @@ files.
 - Take captures after data loads — no skeletons visible unless intentional.
 - Re-capture `dashboard.png` whenever the dashboard design changes; it is the
   first image recruiters see.
-- M12 enhances the Change Orders workflow and dashboard KPI, so
-  `change-orders.png` and `dashboard.png` now need recapturing.
+- M14 replaces the prior health-gauge dashboard with aggregate summary,
+  attention, schedule, workflow, and recent-update sections, so
+  `dashboard.png` and the dashboard version of `mobile.png` need recapturing.
 - M13 adds Document Management across six workflows. Capture the listed
   attachment images above and recapture `change-orders.png` or
   `punch-lists.png` when their attachment controls should be visible in the

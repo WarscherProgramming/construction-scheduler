@@ -11,7 +11,7 @@ and Punch Lists) with their supporting documents.
 ![React 19](https://img.shields.io/badge/React-19-61dafb?logo=react&logoColor=white&labelColor=20232a)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.1x-009688?logo=fastapi&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169e1?logo=postgresql&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-395%20passing-2ea44f)
+![Tests](https://img.shields.io/badge/tests-411%20passing-2ea44f)
 ![Vite](https://img.shields.io/badge/Vite-8-646cff?logo=vite&logoColor=white)
 
 ![FieldFlow executive dashboard](docs/screenshots/dashboard.png)
@@ -27,13 +27,14 @@ and Punch Lists) with their supporting documents.
 2. Choose **Load Sample Project** — FieldFlow seeds *Riverside Medical Center —
    Phase 2* (a 15-activity schedule, crews, logs, inspections, and change
    orders) in about ten seconds, with live progress.
-3. You land on the **executive dashboard**: Today's Focus, a project-health
-   gauge, schedule health, and an activity feed.
+3. You land on the **Project Dashboard**: aggregate project summary,
+   Attention Required, Upcoming Schedule, Workflow Analytics, and Recent
+   Updates.
 
 ### The 90-second tour
 
-1. **Dashboard** — scan Today's Focus ("4 items need your attention"), the
-   health gauge, and KPI tiles.
+1. **Dashboard** — scan project KPIs, items requiring attention, upcoming
+   tasks, workflow status, and recent updates.
 2. **Schedule** — click any cell to edit inline (Enter saves, Escape cancels),
    select a row, **drag to reorder**, indent/outdent to build a hierarchy.
 3. Toggle the **Gantt** view, then **Export Schedule as PDF**.
@@ -63,29 +64,30 @@ question — *"what needs my attention today?"* — has a one-screen answer.
   (dnd-kit).
 - **Dynamic Gantt chart** rendered from the same task data, plus one-click PDF
   export.
-- **Executive dashboard** of derived insights — project-health gauge,
-  timeline-elapsed schedule health, RFI, Submittal, and Punch List health,
-  attention lists, and a merged activity feed — computed client-side from
-  existing APIs (no bespoke endpoints).
+- **Project Dashboard and Analytics** backed by one authenticated,
+  project-owned aggregate endpoint: schedule, RFI, Submittal, Punch Item,
+  Change Order, Daily Log, and document summaries; bounded Attention
+  Required, Upcoming Schedule, Workflow Analytics, and Recent Updates;
+  stale-response protection; and no dashboard collection fan-out.
 - **Project-scoped RFI workflow** with server-assigned sequential numbering,
   Open/Pending/Closed states, responsible-company assignment, due-date and
   overdue tracking, and authenticated ownership enforcement.
 - **Project-scoped Submittals workflow** with permanent sequential `SUB`
   numbering; Draft, Submitted, Under Review, Approved, Revise and Resubmit,
   and Rejected states; responsible-company and reviewer tracking; required-by,
-  reviewed-date, and overdue tracking; dashboard health metrics; and
+  reviewed-date, and overdue tracking; dashboard workflow metrics; and
   authenticated ownership enforcement.
 - **Project-scoped Punch Lists workflow** with permanent sequential `PUNCH`
   numbering; Open, In Progress, Completed, and Verified states; Low, Medium,
   High, and Critical priorities; location, trade, responsible-company, and
   assignee tracking; due-date, completion-date, and overdue tracking;
-  dashboard health metrics; and authenticated ownership enforcement.
+  dashboard workflow metrics; and authenticated ownership enforcement.
 - **Enhanced project-scoped Change Orders workflow** with backend-assigned,
   permanent `CO` numbering; eight lifecycle statuses; proposed and approved
   fixed-precision amounts; schedule impact, lifecycle dates, title,
   description, reason, company, and responsible-party tracking; full
   create/edit/delete and filtering flows; legacy-record compatibility;
-  dashboard health and cost metrics; recent activity; and authenticated
+  dashboard workflow and cost metrics; recent updates; and authenticated
   ownership enforcement.
 - **Reusable Document Management** across Projects, Daily Logs, RFIs,
   Submittals, Punch Items, and Change Orders, with multiple-file upload,
@@ -100,7 +102,7 @@ question — *"what needs my attention today?"* — has a one-screen answer.
 - **Client-side onboarding**: first-run detection seeds a realistic demo
   project through the public API with visible progress — the app is never
   empty.
-- **Automated testing: 395 tests** — 259 frontend across 36 files (Vitest +
+- **Automated testing: 411 tests** — 275 frontend across 42 files (Vitest +
   React Testing Library, behavior- and accessibility-focused) and 136 backend
   tests plus 71 separately reported subtests (pytest,
   covering the scheduling engine, critical path, services, migrations, CORS,
@@ -131,10 +133,15 @@ every request carries it via a small fetch wrapper that also centralizes
 FastAPI service layer applies the scheduling rules (dependencies, lag,
 workday/holiday calendars) and persists through SQLAlchemy models managed by
 Alembic migrations. Responses return the full recalculated task set, so the
-grid, Gantt, and dashboard always render from one consistent source. Dashboard
-insights (health score; Change Order, RFI, Submittal, and Punch List health;
-attention lists; activity feed) are **derived client-side** in pure,
-unit-tested functions — no duplicate reporting API.
+grid and Gantt always render from one consistent source. The project dashboard
+uses one authenticated aggregate endpoint instead of loading each resource
+collection. Backend queries calculate bounded summary metrics, attention
+items, upcoming tasks, and recent updates; the frontend handles formatting,
+navigation, loading, retry, cancellation, and stale-response protection.
+
+The complete dashboard hierarchy, API contract, request lifecycle, test
+coverage, bundle history, and deferred work are documented in
+[`docs/PROJECT_DASHBOARD.md`](docs/PROJECT_DASHBOARD.md).
 
 Change Orders use a focused service layer for validation and project-scoped
 `CO-###` allocation. A persistent per-project sequence table prevents deleted
@@ -305,18 +312,19 @@ job. FieldFlow does not include a built-in worker or scheduler, and
 - Gantt visualization and PDF schedule export
 - Reusable schedule templates
 
-**Executive dashboard**
-- Today's Focus: activities starting today, inspections due, delays, pending COs
-- Project-health gauge (green / amber / red) from a transparent heuristic
-- Schedule health, attention list, upcoming tasks and inspections
-- Open, overdue, and closed RFI health metrics with direct RFI navigation
-- Active, overdue, and approved Submittal health metrics with direct
-  Submittals navigation
-- Open, overdue, and completed Punch List health metrics with direct Punch
-  Lists navigation
-- Change Order Active, Approved, and Rejected counts; exact Proposed and
-  Approved Cost totals; and whole-day Schedule Impact with direct navigation
-- Unified project activity feed with "what changed since yesterday" markers
+**Project Dashboard and Analytics**
+- Aggregate project summary for schedule, RFIs, Submittals, Punch Items,
+  Change Orders, Daily Logs, and documents
+- Bounded Attention Required and Upcoming Schedule lists with direct
+  project-workflow navigation
+- Workflow Analytics for RFI, Submittal, Punch Item, and Change Order status
+  counts, including exact backend-aggregated Change Order values
+- Recent Updates across RFIs, Submittals, Punch Items, Change Orders, and
+  attachments
+- One project-owned aggregate request with loading, retry, cancellation,
+  Strict Mode deduplication, and stale-response protection
+- Accessible headings, semantic lists and timestamps, contextual link names,
+  keyboard focus, reduced motion, and responsive mobile-to-ultrawide layouts
 
 **Field records**
 - Daily logs, inspections, and notes & delays
@@ -368,7 +376,7 @@ job. FieldFlow does not include a built-in worker or scheduler, and
 
 | | |
 |---|---|
-| ![Executive dashboard](docs/screenshots/dashboard.png) *Executive dashboard — Today's Focus, health gauge, KPIs* | ![Schedule grid](docs/screenshots/schedule-grid.png) *Spreadsheet-style schedule with hierarchy and inline editing* |
+| ![Project Dashboard](docs/screenshots/dashboard.png) *Project Dashboard — summary, attention, upcoming work, workflow analytics, and recent updates* | ![Schedule grid](docs/screenshots/schedule-grid.png) *Spreadsheet-style schedule with hierarchy and inline editing* |
 | ![Drag-and-drop reordering](docs/screenshots/schedule-dnd.gif) *Drag-and-drop task reordering* | ![Landing page](docs/screenshots/login.png) *Split-panel landing and login* |
 | ![Gantt view](docs/screenshots/gantt.png) *Gantt visualization* | ![First-run onboarding](docs/screenshots/first-run.gif) *First-run onboarding seeds a full sample project* |
 | ![Change orders](docs/screenshots/change-orders.png) *Change orders — generated numbers, lifecycle, cost, schedule impact, and status workflow* | ![Responsive layout](docs/screenshots/mobile.png) *Responsive rail and record cards* |
@@ -383,18 +391,18 @@ job. FieldFlow does not include a built-in worker or scheduler, and
 | Backend | FastAPI, SQLAlchemy, Alembic, Pydantic |
 | Database | PostgreSQL |
 | Auth | JWT (OAuth2 password flow) |
-| Testing | Vitest + React Testing Library (259), pytest (136) |
+| Testing | Vitest + React Testing Library (275), pytest (136) |
 | Hosting | Vercel (frontend) · Render (API + migrations) |
 
 ## Testing
 
-**395 primary automated tests passed.** Backend subtests are reported
+**411 primary automated tests passed.** Backend subtests are reported
 separately rather than added to that total.
 
-- **Frontend (259 across 36 files)** — Vitest + React Testing Library. Tests
+- **Frontend (275 across 42 files)** — Vitest + React Testing Library. Tests
   target behavior and accessibility: roles and names, keyboard flows
   (Enter/Escape editing,
-  grid cursor navigation, focus traps), derived dashboard metrics,
+  grid cursor navigation, focus traps), aggregate dashboard rendering,
   demo-seeding orchestration, App-level integration wiring, the HTTP
   transport layer, and loading/empty/error states. Attachment coverage
   includes API clients, advisory validation, sequential multiple-file
@@ -514,19 +522,22 @@ commit production credentials.
 **Shipped**
 - ✅ Design system, tokens, and reusable UI component layer
 - ✅ Persistent project navigation shell with active-page state
-- ✅ Executive dashboard with derived health/attention insights
+- ✅ M14 Project Dashboard and Analytics with one project-owned aggregate
+  endpoint, summary metrics, Attention Required, Upcoming Schedule, Workflow
+  Analytics, Recent Updates, stale-response protection, accessibility,
+  responsive hardening, and bounded request/bundle budgets
 - ✅ Project-scoped RFI workflow with sequential numbering, due-date tracking,
-  ownership enforcement, and dashboard health metrics
+  ownership enforcement, and dashboard workflow metrics
 - ✅ Project-scoped Submittals workflow with sequential numbering, complete
-  review states, date validation, ownership enforcement, and dashboard health
-  metrics
+  review states, date validation, ownership enforcement, and dashboard
+  workflow metrics
 - ✅ Project-scoped Punch Lists workflow with sequential numbering, complete
   priority and status handling, date validation, ownership enforcement, and
-  dashboard health metrics
+  dashboard workflow metrics
 - ✅ Enhanced project-scoped Change Orders workflow with persistent numbering,
   data-preserving legacy compatibility, fixed-precision financial fields,
   lifecycle and schedule-impact tracking, complete frontend CRUD and
-  filtering, and dashboard health and cost metrics
+  filtering, and dashboard workflow and cost metrics
 - ✅ M13 Document Management across Projects, Daily Logs, RFIs, Submittals,
   Punch Items, and Change Orders:
   - M13.0 Architecture Audit
