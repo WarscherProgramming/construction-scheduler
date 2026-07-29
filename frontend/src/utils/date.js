@@ -31,11 +31,23 @@ export function toLocalDateInputValue(date = new Date()) {
 export function parseLocalDateInputValue(value) {
   if (!value) return null;
 
-  const [year, month, day] = String(value).split("-").map(Number);
+  const normalized = String(value);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(normalized)) return null;
+
+  const [year, month, day] = normalized.split("-").map(Number);
   if (!year || !month || !day) return null;
 
   const parsed = new Date(year, month - 1, day);
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
+  if (
+    Number.isNaN(parsed.getTime()) ||
+    parsed.getFullYear() !== year ||
+    parsed.getMonth() !== month - 1 ||
+    parsed.getDate() !== day
+  ) {
+    return null;
+  }
+
+  return parsed;
 }
 
 export function isPastLocalDate(value, today = new Date()) {

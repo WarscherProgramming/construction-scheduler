@@ -20,6 +20,27 @@ function DashboardSkeleton() {
           </div>
         ))}
       </div>
+      <div className="dashboard-action-grid" aria-hidden="true">
+        {Array.from({ length: 2 }, (_, sectionIndex) => (
+          <div
+            className="dashboard-action-section dashboard-action-section--loading"
+            key={sectionIndex}
+          >
+            <Skeleton className="skeleton--sub" />
+            <Skeleton className="skeleton--line" />
+            {Array.from({ length: 3 }, (_, rowIndex) => (
+              <div
+                className="dashboard-action-skeleton-row"
+                key={rowIndex}
+              >
+                <Skeleton className="skeleton--sub" />
+                <Skeleton className="skeleton--line" />
+                <Skeleton className="skeleton--line" />
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
     </section>
   );
 }

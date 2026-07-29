@@ -64,6 +64,12 @@ describe("date utilities", () => {
     expect(parsed.getDate()).toBe(20);
   });
 
+  it("rejects malformed and impossible date-only values", () => {
+    expect(parseLocalDateInputValue("2026-02-31")).toBeNull();
+    expect(parseLocalDateInputValue("2026-7-27")).toBeNull();
+    expect(parseLocalDateInputValue("not-a-date")).toBeNull();
+  });
+
   it("identifies ISO dates before the current local date", () => {
     const today = new Date(2026, 6, 25, 15);
 

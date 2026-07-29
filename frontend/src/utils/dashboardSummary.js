@@ -28,6 +28,21 @@ export function formatDashboardCurrency(value) {
 
 
 export function formatDashboardDate(value) {
+  return formatOptionalDashboardDate(value) || "Date unavailable";
+}
+
+
+export function formatOptionalDashboardDate(value) {
   const date = parseLocalDateInputValue(value);
-  return date ? DATE_FORMATTER.format(date) : "Date unavailable";
+  return date ? DATE_FORMATTER.format(date) : null;
+}
+
+
+export function formatDashboardDuration(value) {
+  if (value === null || value === undefined || value === "") return null;
+
+  const duration = Number(value);
+  if (!Number.isFinite(duration)) return null;
+
+  return `${duration} ${duration === 1 ? "day" : "days"}`;
 }

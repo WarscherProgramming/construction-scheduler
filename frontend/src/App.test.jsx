@@ -236,6 +236,31 @@ describe("App integration (hooks wiring)", () => {
     fetchProjects.mockResolvedValue({
       projects: [{ id: 1, name: "Riverside" }],
     });
+    fetchProjectDashboard.mockResolvedValue(
+      makeDashboard(1, "Riverside", {
+        attention_items: [
+          {
+            resource_type: "rfi",
+            record_id: 17,
+            identifier: "RFI-017",
+            title: "Clarify storefront flashing",
+            due_date: "2026-07-24",
+            reason: "Overdue",
+            severity: "overdue",
+            target_page: "rfis",
+          },
+        ],
+        upcoming_tasks: [
+          {
+            id: 12,
+            name: "Install storefront",
+            start_date: "2026-07-29",
+            end_date: "2026-08-02",
+            duration: 5,
+          },
+        ],
+      })
+    );
 
     renderApp();
 
@@ -248,6 +273,8 @@ describe("App integration (hooks wiring)", () => {
     await waitFor(() => {
       expect(fetchProjectDashboard).toHaveBeenCalledTimes(1);
     });
+    expect(screen.getByText("Clarify storefront flashing")).toBeInTheDocument();
+    expect(screen.getByText("Install storefront")).toBeInTheDocument();
     expect(fetchProjectDashboard).toHaveBeenCalledWith(
       1,
       expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
@@ -332,22 +359,76 @@ describe("App integration (hooks wiring)", () => {
       second.resolve(
         makeDashboard(2, "North Ridge", {
           rfis: { total: 1, open: 1, overdue: 0, due_soon: 0 },
+          attention_items: [
+            {
+              resource_type: "rfi",
+              record_id: 2,
+              identifier: "RFI-002",
+              title: "North Ridge question",
+              due_date: "2026-07-25",
+              reason: "Overdue",
+              severity: "overdue",
+              target_page: "rfis",
+            },
+          ],
+          upcoming_tasks: [
+            {
+              id: 22,
+              name: "North Ridge mobilization",
+              start_date: "2026-07-29",
+              end_date: null,
+              duration: 1,
+            },
+          ],
         })
       );
       await second.promise;
     });
     expect(await screen.findByLabelText("Open RFIs: 1")).toBeInTheDocument();
+    expect(screen.getByText("North Ridge question")).toBeInTheDocument();
+    expect(screen.getByText("North Ridge mobilization")).toBeInTheDocument();
+    expect(
+      screen
+        .getAllByRole("link", { name: "View RFIs" })
+        .every(
+          (link) =>
+            link.getAttribute("href") === "#/projects/2/rfis"
+        )
+    ).toBe(true);
 
     await act(async () => {
       first.resolve(
         makeDashboard(1, "Riverside", {
           rfis: { total: 5, open: 5, overdue: 2, due_soon: 0 },
+          attention_items: [
+            {
+              resource_type: "rfi",
+              record_id: 1,
+              identifier: "RFI-001",
+              title: "Stale Riverside question",
+              due_date: "2026-07-20",
+              reason: "Overdue",
+              severity: "overdue",
+              target_page: "rfis",
+            },
+          ],
+          upcoming_tasks: [
+            {
+              id: 11,
+              name: "Stale Riverside task",
+              start_date: "2026-07-28",
+              end_date: null,
+              duration: null,
+            },
+          ],
         })
       );
       await first.promise;
     });
     expect(screen.getByLabelText("Open RFIs: 1")).toBeInTheDocument();
     expect(screen.queryByLabelText("Open RFIs: 5")).not.toBeInTheDocument();
+    expect(screen.queryByText("Stale Riverside question")).not.toBeInTheDocument();
+    expect(screen.queryByText("Stale Riverside task")).not.toBeInTheDocument();
   });
 
   it("shows global and local feedback and retries without reloading the app", async () => {
@@ -357,7 +438,31 @@ describe("App integration (hooks wiring)", () => {
     });
     fetchProjectDashboard
       .mockRejectedValueOnce(new ApiError("Service unavailable", 503))
-      .mockResolvedValueOnce(makeDashboard());
+      .mockResolvedValueOnce(
+        makeDashboard(1, "Riverside", {
+          attention_items: [
+            {
+              resource_type: "rfi",
+              record_id: 7,
+              identifier: "RFI-007",
+              title: "Loaded after retry",
+              due_date: "2026-07-20",
+              reason: "Overdue",
+              severity: "overdue",
+              target_page: "rfis",
+            },
+          ],
+          upcoming_tasks: [
+            {
+              id: 8,
+              name: "Retry schedule task",
+              start_date: "2026-07-28",
+              end_date: null,
+              duration: null,
+            },
+          ],
+        })
+      );
     window.location.hash = "#/projects/1/dashboard";
 
     renderApp();
@@ -378,6 +483,8 @@ describe("App integration (hooks wiring)", () => {
     );
 
     expect(await screen.findByLabelText("Open RFIs: 0")).toBeInTheDocument();
+    expect(screen.getByText("Loaded after retry")).toBeInTheDocument();
+    expect(screen.getByText("Retry schedule task")).toBeInTheDocument();
     expect(fetchProjectDashboard).toHaveBeenCalledTimes(2);
     expect(fetchProjects).toHaveBeenCalledOnce();
   });

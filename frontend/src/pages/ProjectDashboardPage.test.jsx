@@ -136,6 +136,52 @@ describe("ProjectDashboardPage", () => {
     expect(onNavigate.mock.calls).toEqual([["rfis"], ["changeOrders"]]);
   });
 
+  it("composes actionable lists beneath unchanged summary metrics", () => {
+    hookMocks.useProjectDashboard.mockReturnValue({
+      dashboard: {
+        ...DASHBOARD,
+        attention_items: [
+          {
+            resource_type: "rfi",
+            record_id: 17,
+            identifier: "RFI-017",
+            title: "Clarify storefront flashing",
+            due_date: "2026-07-24",
+            reason: "Overdue",
+            severity: "overdue",
+            target_page: "rfis",
+          },
+        ],
+        upcoming_tasks: [
+          {
+            id: 12,
+            name: "Install storefront",
+            start_date: "2026-07-29",
+            end_date: "2026-08-02",
+            duration: 5,
+          },
+        ],
+      },
+      isLoading: false,
+      error: null,
+      retry: vi.fn(),
+      asOf: "2026-07-27",
+    });
+
+    render(<ProjectDashboardPage {...BASE_PROPS} />);
+
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Attention Required" })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Upcoming Schedule" })
+    ).toBeInTheDocument();
+    expect(screen.getByText("Clarify storefront flashing")).toBeInTheDocument();
+    expect(screen.getByText("Install storefront")).toBeInTheDocument();
+    expect(screen.getByLabelText("Open RFIs: 5")).toBeInTheDocument();
+  });
+
   it("preserves the header and summary structure while loading", () => {
     hookMocks.useProjectDashboard.mockReturnValue({
       dashboard: null,
@@ -145,7 +191,9 @@ describe("ProjectDashboardPage", () => {
       asOf: "2026-07-27",
     });
 
-    render(<ProjectDashboardPage {...BASE_PROPS} />);
+    const { container } = render(
+      <ProjectDashboardPage {...BASE_PROPS} />
+    );
 
     expect(
       screen.getByRole("heading", { name: "Project Dashboard" })
@@ -154,6 +202,14 @@ describe("ProjectDashboardPage", () => {
       "Loading project summary"
     );
     expect(screen.queryByText("Project Summary")).not.toBeInTheDocument();
+    expect(screen.queryByText("Attention Required")).not.toBeInTheDocument();
+    expect(screen.queryByText("Upcoming Schedule")).not.toBeInTheDocument();
+    expect(
+      container.querySelectorAll(".dashboard-action-section--loading")
+    ).toHaveLength(2);
+    expect(
+      container.querySelectorAll(".dashboard-action-skeleton-row")
+    ).toHaveLength(6);
   });
 
   it("replaces metrics with an accessible retry state after failure", async () => {
@@ -173,6 +229,8 @@ describe("ProjectDashboardPage", () => {
       "Project dashboard data could not be loaded"
     );
     expect(screen.queryByText("Open RFIs")).not.toBeInTheDocument();
+    expect(screen.queryByText("Attention Required")).not.toBeInTheDocument();
+    expect(screen.queryByText("Upcoming Schedule")).not.toBeInTheDocument();
     await user.click(
       screen.getByRole("button", { name: "Retry dashboard" })
     );
@@ -246,6 +304,16 @@ describe("ProjectDashboardPage", () => {
     ).toHaveLength(2);
     expect(
       screen.getByLabelText("Active Change Order Value: $0.00")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "No attention items were identified for this dashboard date."
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "No schedule tasks have been added to this project."
+      )
     ).toBeInTheDocument();
     expect(screen.queryByText(/all clear|on track|no risk/i)).not.toBeInTheDocument();
   });

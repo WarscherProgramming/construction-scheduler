@@ -135,6 +135,37 @@ describe("useProjectDashboard", () => {
     );
   });
 
+  it("hides a loaded project's lists while the next project loads", async () => {
+    const second = deferred();
+    apiMocks.fetchProjectDashboard
+      .mockResolvedValueOnce({
+        ...DASHBOARD,
+        attention_items: [{ record_id: 1, title: "Old attention" }],
+        upcoming_tasks: [{ id: 1, name: "Old task" }],
+      })
+      .mockReturnValueOnce(second.promise);
+    const hook = renderHook(
+      ({ projectId }) =>
+        useProjectDashboard({
+          projectId,
+          dateFactory: DATE_FACTORY,
+        }),
+      { initialProps: { projectId: 1 } }
+    );
+
+    await waitFor(() =>
+      expect(hook.result.current.dashboard?.project.id).toBe(1)
+    );
+
+    hook.rerender({ projectId: 2 });
+
+    expect(hook.result.current.dashboard).toBeNull();
+    expect(hook.result.current.isLoading).toBe(true);
+    await waitFor(() =>
+      expect(apiMocks.fetchProjectDashboard).toHaveBeenCalledTimes(2)
+    );
+  });
+
   it("ignores stale and intentionally aborted request results", async () => {
     const first = deferred();
     const second = deferred();

@@ -1,3 +1,4 @@
+import DashboardActionGrid from "../components/dashboard/DashboardActionGrid";
 import DashboardEmptyState from "../components/dashboard/DashboardEmptyState";
 import DashboardErrorState from "../components/dashboard/DashboardErrorState";
 import DashboardHeader from "../components/dashboard/DashboardHeader";
@@ -47,11 +48,18 @@ function ProjectDashboardPage({
       ) : error ? (
         <DashboardErrorState onRetry={retry} />
       ) : dashboard ? (
-        <DashboardSummaryGrid
-          dashboard={dashboard}
-          projectId={projectId}
-          onNavigate={onNavigate}
-        />
+        <>
+          <DashboardSummaryGrid
+            dashboard={dashboard}
+            projectId={projectId}
+            onNavigate={onNavigate}
+          />
+          <DashboardActionGrid
+            dashboard={dashboard}
+            projectId={projectId}
+            onNavigate={onNavigate}
+          />
+        </>
       ) : null}
     </ProjectLayout>
   );
