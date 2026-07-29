@@ -41,6 +41,33 @@ function DashboardSkeleton() {
           </div>
         ))}
       </div>
+      <div className="dashboard-insights-grid" aria-hidden="true">
+        <div className="dashboard-insight-section">
+          <Skeleton className="skeleton--sub" />
+          <Skeleton className="skeleton--line" />
+          <div className="dashboard-workflow-grid">
+            {Array.from({ length: 4 }, (_, index) => (
+              <div className="dashboard-workflow-card" key={index}>
+                <Skeleton className="skeleton--sub" />
+                <Skeleton className="skeleton--value" />
+                <Skeleton className="skeleton--line" />
+                <Skeleton className="skeleton--line" />
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="dashboard-insight-section">
+          <Skeleton className="skeleton--sub" />
+          <Skeleton className="skeleton--line" />
+          {Array.from({ length: 3 }, (_, index) => (
+            <div className="dashboard-recent-update-skeleton" key={index}>
+              <Skeleton className="skeleton--sub" />
+              <Skeleton className="skeleton--line" />
+              <Skeleton className="skeleton--line" />
+            </div>
+          ))}
+        </div>
+      </div>
     </section>
   );
 }

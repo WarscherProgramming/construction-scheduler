@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  calculateDistributionValue,
+  formatDashboardCount,
   formatDashboardCurrency,
   formatDashboardDate,
   formatDashboardDuration,
   formatOptionalDashboardDate,
+  formatDashboardTimestamp,
 } from "./dashboardSummary";
 
 
@@ -34,5 +37,37 @@ describe("dashboard summary formatting", () => {
     expect(formatDashboardDuration(2)).toBe("2 days");
     expect(formatDashboardDuration(null)).toBeNull();
     expect(formatDashboardDuration("invalid")).toBeNull();
+  });
+
+  it("formats aware timestamps in the user's local timezone", () => {
+    const value = "2026-07-28T21:14:00Z";
+    const expected = new Intl.DateTimeFormat("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    }).format(new Date(value));
+
+    expect(formatDashboardTimestamp(value)).toBe(expected);
+    expect(formatDashboardTimestamp(null)).toBeNull();
+    expect(formatDashboardTimestamp("invalid")).toBeNull();
+  });
+
+  it("fails safely for unavailable aggregate counts", () => {
+    expect(formatDashboardCount(0)).toBe(0);
+    expect(formatDashboardCount(12)).toBe(12);
+    expect(formatDashboardCount(null)).toBe("Unavailable");
+    expect(formatDashboardCount(-1)).toBe("Unavailable");
+    expect(formatDashboardCount("invalid")).toBe("Unavailable");
+  });
+
+  it("clamps aggregate visual widths without changing visible counts", () => {
+    expect(calculateDistributionValue(2, 8)).toBe(25);
+    expect(calculateDistributionValue(12, 8)).toBe(100);
+    expect(calculateDistributionValue(2, 0)).toBe(0);
+    expect(calculateDistributionValue(-1, 8)).toBe(0);
+    expect(calculateDistributionValue(null, 8)).toBe(0);
+    expect(calculateDistributionValue("invalid", 8)).toBe(0);
   });
 });

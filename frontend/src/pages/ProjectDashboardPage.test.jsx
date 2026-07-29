@@ -126,11 +126,11 @@ describe("ProjectDashboardPage", () => {
       />
     );
 
-    const rfiLink = screen.getByRole("link", { name: "View RFIs" });
+    const rfiLink = screen.getAllByRole("link", { name: "View RFIs" })[0];
     expect(rfiLink).toHaveAttribute("href", "#/projects/1/rfis");
     await user.click(rfiLink);
     await user.click(
-      screen.getByRole("link", { name: "View Change Orders" })
+      screen.getAllByRole("link", { name: "View Change Orders" })[0]
     );
 
     expect(onNavigate.mock.calls).toEqual([["rfis"], ["changeOrders"]]);
@@ -161,6 +161,16 @@ describe("ProjectDashboardPage", () => {
             duration: 5,
           },
         ],
+        recent_updates: [
+          {
+            resource_type: "rfi",
+            record_id: 17,
+            identifier: "RFI-017",
+            description: "Recently clarified storefront flashing",
+            updated_at: "2026-07-27T23:00:00Z",
+            target_page: "rfis",
+          },
+        ],
       },
       isLoading: false,
       error: null,
@@ -177,8 +187,17 @@ describe("ProjectDashboardPage", () => {
     expect(
       screen.getByRole("heading", { level: 2, name: "Upcoming Schedule" })
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Workflow Analytics" })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Recent Updates" })
+    ).toBeInTheDocument();
     expect(screen.getByText("Clarify storefront flashing")).toBeInTheDocument();
     expect(screen.getByText("Install storefront")).toBeInTheDocument();
+    expect(
+      screen.getByText("Recently clarified storefront flashing")
+    ).toBeInTheDocument();
     expect(screen.getByLabelText("Open RFIs: 5")).toBeInTheDocument();
   });
 
@@ -204,12 +223,20 @@ describe("ProjectDashboardPage", () => {
     expect(screen.queryByText("Project Summary")).not.toBeInTheDocument();
     expect(screen.queryByText("Attention Required")).not.toBeInTheDocument();
     expect(screen.queryByText("Upcoming Schedule")).not.toBeInTheDocument();
+    expect(screen.queryByText("Workflow Analytics")).not.toBeInTheDocument();
+    expect(screen.queryByText("Recent Updates")).not.toBeInTheDocument();
     expect(
       container.querySelectorAll(".dashboard-action-section--loading")
     ).toHaveLength(2);
     expect(
       container.querySelectorAll(".dashboard-action-skeleton-row")
     ).toHaveLength(6);
+    expect(
+      container.querySelectorAll(".dashboard-workflow-card")
+    ).toHaveLength(4);
+    expect(
+      container.querySelectorAll(".dashboard-recent-update-skeleton")
+    ).toHaveLength(3);
   });
 
   it("replaces metrics with an accessible retry state after failure", async () => {
@@ -231,6 +258,8 @@ describe("ProjectDashboardPage", () => {
     expect(screen.queryByText("Open RFIs")).not.toBeInTheDocument();
     expect(screen.queryByText("Attention Required")).not.toBeInTheDocument();
     expect(screen.queryByText("Upcoming Schedule")).not.toBeInTheDocument();
+    expect(screen.queryByText("Workflow Analytics")).not.toBeInTheDocument();
+    expect(screen.queryByText("Recent Updates")).not.toBeInTheDocument();
     await user.click(
       screen.getByRole("button", { name: "Retry dashboard" })
     );
@@ -301,7 +330,7 @@ describe("ProjectDashboardPage", () => {
     expect(screen.getByLabelText("Open RFIs: 0")).toBeInTheDocument();
     expect(
       screen.getAllByText("No RFIs have been added.")
-    ).toHaveLength(2);
+    ).toHaveLength(3);
     expect(
       screen.getByLabelText("Active Change Order Value: $0.00")
     ).toBeInTheDocument();
@@ -314,6 +343,9 @@ describe("ProjectDashboardPage", () => {
       screen.getByText(
         "No schedule tasks have been added to this project."
       )
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("No recent record updates are available.")
     ).toBeInTheDocument();
     expect(screen.queryByText(/all clear|on track|no risk/i)).not.toBeInTheDocument();
   });

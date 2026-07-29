@@ -14,6 +14,14 @@ const DATE_FORMATTER = new Intl.DateTimeFormat("en-US", {
   day: "numeric",
 });
 
+const TIMESTAMP_FORMATTER = new Intl.DateTimeFormat("en-US", {
+  year: "numeric",
+  month: "long",
+  day: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+});
+
 
 export function formatDashboardCurrency(value) {
   if (value === null || value === undefined || value === "") {
@@ -45,4 +53,43 @@ export function formatDashboardDuration(value) {
   if (!Number.isFinite(duration)) return null;
 
   return `${duration} ${duration === 1 ? "day" : "days"}`;
+}
+
+
+export function formatDashboardTimestamp(value) {
+  if (!value) return null;
+
+  const timestamp = new Date(value);
+  if (Number.isNaN(timestamp.getTime())) return null;
+
+  return TIMESTAMP_FORMATTER.format(timestamp);
+}
+
+
+export function formatDashboardCount(value) {
+  if (value === null || value === undefined || value === "") {
+    return "Unavailable";
+  }
+
+  const count = Number(value);
+  return Number.isFinite(count) && count >= 0
+    ? count
+    : "Unavailable";
+}
+
+
+export function calculateDistributionValue(count, total) {
+  const numericCount = Number(count);
+  const numericTotal = Number(total);
+
+  if (
+    !Number.isFinite(numericCount) ||
+    !Number.isFinite(numericTotal) ||
+    numericCount <= 0 ||
+    numericTotal <= 0
+  ) {
+    return 0;
+  }
+
+  return Math.min(100, (numericCount / numericTotal) * 100);
 }

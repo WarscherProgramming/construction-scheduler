@@ -1389,6 +1389,212 @@ button:disabled {
   background: #eff6ff;
 }
 
+.dashboard-insights-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 0.85fr);
+  align-items: start;
+  gap: var(--space-6);
+  margin-top: var(--space-6);
+}
+
+.dashboard-insight-section {
+  min-width: 0;
+  padding-top: var(--space-4);
+  border-top: 3px solid var(--border);
+}
+
+.dashboard-insight-section__header {
+  display: grid;
+  gap: var(--space-1);
+  margin-bottom: var(--space-3);
+}
+
+.dashboard-insight-section__header h2 {
+  margin: 0;
+  color: var(--text-h);
+  font-size: 1.05rem;
+}
+
+.dashboard-insight-section__header p {
+  margin: 0;
+  color: var(--text);
+  font-size: 0.88rem;
+}
+
+.dashboard-workflow-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: var(--space-3);
+}
+
+.dashboard-workflow-card {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+
+.dashboard-workflow-card h3 {
+  margin: 0;
+  color: var(--text-h);
+  font-size: 0.96rem;
+}
+
+.dashboard-workflow-card__total,
+.dashboard-workflow-card__empty {
+  margin: 0;
+  color: var(--text);
+  font-size: 0.84rem;
+  overflow-wrap: anywhere;
+}
+
+.dashboard-workflow-card__total strong {
+  color: var(--text-h);
+  font-size: 1.35rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.dashboard-workflow-metrics {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dashboard-workflow-metric__text {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  color: var(--text);
+  font-size: 0.8rem;
+}
+
+.dashboard-workflow-metric__text span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.dashboard-workflow-metric__text strong {
+  color: var(--text-h);
+  font-variant-numeric: tabular-nums;
+}
+
+.dashboard-workflow-metric__track {
+  height: 4px;
+  margin-top: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--border);
+}
+
+.dashboard-workflow-metric__track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--brand);
+}
+
+.dashboard-workflow-values {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--border);
+}
+
+.dashboard-workflow-values div {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-3);
+  font-size: 0.8rem;
+}
+
+.dashboard-workflow-values dt {
+  color: var(--text);
+}
+
+.dashboard-workflow-values dd {
+  max-width: 100%;
+  margin: 0;
+  color: var(--text-h);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.dashboard-insight-link {
+  width: fit-content;
+  color: var(--brand-strong);
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.dashboard-insight-link:focus-visible {
+  border-radius: 2px;
+  outline: 3px solid #2563eb;
+  outline-offset: 3px;
+}
+
+.dashboard-recent-updates__list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  list-style: none;
+}
+
+.dashboard-recent-update {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-2);
+  padding: var(--space-4);
+}
+
+.dashboard-recent-update + .dashboard-recent-update {
+  border-top: 1px solid var(--border);
+}
+
+.dashboard-recent-update h3 {
+  margin: 0;
+  color: var(--text-h);
+  font-size: 0.96rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.dashboard-recent-update__resource,
+.dashboard-recent-update__identifier,
+.dashboard-recent-update__timestamp {
+  margin: 0;
+  color: var(--text);
+  font-size: 0.8rem;
+  overflow-wrap: anywhere;
+}
+
+.dashboard-recent-update__resource,
+.dashboard-recent-update__identifier {
+  font-weight: 700;
+}
+
+.dashboard-insight-section .empty-state {
+  min-height: 150px;
+}
+
+.dashboard-recent-update-skeleton {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--border);
+}
+
 .dashboard-loading {
   display: grid;
   gap: var(--space-3);
@@ -1420,6 +1626,10 @@ button:disabled {
   .dashboard-summary-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .dashboard-insights-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 900px) {
@@ -1429,7 +1639,8 @@ button:disabled {
 }
 
 @media (max-width: 640px) {
-  .dashboard-summary-grid {
+  .dashboard-summary-grid,
+  .dashboard-workflow-grid {
     grid-template-columns: 1fr;
   }
 }

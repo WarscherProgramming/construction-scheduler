@@ -259,6 +259,16 @@ describe("App integration (hooks wiring)", () => {
             duration: 5,
           },
         ],
+        recent_updates: [
+          {
+            resource_type: "rfi",
+            record_id: 17,
+            identifier: "RFI-017",
+            description: "Recently clarified storefront flashing",
+            updated_at: "2026-07-27T23:00:00Z",
+            target_page: "rfis",
+          },
+        ],
       })
     );
 
@@ -275,6 +285,9 @@ describe("App integration (hooks wiring)", () => {
     });
     expect(screen.getByText("Clarify storefront flashing")).toBeInTheDocument();
     expect(screen.getByText("Install storefront")).toBeInTheDocument();
+    expect(
+      screen.getByText("Recently clarified storefront flashing")
+    ).toBeInTheDocument();
     expect(fetchProjectDashboard).toHaveBeenCalledWith(
       1,
       expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
@@ -380,6 +393,16 @@ describe("App integration (hooks wiring)", () => {
               duration: 1,
             },
           ],
+          recent_updates: [
+            {
+              resource_type: "rfi",
+              record_id: 20,
+              identifier: "RFI-020",
+              description: "North Ridge recent update",
+              updated_at: "2026-07-27T23:00:00Z",
+              target_page: "rfis",
+            },
+          ],
         })
       );
       await second.promise;
@@ -387,6 +410,7 @@ describe("App integration (hooks wiring)", () => {
     expect(await screen.findByLabelText("Open RFIs: 1")).toBeInTheDocument();
     expect(screen.getByText("North Ridge question")).toBeInTheDocument();
     expect(screen.getByText("North Ridge mobilization")).toBeInTheDocument();
+    expect(screen.getByText("North Ridge recent update")).toBeInTheDocument();
     expect(
       screen
         .getAllByRole("link", { name: "View RFIs" })
@@ -421,6 +445,16 @@ describe("App integration (hooks wiring)", () => {
               duration: null,
             },
           ],
+          recent_updates: [
+            {
+              resource_type: "rfi",
+              record_id: 10,
+              identifier: "RFI-010",
+              description: "Stale Riverside update",
+              updated_at: "2026-07-27T22:00:00Z",
+              target_page: "rfis",
+            },
+          ],
         })
       );
       await first.promise;
@@ -429,6 +463,7 @@ describe("App integration (hooks wiring)", () => {
     expect(screen.queryByLabelText("Open RFIs: 5")).not.toBeInTheDocument();
     expect(screen.queryByText("Stale Riverside question")).not.toBeInTheDocument();
     expect(screen.queryByText("Stale Riverside task")).not.toBeInTheDocument();
+    expect(screen.queryByText("Stale Riverside update")).not.toBeInTheDocument();
   });
 
   it("shows global and local feedback and retries without reloading the app", async () => {
@@ -461,6 +496,16 @@ describe("App integration (hooks wiring)", () => {
               duration: null,
             },
           ],
+          recent_updates: [
+            {
+              resource_type: "change_order",
+              record_id: 8,
+              identifier: "CO-008",
+              description: "Retry change order update",
+              updated_at: "2026-07-27T23:00:00Z",
+              target_page: "change-orders",
+            },
+          ],
         })
       );
     window.location.hash = "#/projects/1/dashboard";
@@ -485,6 +530,7 @@ describe("App integration (hooks wiring)", () => {
     expect(await screen.findByLabelText("Open RFIs: 0")).toBeInTheDocument();
     expect(screen.getByText("Loaded after retry")).toBeInTheDocument();
     expect(screen.getByText("Retry schedule task")).toBeInTheDocument();
+    expect(screen.getByText("Retry change order update")).toBeInTheDocument();
     expect(fetchProjectDashboard).toHaveBeenCalledTimes(2);
     expect(fetchProjects).toHaveBeenCalledOnce();
   });

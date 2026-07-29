@@ -2,6 +2,7 @@ import DashboardActionGrid from "../components/dashboard/DashboardActionGrid";
 import DashboardEmptyState from "../components/dashboard/DashboardEmptyState";
 import DashboardErrorState from "../components/dashboard/DashboardErrorState";
 import DashboardHeader from "../components/dashboard/DashboardHeader";
+import DashboardInsightsGrid from "../components/dashboard/DashboardInsightsGrid";
 import DashboardSkeleton from "../components/dashboard/DashboardSkeleton";
 import DashboardSummaryGrid from "../components/dashboard/DashboardSummaryGrid";
 import ProjectLayout from "../components/ui/ProjectLayout";
@@ -55,6 +56,11 @@ function ProjectDashboardPage({
             onNavigate={onNavigate}
           />
           <DashboardActionGrid
+            dashboard={dashboard}
+            projectId={projectId}
+            onNavigate={onNavigate}
+          />
+          <DashboardInsightsGrid
             dashboard={dashboard}
             projectId={projectId}
             onNavigate={onNavigate}
