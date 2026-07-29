@@ -1,15 +1,19 @@
 
-from passlib.context import CryptContext
-from jose import jwt
 from datetime import datetime, timedelta, timezone
+from uuid import uuid4
+
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError
+from jose import jwt
+from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 
 from app.core.config import (
     ACCESS_TOKEN_EXPIRE_MINUTES,
     ALGORITHM,
+    JWT_AUDIENCE,
+    JWT_ISSUER,
     require_secret_key,
 )
 from app.core.identity import normalize_email, validate_password_byte_length
@@ -49,13 +53,18 @@ def verify_password(plain_password, hashed_password):
 
 def create_access_token(data: dict):
     to_encode = data.copy()
-
-    expire = datetime.now(timezone.utc) + timedelta(
+    issued_at = datetime.now(timezone.utc)
+    expire = issued_at + timedelta(
         minutes=ACCESS_TOKEN_EXPIRE_MINUTES
     )
 
     to_encode.update({
-        "exp": expire
+        "aud": JWT_AUDIENCE,
+        "exp": expire,
+        "iat": issued_at,
+        "iss": JWT_ISSUER,
+        "jti": uuid4().hex,
+        "type": "access",
     })
 
     return jwt.encode(
@@ -81,7 +90,16 @@ def get_current_user(
             token,
             SECRET_KEY,
             algorithms=[ALGORITHM],
-            options={"require_exp": True},
+            audience=JWT_AUDIENCE,
+            issuer=JWT_ISSUER,
+            options={
+                "require_aud": True,
+                "require_exp": True,
+                "require_iat": True,
+                "require_iss": True,
+                "require_jti": True,
+                "require_sub": True,
+            },
         )
 
     except (JWTError, TypeError, ValueError) as error:
@@ -89,11 +107,21 @@ def get_current_user(
 
     user_id = payload.get("user_id")
     subject = payload.get("sub")
+    issued_at = payload.get("iat")
+    token_id = payload.get("jti")
     if (
         isinstance(user_id, bool)
         or not isinstance(user_id, int)
         or user_id <= 0
         or not isinstance(subject, str)
+        or isinstance(issued_at, bool)
+        or not isinstance(issued_at, (int, float))
+        or issued_at <= 0
+        or issued_at > datetime.now(timezone.utc).timestamp() + 30
+        or not isinstance(token_id, str)
+        or len(token_id) != 32
+        or any(character not in "0123456789abcdef" for character in token_id)
+        or payload.get("type") != "access"
     ):
         raise _authentication_error()
 

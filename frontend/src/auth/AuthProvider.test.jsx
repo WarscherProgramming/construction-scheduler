@@ -1,4 +1,5 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
+import { StrictMode } from "react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -7,36 +8,43 @@ import { useAuth } from "./authContext";
 import { fetchProjects } from "../services/api";
 
 
+function jsonResponse(body, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+
+function session(token = "session-token") {
+  return {
+    access_token: token,
+    token_type: "bearer",
+    csrf_token: "csrf-token",
+    user: { id: 1, email: "user@example.com" },
+  };
+}
+
+
 function AuthHarness() {
-  const { isAuthenticated, login, logout } = useAuth();
+  const {
+    authStatus,
+    isAuthenticated,
+    login,
+    logout,
+    retryStartup,
+  } = useAuth();
 
   return (
     <div>
+      <span>{authStatus}</span>
       <span>{isAuthenticated ? "Authenticated" : "Signed out"}</span>
       <button onClick={() => login("user@example.com", "secret123")}>
         Login
       </button>
       <button onClick={logout}>Logout</button>
-    </div>
-  );
-}
-
-function InitialRequestHarness() {
-  const { isAuthenticated } = useAuth();
-
-  return (
-    <div>
-      <span>{isAuthenticated ? "Authenticated" : "Signed out"}</span>
-      <button
-        disabled={!isAuthenticated}
-        onClick={async () => {
-          try {
-            await fetchProjects();
-          } catch {
-            // Authentication state is the behavior under test.
-          }
-        }}
-      >
+      <button onClick={retryStartup}>Retry</button>
+      <button disabled={!isAuthenticated} onClick={() => fetchProjects()}>
         Load projects
       </button>
     </div>
@@ -44,96 +52,192 @@ function InitialRequestHarness() {
 }
 
 
+function renderProvider() {
+  return render(
+    <AuthProvider>
+      <AuthHarness />
+    </AuthProvider>
+  );
+}
+
+
 describe("AuthProvider", () => {
   beforeEach(() => {
     localStorage.clear();
+    sessionStorage.clear();
     vi.restoreAllMocks();
   });
 
-  it("persists a successful login and clears it on logout", async () => {
-    const user = userEvent.setup();
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue(
-        new Response(
-          JSON.stringify({
-            access_token: "test-token",
-            token_type: "bearer",
-          }),
-          {
-            status: 200,
-            headers: { "Content-Type": "application/json" },
-          }
-        )
-      )
-    );
-
-    render(
-      <AuthProvider>
-        <AuthHarness />
-      </AuthProvider>
-    );
-
-    expect(screen.getByText("Signed out")).toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: "Login" }));
-
-    expect(await screen.findByText("Authenticated")).toBeInTheDocument();
-    expect(localStorage.getItem("token")).toBe("test-token");
-
-    await user.click(screen.getByRole("button", { name: "Logout" }));
-
-    expect(screen.getByText("Signed out")).toBeInTheDocument();
-    expect(localStorage.getItem("token")).toBeNull();
-  });
-
-  it("attaches a restored token to the first authenticated request", async () => {
-    const user = userEvent.setup();
-    localStorage.setItem("token", "restored-token");
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ projects: [] }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      })
-    );
+  it("restores a session in memory and removes legacy stored tokens", async () => {
+    localStorage.setItem("token", "legacy-local");
+    sessionStorage.setItem("token", "legacy-session");
+    const fetchMock = vi.fn((url) => {
+      if (url.endsWith("/auth/csrf")) {
+        return Promise.resolve(jsonResponse({ csrf_token: "csrf" }));
+      }
+      if (url.endsWith("/auth/refresh")) {
+        return Promise.resolve(jsonResponse(session("restored-token")));
+      }
+      return Promise.resolve(jsonResponse({ projects: [] }));
+    });
     vi.stubGlobal("fetch", fetchMock);
+    const user = userEvent.setup();
 
-    render(
-      <AuthProvider>
-        <InitialRequestHarness />
-      </AuthProvider>
-    );
+    renderProvider();
+
+    expect(screen.getByText("initializing")).toBeInTheDocument();
+    expect(await screen.findByText("Authenticated")).toBeInTheDocument();
+    expect(localStorage.getItem("token")).toBeNull();
+    expect(sessionStorage.getItem("token")).toBeNull();
 
     await user.click(screen.getByRole("button", { name: "Load projects" }));
-
-    expect(fetchMock).toHaveBeenCalledOnce();
-    expect(fetchMock.mock.calls[0][1].headers.Authorization).toBe(
+    const projectCall = fetchMock.mock.calls.find(([url]) =>
+      url.endsWith("/projects")
+    );
+    expect(projectCall[1].headers.Authorization).toBe(
       "Bearer restored-token"
     );
   });
 
-  it("clears an invalid restored token after a 401 response", async () => {
-    const user = userEvent.setup();
-    localStorage.setItem("token", "expired-token");
+  it("settles unauthenticated without an expiry notice when startup has no session", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue(
-        new Response(JSON.stringify({ detail: "Invalid token" }), {
-          status: 401,
-          headers: { "Content-Type": "application/json" },
-        })
+      vi.fn((url) =>
+        Promise.resolve(
+          url.endsWith("/auth/csrf")
+            ? jsonResponse({ csrf_token: "csrf" })
+            : jsonResponse({ detail: "Invalid credentials" }, 401)
+        )
       )
     );
 
+    renderProvider();
+
+    expect(await screen.findByText("unauthenticated")).toBeInTheDocument();
+    expect(screen.getByText("Signed out")).toBeInTheDocument();
+  });
+
+  it("keeps a successful login memory-only", async () => {
+    const fetchMock = vi.fn((url) => {
+      if (url.endsWith("/auth/csrf")) {
+        return Promise.resolve(jsonResponse({ csrf_token: "csrf" }));
+      }
+      if (url.endsWith("/auth/refresh")) {
+        return Promise.resolve(jsonResponse({}, 401));
+      }
+      if (url.endsWith("/auth/login")) {
+        return Promise.resolve(jsonResponse(session("login-token")));
+      }
+      return Promise.resolve(jsonResponse({}));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const user = userEvent.setup();
+    renderProvider();
+    await screen.findByText("unauthenticated");
+
+    await user.click(screen.getByRole("button", { name: "Login" }));
+
+    expect(await screen.findByText("Authenticated")).toBeInTheDocument();
+    expect(localStorage.getItem("token")).toBeNull();
+    expect(sessionStorage.getItem("token")).toBeNull();
+  });
+
+  it("offers retry after a startup network failure", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValueOnce(new TypeError("offline"))
+      .mockImplementation((url) =>
+        Promise.resolve(
+          url.endsWith("/auth/csrf")
+            ? jsonResponse({ csrf_token: "csrf" })
+            : jsonResponse(session())
+        )
+      );
+    vi.stubGlobal("fetch", fetchMock);
+    const user = userEvent.setup();
+    renderProvider();
+    await screen.findByText("error");
+
+    await user.click(screen.getByRole("button", { name: "Retry" }));
+
+    expect(await screen.findByText("Authenticated")).toBeInTheDocument();
+  });
+
+  it("clears memory immediately and calls the protected logout endpoint", async () => {
+    const fetchMock = vi.fn((url) => {
+      if (url.endsWith("/auth/csrf")) {
+        return Promise.resolve(jsonResponse({ csrf_token: "csrf" }));
+      }
+      if (url.endsWith("/auth/refresh")) {
+        return Promise.resolve(jsonResponse(session()));
+      }
+      return Promise.resolve(jsonResponse({ message: "Logged out" }));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const user = userEvent.setup();
+    renderProvider();
+    await screen.findByText("Authenticated");
+
+    await user.click(screen.getByRole("button", { name: "Logout" }));
+
+    await waitFor(() =>
+      expect(screen.getByText("unauthenticated")).toBeInTheDocument()
+    );
+    expect(
+      fetchMock.mock.calls.some(([url]) => url.endsWith("/auth/logout"))
+    ).toBe(true);
+  });
+
+  it("deduplicates startup restoration under React Strict Mode", async () => {
+    const fetchMock = vi.fn((url) =>
+      Promise.resolve(
+        url.endsWith("/auth/csrf")
+          ? jsonResponse({ csrf_token: "csrf" })
+          : jsonResponse(session())
+      )
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
     render(
-      <AuthProvider>
-        <InitialRequestHarness />
-      </AuthProvider>
+      <StrictMode>
+        <AuthProvider>
+          <AuthHarness />
+        </AuthProvider>
+      </StrictMode>
     );
 
-    await user.click(screen.getByRole("button", { name: "Load projects" }));
+    expect(await screen.findByText("Authenticated")).toBeInTheDocument();
+    expect(
+      fetchMock.mock.calls.filter(([url]) => url.endsWith("/auth/refresh"))
+    ).toHaveLength(1);
+  });
 
-    expect(await screen.findByText("Signed out")).toBeInTheDocument();
-    expect(localStorage.getItem("token")).toBeNull();
+  it("signs out when another tab broadcasts logout", async () => {
+    let messageListener;
+    class TestBroadcastChannel {
+      addEventListener(_type, listener) {
+        messageListener = listener;
+      }
+      postMessage() {}
+      close() {}
+    }
+    vi.stubGlobal("BroadcastChannel", TestBroadcastChannel);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url) =>
+        Promise.resolve(
+          url.endsWith("/auth/csrf")
+            ? jsonResponse({ csrf_token: "csrf" })
+            : jsonResponse(session())
+        )
+      )
+    );
+    renderProvider();
+    await screen.findByText("Authenticated");
+
+    act(() => messageListener({ data: { type: "logout" } }));
+
+    expect(screen.getByText("unauthenticated")).toBeInTheDocument();
+    expect(screen.getByText("Signed out")).toBeInTheDocument();
   });
 });

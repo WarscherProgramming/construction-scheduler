@@ -23,6 +23,7 @@ export function loginUser(email, password) {
 
   return request("/auth/login", {
     method: "POST",
+    credentials: "include",
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
     },

@@ -4,6 +4,7 @@ import AppRouter from "./AppRouter";
 import { useAuth } from "./auth/authContext";
 import FeedbackBanner from "./components/FeedbackBanner";
 import LoadingState from "./components/LoadingState";
+import Button from "./components/ui/Button";
 import ConfirmDialog from "./components/ui/ConfirmDialog";
 import ErrorBoundary from "./components/ui/ErrorBoundary";
 import useAppNavigation from "./hooks/useAppNavigation";
@@ -33,11 +34,13 @@ const PAGE_TITLES = {
 function App() {
   const {
     isAuthenticated,
+    authStatus,
     login,
     logout,
     register,
     sessionExpired,
     acknowledgeSessionExpiry,
+    retryStartup,
   } = useAuth();
 
   const {
@@ -122,11 +125,11 @@ function App() {
   }, [logout, resetApplicationState, setNotice]);
 
   useEffect(() => {
-    if (isAuthenticated) return undefined;
+    if (authStatus !== "unauthenticated") return undefined;
 
     const timeoutId = window.setTimeout(resetApplicationState, 0);
     return () => window.clearTimeout(timeoutId);
-  }, [isAuthenticated, resetApplicationState]);
+  }, [authStatus, resetApplicationState]);
 
   useEffect(() => {
     const selectedProject = projects.find(
@@ -290,6 +293,22 @@ function App() {
 
     await forms.performPunchItemDelete(pending.id);
   };
+
+  if (authStatus === "initializing" || authStatus === "signing_out") {
+    return <LoadingState message="Checking your session…" />;
+  }
+
+  if (authStatus === "error") {
+    return (
+      <main className="loading-state" aria-labelledby="session-error-title">
+        <h1 id="session-error-title">Unable to verify your session</h1>
+        <p>Check your connection, then try again.</p>
+        <Button variant="primary" onClick={retryStartup}>
+          Retry
+        </Button>
+      </main>
+    );
+  }
 
   return (
     <>

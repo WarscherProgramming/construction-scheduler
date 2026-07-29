@@ -18,6 +18,8 @@ from app.api.routes_auth import (
 )
 from app.core.config import (
     ALGORITHM,
+    JWT_AUDIENCE,
+    JWT_ISSUER,
     MAX_REQUEST_BODY_BYTES,
     require_secret_key,
 )
@@ -45,9 +47,14 @@ from tests.test_api import ApiTestCase
 
 def bearer_token(claims: dict) -> dict[str, str]:
     payload = {
+        "aud": JWT_AUDIENCE,
         "sub": "security@example.com",
         "user_id": 1,
         "exp": datetime.now(timezone.utc) + timedelta(minutes=5),
+        "iat": datetime.now(timezone.utc),
+        "iss": JWT_ISSUER,
+        "jti": "0123456789abcdef0123456789abcdef",
+        "type": "access",
         **claims,
     }
     token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
@@ -239,6 +246,11 @@ class IdentitySecurityTests(ApiTestCase):
             {"sub": "other@example.com"},
             {"sub": "SECURITY@example.com"},
             {"exp": None},
+            {"iat": None},
+            {"jti": None},
+            {"type": "refresh"},
+            {"iss": "other-api"},
+            {"aud": "other-client"},
         ]
 
         for claims in claim_sets:

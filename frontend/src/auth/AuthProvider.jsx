@@ -1,73 +1,163 @@
-import { useCallback, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import { AuthContext } from "./authContext";
+import { createSessionChannel } from "./sessionChannel";
 import { loginUser, registerUser } from "../services/api";
-import { configureAuthentication } from "../services/httpClient";
+import {
+  adoptAuthentication,
+  clearAuthentication,
+  configureAuthentication,
+  logoutAuthentication,
+  prepareForLogin,
+  restoreAuthentication,
+} from "../services/httpClient";
 
 
-const TOKEN_STORAGE_KEY = "token";
+const LEGACY_TOKEN_STORAGE_KEY = "token";
 
 
-function getStoredToken() {
-  return localStorage.getItem(TOKEN_STORAGE_KEY);
+function removeLegacyTokens() {
+  localStorage.removeItem(LEGACY_TOKEN_STORAGE_KEY);
+  sessionStorage.removeItem(LEGACY_TOKEN_STORAGE_KEY);
 }
 
 
 function AuthProvider({ children }) {
-  const [token, setToken] = useState(getStoredToken);
+  const [authStatus, setAuthStatus] = useState("initializing");
+  const [user, setUser] = useState(null);
   const [sessionExpired, setSessionExpired] = useState(false);
+  const statusRef = useRef(authStatus);
+  const channelRef = useRef(null);
 
-  const logout = useCallback(() => {
-    localStorage.removeItem(TOKEN_STORAGE_KEY);
-    setSessionExpired(false);
-    setToken(null);
+  useEffect(() => {
+    statusRef.current = authStatus;
+  }, [authStatus]);
+
+  const becomeSignedOut = useCallback((expired = false) => {
+    clearAuthentication();
+    setUser(null);
+    setSessionExpired(expired);
+    setAuthStatus("unauthenticated");
   }, []);
 
-  // Triggered by the transport on a 401. Only treat it as an expired session
-  // when a token was actually present — a failed login attempt also returns
-  // 401 but must not surface a "session expired" message.
   const handleSessionExpiry = useCallback(() => {
-    if (localStorage.getItem(TOKEN_STORAGE_KEY)) {
-      setSessionExpired(true);
-    }
+    const hadActiveSession = statusRef.current === "authenticated";
+    becomeSignedOut(hadActiveSession);
+    if (hadActiveSession) channelRef.current?.broadcast("session_expired");
+  }, [becomeSignedOut]);
 
-    localStorage.removeItem(TOKEN_STORAGE_KEY);
-    setToken(null);
+  useEffect(() => {
+    configureAuthentication({
+      onUnauthorized: handleSessionExpiry,
+    });
+    return () => configureAuthentication({ onUnauthorized: null });
+  }, [handleSessionExpiry]);
+
+  const restore = useCallback(async () => {
+    setAuthStatus("initializing");
+    try {
+      const data = await restoreAuthentication();
+      setUser(data.user);
+      setSessionExpired(false);
+      setAuthStatus("authenticated");
+      return true;
+    } catch (error) {
+      clearAuthentication();
+      setUser(null);
+      if (error?.status === 0) {
+        setAuthStatus("error");
+      } else {
+        setSessionExpired(false);
+        setAuthStatus("unauthenticated");
+      }
+      return false;
+    }
   }, []);
 
-  // Configure the transport before children render so their first request
-  // includes a token restored from localStorage.
-  configureAuthentication({
-    token,
-    onUnauthorized: handleSessionExpiry,
-  });
+  useEffect(() => {
+    removeLegacyTokens();
+    const timeoutId = window.setTimeout(restore, 0);
+    return () => window.clearTimeout(timeoutId);
+  }, [restore]);
+
+  useEffect(() => {
+    const sessionChannel = createSessionChannel((event) => {
+      if (event?.type === "logout") {
+        becomeSignedOut(false);
+      } else if (event?.type === "session_expired") {
+        becomeSignedOut(true);
+      } else if (
+        event?.type === "session_restored" &&
+        statusRef.current !== "authenticated"
+      ) {
+        restore();
+      }
+    });
+    channelRef.current = sessionChannel;
+    return () => {
+      channelRef.current = null;
+      sessionChannel.close();
+    };
+  }, [becomeSignedOut, restore]);
 
   const login = useCallback(async (email, password) => {
-    const data = await loginUser(email, password);
-
-    localStorage.setItem(TOKEN_STORAGE_KEY, data.access_token);
+    await prepareForLogin();
+    const data = adoptAuthentication(await loginUser(email, password));
+    setUser(data.user);
     setSessionExpired(false);
-    setToken(data.access_token);
-
+    setAuthStatus("authenticated");
+    channelRef.current?.broadcast("session_restored");
     return data;
   }, []);
 
-  const register = useCallback((user) => registerUser(user), []);
+  const logout = useCallback(async () => {
+    clearAuthentication();
+    setUser(null);
+    setSessionExpired(false);
+    setAuthStatus("signing_out");
+    channelRef.current?.broadcast("logout");
+    try {
+      await logoutAuthentication();
+    } catch {
+      // Local logout remains authoritative when the API is unavailable.
+    } finally {
+      setAuthStatus("unauthenticated");
+    }
+  }, []);
 
+  const register = useCallback((newUser) => registerUser(newUser), []);
   const acknowledgeSessionExpiry = useCallback(() => {
     setSessionExpired(false);
   }, []);
 
   const value = useMemo(
     () => ({
-      isAuthenticated: Boolean(token),
+      authStatus,
+      isAuthenticated: authStatus === "authenticated",
+      user,
       sessionExpired,
       login,
       logout,
       register,
+      retryStartup: restore,
       acknowledgeSessionExpiry,
     }),
-    [acknowledgeSessionExpiry, login, logout, register, sessionExpired, token]
+    [
+      acknowledgeSessionExpiry,
+      authStatus,
+      login,
+      logout,
+      register,
+      restore,
+      sessionExpired,
+      user,
+    ]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

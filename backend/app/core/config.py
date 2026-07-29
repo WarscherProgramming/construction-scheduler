@@ -34,7 +34,6 @@ def require_secret_key() -> str:
 
 DATABASE_URL = require_environment_variable("DATABASE_URL")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 24 * 60
 
 ALLOWED_ORIGINS = tuple(
     origin.strip()
@@ -84,6 +83,86 @@ def optional_environment_variable(name: str) -> str | None:
         return None
     normalized = value.strip()
     return normalized or None
+
+
+def validated_secret_environment_variable(
+    name: str,
+    *,
+    fallback: str | None = None,
+) -> str:
+    value = optional_environment_variable(name) or fallback
+    if value is None:
+        raise RuntimeError(f"Required environment variable {name} is not set")
+
+    normalized = value.lower()
+    placeholder_markers = ("change-me", "changeme", "replace-with")
+    if len(value) < 32 or any(
+        marker in normalized for marker in placeholder_markers
+    ):
+        raise RuntimeError(
+            f"{name} must contain at least 32 non-placeholder characters"
+        )
+    return value
+
+
+ACCESS_TOKEN_EXPIRE_MINUTES = positive_integer_environment_variable(
+    "ACCESS_TOKEN_EXPIRE_MINUTES",
+    15,
+)
+REFRESH_TOKEN_EXPIRE_DAYS = positive_integer_environment_variable(
+    "REFRESH_TOKEN_EXPIRE_DAYS",
+    14,
+)
+JWT_ISSUER = os.getenv("JWT_ISSUER", "fieldflow-api").strip()
+JWT_AUDIENCE = os.getenv("JWT_AUDIENCE", "fieldflow-web").strip()
+if not JWT_ISSUER or not JWT_AUDIENCE:
+    raise RuntimeError("JWT_ISSUER and JWT_AUDIENCE cannot be empty")
+
+REFRESH_TOKEN_SECRET = validated_secret_environment_variable(
+    "REFRESH_TOKEN_SECRET",
+    fallback=require_secret_key(),
+)
+REFRESH_COOKIE_NAME = os.getenv(
+    "REFRESH_COOKIE_NAME",
+    "fieldflow_refresh",
+).strip()
+CSRF_COOKIE_NAME = os.getenv(
+    "CSRF_COOKIE_NAME",
+    "fieldflow_csrf",
+).strip()
+COOKIE_SECURE = boolean_environment_variable("COOKIE_SECURE", False)
+COOKIE_SAMESITE = os.getenv("COOKIE_SAMESITE", "lax").strip().lower()
+COOKIE_PATH = os.getenv("COOKIE_PATH", "/auth").strip()
+if COOKIE_SAMESITE not in {"strict", "lax", "none"}:
+    raise RuntimeError("COOKIE_SAMESITE must be strict, lax, or none")
+if COOKIE_SAMESITE == "none" and not COOKIE_SECURE:
+    raise RuntimeError("COOKIE_SAMESITE=none requires COOKIE_SECURE=true")
+if not COOKIE_PATH.startswith("/") or any(
+    character.isspace() or character == ";" for character in COOKIE_PATH
+):
+    raise RuntimeError("COOKIE_PATH must be an absolute cookie path")
+if not REFRESH_COOKIE_NAME or not CSRF_COOKIE_NAME:
+    raise RuntimeError("Authentication cookie names cannot be empty")
+_COOKIE_NAME_CHARACTERS = frozenset(
+    "!#$%&'*+-.^_`|~"
+    "0123456789"
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    "abcdefghijklmnopqrstuvwxyz"
+)
+if any(
+    character not in _COOKIE_NAME_CHARACTERS
+    for name in (REFRESH_COOKIE_NAME, CSRF_COOKIE_NAME)
+    for character in name
+):
+    raise RuntimeError("Authentication cookie names contain invalid characters")
+REFRESH_SESSION_CLEANUP_BATCH_SIZE = positive_integer_environment_variable(
+    "REFRESH_SESSION_CLEANUP_BATCH_SIZE",
+    100,
+)
+REFRESH_SESSION_RETENTION_DAYS = positive_integer_environment_variable(
+    "REFRESH_SESSION_RETENTION_DAYS",
+    30,
+)
 
 
 def normalize_attachment_key_prefix(value: str | None) -> str:

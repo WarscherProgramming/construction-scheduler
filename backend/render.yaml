@@ -9,6 +9,16 @@ services:
     envVars:
       - key: ALLOWED_ORIGINS
         value: https://construction-scheduler-eight.vercel.app
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: 15
+      - key: REFRESH_TOKEN_EXPIRE_DAYS
+        value: 14
+      - key: REFRESH_TOKEN_SECRET
+        sync: false
+      - key: COOKIE_SECURE
+        value: true
+      - key: COOKIE_SAMESITE
+        value: none
       - key: ATTACHMENT_STORAGE_PROVIDER
         value: s3
       - key: ATTACHMENT_S3_BUCKET

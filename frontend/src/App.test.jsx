@@ -174,8 +174,30 @@ describe("App integration (hooks wiring)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
-    localStorage.setItem("token", "integration-token");
     window.location.hash = "";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url) =>
+        Promise.resolve(
+          new Response(
+            JSON.stringify(
+              url.endsWith("/auth/csrf")
+                ? { csrf_token: "integration-csrf" }
+                : {
+                    access_token: "integration-token",
+                    token_type: "bearer",
+                    csrf_token: "integration-csrf",
+                    user: { id: 1, email: "pm@example.com" },
+                  }
+            ),
+            {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            }
+          )
+        )
+      )
+    );
 
     fetchProjects.mockResolvedValue({ projects: [] });
     fetchProjectDashboard.mockResolvedValue(makeDashboard());
@@ -206,13 +228,30 @@ describe("App integration (hooks wiring)", () => {
     listAttachments.mockResolvedValue({ attachments: [] });
   });
 
-  it("shows the login experience when unauthenticated", () => {
-    localStorage.removeItem("token");
+  it("shows the login experience when unauthenticated", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url) =>
+        Promise.resolve(
+          new Response(
+            JSON.stringify(
+              url.endsWith("/auth/csrf")
+                ? { csrf_token: "integration-csrf" }
+                : { detail: "Invalid authentication credentials" }
+            ),
+            {
+              status: url.endsWith("/auth/csrf") ? 200 : 401,
+              headers: { "Content-Type": "application/json" },
+            }
+          )
+        )
+      )
+    );
 
     renderApp();
 
     expect(
-      screen.getByRole("heading", { name: "Welcome back" })
+      await screen.findByRole("heading", { name: "Welcome back" })
     ).toBeInTheDocument();
     expect(fetchProjects).not.toHaveBeenCalled();
     expect(fetchPunchItems).not.toHaveBeenCalled();

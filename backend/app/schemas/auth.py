@@ -26,3 +26,13 @@ class UserResponse(BaseModel):
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str
+    csrf_token: str
+    user: UserResponse
+
+
+class CsrfResponse(BaseModel):
+    csrf_token: str
+
+
+class LogoutResponse(BaseModel):
+    message: str
