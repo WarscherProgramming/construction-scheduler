@@ -11,7 +11,7 @@ and Punch Lists) with their supporting documents.
 ![React 19](https://img.shields.io/badge/React-19-61dafb?logo=react&logoColor=white&labelColor=20232a)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.1x-009688?logo=fastapi&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169e1?logo=postgresql&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-504%20passing-2ea44f)
+![Tests](https://img.shields.io/badge/tests-523%20passing-2ea44f)
 ![Vite](https://img.shields.io/badge/Vite-8-646cff?logo=vite&logoColor=white)
 
 ![FieldFlow executive dashboard](docs/screenshots/dashboard.png)
@@ -95,6 +95,10 @@ question — *"what needs my attention today?"* — has a one-screen answer.
   Submittals, Punch Items, and Change Orders, with multiple-file upload,
   authenticated streaming, secure validation, local or private S3-compatible
   storage, accessible previews and deletion, and durable object cleanup.
+- **Document storage foundation** with a provider-neutral interface, opaque
+  sharded object keys, safe metadata-only APIs, SHA-256 checksums,
+  hierarchical project folders, soft deletion, and fields reserved for
+  future document version history.
 - **Accessible design system**: tokens, reusable UI primitives (Button, Card,
   Sidebar, PageHeader, Icon, ConfirmDialog, Skeleton), skip links, focus
   management, `aria-current` navigation, and screen-reader-labeled loading
@@ -104,9 +108,9 @@ question — *"what needs my attention today?"* — has a one-screen answer.
 - **Client-side onboarding**: first-run detection seeds a realistic demo
   project through the public API with visible progress — the app is never
   empty.
-- **Automated testing: 504 tests** — 291 frontend across 43 files (Vitest +
-  React Testing Library, behavior- and accessibility-focused) and 213 backend
-  tests plus 251 separately reported subtests (pytest,
+- **Automated testing: 523 tests** — 295 frontend across 44 files (Vitest +
+  React Testing Library, behavior- and accessibility-focused) and 228 backend
+  tests plus 271 separately reported subtests (pytest,
   covering the scheduling engine, critical path, services, migrations, CORS,
   and TestClient API integration).
 
@@ -151,6 +155,11 @@ coverage, bundle history, and deferred work are documented in
 The final authentication architecture, threat model, deployment checklist,
 operational runbooks, manual QA guide, release notes, and deferred security
 roadmap are documented in [`docs/SECURITY.md`](docs/SECURITY.md).
+
+The provider contract, document and folder models, storage-key format,
+service transactions, API boundary, retention decision, and M16 roadmap are
+documented in
+[`docs/DOCUMENT_STORAGE.md`](docs/DOCUMENT_STORAGE.md).
 
 Change Orders use a focused service layer for validation and project-scoped
 `CO-###` allocation. A persistent per-project sequence table prevents deleted
@@ -368,6 +377,10 @@ job. FieldFlow does not include a built-in worker or scheduler, and
 **Document management**
 - Project documents and attachments for Daily Logs, RFIs, Submittals, Punch
   Items, and Change Orders
+- Provider-neutral document storage with local and S3-compatible adapters
+- Hierarchical project folders and safe document metadata APIs
+- Opaque sharded storage keys, streamed SHA-256 checksums, and version-ready
+  metadata
 - Multiple-file upload with independent results and duplicate display
   filename support
 - Authenticated PDF and image previews, streamed downloads, and attachment
@@ -400,15 +413,15 @@ job. FieldFlow does not include a built-in worker or scheduler, and
 | Backend | FastAPI, SQLAlchemy, Alembic, Pydantic |
 | Database | PostgreSQL |
 | Auth | Memory-only access JWT + rotating opaque refresh sessions |
-| Testing | Vitest + React Testing Library (291), pytest (213) |
+| Testing | Vitest + React Testing Library (295), pytest (228) |
 | Hosting | Vercel (frontend) · Render (API + migrations) |
 
 ## Testing
 
-**504 primary automated tests passed.** Backend subtests are reported
+**523 primary automated tests passed.** Backend subtests are reported
 separately rather than added to that total.
 
-- **Frontend (291 across 43 files)** — Vitest + React Testing Library. Tests
+- **Frontend (295 across 44 files)** — Vitest + React Testing Library. Tests
   target behavior and accessibility: roles and names, keyboard flows
   (Enter/Escape editing,
   grid cursor navigation, focus traps), aggregate dashboard rendering,
@@ -418,7 +431,7 @@ separately rather than added to that total.
   uploads, partial success, stale-response protection, previews, downloads,
   Blob URL cleanup, confirmation and accessibility behavior, all six resource
   integrations, and request-count behavior.
-- **Backend (213, plus 251 subtests)** — pytest. Covers the workday scheduling
+- **Backend (228, plus 271 subtests)** — pytest. Covers the workday scheduling
   engine (dependencies, lag, federal holidays), critical path and total float,
   task services, relationship migrations, CORS configuration, and
   TestClient API integration (auth, ownership enforcement, task lifecycle,
@@ -426,7 +439,10 @@ separately rather than added to that total.
   Attachment coverage includes authentication, ownership and parent
   resolution, streaming upload/download, file validation, local and S3
   adapters, S3 error classification, deletion cleanup, retries, leases,
-  reconciliation, migration safety, and parent-deletion cleanup. Security
+  reconciliation, migration safety, and parent-deletion cleanup. Document
+  foundation coverage includes provider contracts, folder integrity,
+  authorization, secure upload/download, checksums, rollback, soft deletion,
+  response exposure, and migration cycles. Security
   coverage includes strict JWT claims, rotating refresh sessions, replay
   revocation, CSRF, exact CORS origins, rate and body limits, route-wide
   ownership, transaction rollback, safe errors, production configuration,
@@ -578,6 +594,10 @@ commit production credentials.
   - M13.4 Project and Daily Log Pilot
   - M13.5 Remaining Resource Rollout
   - M13.6 Documentation and Closeout
+- ✅ M16.1 Document Storage Foundation with generic local and S3-compatible
+  providers, opaque sharded keys, project-owned document metadata,
+  hierarchical folders, checksums, soft deletion, secure streaming, and
+  version-ready fields
 - ✅ Branded landing page and first-run demo seeding
 - ✅ Icon system, confirmation dialogs, notifications, loading skeletons
 - ✅ Scheduler showcase: WBS numbering, inline validation, critical path +
@@ -588,6 +608,7 @@ commit production credentials.
   DRY cleanup with TestClient API integration coverage
 
 **Next**
+- M16.2 Document explorer and workflow integration on the M16.1 foundation
 - Weather-delay integration and resource loading
 - Milestone tasks, Gantt dependency arrows, and timeline zoom
 
@@ -595,7 +616,8 @@ commit production credentials.
 - Distributed rate limiting, password reset, email verification, MFA, OAuth,
   organizations, roles, audit logs, a same-site API domain, and expanded
   browser/security scanning
-- Attachment version history, bulk download, thumbnails, and image galleries
+- Document and attachment version history, bulk download, thumbnails, and
+  image galleries
 - Drawing annotations, OCR, full-text document search, antivirus integration,
   and document approvals
 - Direct multipart browser uploads and bucket-wide orphan scanning

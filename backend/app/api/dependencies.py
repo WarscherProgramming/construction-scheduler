@@ -77,3 +77,8 @@ def get_attachment_storage_resolver(
     config: AttachmentConfig = Depends(get_attachment_config),
 ):
     return build_storage_resolver(config)
+
+
+get_storage_config = get_attachment_config
+get_storage_provider = get_attachment_storage
+get_storage_provider_resolver = get_attachment_storage_resolver

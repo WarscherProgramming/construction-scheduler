@@ -15,6 +15,8 @@ from app.models.change_order import (  # noqa: F401
     ChangeOrderNumberSequence,
 )
 from app.models.daily_log import DailyLog  # noqa: F401
+from app.models.document import Document  # noqa: F401
+from app.models.folder import Folder  # noqa: F401
 from app.models.inspection import Inspection  # noqa: F401
 from app.models.note_delay import NoteDelay  # noqa: F401
 from app.models.project import Project  # noqa: F401

@@ -1,0 +1,162 @@
+# Document Storage Foundation
+
+M16.1 establishes the backend storage and metadata layer for future document
+features. It does not add a document explorer, drawing management, OCR, AI
+indexing, rename, move, or version-history workflows.
+
+## Existing Attachment System
+
+FieldFlow already stores supporting files through one generic attachment
+model and resource-neutral API. `AttachmentPanel` and `useAttachments` lazily
+load one persisted parent at a time, while the backend validates project
+ownership, parent identity, file content, and metadata. The attachment service
+streams objects through local or private S3-compatible storage and records
+durable cleanup work when metadata and object storage cannot commit together.
+
+M16.1 promotes that mature storage adapter into a generic `StorageProvider`
+contract. Existing attachment imports remain compatibility aliases, so the six
+shipped attachment workflows retain their API and behavior. File allowlists,
+signature checks, bounded streaming, provider configuration, error
+classification, and durable rollback cleanup are reused by documents instead
+of duplicated.
+
+## Provider Contract
+
+`StorageProvider` defines:
+
+- `upload` and `download` for bounded streaming
+- `delete` and `exists`
+- `metadata`
+- `generate_download_url`
+- `copy` and `move`
+- `health_check`
+
+`LocalStorageProvider` is the development implementation.
+`S3CompatibleProvider` remains configuration-driven and supports AWS S3 or a
+compatible private object store. Local development does not construct an S3
+client or require cloud credentials. The in-memory provider is test-only.
+
+Provider-specific failures are translated into stable categories such as
+missing object, authentication, connection, timeout, throttling, and
+configuration. API responses expose a safe availability error rather than
+provider details.
+
+## Storage Keys
+
+Document objects use:
+
+```text
+documents/{first-two-hex}/{next-two-hex}/{32-character-random-hex}
+```
+
+The generated key contains no project name, user name, email address, display
+name, or original filename. Two shard levels avoid very large flat local
+directories while preserving provider-neutral keys. Existing flat attachment
+UUID keys remain valid through the same provider contract.
+
+## Database Models
+
+`Document` stores project ownership, optional folder membership, safe file
+metadata, SHA-256, provider location metadata, uploader, timestamps, and soft
+deletion. `parent_document_id`, `version`, and `is_current_version` provide the
+schema foundation for later version history without exposing a versioning API
+in M16.1.
+
+`Folder` stores project ownership, an optional self-referencing parent,
+display name, materialized numeric path, creator, timestamps, and soft
+deletion. Paths contain folder IDs rather than user-entered names. Active root
+and child names have separate partial unique indexes so sibling uniqueness is
+enforced even when `parent_folder_id` is null.
+
+Folder creation validates the entire ancestry chain. Missing, deleted, or
+cross-project parents are rejected, and repeated IDs detect corrupted cycles.
+Project and parent foreign keys prevent orphaned rows; project deletion
+cascades folders and documents, folder deletion is reserved for a later API,
+and a deleted folder would leave its documents unfiled through `SET NULL`.
+
+## Service Flows
+
+### Upload
+
+1. Authenticate the user and resolve the owned project.
+2. Resolve the optional active folder within that project.
+3. Normalize Unicode with NFKC and validate filename and metadata bounds.
+4. Enforce the existing size, extension, MIME, signature, and empty-file
+   rules.
+5. Generate an opaque key and stream once to the selected provider while
+   calculating SHA-256.
+6. Commit safe metadata only after storage succeeds.
+7. If metadata persistence fails, delete the object. If that cleanup also
+   fails, persist a durable cleanup job without leaking the key to the client.
+
+### Download
+
+The service loads the document through a project-owner join, resolves the
+provider recorded with that document, and returns a bounded stream. Responses
+use a sanitized and UTF-8-compatible `Content-Disposition`, declared content
+length and type, `nosniff`, and a sandbox Content Security Policy. Storage
+keys, buckets, filesystem paths, provider credentials, and internal URLs are
+never serialized.
+
+### Delete
+
+Deletion is idempotent and soft-deletes metadata by setting `deleted_at`,
+clearing `is_current_version`, and marking status `Deleted`. M16.1 retains the
+private object so a later retention/restore policy can be implemented without
+pretending recovery is possible after immediate physical deletion. Deleted
+documents are excluded from list, metadata, and download routes. Permanent
+purge and retention scheduling are deferred to a later document lifecycle
+phase.
+
+## API
+
+All routes require M15 authentication and project ownership:
+
+- `POST /documents/upload`
+- `GET /documents/{document_id}`
+- `GET /documents/{document_id}/download`
+- `DELETE /documents/{document_id}`
+- `GET /projects/{project_id}/documents`
+- `GET /projects/{project_id}/folders`
+- `POST /projects/{project_id}/folders`
+
+Collection endpoints support the shared bounded `limit` and `offset`
+contract. Document listing optionally scopes to one active project folder.
+The frontend API layer includes matching list, upload, metadata, download,
+delete, and folder helpers; M16.1 adds no page, route, or visible UI.
+
+## Security and Validation
+
+Ownership is inherited from the project. Direct document routes join through
+the owning project and return the same not-found response for missing,
+deleted, and foreign documents. Project collection routes reuse
+`get_owned_project`. Nested folder references must belong to the same project.
+
+Document filenames reject path separators, traversal names, null bytes,
+control characters, Windows reserved stems, missing or overlong extensions,
+empty names, trailing spaces or dots, and names over 255 characters. Display
+names, document types, and folder names are normalized and bounded. Folder
+names additionally reject traversal markers and path separators. Existing
+backend file rules remain authoritative; browser validation is advisory.
+
+## Migration and Tests
+
+Migration `a6d3e9f1b742` creates only `folders` and `documents`, with project,
+user, folder, and version-lineage foreign keys; checks for nonnegative sizes
+and positive versions; unique opaque keys and folder paths; sibling-name
+constraints; and project listing indexes. It supports a fresh upgrade,
+upgrade from the prior head, downgrade, and re-upgrade while preserving
+existing records and one Alembic head.
+
+Coverage includes provider contracts, unsafe keys, upload/download/list
+behavior, safe responses, ownership, folder hierarchy and cycles, validation,
+checksums, metadata rollback, durable cleanup fallback, soft-delete
+idempotency, migration reversibility, and frontend API requests.
+
+## Deferred Work
+
+M16.2 may build the document explorer and workflow integration on this
+foundation. Rename, move, folder deletion, restore, permanent purge,
+user-facing version history, duplicate detection, signed-URL delivery,
+thumbnails, bulk operations, drawings, OCR, AI indexing, and antivirus
+implementation remain out of M16.1.

@@ -21,6 +21,7 @@ from app.api.routes_inspection import router as inspection_router
 from app.api.routes_note_delay import router as note_delay_router
 from app.api.routes_change_order import router as change_order_router
 from app.api.routes_dashboard import router as dashboard_router
+from app.api.routes_document import router as document_router
 from app.api.routes_project_company import router as project_company_router
 from app.api.routes_punch_item import router as punch_item_router
 from app.api.routes_rfi import router as rfi_router
@@ -83,6 +84,7 @@ app.include_router(inspection_router)
 app.include_router(note_delay_router)
 app.include_router(change_order_router)
 app.include_router(dashboard_router)
+app.include_router(document_router)
 app.include_router(project_company_router)
 app.include_router(punch_item_router)
 app.include_router(rfi_router)

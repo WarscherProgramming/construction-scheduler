@@ -280,3 +280,81 @@ export function deleteAttachment(
     }
   );
 }
+
+export function listDocuments(projectId, options = {}) {
+  const query = new URLSearchParams();
+  if (options.folderId != null) {
+    query.set("folder_id", String(options.folderId));
+  }
+  if (options.limit != null) query.set("limit", String(options.limit));
+  if (options.offset != null) query.set("offset", String(options.offset));
+  const suffix = query.size ? `?${query.toString()}` : "";
+  return authenticatedRequest(
+    `/projects/${encodeURIComponent(String(projectId))}/documents${suffix}`,
+    { signal: options.signal }
+  );
+}
+
+export function getDocument(documentId, options = {}) {
+  return authenticatedRequest(
+    `/documents/${encodeURIComponent(String(documentId))}`,
+    { signal: options.signal }
+  );
+}
+
+export function uploadDocument(projectId, file, options = {}) {
+  const formData = new FormData();
+  formData.append("project_id", String(projectId));
+  if (options.folderId != null) {
+    formData.append("folder_id", String(options.folderId));
+  }
+  if (options.displayName) {
+    formData.append("display_name", options.displayName);
+  }
+  if (options.documentType) {
+    formData.append("document_type", options.documentType);
+  }
+  formData.append("file", file);
+
+  return authenticatedRequest("/documents/upload", {
+    method: "POST",
+    body: formData,
+    signal: options.signal,
+  });
+}
+
+export function downloadDocument(documentId, options = {}) {
+  return downloadAuthenticatedResponse(
+    `/documents/${encodeURIComponent(String(documentId))}/download`,
+    { signal: options.signal }
+  );
+}
+
+export function deleteDocument(documentId, options = {}) {
+  return authenticatedRequest(
+    `/documents/${encodeURIComponent(String(documentId))}`,
+    {
+      method: "DELETE",
+      signal: options.signal,
+    }
+  );
+}
+
+export function listFolders(projectId, options = {}) {
+  const query = new URLSearchParams();
+  if (options.limit != null) query.set("limit", String(options.limit));
+  if (options.offset != null) query.set("offset", String(options.offset));
+  const suffix = query.size ? `?${query.toString()}` : "";
+  return authenticatedRequest(
+    `/projects/${encodeURIComponent(String(projectId))}/folders${suffix}`,
+    { signal: options.signal }
+  );
+}
+
+export function createFolder(projectId, folder) {
+  return jsonRequest(
+    `/projects/${encodeURIComponent(String(projectId))}/folders`,
+    "POST",
+    folder
+  );
+}

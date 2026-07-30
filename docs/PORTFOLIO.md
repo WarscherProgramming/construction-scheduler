@@ -1,8 +1,8 @@
 # FieldFlow — Portfolio Copy
 
 Ready-to-use descriptions for resumes, portfolio sites, and LinkedIn.
-Keep the metrics in sync with the repo (currently **504 primary tests: 291
-frontend across 43 files + 213 backend**, with 251 backend subtests reported
+Keep the metrics in sync with the repo (currently **523 primary tests: 295
+frontend across 44 files + 228 backend**, with 271 backend subtests reported
 separately).
 
 ---
@@ -15,7 +15,7 @@ separately).
 > (React 19, FastAPI, PostgreSQL) with a drag-and-drop CPM-style scheduler,
 > executive dashboard, enhanced project-scoped Change Order, RFI, Submittal,
 > and Punch List workflows, reusable Document Management across six resource
-> types, hardened rotating-session authentication, and 504 automated tests.
+> types, hardened rotating-session authentication, and 523 automated tests.
 
 ### Resume bullets
 
@@ -58,7 +58,7 @@ separately).
 > - Hardened authentication with memory-only access JWTs, rotating opaque
 >   refresh sessions, replay-family revocation, CSRF and exact-Origin
 >   enforcement, route-wide tenant isolation, and bounded abuse controls;
->   verified the complete platform with 504 automated tests (Vitest/RTL +
+>   verified the complete platform with 523 automated tests (Vitest/RTL +
 >   pytest).
 
 ### Portfolio-site paragraph
@@ -76,7 +76,7 @@ separately).
 > project emphasizes production polish: a token-based accessible design
 > system, first-run onboarding that seeds a realistic demo project,
 > production-hardened rotating-session authentication, reusable secure
-> attachments across six construction workflows, and 504 automated tests
+> attachments across six construction workflows, and 523 automated tests
 > across the stack.
 
 ---
@@ -119,8 +119,8 @@ available while preserving recoverable cleanup work.
   abstraction, hook, and panel
 - 25 MiB per-file limit with PDF, image, text, Word, and Excel support
 - Private authenticated delivery with no public object keys or credentials
-- 291 frontend tests across 43 files and 213 backend tests, for 504 primary
-  tests passed; 251 backend subtests are tracked separately
+- 295 frontend tests across 44 files and 228 backend tests, for 523 primary
+  tests passed; 271 backend subtests are tracked separately
 - Lazy per-record panel mounting with no dashboard attachment preloading
 
 ---
@@ -145,7 +145,7 @@ available while preserving recoverable cleanup work.
 > backed by private object storage and durable cleanup
 >
 > Under the hood: React 19 + Vite, FastAPI + SQLAlchemy + PostgreSQL, hardened
-> rotating-session auth, an accessible component design system, and 504
+> rotating-session auth, an accessible component design system, and 523
 > automated tests.
 >
 > The demo seeds a full sample project in ~10 seconds — no signup friction:
@@ -160,7 +160,7 @@ available while preserving recoverable cleanup work.
 > PostgreSQL. Drag-and-drop CPM-style scheduler, Gantt + PDF export, executive
 > dashboard, project-scoped Change Order, RFI, Submittal, and Punch List
 > workflows, secure Document Management across six resource types, accessible
-> design system, 504 automated tests. Live demo seeds a complete sample
+> design system, 523 automated tests. Live demo seeds a complete sample
 > project in seconds.
 
 ---

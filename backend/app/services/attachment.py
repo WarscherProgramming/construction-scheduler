@@ -194,6 +194,8 @@ def validated_file_rule(
     filename: str,
     declared_mime_type: str | None,
     config: AttachmentConfig,
+    *,
+    resource_name: str = "Attachment",
 ) -> tuple[str, FileRule]:
     extension = Path(filename).suffix.lower()
     rule = FILE_RULES[extension]
@@ -209,13 +211,20 @@ def validated_file_rule(
         )
         raise HTTPException(
             status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-            detail="Attachment extension and content type do not match",
+            detail=(
+                f"{resource_name} extension and content type do not match"
+            ),
         )
 
     return mime_type, rule
 
 
-def validate_file_signature(sample: bytes, rule: FileRule) -> None:
+def validate_file_signature(
+    sample: bytes,
+    rule: FileRule,
+    *,
+    resource_name: str = "Attachment",
+) -> None:
     valid = False
 
     if rule.signature == "pdf":
@@ -271,7 +280,7 @@ def validate_file_signature(sample: bytes, rule: FileRule) -> None:
         )
         raise HTTPException(
             status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-            detail="Attachment content does not match its file type",
+            detail=f"{resource_name} content does not match its file type",
         )
 
 

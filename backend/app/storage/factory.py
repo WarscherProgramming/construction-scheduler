@@ -55,3 +55,7 @@ def build_storage_resolver(config: AttachmentConfig):
         return storages[provider]
 
     return resolve
+
+
+build_storage_provider = build_attachment_storage
+build_storage_provider_resolver = build_storage_resolver

@@ -89,6 +89,9 @@ class FakeS3Client:
         self.body = FakeBody(b"streamed-download")
         self.deleted = []
         self.heads = []
+        self.copies = []
+        self.presigned = []
+        self.bucket_checks = []
         self.delete_error = None
         self.head_error = None
 
@@ -124,6 +127,27 @@ class FakeS3Client:
         if self.head_error:
             raise self.head_error
         self.heads.append((Bucket, Key))
+        return {
+            "ContentLength": 17,
+            "ContentType": "application/pdf",
+            "ETag": '"checksum-etag"',
+        }
+
+    def generate_presigned_url(
+        self,
+        operation,
+        *,
+        Params,
+        ExpiresIn,
+    ):
+        self.presigned.append((operation, Params, ExpiresIn))
+        return "https://objects.example.test/signed"
+
+    def copy_object(self, *, Bucket, CopySource, Key):
+        self.copies.append((Bucket, CopySource, Key))
+
+    def head_bucket(self, *, Bucket):
+        self.bucket_checks.append(Bucket)
 
 
 class AttachmentS3Tests(unittest.TestCase):
@@ -291,6 +315,58 @@ class AttachmentS3Tests(unittest.TestCase):
         expected = ("private-bucket", f"prefix/{STORAGE_KEY}")
         self.assertIn(expected, client.heads)
         self.assertIn(expected, client.deleted)
+
+    def test_generic_provider_metadata_signed_url_copy_and_health(self):
+        client = FakeS3Client()
+        storage = S3AttachmentStorage(
+            client,
+            "private-bucket",
+            "prefix",
+        )
+        destination = "b" * 32
+
+        metadata = storage.metadata(STORAGE_KEY)
+        signed_url = storage.generate_download_url(
+            STORAGE_KEY,
+            expires_seconds=120,
+        )
+        storage.copy(STORAGE_KEY, destination)
+
+        self.assertEqual(metadata.size_bytes, 17)
+        self.assertEqual(metadata.content_type, "application/pdf")
+        self.assertEqual(metadata.etag, "checksum-etag")
+        self.assertEqual(
+            signed_url,
+            "https://objects.example.test/signed",
+        )
+        self.assertEqual(
+            client.presigned,
+            [
+                (
+                    "get_object",
+                    {
+                        "Bucket": "private-bucket",
+                        "Key": f"prefix/{STORAGE_KEY}",
+                    },
+                    120,
+                )
+            ],
+        )
+        self.assertEqual(
+            client.copies,
+            [
+                (
+                    "private-bucket",
+                    {
+                        "Bucket": "private-bucket",
+                        "Key": f"prefix/{STORAGE_KEY}",
+                    },
+                    f"prefix/{destination}",
+                )
+            ],
+        )
+        self.assertTrue(storage.health_check())
+        self.assertEqual(client.bucket_checks, ["private-bucket"])
 
     def test_provider_errors_are_classified(self):
         cases = (

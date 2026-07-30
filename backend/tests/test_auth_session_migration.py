@@ -13,6 +13,7 @@ from alembic.script import ScriptDirectory
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 PREVIOUS_REVISION = "e7b1c5d9f204"
 REVISION = "f8c2d6e0a315"
+CURRENT_REVISION = "a6d3e9f1b742"
 
 
 class AuthSessionMigrationTests(unittest.TestCase):
@@ -73,7 +74,7 @@ class AuthSessionMigrationTests(unittest.TestCase):
         command.check(self.config)
         self.assertEqual(
             ScriptDirectory.from_config(self.config).get_heads(),
-            [REVISION],
+            [CURRENT_REVISION],
         )
 
 
