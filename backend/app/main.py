@@ -4,7 +4,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.core.config import ALLOWED_ORIGINS, MAX_REQUEST_BODY_BYTES
+from app.core.config import ALLOWED_ORIGINS, APP_DEBUG, MAX_REQUEST_BODY_BYTES
 from app.middleware.security import (
     RequestBodyLimitMiddleware,
     SecurityHeadersMiddleware,
@@ -29,6 +29,7 @@ from app.api.routes_submittal import router as submittal_router
 app = FastAPI(
     title="FieldFlow API",
     version="1.0.0",
+    debug=APP_DEBUG,
 )
 
 
@@ -93,8 +94,4 @@ app.include_router(submittal_router)
 
 @app.get("/")
 def root():
-    return {
-        "status": "online",
-        "message": "FieldFlow API is running",
-        "version": "1.0.0",
-    }
+    return {"status": "online"}

@@ -80,4 +80,41 @@ describe("sessionChannel", () => {
 
     expect(onEvent).toHaveBeenCalledWith({ type: "logout" });
   });
+
+  it("falls back when BroadcastChannel construction fails", () => {
+    class FailingBroadcastChannel {
+      constructor() {
+        throw new Error("unavailable");
+      }
+    }
+    vi.stubGlobal("BroadcastChannel", FailingBroadcastChannel);
+    const onEvent = vi.fn();
+    const channel = createSessionChannel(onEvent);
+
+    window.dispatchEvent(
+      new StorageEvent("storage", {
+        key: "fieldflow.auth-event",
+        newValue: JSON.stringify({ type: "session_expired" }),
+      })
+    );
+    expect(() => channel.broadcast("logout")).not.toThrow();
+    channel.close();
+
+    expect(onEvent).toHaveBeenCalledWith({ type: "session_expired" });
+  });
+
+  it("keeps local session changes safe when storage is blocked", () => {
+    vi.stubGlobal("BroadcastChannel", undefined);
+    const setItem = vi
+      .spyOn(Storage.prototype, "setItem")
+      .mockImplementation(() => {
+        throw new DOMException("blocked", "SecurityError");
+      });
+    const channel = createSessionChannel(vi.fn());
+
+    expect(() => channel.broadcast("logout")).not.toThrow();
+
+    channel.close();
+    setItem.mockRestore();
+  });
 });

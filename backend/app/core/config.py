@@ -1,6 +1,7 @@
 import os
 from dataclasses import dataclass
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from dotenv import load_dotenv
 
@@ -32,26 +33,11 @@ def require_secret_key() -> str:
     return value
 
 
-DATABASE_URL = require_environment_variable("DATABASE_URL")
-ALGORITHM = "HS256"
-
-ALLOWED_ORIGINS = tuple(
-    origin.strip()
-    for origin in os.getenv(
-        "ALLOWED_ORIGINS",
-        (
-            "http://localhost:5173,"
-            "http://127.0.0.1:5173,"
-            "https://construction-scheduler-eight.vercel.app"
-        ),
-    ).split(",")
-    if origin.strip()
-)
-
-
 def positive_integer_environment_variable(
     name: str,
     default: int,
+    *,
+    maximum: int | None = None,
 ) -> int:
     raw_value = os.getenv(name, str(default))
     try:
@@ -61,6 +47,8 @@ def positive_integer_environment_variable(
 
     if value <= 0:
         raise RuntimeError(f"{name} must be greater than zero")
+    if maximum is not None and value > maximum:
+        raise RuntimeError(f"{name} must be at most {maximum}")
 
     return value
 
@@ -105,13 +93,70 @@ def validated_secret_environment_variable(
     return value
 
 
+def allowed_origins_environment_variable() -> tuple[str, ...]:
+    configured = os.getenv(
+        "ALLOWED_ORIGINS",
+        (
+            "http://localhost:5173,"
+            "http://127.0.0.1:5173,"
+            "https://construction-scheduler-eight.vercel.app"
+        ),
+    )
+    origins = []
+    for value in configured.split(","):
+        origin = value.strip().rstrip("/")
+        if not origin:
+            continue
+        if origin == "*" or origin.lower() == "null":
+            raise RuntimeError(
+                "ALLOWED_ORIGINS cannot contain wildcard or null origins"
+            )
+
+        parsed = urlsplit(origin)
+        try:
+            parsed.port
+        except ValueError as error:
+            raise RuntimeError(
+                "ALLOWED_ORIGINS contains an invalid origin"
+            ) from error
+        if (
+            parsed.scheme not in {"http", "https"}
+            or not parsed.hostname
+            or parsed.username is not None
+            or parsed.password is not None
+            or parsed.path
+            or parsed.query
+            or parsed.fragment
+        ):
+            raise RuntimeError(
+                "ALLOWED_ORIGINS must contain absolute HTTP(S) origins"
+            )
+
+        normalized = f"{parsed.scheme.lower()}://{parsed.netloc.lower()}"
+        if normalized not in origins:
+            origins.append(normalized)
+
+    return tuple(origins)
+
+
+APP_ENV = os.getenv("APP_ENV", "development").strip().lower()
+if APP_ENV not in {"development", "test", "production"}:
+    raise RuntimeError("APP_ENV must be development, test, or production")
+
+APP_DEBUG = boolean_environment_variable("APP_DEBUG", False)
+DATABASE_URL = require_environment_variable("DATABASE_URL")
+ALGORITHM = "HS256"
+ALLOWED_ORIGINS = allowed_origins_environment_variable()
+
 ACCESS_TOKEN_EXPIRE_MINUTES = positive_integer_environment_variable(
     "ACCESS_TOKEN_EXPIRE_MINUTES",
     15,
+    maximum=60,
 )
 REFRESH_TOKEN_EXPIRE_DAYS = positive_integer_environment_variable(
     "REFRESH_TOKEN_EXPIRE_DAYS",
     14,
+    maximum=90,
 )
 JWT_ISSUER = os.getenv("JWT_ISSUER", "fieldflow-api").strip()
 JWT_AUDIENCE = os.getenv("JWT_AUDIENCE", "fieldflow-web").strip()
@@ -158,10 +203,12 @@ if any(
 REFRESH_SESSION_CLEANUP_BATCH_SIZE = positive_integer_environment_variable(
     "REFRESH_SESSION_CLEANUP_BATCH_SIZE",
     100,
+    maximum=10_000,
 )
 REFRESH_SESSION_RETENTION_DAYS = positive_integer_environment_variable(
     "REFRESH_SESSION_RETENTION_DAYS",
     30,
+    maximum=365,
 )
 
 
@@ -256,10 +303,12 @@ ATTACHMENT_CONFIG = AttachmentConfig(
     max_upload_size=positive_integer_environment_variable(
         "ATTACHMENT_MAX_UPLOAD_SIZE",
         26_214_400,
+        maximum=104_857_600,
     ),
     upload_chunk_size=positive_integer_environment_variable(
         "ATTACHMENT_UPLOAD_CHUNK_SIZE",
         65_536,
+        maximum=1_048_576,
     ),
     permitted_mime_types=frozenset(
         mime_type.strip().lower()
@@ -299,14 +348,17 @@ ATTACHMENT_CONFIG = AttachmentConfig(
     s3_connect_timeout=positive_integer_environment_variable(
         "ATTACHMENT_S3_CONNECT_TIMEOUT",
         5,
+        maximum=300,
     ),
     s3_read_timeout=positive_integer_environment_variable(
         "ATTACHMENT_S3_READ_TIMEOUT",
         60,
+        maximum=300,
     ),
     s3_max_retries=positive_integer_environment_variable(
         "ATTACHMENT_S3_MAX_RETRIES",
         3,
+        maximum=10,
     ),
     s3_key_prefix=normalize_attachment_key_prefix(
         optional_environment_variable("ATTACHMENT_S3_KEY_PREFIX")
@@ -314,50 +366,79 @@ ATTACHMENT_CONFIG = AttachmentConfig(
     cleanup_batch_size=positive_integer_environment_variable(
         "ATTACHMENT_CLEANUP_BATCH_SIZE",
         100,
+        maximum=10_000,
     ),
     cleanup_max_attempts=positive_integer_environment_variable(
         "ATTACHMENT_CLEANUP_MAX_ATTEMPTS",
         8,
+        maximum=100,
     ),
     cleanup_retry_base_seconds=positive_integer_environment_variable(
         "ATTACHMENT_CLEANUP_RETRY_BASE_SECONDS",
         30,
+        maximum=86_400,
     ),
     cleanup_retry_max_seconds=positive_integer_environment_variable(
         "ATTACHMENT_CLEANUP_RETRY_MAX_SECONDS",
         3600,
+        maximum=86_400,
     ),
     cleanup_lease_seconds=positive_integer_environment_variable(
         "ATTACHMENT_CLEANUP_LEASE_SECONDS",
         900,
+        maximum=86_400,
     ),
     cleanup_retention_days=positive_integer_environment_variable(
         "ATTACHMENT_CLEANUP_RETENTION_DAYS",
         30,
+        maximum=3_650,
     ),
 )
 
 MAX_REQUEST_BODY_BYTES = positive_integer_environment_variable(
     "MAX_REQUEST_BODY_BYTES",
     ATTACHMENT_CONFIG.max_upload_size + 1_048_576,
+    maximum=134_217_728,
 )
 AUTH_LOGIN_RATE_LIMIT = positive_integer_environment_variable(
     "AUTH_LOGIN_RATE_LIMIT",
     5,
+    maximum=100,
 )
 AUTH_LOGIN_RATE_WINDOW_SECONDS = positive_integer_environment_variable(
     "AUTH_LOGIN_RATE_WINDOW_SECONDS",
     300,
+    maximum=86_400,
 )
 AUTH_REGISTER_RATE_LIMIT = positive_integer_environment_variable(
     "AUTH_REGISTER_RATE_LIMIT",
     3,
+    maximum=100,
 )
 AUTH_REGISTER_RATE_WINDOW_SECONDS = positive_integer_environment_variable(
     "AUTH_REGISTER_RATE_WINDOW_SECONDS",
     3600,
+    maximum=604_800,
 )
 AUTH_RATE_LIMIT_MAX_ENTRIES = positive_integer_environment_variable(
     "AUTH_RATE_LIMIT_MAX_ENTRIES",
     10_000,
+    maximum=1_000_000,
 )
+
+if MAX_REQUEST_BODY_BYTES <= ATTACHMENT_CONFIG.max_upload_size:
+    raise RuntimeError(
+        "MAX_REQUEST_BODY_BYTES must exceed ATTACHMENT_MAX_UPLOAD_SIZE"
+    )
+
+if APP_ENV == "production":
+    if APP_DEBUG:
+        raise RuntimeError("APP_DEBUG must be false in production")
+    if not ALLOWED_ORIGINS:
+        raise RuntimeError("ALLOWED_ORIGINS is required in production")
+    if any(not origin.startswith("https://") for origin in ALLOWED_ORIGINS):
+        raise RuntimeError(
+            "Production ALLOWED_ORIGINS must use HTTPS"
+        )
+    if not COOKIE_SECURE:
+        raise RuntimeError("COOKIE_SECURE must be true in production")

@@ -188,6 +188,30 @@ describe("AuthProvider", () => {
     ).toBe(true);
   });
 
+  it("stays signed out when the logout request fails", async () => {
+    const fetchMock = vi.fn((url) => {
+      if (url.endsWith("/auth/csrf")) {
+        return Promise.resolve(jsonResponse({ csrf_token: "csrf" }));
+      }
+      if (url.endsWith("/auth/refresh")) {
+        return Promise.resolve(jsonResponse(session()));
+      }
+      if (url.endsWith("/auth/logout")) {
+        return Promise.reject(new TypeError("offline"));
+      }
+      return Promise.resolve(jsonResponse({}));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const user = userEvent.setup();
+    renderProvider();
+    await screen.findByText("Authenticated");
+
+    await user.click(screen.getByRole("button", { name: "Logout" }));
+
+    expect(await screen.findByText("unauthenticated")).toBeInTheDocument();
+    expect(screen.getByText("Signed out")).toBeInTheDocument();
+  });
+
   it("deduplicates startup restoration under React Strict Mode", async () => {
     const fetchMock = vi.fn((url) =>
       Promise.resolve(

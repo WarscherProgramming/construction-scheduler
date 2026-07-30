@@ -2,10 +2,12 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 import hashlib
 import hmac
+import logging
 import re
 import secrets
 from uuid import uuid4
 
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.core.config import (
@@ -19,6 +21,7 @@ from app.models.user import User
 
 
 REFRESH_TOKEN_PATTERN = re.compile(r"^[A-Za-z0-9_-]{64}$")
+logger = logging.getLogger(__name__)
 _REFRESH_DIGEST_KEY = hmac.new(
     REFRESH_TOKEN_SECRET.encode("utf-8"),
     b"fieldflow-refresh-token-v1",
@@ -101,6 +104,14 @@ def cleanup_refresh_sessions(db: Session, now: datetime | None = None) -> int:
     return len(stale_ids)
 
 
+def _attempt_refresh_session_cleanup(db: Session, now: datetime) -> None:
+    try:
+        with db.begin_nested():
+            cleanup_refresh_sessions(db, now)
+    except SQLAlchemyError:
+        logger.warning("Refresh session cleanup deferred")
+
+
 def create_refresh_session(db: Session, user: User) -> SessionToken:
     now = utc_now()
     raw_token = generate_refresh_token()
@@ -111,7 +122,7 @@ def create_refresh_session(db: Session, user: User) -> SessionToken:
         now,
     )
     db.add(session)
-    cleanup_refresh_sessions(db, now)
+    _attempt_refresh_session_cleanup(db, now)
     db.commit()
     db.refresh(session)
     return SessionToken(raw_token, session, user)
@@ -179,7 +190,7 @@ def rotate_refresh_session(db: Session, raw_token: str) -> SessionToken:
     current.revoke_reason = "rotated"
     current.last_used_at = now
     current.replaced_by_id = replacement.id
-    cleanup_refresh_sessions(db, now)
+    _attempt_refresh_session_cleanup(db, now)
     db.commit()
     db.refresh(replacement)
     return SessionToken(replacement_token, replacement, user)

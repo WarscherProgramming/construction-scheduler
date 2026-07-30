@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   ApiError,
+  authenticationRequest,
   authenticatedRequest,
   clearAuthentication,
   configureAuthentication,
@@ -104,6 +105,40 @@ describe("httpClient", () => {
     ).resolves.toEqual(Array.from({ length: 5 }, () => ({ ok: true })));
     expect(refreshCalls).toBe(1);
   });
+
+  it.each([2, 20])(
+    "deduplicates refresh for %i concurrent 401 responses",
+    async (requestCount) => {
+      let refreshCalls = 0;
+      const fetchMock = vi.fn((url, options) => {
+        if (url.endsWith("/auth/csrf")) {
+          return Promise.resolve(jsonResponse({ csrf_token: "csrf" }));
+        }
+        if (url.endsWith("/auth/refresh")) {
+          refreshCalls += 1;
+          return Promise.resolve(jsonResponse(session()));
+        }
+        return Promise.resolve(
+          options.headers.Authorization === "Bearer expired"
+            ? jsonResponse({ detail: "Expired" }, 401)
+            : jsonResponse({ ok: true })
+        );
+      });
+      vi.stubGlobal("fetch", fetchMock);
+      configureAuthentication({ token: "expired", onUnauthorized: vi.fn() });
+
+      await expect(
+        Promise.all(
+          Array.from({ length: requestCount }, () =>
+            authenticatedRequest("/projects")
+          )
+        )
+      ).resolves.toEqual(
+        Array.from({ length: requestCount }, () => ({ ok: true }))
+      );
+      expect(refreshCalls).toBe(1);
+    }
+  );
 
   it("notifies once when a shared refresh is rejected", async () => {
     const onUnauthorized = vi.fn();
@@ -242,5 +277,30 @@ describe("httpClient", () => {
     expect(
       fetchMock.mock.calls.filter(([url]) => url.endsWith("/auth/logout"))
     ).toHaveLength(1);
+  });
+
+  it("times out authentication requests with a network-safe error", async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((_url, options) =>
+        new Promise((_resolve, reject) => {
+          options.signal.addEventListener("abort", () => {
+            reject(new DOMException("aborted", "AbortError"));
+          });
+        })
+      )
+    );
+
+    const pending = authenticationRequest("/auth/login", {
+      method: "POST",
+    });
+    const rejection = expect(pending).rejects.toMatchObject({
+      status: 0,
+      message: "Authentication request timed out",
+    });
+    await vi.advanceTimersByTimeAsync(10_000);
+    await rejection;
+    vi.useRealTimers();
   });
 });

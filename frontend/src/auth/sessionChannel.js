@@ -15,9 +15,14 @@ export function createSessionChannel(onEvent) {
   };
 
   if (typeof BroadcastChannel !== "undefined") {
-    channel = new BroadcastChannel(CHANNEL_NAME);
-    channel.addEventListener("message", (event) => onEvent(event.data));
-  } else {
+    try {
+      channel = new BroadcastChannel(CHANNEL_NAME);
+      channel.addEventListener("message", (event) => onEvent(event.data));
+    } catch {
+      channel = null;
+    }
+  }
+  if (!channel) {
     window.addEventListener("storage", handleStorage);
   }
 
@@ -31,8 +36,12 @@ export function createSessionChannel(onEvent) {
       if (channel) {
         channel.postMessage(event);
       } else {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(event));
-        localStorage.removeItem(STORAGE_KEY);
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(event));
+          localStorage.removeItem(STORAGE_KEY);
+        } catch {
+          // Local state changes still complete when browser storage is blocked.
+        }
       }
     },
     close() {

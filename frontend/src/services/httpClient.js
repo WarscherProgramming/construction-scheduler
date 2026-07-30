@@ -1,4 +1,17 @@
 const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
+const AUTH_REQUEST_TIMEOUT_MS = Number(
+  import.meta.env.VITE_AUTH_REQUEST_TIMEOUT_MS || 10_000
+);
+
+if (
+  !Number.isInteger(AUTH_REQUEST_TIMEOUT_MS) ||
+  AUTH_REQUEST_TIMEOUT_MS < 1_000 ||
+  AUTH_REQUEST_TIMEOUT_MS > 60_000
+) {
+  throw new Error(
+    "VITE_AUTH_REQUEST_TIMEOUT_MS must be an integer from 1000 to 60000"
+  );
+}
 
 let accessToken = null;
 let unauthorizedHandler = null;
@@ -109,10 +122,26 @@ async function responseError(response) {
 
 
 async function authRequest(path, options = {}) {
-  const response = await fetchResponse(path, {
-    ...options,
-    credentials: "include",
-  });
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(
+    () => controller.abort(),
+    AUTH_REQUEST_TIMEOUT_MS
+  );
+  let response;
+  try {
+    response = await fetchResponse(path, {
+      ...options,
+      credentials: "include",
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (controller.signal.aborted && error?.name === "AbortError") {
+      throw new ApiError("Authentication request timed out", 0);
+    }
+    throw error;
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
   const body = await parseResponseBody(response);
   if (!response.ok) {
     throw new ApiError(
@@ -122,6 +151,11 @@ async function authRequest(path, options = {}) {
     );
   }
   return body;
+}
+
+
+export function authenticationRequest(path, options = {}) {
+  return authRequest(path, options);
 }
 
 

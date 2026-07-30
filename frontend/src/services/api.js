@@ -1,13 +1,13 @@
 import {
+  authenticationRequest,
   authenticatedRequest,
   downloadAuthenticatedFile,
   downloadAuthenticatedResponse,
   jsonRequest,
-  request,
 } from "./httpClient";
 
 export function registerUser(user) {
-  return request("/auth/register", {
+  return authenticationRequest("/auth/register", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -21,7 +21,7 @@ export function loginUser(email, password) {
   formData.append("username", email);
   formData.append("password", password);
 
-  return request("/auth/login", {
+  return authenticationRequest("/auth/login", {
     method: "POST",
     credentials: "include",
     headers: {
