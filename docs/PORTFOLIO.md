@@ -1,8 +1,8 @@
 # FieldFlow — Portfolio Copy
 
 Ready-to-use descriptions for resumes, portfolio sites, and LinkedIn.
-Keep the metrics in sync with the repo (currently **411 primary tests: 275
-frontend across 42 files + 136 backend**, with 71 backend subtests reported
+Keep the metrics in sync with the repo (currently **504 primary tests: 291
+frontend across 43 files + 213 backend**, with 251 backend subtests reported
 separately).
 
 ---
@@ -15,7 +15,7 @@ separately).
 > (React 19, FastAPI, PostgreSQL) with a drag-and-drop CPM-style scheduler,
 > executive dashboard, enhanced project-scoped Change Order, RFI, Submittal,
 > and Punch List workflows, reusable Document Management across six resource
-> types, and 411 automated tests.
+> types, hardened rotating-session authentication, and 504 automated tests.
 
 ### Resume bullets
 
@@ -55,9 +55,11 @@ separately).
 >   streamed upload/download, 25 MiB validation, local and private
 >   S3-compatible storage, accessible React attachment UI, and durable
 >   cleanup across database and object-storage failures.
-> - Implemented JWT authentication with expiry-aware session UX, client-side
->   demo-data onboarding through the public API, and 411 automated tests
->   (Vitest/RTL + pytest) run against every change.
+> - Hardened authentication with memory-only access JWTs, rotating opaque
+>   refresh sessions, replay-family revocation, CSRF and exact-Origin
+>   enforcement, route-wide tenant isolation, and bounded abuse controls;
+>   verified the complete platform with 504 automated tests (Vitest/RTL +
+>   pytest).
 
 ### Portfolio-site paragraph
 
@@ -72,9 +74,10 @@ separately).
 > and an aggregate Project Dashboard that answers
 > a superintendent's first question of the day: what needs my attention? The
 > project emphasizes production polish: a token-based accessible design
-> system, first-run onboarding that seeds a realistic demo project, JWT auth
-> with graceful session expiry, reusable secure attachments across six
-> construction workflows, and 411 automated tests across the stack.
+> system, first-run onboarding that seeds a realistic demo project,
+> production-hardened rotating-session authentication, reusable secure
+> attachments across six construction workflows, and 504 automated tests
+> across the stack.
 
 ---
 
@@ -116,8 +119,8 @@ available while preserving recoverable cleanup work.
   abstraction, hook, and panel
 - 25 MiB per-file limit with PDF, image, text, Word, and Excel support
 - Private authenticated delivery with no public object keys or credentials
-- 275 frontend tests across 42 files and 136 backend tests, for 411 primary
-  tests passed; 71 backend subtests are tracked separately
+- 291 frontend tests across 43 files and 213 backend tests, for 504 primary
+  tests passed; 251 backend subtests are tracked separately
 - Lazy per-record panel mounting with no dashboard attachment preloading
 
 ---
@@ -141,8 +144,9 @@ available while preserving recoverable cleanup work.
 > 📎 Secure project documents and record attachments across six workflows,
 > backed by private object storage and durable cleanup
 >
-> Under the hood: React 19 + Vite, FastAPI + SQLAlchemy + PostgreSQL, JWT
-> auth, an accessible component design system, and 411 automated tests.
+> Under the hood: React 19 + Vite, FastAPI + SQLAlchemy + PostgreSQL, hardened
+> rotating-session auth, an accessible component design system, and 504
+> automated tests.
 >
 > The demo seeds a full sample project in ~10 seconds — no signup friction:
 > 👉 https://construction-scheduler-eight.vercel.app
@@ -156,7 +160,7 @@ available while preserving recoverable cleanup work.
 > PostgreSQL. Drag-and-drop CPM-style scheduler, Gantt + PDF export, executive
 > dashboard, project-scoped Change Order, RFI, Submittal, and Punch List
 > workflows, secure Document Management across six resource types, accessible
-> design system, 411 automated tests. Live demo seeds a complete sample
+> design system, 504 automated tests. Live demo seeds a complete sample
 > project in seconds.
 
 ---
@@ -186,3 +190,8 @@ available while preserving recoverable cleanup work.
    cleanup jobs before metadata or parent deletion commits. Remote failures
    retry without blocking the user, and missing objects complete
    idempotently.
+7. **Defense-in-depth sessions.** Short-lived access JWTs exist only in
+   memory, while opaque refresh tokens rotate through HttpOnly cookies and are
+   stored as keyed digests. Replay revokes the token family; exact Origin,
+   CSRF, database-backed identity, and project-scoped queries protect the
+   cross-site deployment without introducing a generic authorization layer.

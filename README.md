@@ -11,7 +11,7 @@ and Punch Lists) with their supporting documents.
 ![React 19](https://img.shields.io/badge/React-19-61dafb?logo=react&logoColor=white&labelColor=20232a)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.1x-009688?logo=fastapi&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169e1?logo=postgresql&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-411%20passing-2ea44f)
+![Tests](https://img.shields.io/badge/tests-504%20passing-2ea44f)
 ![Vite](https://img.shields.io/badge/Vite-8-646cff?logo=vite&logoColor=white)
 
 ![FieldFlow executive dashboard](docs/screenshots/dashboard.png)
@@ -56,8 +56,10 @@ question — *"what needs my attention today?"* — has a one-screen answer.
   refresh-safe hash router.
 - **FastAPI backend** with a layered domain/services architecture,
   SQLAlchemy ORM, and Alembic migrations on **PostgreSQL**.
-- **JWT authentication** with expiry-aware session handling (stale API errors
-  are suppressed and replaced by a single "session expired" notice).
+- **Hardened authentication** with memory-only access JWTs, rotating opaque
+  refresh sessions, replay-family revocation, CSRF and exact-Origin checks,
+  database-backed user validation, single-flight refresh, cross-tab logout,
+  and production configuration validation.
 - **Interactive scheduler**: spreadsheet-style inline editing, Finish-to-Start
   and Start-to-Start dependencies with lag, workday/holiday-aware date math,
   parent/child hierarchy, and keyboard-accessible drag-and-drop reordering
@@ -102,9 +104,9 @@ question — *"what needs my attention today?"* — has a one-screen answer.
 - **Client-side onboarding**: first-run detection seeds a realistic demo
   project through the public API with visible progress — the app is never
   empty.
-- **Automated testing: 411 tests** — 275 frontend across 42 files (Vitest +
-  React Testing Library, behavior- and accessibility-focused) and 136 backend
-  tests plus 71 separately reported subtests (pytest,
+- **Automated testing: 504 tests** — 291 frontend across 43 files (Vitest +
+  React Testing Library, behavior- and accessibility-focused) and 213 backend
+  tests plus 251 separately reported subtests (pytest,
   covering the scheduling engine, critical path, services, migrations, CORS,
   and TestClient API integration).
 
@@ -118,16 +120,19 @@ question — *"what needs my attention today?"* — has a one-screen answer.
 │   (Vercel)         │                            │   (Render)          │
 └────────────────────┘                            └──────────┬──────────┘
         │                                                    │ SQLAlchemy
-        │  localStorage: JWT, onboarding flag                │ + Alembic
+        │  memory: access JWT; storage: onboarding flag      │ + Alembic
         ▼                                                    ▼
   hash-based routes                               ┌─────────────────────┐
   (refresh-safe, no                               │     PostgreSQL      │
   rewrite rules)                                  └─────────────────────┘
 ```
 
-**How data flows:** the SPA authenticates against `/auth` and stores a JWT;
-every request carries it via a small fetch wrapper that also centralizes
-401 handling. Page containers call REST endpoints (`/projects/{id}/tasks`,
+**How data flows:** the SPA authenticates against `/auth`, keeps its
+short-lived access JWT only in memory, and restores or rotates an opaque
+HttpOnly refresh session through CSRF-protected cookie requests. Every
+protected request carries the access token through a fetch wrapper that
+centralizes one-retry 401 handling and cross-tab session events. Page
+containers call REST endpoints (`/projects/{id}/tasks`,
 `/daily-logs`, `/inspections`, `/notes-delays`, `/change-orders`, `/rfis`,
 `/submittals`, `/punch-items`, …); the
 FastAPI service layer applies the scheduling rules (dependencies, lag,
@@ -142,6 +147,10 @@ navigation, loading, retry, cancellation, and stale-response protection.
 The complete dashboard hierarchy, API contract, request lifecycle, test
 coverage, bundle history, and deferred work are documented in
 [`docs/PROJECT_DASHBOARD.md`](docs/PROJECT_DASHBOARD.md).
+
+The final authentication architecture, threat model, deployment checklist,
+operational runbooks, manual QA guide, release notes, and deferred security
+roadmap are documented in [`docs/SECURITY.md`](docs/SECURITY.md).
 
 Change Orders use a focused service layer for validation and project-scoped
 `CO-###` allocation. A persistent per-project sequence table prevents deleted
@@ -390,16 +399,16 @@ job. FieldFlow does not include a built-in worker or scheduler, and
 | Frontend | React 19, Vite 8, dnd-kit, Inter (self-hosted) |
 | Backend | FastAPI, SQLAlchemy, Alembic, Pydantic |
 | Database | PostgreSQL |
-| Auth | JWT (OAuth2 password flow) |
-| Testing | Vitest + React Testing Library (275), pytest (136) |
+| Auth | Memory-only access JWT + rotating opaque refresh sessions |
+| Testing | Vitest + React Testing Library (291), pytest (213) |
 | Hosting | Vercel (frontend) · Render (API + migrations) |
 
 ## Testing
 
-**411 primary automated tests passed.** Backend subtests are reported
+**504 primary automated tests passed.** Backend subtests are reported
 separately rather than added to that total.
 
-- **Frontend (275 across 42 files)** — Vitest + React Testing Library. Tests
+- **Frontend (291 across 43 files)** — Vitest + React Testing Library. Tests
   target behavior and accessibility: roles and names, keyboard flows
   (Enter/Escape editing,
   grid cursor navigation, focus traps), aggregate dashboard rendering,
@@ -409,7 +418,7 @@ separately rather than added to that total.
   uploads, partial success, stale-response protection, previews, downloads,
   Blob URL cleanup, confirmation and accessibility behavior, all six resource
   integrations, and request-count behavior.
-- **Backend (136, plus 71 subtests)** — pytest. Covers the workday scheduling
+- **Backend (213, plus 251 subtests)** — pytest. Covers the workday scheduling
   engine (dependencies, lag, federal holidays), critical path and total float,
   task services, relationship migrations, CORS configuration, and
   TestClient API integration (auth, ownership enforcement, task lifecycle,
@@ -417,7 +426,11 @@ separately rather than added to that total.
   Attachment coverage includes authentication, ownership and parent
   resolution, streaming upload/download, file validation, local and S3
   adapters, S3 error classification, deletion cleanup, retries, leases,
-  reconciliation, migration safety, and parent-deletion cleanup.
+  reconciliation, migration safety, and parent-deletion cleanup. Security
+  coverage includes strict JWT claims, rotating refresh sessions, replay
+  revocation, CSRF, exact CORS origins, rate and body limits, route-wide
+  ownership, transaction rollback, safe errors, production configuration,
+  logging redaction, and health behavior.
 
 ```bash
 # frontend
@@ -441,8 +454,13 @@ Create `backend/.env`:
 
 ```env
 DATABASE_URL=postgresql://postgres:YOUR_PASSWORD@localhost:5432/scheduler_db
+APP_ENV=development
+APP_DEBUG=false
 SECRET_KEY=replace-with-a-long-random-secret
+REFRESH_TOKEN_SECRET=
 ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+COOKIE_SECURE=false
+COOKIE_SAMESITE=lax
 ATTACHMENT_STORAGE_PROVIDER=local
 ```
 
@@ -460,7 +478,9 @@ npm install
 npm run dev        # http://localhost:5173
 ```
 
-Set `VITE_API_URL` when pointing at a deployed API.
+Set `VITE_API_URL` when pointing at a deployed API. Authentication requests
+default to a 10-second timeout; use `VITE_AUTH_REQUEST_TIMEOUT_MS` only when a
+different bounded deployment value is required.
 
 ### Attachment Configuration
 
@@ -506,7 +526,13 @@ commit production credentials.
   [construction-scheduler-eight.vercel.app](https://construction-scheduler-eight.vercel.app).
 - **Backend — Render.** [`backend/render.yaml`](backend/render.yaml) defines
   the web service, runs Alembic migrations on deploy, sets the health check,
-  pins the production CORS origin, and selects private S3-compatible storage.
+  selects production mode and secure cross-site cookies, pins the exact CORS
+  origin, and selects private S3-compatible storage.
+- **Security release gate.** Follow
+  [`docs/SECURITY.md`](docs/SECURITY.md) for secret preparation, migration and
+  restart order, rollback, post-deployment cookie/CORS/header checks, and
+  incident runbooks. Dynamic Vercel preview origins are not trusted by
+  wildcard.
 - **Attachment storage.** Production should use persistent object storage;
   Render's ephemeral local filesystem may be lost during deploys. Keep the
   bucket private, store credentials as secrets, and grant the application
@@ -526,6 +552,11 @@ commit production credentials.
   endpoint, summary metrics, Attention Required, Upcoming Schedule, Workflow
   Analytics, Recent Updates, stale-response protection, accessibility,
   responsive hardening, and bounded request/bundle budgets
+- ✅ M15 Authentication and Security Hardening with normalized identities,
+  database-backed JWT validation, rotating refresh sessions, replay-family
+  revocation, memory-only access tokens, CSRF and exact-Origin controls,
+  route-wide ownership and validation hardening, request/rate limits,
+  production configuration checks, and security operations documentation
 - ✅ Project-scoped RFI workflow with sequential numbering, due-date tracking,
   ownership enforcement, and dashboard workflow metrics
 - ✅ Project-scoped Submittals workflow with sequential numbering, complete
@@ -561,6 +592,9 @@ commit production credentials.
 - Milestone tasks, Gantt dependency arrows, and timeline zoom
 
 **Future possibilities (not committed scope)**
+- Distributed rate limiting, password reset, email verification, MFA, OAuth,
+  organizations, roles, audit logs, a same-site API domain, and expanded
+  browser/security scanning
 - Attachment version history, bulk download, thumbnails, and image galleries
 - Drawing annotations, OCR, full-text document search, antivirus integration,
   and document approvals
