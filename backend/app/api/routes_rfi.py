@@ -3,8 +3,11 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import (
+    CollectionPage,
+    PositiveId,
     get_attachment_config,
     get_attachment_storage_resolver,
+    get_collection_page,
     get_db,
     get_owned_project,
 )
@@ -56,11 +59,14 @@ def get_rfis(
     project_id: int,
     db: Session = Depends(get_db),
     project: Project = Depends(get_owned_project),
+    page: CollectionPage = Depends(get_collection_page),
 ):
     rfis = (
         db.query(RFI)
         .filter(RFI.project_id == project_id)
         .order_by(RFI.submitted_date.desc(), RFI.id.desc())
+        .offset(page.offset)
+        .limit(page.limit)
         .all()
     )
 
@@ -104,7 +110,7 @@ def create_rfi(
 )
 def update_rfi(
     project_id: int,
-    rfi_id: int,
+    rfi_id: PositiveId,
     updated_rfi: RFIUpdate,
     db: Session = Depends(get_db),
     project: Project = Depends(get_owned_project),
@@ -129,7 +135,7 @@ def update_rfi(
 )
 def delete_rfi(
     project_id: int,
-    rfi_id: int,
+    rfi_id: PositiveId,
     db: Session = Depends(get_db),
     project: Project = Depends(get_owned_project),
     config: AttachmentConfig = Depends(get_attachment_config),

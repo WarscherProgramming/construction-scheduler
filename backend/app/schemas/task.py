@@ -10,7 +10,7 @@ from pydantic import (
     StringConstraints,
 )
 
-from app.schemas.common import ORMModel
+from app.schemas.common import MutationModel, ORMModel, UpdateMutationModel
 
 
 def validate_date_string(value: str) -> str:
@@ -20,7 +20,7 @@ def validate_date_string(value: str) -> str:
 
 DateString = Annotated[
     str,
-    StringConstraints(pattern=r"^\d{4}-\d{2}-\d{2}$"),
+    StringConstraints(strict=True, pattern=r"^\d{4}-\d{2}-\d{2}$"),
     AfterValidator(validate_date_string),
 ]
 TaskName = Annotated[
@@ -38,38 +38,40 @@ PredecessorString = Annotated[
     BeforeValidator(normalize_predecessor),
     StringConstraints(
         pattern=r"^\d+(?:SS)?(?:\+\d+D?)?$",
+        max_length=32,
     ),
 ]
 
 
-class TaskCreate(BaseModel):
+PositiveTaskId = Annotated[int, Field(ge=1, le=2_147_483_647)]
+
+
+class TaskCreate(MutationModel):
     name: TaskName
-    duration: int = Field(ge=1)
+    duration: int = Field(ge=1, le=36_500)
     predecessor: PredecessorString | None = None
-    predecessor_task_id: int | None = Field(default=None, ge=1)
+    predecessor_task_id: PositiveTaskId | None = None
     dependency_type: Literal["FS", "SS"] = "FS"
-    lag_days: int = Field(default=0, ge=0)
+    lag_days: int = Field(default=0, ge=0, le=36_500)
     manual_start_date: DateString | None = None
-    order_index: int | None = Field(default=None, ge=0)
-    parent_task_id: int | None = Field(default=None, ge=1)
+    parent_task_id: PositiveTaskId | None = None
     is_collapsed: int = Field(default=0, ge=0, le=1)
 
 
-class TaskUpdate(BaseModel):
+class TaskUpdate(UpdateMutationModel):
     name: TaskName | None = None
-    duration: int | None = Field(default=None, ge=1)
+    duration: int | None = Field(default=None, ge=1, le=36_500)
     predecessor: PredecessorString | None = None
-    predecessor_task_id: int | None = Field(default=None, ge=1)
+    predecessor_task_id: PositiveTaskId | None = None
     dependency_type: Literal["FS", "SS"] | None = None
-    lag_days: int | None = Field(default=None, ge=0)
+    lag_days: int | None = Field(default=None, ge=0, le=36_500)
     manual_start_date: DateString | None = None
-    order_index: int | None = Field(default=None, ge=0)
-    parent_task_id: int | None = Field(default=None, ge=1)
+    parent_task_id: PositiveTaskId | None = None
     is_collapsed: int | None = Field(default=None, ge=0, le=1)
 
 
-class TaskReorderRequest(BaseModel):
-    task_ids: list[int] = Field(min_length=1)
+class TaskReorderRequest(MutationModel):
+    task_ids: list[PositiveTaskId] = Field(min_length=1, max_length=2_000)
 
 
 class TaskResponse(ORMModel):

@@ -2,7 +2,12 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import get_db, get_owned_project
+from app.api.dependencies import (
+    CollectionPage,
+    get_collection_page,
+    get_db,
+    get_owned_project,
+)
 from app.models.inspection import Inspection
 from app.models.project import Project
 from app.schemas.inspection import (
@@ -22,11 +27,14 @@ def get_inspections(
     project_id: int,
     db: Session = Depends(get_db),
     project: Project = Depends(get_owned_project),
+    page: CollectionPage = Depends(get_collection_page),
 ):
     inspections = (
         db.query(Inspection)
         .filter(Inspection.project_id == project_id)
-        .order_by(Inspection.date.desc())
+        .order_by(Inspection.date.desc(), Inspection.id.desc())
+        .offset(page.offset)
+        .limit(page.limit)
         .all()
     )
 

@@ -3,8 +3,11 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import (
+    CollectionPage,
+    PositiveId,
     get_attachment_config,
     get_attachment_storage_resolver,
+    get_collection_page,
     get_db,
     get_owned_project,
 )
@@ -59,11 +62,14 @@ def get_punch_items(
     project_id: int,
     db: Session = Depends(get_db),
     project: Project = Depends(get_owned_project),
+    page: CollectionPage = Depends(get_collection_page),
 ):
     punch_items = (
         db.query(PunchItem)
         .filter(PunchItem.project_id == project_id)
         .order_by(PunchItem.due_date.desc(), PunchItem.id.desc())
+        .offset(page.offset)
+        .limit(page.limit)
         .all()
     )
 
@@ -109,7 +115,7 @@ def create_punch_item(
 )
 def update_punch_item(
     project_id: int,
-    item_id: int,
+    item_id: PositiveId,
     updated_punch_item: PunchItemUpdate,
     db: Session = Depends(get_db),
     project: Project = Depends(get_owned_project),
@@ -137,7 +143,7 @@ def update_punch_item(
 )
 def delete_punch_item(
     project_id: int,
-    item_id: int,
+    item_id: PositiveId,
     db: Session = Depends(get_db),
     project: Project = Depends(get_owned_project),
     config: AttachmentConfig = Depends(get_attachment_config),

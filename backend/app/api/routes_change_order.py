@@ -2,8 +2,11 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import (
+    CollectionPage,
+    PositiveId,
     get_attachment_config,
     get_attachment_storage_resolver,
+    get_collection_page,
     get_db,
     get_owned_project,
 )
@@ -36,8 +39,16 @@ def get_change_orders(
     project_id: int,
     db: Session = Depends(get_db),
     project: Project = Depends(get_owned_project),
+    page: CollectionPage = Depends(get_collection_page),
 ):
-    return {"change_orders": list_change_orders(db, project_id)}
+    return {
+        "change_orders": list_change_orders(
+            db,
+            project_id,
+            limit=page.limit,
+            offset=page.offset,
+        )
+    }
 
 
 @router.post(
@@ -60,7 +71,7 @@ def create_change_order(
 )
 def update_change_order(
     project_id: int,
-    change_order_id: int,
+    change_order_id: PositiveId,
     updated_change_order: ChangeOrderUpdate,
     db: Session = Depends(get_db),
     project: Project = Depends(get_owned_project),
@@ -79,7 +90,7 @@ def update_change_order(
 )
 def delete_change_order(
     project_id: int,
-    change_order_id: int,
+    change_order_id: PositiveId,
     db: Session = Depends(get_db),
     project: Project = Depends(get_owned_project),
     config: AttachmentConfig = Depends(get_attachment_config),

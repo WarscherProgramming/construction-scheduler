@@ -11,7 +11,7 @@ from pydantic import (
     model_validator,
 )
 
-from app.schemas.common import ORMModel
+from app.schemas.common import MAX_LONG_TEXT_LENGTH, ORMModel
 from app.schemas.task import DateString
 
 
@@ -90,19 +90,23 @@ def validate_lifecycle_dates(
 
 
 class ChangeOrderCreate(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
     date: DateString
     company: str | None = Field(default=None, max_length=255)
     status: NormalizedStatus
-    description: str | None = None
+    description: str | None = Field(
+        default=None, max_length=MAX_LONG_TEXT_LENGTH
+    )
     amount: str | None = Field(default=None, max_length=100)
     responsible_party: str | None = Field(default=None, max_length=255)
     title: str | None = Field(default=None, max_length=500)
-    reason: str | None = None
+    reason: str | None = Field(default=None, max_length=MAX_LONG_TEXT_LENGTH)
     proposed_amount: MoneyAmount | None = None
     approved_amount: MoneyAmount | None = None
-    schedule_impact_days: int | None = None
+    schedule_impact_days: int | None = Field(
+        default=None, ge=-36_500, le=36_500
+    )
     requested_date: OptionalDateString = None
     submitted_date: OptionalDateString = None
     approved_date: OptionalDateString = None
@@ -141,19 +145,23 @@ class ChangeOrderCreate(BaseModel):
 
 
 class ChangeOrderUpdate(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
     date: DateString | None = None
     company: str | None = Field(default=None, max_length=255)
     status: NormalizedStatus | None = None
-    description: str | None = None
+    description: str | None = Field(
+        default=None, max_length=MAX_LONG_TEXT_LENGTH
+    )
     amount: str | None = Field(default=None, max_length=100)
     responsible_party: str | None = Field(default=None, max_length=255)
     title: str | None = Field(default=None, max_length=500)
-    reason: str | None = None
+    reason: str | None = Field(default=None, max_length=MAX_LONG_TEXT_LENGTH)
     proposed_amount: MoneyAmount | None = None
     approved_amount: MoneyAmount | None = None
-    schedule_impact_days: int | None = None
+    schedule_impact_days: int | None = Field(
+        default=None, ge=-36_500, le=36_500
+    )
     requested_date: OptionalDateString = None
     submitted_date: OptionalDateString = None
     approved_date: OptionalDateString = None
@@ -183,6 +191,12 @@ class ChangeOrderUpdate(BaseModel):
         if value is None:
             raise ValueError("Field cannot be null")
         return value
+
+    @model_validator(mode="after")
+    def require_at_least_one_field(self):
+        if not self.model_fields_set:
+            raise ValueError("At least one field is required")
+        return self
 
 
 class ChangeOrderResponse(ORMModel):

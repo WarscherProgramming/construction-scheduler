@@ -1,16 +1,18 @@
 from pydantic import BaseModel, Field
 
-from app.schemas.common import ORMModel
+from app.schemas.common import MAX_LONG_TEXT_LENGTH, MutationModel, ORMModel
 from app.schemas.task import DateString
 
 
-class DailyLogCreate(BaseModel):
+class DailyLogCreate(MutationModel):
     date: DateString
     company: str = Field(min_length=1, max_length=255)
-    manpower: int = Field(ge=0)
-    work_performed: str | None = None
-    delays: str | None = None
-    notes: str | None = None
+    manpower: int = Field(ge=0, le=1_000_000)
+    work_performed: str | None = Field(
+        default=None, max_length=MAX_LONG_TEXT_LENGTH
+    )
+    delays: str | None = Field(default=None, max_length=MAX_LONG_TEXT_LENGTH)
+    notes: str | None = Field(default=None, max_length=MAX_LONG_TEXT_LENGTH)
 
 
 class DailyLogResponse(ORMModel):

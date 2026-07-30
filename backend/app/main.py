@@ -1,6 +1,8 @@
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.core.config import ALLOWED_ORIGINS, MAX_REQUEST_BODY_BYTES
 from app.middleware.security import (
@@ -28,6 +30,23 @@ app = FastAPI(
     title="FieldFlow API",
     version="1.0.0",
 )
+
+
+@app.exception_handler(RequestValidationError)
+async def request_validation_error_handler(
+    request: Request,
+    error: RequestValidationError,
+) -> JSONResponse:
+    safe_errors = [
+        {
+            "type": item["type"],
+            "loc": item["loc"],
+            "msg": item["msg"],
+        }
+        for item in error.errors()
+    ]
+    return JSONResponse(status_code=422, content={"detail": safe_errors})
+
 
 # ----------------------------------------------------
 # Middleware

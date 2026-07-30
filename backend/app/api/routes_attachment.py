@@ -1,17 +1,23 @@
+from typing import Annotated
+
 from fastapi import (
     APIRouter,
     Depends,
     File,
     Form,
     Header,
+    Query,
     UploadFile,
 )
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import (
+    CollectionPage,
+    PositiveId,
     get_attachment_config,
     get_attachment_storage,
+    get_collection_page,
     get_db,
     get_owned_project,
 )
@@ -43,10 +49,11 @@ router = APIRouter()
 )
 def get_attachments(
     project_id: int,
-    parent_type: str,
-    parent_id: int,
+    parent_type: Annotated[str, Query(min_length=1, max_length=50)],
+    parent_id: Annotated[int, Query(ge=1, le=2_147_483_647)],
     db: Session = Depends(get_db),
     project: Project = Depends(get_owned_project),
+    page: CollectionPage = Depends(get_collection_page),
 ):
     return {
         "attachments": list_attachment_records(
@@ -54,6 +61,8 @@ def get_attachments(
             project_id,
             parent_type,
             parent_id,
+            limit=page.limit,
+            offset=page.offset,
         )
     }
 
@@ -65,8 +74,8 @@ def get_attachments(
 )
 def upload_attachment(
     project_id: int,
-    parent_type: str = Form(...),
-    parent_id: int = Form(...),
+    parent_type: str = Form(..., min_length=1, max_length=50),
+    parent_id: int = Form(..., ge=1, le=2_147_483_647),
     file: UploadFile = File(...),
     content_length: int | None = Header(
         default=None,
@@ -97,7 +106,7 @@ def upload_attachment(
 )
 def download_attachment(
     project_id: int,
-    attachment_id: int,
+    attachment_id: PositiveId,
     db: Session = Depends(get_db),
     project: Project = Depends(get_owned_project),
     storage: AttachmentStorage = Depends(get_attachment_storage),
@@ -127,7 +136,7 @@ def download_attachment(
 )
 def remove_attachment(
     project_id: int,
-    attachment_id: int,
+    attachment_id: PositiveId,
     db: Session = Depends(get_db),
     project: Project = Depends(get_owned_project),
     storage: AttachmentStorage = Depends(get_attachment_storage),

@@ -1,9 +1,9 @@
 from pydantic import BaseModel, Field
 
-from app.schemas.common import ORMModel
+from app.schemas.common import MutationModel, ORMModel
 
 
-class ProjectCompanyCreate(BaseModel):
+class ProjectCompanyCreate(MutationModel):
     name: str = Field(min_length=1, max_length=255)
     trade: str | None = Field(default=None, max_length=255)
 

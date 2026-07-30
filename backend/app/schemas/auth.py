@@ -1,9 +1,10 @@
 from pydantic import BaseModel, Field, field_validator
 
 from app.core.identity import normalize_email, validate_password_byte_length
+from app.schemas.common import MutationModel
 
 
-class RegisterRequest(BaseModel):
+class RegisterRequest(MutationModel):
     email: str = Field(min_length=3, max_length=320)
     password: str = Field(min_length=8, max_length=128)
 

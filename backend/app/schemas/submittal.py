@@ -9,7 +9,12 @@ from pydantic import (
     model_validator,
 )
 
-from app.schemas.common import ORMModel
+from app.schemas.common import (
+    MAX_LONG_TEXT_LENGTH,
+    MutationModel,
+    ORMModel,
+    UpdateMutationModel,
+)
 from app.schemas.task import DateString
 
 
@@ -55,7 +60,7 @@ def validate_date_order(
         )
 
 
-class SubmittalCreate(BaseModel):
+class SubmittalCreate(MutationModel):
     specification_section: SpecificationSection
     title: SubmittalTitle
     responsible_company: str | None = Field(default=None, max_length=255)
@@ -64,7 +69,7 @@ class SubmittalCreate(BaseModel):
     reviewed_date: DateString | None = None
     status: SubmittalStatus = "Draft"
     reviewer: str | None = Field(default=None, max_length=255)
-    remarks: str | None = None
+    remarks: str | None = Field(default=None, max_length=MAX_LONG_TEXT_LENGTH)
 
     @model_validator(mode="after")
     def validate_dates(self):
@@ -76,7 +81,7 @@ class SubmittalCreate(BaseModel):
         return self
 
 
-class SubmittalUpdate(BaseModel):
+class SubmittalUpdate(UpdateMutationModel):
     specification_section: SpecificationSection | None = None
     title: SubmittalTitle | None = None
     responsible_company: str | None = Field(default=None, max_length=255)
@@ -85,7 +90,7 @@ class SubmittalUpdate(BaseModel):
     reviewed_date: DateString | None = None
     status: SubmittalStatus | None = None
     reviewer: str | None = Field(default=None, max_length=255)
-    remarks: str | None = None
+    remarks: str | None = Field(default=None, max_length=MAX_LONG_TEXT_LENGTH)
 
     @field_validator("specification_section", "title", "status")
     @classmethod

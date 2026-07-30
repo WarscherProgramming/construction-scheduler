@@ -280,6 +280,9 @@ def list_attachment_records(
     project_id: int,
     parent_type: str,
     parent_id: int,
+    *,
+    limit: int = 500,
+    offset: int = 0,
 ) -> list[Attachment]:
     normalized_type = resolve_attachment_parent(
         db,
@@ -295,6 +298,8 @@ def list_attachment_records(
             Attachment.parent_id == parent_id,
         )
         .order_by(Attachment.created_at.asc(), Attachment.id.asc())
+        .offset(offset)
+        .limit(limit)
         .all()
     )
 

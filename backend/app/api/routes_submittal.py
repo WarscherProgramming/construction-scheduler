@@ -3,8 +3,11 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import (
+    CollectionPage,
+    PositiveId,
     get_attachment_config,
     get_attachment_storage_resolver,
+    get_collection_page,
     get_db,
     get_owned_project,
 )
@@ -59,11 +62,14 @@ def get_submittals(
     project_id: int,
     db: Session = Depends(get_db),
     project: Project = Depends(get_owned_project),
+    page: CollectionPage = Depends(get_collection_page),
 ):
     submittals = (
         db.query(Submittal)
         .filter(Submittal.project_id == project_id)
         .order_by(Submittal.submitted_date.desc(), Submittal.id.desc())
+        .offset(page.offset)
+        .limit(page.limit)
         .all()
     )
 
@@ -109,7 +115,7 @@ def create_submittal(
 )
 def update_submittal(
     project_id: int,
-    submittal_id: int,
+    submittal_id: PositiveId,
     updated_submittal: SubmittalUpdate,
     db: Session = Depends(get_db),
     project: Project = Depends(get_owned_project),
@@ -148,7 +154,7 @@ def update_submittal(
 )
 def delete_submittal(
     project_id: int,
-    submittal_id: int,
+    submittal_id: PositiveId,
     db: Session = Depends(get_db),
     project: Project = Depends(get_owned_project),
     config: AttachmentConfig = Depends(get_attachment_config),

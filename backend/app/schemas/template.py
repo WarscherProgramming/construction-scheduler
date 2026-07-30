@@ -1,10 +1,18 @@
-from pydantic import BaseModel, Field
+from typing import Annotated
 
-from app.schemas.common import ORMModel
+from pydantic import BaseModel, StringConstraints
+
+from app.schemas.common import MutationModel, ORMModel
 
 
-class TemplateCreate(BaseModel):
-    name: str = Field(min_length=1, max_length=255)
+TemplateName = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, min_length=1, max_length=255),
+]
+
+
+class TemplateCreate(MutationModel):
+    name: TemplateName
 
 
 class TemplateResponse(ORMModel):

@@ -19,6 +19,20 @@ import {
   getTaskDepthFromList,
 } from "../utils/taskHierarchy";
 
+
+function taskMutationPayload(task) {
+  return {
+    name: task.name,
+    duration: task.duration,
+    predecessor: task.predecessor,
+    dependency_type: task.dependency_type,
+    lag_days: task.lag_days,
+    manual_start_date: task.manual_start_date,
+    parent_task_id: task.parent_task_id,
+    is_collapsed: task.is_collapsed,
+  };
+}
+
 /**
  * Owns the scheduler's interaction state (cell editing, selection, view) and
  * every schedule mutation: inline edits, deletion, drag reorder, hierarchy
@@ -95,7 +109,7 @@ function useScheduleActions({
                 editingCell.field === "manual_start_date" ? value : null,
             })
           : await updateTask(selectedProjectId, task.id, {
-              ...task,
+              ...taskMutationPayload(task),
               [editingCell.field]: value,
             });
 
@@ -214,7 +228,7 @@ function useScheduleActions({
 
   const handleToggleCollapse = async (task) => {
     const updatedTask = {
-      ...task,
+      ...taskMutationPayload(task),
       is_collapsed: task.is_collapsed ? 0 : 1,
     };
 

@@ -2,7 +2,12 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import get_db, get_owned_project
+from app.api.dependencies import (
+    CollectionPage,
+    get_collection_page,
+    get_db,
+    get_owned_project,
+)
 from app.models.note_delay import NoteDelay
 from app.models.project import Project
 from app.schemas.note_delay import (
@@ -22,11 +27,14 @@ def get_notes_delays(
     project_id: int,
     db: Session = Depends(get_db),
     project: Project = Depends(get_owned_project),
+    page: CollectionPage = Depends(get_collection_page),
 ):
     entries = (
         db.query(NoteDelay)
         .filter(NoteDelay.project_id == project_id)
-        .order_by(NoteDelay.date.desc())
+        .order_by(NoteDelay.date.desc(), NoteDelay.id.desc())
+        .offset(page.offset)
+        .limit(page.limit)
         .all()
     )
 

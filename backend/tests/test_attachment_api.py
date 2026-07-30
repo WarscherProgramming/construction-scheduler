@@ -423,13 +423,15 @@ class AttachmentApiTests(unittest.TestCase):
         self.assertEqual(body["project_id"], self.project_id)
         self.assertEqual(body["parent_type"], "rfi")
         self.assertEqual(body["parent_id"], self.parents["rfi"])
-        self.assertEqual(body["uploaded_by"], self.owner_id)
         self.assertEqual(body["size_bytes"], len(PDF_CONTENT))
-        self.assertEqual(body["sha256"], sha256(PDF_CONTENT).hexdigest())
+        self.assertNotIn("uploaded_by", body)
+        self.assertNotIn("sha256", body)
         self.assertNotIn("storage_key", body)
         self.assertNotIn("storage_provider", body)
 
         attachment = self.stored_attachment(body["id"])
+        self.assertEqual(attachment.uploaded_by, self.owner_id)
+        self.assertEqual(attachment.sha256, sha256(PDF_CONTENT).hexdigest())
         self.assertRegex(attachment.storage_key, r"^[0-9a-f]{32}$")
         self.assertNotIn("plans", attachment.storage_key)
         self.assertEqual(

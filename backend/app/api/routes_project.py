@@ -1,7 +1,7 @@
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from app.api.dependencies import get_db
+from app.api.dependencies import CollectionPage, get_collection_page, get_db
 from app.models.project import Project
 from app.core.security import get_current_user
 from app.schemas.project import ProjectCreate, ProjectListResponse, ProjectResponse
@@ -13,11 +13,14 @@ router = APIRouter()
 def get_projects(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user),
+    page: CollectionPage = Depends(get_collection_page),
 ):
     projects = (
         db.query(Project)
         .filter(Project.user_id == current_user["id"])
         .order_by(Project.id)
+        .offset(page.offset)
+        .limit(page.limit)
         .all()
     )
 

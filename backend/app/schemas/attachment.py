@@ -13,8 +13,6 @@ class AttachmentResponse(ORMModel):
     original_filename: str
     mime_type: str
     size_bytes: int
-    uploaded_by: int
-    sha256: str
     created_at: datetime
 
 

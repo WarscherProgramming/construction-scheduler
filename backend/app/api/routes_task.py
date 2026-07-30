@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import get_db, get_owned_project
+from app.api.dependencies import PositiveId, get_db, get_owned_project
 from app.models.task import Task
 from app.models.project import Project
 from app.schemas.common import MessageResponse
@@ -118,8 +118,7 @@ def create_task(
     new_task = Task(project_id=project_id, **values)
 
     db.add(new_task)
-    db.commit()
-
+    db.flush()
     tasks = ordered_project_tasks(db, project_id)
     recalculate_schedule(tasks)
     db.commit()
@@ -143,15 +142,8 @@ def reorder_tasks(
             detail="task_ids must be unique",
         )
 
-    tasks_to_reorder = (
-        db.query(Task)
-        .filter(
-            Task.project_id == project_id,
-            Task.id.in_(task_ids),
-        )
-        .all()
-    )
-    if len(tasks_to_reorder) != len(task_ids):
+    tasks_to_reorder = ordered_project_tasks(db, project_id)
+    if {task.id for task in tasks_to_reorder} != set(task_ids):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Task not found",
@@ -173,7 +165,7 @@ def reorder_tasks(
 )
 def update_task(
     project_id: int,
-    task_id: int,
+    task_id: PositiveId,
     updated_task: TaskUpdate,
     db: Session = Depends(get_db),
     project: Project = Depends(get_owned_project),
@@ -236,7 +228,7 @@ def update_task(
 )
 def delete_task(
     project_id: int,
-    task_id: int,
+    task_id: PositiveId,
     db: Session = Depends(get_db),
     project: Project = Depends(get_owned_project),
 ):
@@ -253,8 +245,7 @@ def delete_task(
         )
 
     db.delete(task)
-    db.commit()
-
+    db.flush()
     tasks = ordered_project_tasks(db, project_id)
     recalculate_schedule(tasks)
     db.commit()

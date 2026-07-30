@@ -2,7 +2,13 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func
 from sqlalchemy.orm import Session
-from app.api.dependencies import get_db, get_owned_project
+from app.api.dependencies import (
+    CollectionPage,
+    PositiveId,
+    get_collection_page,
+    get_db,
+    get_owned_project,
+)
 from app.models.task import Task
 from app.models.template import ScheduleTemplate, ScheduleTemplateTask
 from app.core.security import get_current_user
@@ -22,11 +28,14 @@ router = APIRouter()
 def get_templates(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user),
+    page: CollectionPage = Depends(get_collection_page),
 ):
     templates = (
         db.query(ScheduleTemplate)
         .filter(ScheduleTemplate.user_id == current_user["id"])
         .order_by(ScheduleTemplate.id)
+        .offset(page.offset)
+        .limit(page.limit)
         .all()
     )
 
@@ -62,8 +71,7 @@ def save_project_as_template(
     )
 
     db.add(new_template)
-    db.commit()
-    db.refresh(new_template)
+    db.flush()
 
     template_task_map = {}
 
@@ -109,7 +117,7 @@ def save_project_as_template(
 )
 def apply_template_to_project(
     project_id: int,
-    template_id: int,
+    template_id: PositiveId,
     db: Session = Depends(get_db),
     project: Project = Depends(get_owned_project),
 ):

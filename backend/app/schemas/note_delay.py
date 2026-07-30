@@ -2,16 +2,16 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from app.schemas.common import ORMModel
+from app.schemas.common import MAX_LONG_TEXT_LENGTH, MutationModel, ORMModel
 from app.schemas.task import DateString
 
 
-class NoteDelayCreate(BaseModel):
+class NoteDelayCreate(MutationModel):
     date: DateString
     entry_type: Literal["Note", "Delay"]
     company: str | None = Field(default=None, max_length=255)
-    description: str = Field(min_length=1)
-    impact: str | None = None
+    description: str = Field(min_length=1, max_length=MAX_LONG_TEXT_LENGTH)
+    impact: str | None = Field(default=None, max_length=MAX_LONG_TEXT_LENGTH)
 
 
 class NoteDelayResponse(ORMModel):

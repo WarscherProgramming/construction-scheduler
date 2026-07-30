@@ -135,11 +135,19 @@ def get_project_change_order(
     return change_order
 
 
-def list_change_orders(db: Session, project_id: int) -> list[ChangeOrder]:
+def list_change_orders(
+    db: Session,
+    project_id: int,
+    *,
+    limit: int = 500,
+    offset: int = 0,
+) -> list[ChangeOrder]:
     return (
         db.query(ChangeOrder)
         .filter(ChangeOrder.project_id == project_id)
         .order_by(ChangeOrder.date.desc(), ChangeOrder.id.desc())
+        .offset(offset)
+        .limit(limit)
         .all()
     )
 

@@ -9,7 +9,12 @@ from pydantic import (
     model_validator,
 )
 
-from app.schemas.common import ORMModel
+from app.schemas.common import (
+    MAX_LONG_TEXT_LENGTH,
+    MutationModel,
+    ORMModel,
+    UpdateMutationModel,
+)
 from app.schemas.task import DateString
 
 
@@ -21,7 +26,11 @@ RequiredLocation = Annotated[
 ]
 RequiredDescription = Annotated[
     str,
-    StringConstraints(strip_whitespace=True, min_length=1),
+    StringConstraints(
+        strip_whitespace=True,
+        min_length=1,
+        max_length=MAX_LONG_TEXT_LENGTH,
+    ),
 ]
 
 
@@ -35,7 +44,7 @@ def validate_date_order(
         )
 
 
-class PunchItemCreate(BaseModel):
+class PunchItemCreate(MutationModel):
     location: RequiredLocation
     trade: str | None = Field(default=None, max_length=255)
     description: RequiredDescription
@@ -52,7 +61,7 @@ class PunchItemCreate(BaseModel):
         return self
 
 
-class PunchItemUpdate(BaseModel):
+class PunchItemUpdate(UpdateMutationModel):
     location: RequiredLocation | None = None
     trade: str | None = Field(default=None, max_length=255)
     description: RequiredDescription | None = None

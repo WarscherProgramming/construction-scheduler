@@ -9,14 +9,23 @@ from pydantic import (
     model_validator,
 )
 
-from app.schemas.common import ORMModel
+from app.schemas.common import (
+    MAX_LONG_TEXT_LENGTH,
+    MutationModel,
+    ORMModel,
+    UpdateMutationModel,
+)
 from app.schemas.task import DateString
 
 
 RFIStatus = Literal["Open", "Pending", "Closed"]
 RequiredText = Annotated[
     str,
-    StringConstraints(strip_whitespace=True, min_length=1),
+    StringConstraints(
+        strip_whitespace=True,
+        min_length=1,
+        max_length=MAX_LONG_TEXT_LENGTH,
+    ),
 ]
 RFISubject = Annotated[
     str,
@@ -24,13 +33,13 @@ RFISubject = Annotated[
 ]
 
 
-class RFICreate(BaseModel):
+class RFICreate(MutationModel):
     subject: RFISubject
     question: RequiredText
     responsible_company: str | None = Field(default=None, max_length=255)
     submitted_date: DateString
     due_date: DateString | None = None
-    response: str | None = None
+    response: str | None = Field(default=None, max_length=MAX_LONG_TEXT_LENGTH)
     status: RFIStatus = "Open"
 
     @model_validator(mode="after")
@@ -42,13 +51,13 @@ class RFICreate(BaseModel):
         return self
 
 
-class RFIUpdate(BaseModel):
+class RFIUpdate(UpdateMutationModel):
     subject: RFISubject | None = None
     question: RequiredText | None = None
     responsible_company: str | None = Field(default=None, max_length=255)
     submitted_date: DateString | None = None
     due_date: DateString | None = None
-    response: str | None = None
+    response: str | None = Field(default=None, max_length=MAX_LONG_TEXT_LENGTH)
     status: RFIStatus | None = None
 
     @field_validator("subject", "question", "submitted_date", "status")

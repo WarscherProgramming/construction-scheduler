@@ -17,6 +17,7 @@ from app.services.pdf_export import (
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+MAX_EXPORT_TASKS = 5_000
 
 
 @router.get("/projects/{project_id}/export/pdf")
@@ -29,8 +30,14 @@ def export_project_pdf(
         db.query(Task)
         .filter(Task.project_id == project_id)
         .order_by(Task.order_index, Task.id)
+        .limit(MAX_EXPORT_TASKS + 1)
         .all()
     )
+    if len(tasks) > MAX_EXPORT_TASKS:
+        raise HTTPException(
+            status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+            detail="Project schedule is too large to export",
+        )
 
     try:
         file_path = build_project_schedule_pdf(project, tasks)
