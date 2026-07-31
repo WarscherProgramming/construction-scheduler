@@ -295,6 +295,41 @@ export function listDocuments(projectId, options = {}) {
   );
 }
 
+export function exploreDocuments(projectId, options = {}) {
+  const query = new URLSearchParams();
+  const parameters = {
+    folder_id: options.folderId,
+    search: options.search,
+    document_type: options.documentType,
+    mime_type: options.mimeType,
+    extension: options.extension,
+    sort: options.sort,
+    order: options.order,
+    limit: options.limit,
+    offset: options.offset,
+  };
+  for (const [name, value] of Object.entries(parameters)) {
+    if (value !== undefined && value !== null && value !== "") {
+      query.set(name, String(value));
+    }
+  }
+  const suffix = query.size ? `?${query.toString()}` : "";
+  return authenticatedRequest(
+    `/projects/${encodeURIComponent(String(projectId))}/documents/explorer${suffix}`,
+    { signal: options.signal }
+  );
+}
+
+export function listRecentDocuments(projectId, options = {}) {
+  const query = new URLSearchParams();
+  if (options.limit != null) query.set("limit", String(options.limit));
+  const suffix = query.size ? `?${query.toString()}` : "";
+  return authenticatedRequest(
+    `/projects/${encodeURIComponent(String(projectId))}/documents/recent${suffix}`,
+    { signal: options.signal }
+  );
+}
+
 export function getDocument(documentId, options = {}) {
   return authenticatedRequest(
     `/documents/${encodeURIComponent(String(documentId))}`,
@@ -351,10 +386,20 @@ export function listFolders(projectId, options = {}) {
   );
 }
 
-export function createFolder(projectId, folder) {
-  return jsonRequest(
+export function listFolderTree(projectId, options = {}) {
+  return authenticatedRequest(
+    `/projects/${encodeURIComponent(String(projectId))}/folders/tree`,
+    { signal: options.signal }
+  );
+}
+
+export function createFolder(projectId, folder, options = {}) {
+  return authenticatedRequest(
     `/projects/${encodeURIComponent(String(projectId))}/folders`,
-    "POST",
-    folder
+    {
+      method: "POST",
+      body: JSON.stringify(folder),
+      signal: options.signal,
+    }
   );
 }

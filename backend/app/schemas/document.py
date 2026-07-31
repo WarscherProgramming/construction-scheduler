@@ -50,3 +50,57 @@ class DocumentResponse(ORMModel):
 
 class DocumentListResponse(BaseModel):
     documents: list[DocumentResponse]
+
+
+class ExplorerFolderResponse(BaseModel):
+    id: int
+    name: str
+    parent_folder_id: int | None
+    created_at: datetime
+    updated_at: datetime
+    child_folder_count: int
+    document_count: int
+
+
+class BreadcrumbResponse(BaseModel):
+    id: int
+    name: str
+
+
+class ExplorerDocumentResponse(BaseModel):
+    id: int
+    folder_id: int | None
+    display_name: str
+    original_filename: str
+    extension: str
+    mime_type: str
+    size_bytes: int
+    document_type: str
+    status: str
+    version: int
+    created_at: datetime
+    updated_at: datetime
+
+
+class ExplorerPaginationResponse(BaseModel):
+    limit: int
+    offset: int
+    total: int
+    has_more: bool
+
+
+class DocumentExplorerResponse(BaseModel):
+    project_id: int
+    current_folder: ExplorerFolderResponse | None
+    breadcrumbs: list[BreadcrumbResponse]
+    folders: list[ExplorerFolderResponse]
+    documents: list[ExplorerDocumentResponse]
+    pagination: ExplorerPaginationResponse
+
+
+class FolderTreeResponse(BaseModel):
+    folders: list[ExplorerFolderResponse]
+
+
+class RecentDocumentsResponse(BaseModel):
+    documents: list[ExplorerDocumentResponse]

@@ -1,8 +1,8 @@
 # FieldFlow — Portfolio Copy
 
 Ready-to-use descriptions for resumes, portfolio sites, and LinkedIn.
-Keep the metrics in sync with the repo (currently **523 primary tests: 295
-frontend across 44 files + 228 backend**, with 271 backend subtests reported
+Keep the metrics in sync with the repo (currently **553 primary tests: 317
+frontend across 46 files + 236 backend**, with 274 backend subtests reported
 separately).
 
 ---
@@ -15,7 +15,8 @@ separately).
 > (React 19, FastAPI, PostgreSQL) with a drag-and-drop CPM-style scheduler,
 > executive dashboard, enhanced project-scoped Change Order, RFI, Submittal,
 > and Punch List workflows, reusable Document Management across six resource
-> types, hardened rotating-session authentication, and 523 automated tests.
+> types, a project document explorer, hardened rotating-session
+> authentication, and 553 automated tests.
 
 ### Resume bullets
 
@@ -54,11 +55,13 @@ separately).
 >   Logs, RFIs, Submittals, Punch Items, and Change Orders: authenticated
 >   streamed upload/download, 25 MiB validation, local and private
 >   S3-compatible storage, accessible React attachment UI, and durable
->   cleanup across database and object-storage failures.
+>   cleanup across database and object-storage failures; added a responsive
+>   project explorer with nested folders, metadata search, batch uploads, and
+>   soft deletion.
 > - Hardened authentication with memory-only access JWTs, rotating opaque
 >   refresh sessions, replay-family revocation, CSRF and exact-Origin
 >   enforcement, route-wide tenant isolation, and bounded abuse controls;
->   verified the complete platform with 523 automated tests (Vitest/RTL +
+>   verified the complete platform with 553 automated tests (Vitest/RTL +
 >   pytest).
 
 ### Portfolio-site paragraph
@@ -76,7 +79,8 @@ separately).
 > project emphasizes production polish: a token-based accessible design
 > system, first-run onboarding that seeds a realistic demo project,
 > production-hardened rotating-session authentication, reusable secure
-> attachments across six construction workflows, and 523 automated tests
+> attachments across six construction workflows, a responsive project
+> document explorer, and 553 automated tests
 > across the stack.
 
 ---
@@ -94,8 +98,11 @@ same ownership rules, and recoverable when storage providers are unavailable.
 
 FieldFlow uses one generic attachment metadata model and an explicit parent
 resolver registry across six resource types: Projects, Daily Logs, RFIs,
-Submittals, Punch Items, and Change Orders. PostgreSQL stores metadata and
-SHA-256 checksums while opaque binary objects stream to local development
+Submittals, Punch Items, and Change Orders. Its project explorer adds nested
+folder navigation, safe metadata search, bounded sorting and pagination,
+recent documents, batch uploads, and authenticated download. PostgreSQL
+stores metadata and SHA-256 checksums while opaque binary objects stream to
+local development
 storage or private S3-compatible production storage. A shared React
 `AttachmentPanel` and `useAttachments` hook provide multiple-file upload,
 partial-success feedback, authenticated preview/download, deletion, stale
@@ -115,12 +122,12 @@ available while preserving recoverable cleanup work.
 
 ### Measurable outcomes
 
-- Six integrated resource types through one attachment API, model, storage
-  abstraction, hook, and panel
+- Six integrated resource types and one project explorer through shared
+  attachment and document APIs, models, storage abstractions, hooks, and UI
 - 25 MiB per-file limit with PDF, image, text, Word, and Excel support
 - Private authenticated delivery with no public object keys or credentials
-- 295 frontend tests across 44 files and 228 backend tests, for 523 primary
-  tests passed; 271 backend subtests are tracked separately
+- 317 frontend tests across 46 files and 236 backend tests, for 553 primary
+  tests passed; 274 backend subtests are tracked separately
 - Lazy per-record panel mounting with no dashboard attachment preloading
 
 ---
@@ -142,10 +149,11 @@ available while preserving recoverable cleanup work.
 > 📝 Daily logs, inspections, delays, and project-scoped Change Order, RFI,
 > Submittal, and Punch List workflows with dashboard workflow metrics
 > 📎 Secure project documents and record attachments across six workflows,
-> backed by private object storage and durable cleanup
+> with nested folder browsing, metadata search, private object storage, and
+> durable cleanup
 >
 > Under the hood: React 19 + Vite, FastAPI + SQLAlchemy + PostgreSQL, hardened
-> rotating-session auth, an accessible component design system, and 523
+> rotating-session auth, an accessible component design system, and 553
 > automated tests.
 >
 > The demo seeds a full sample project in ~10 seconds — no signup friction:
@@ -159,8 +167,9 @@ available while preserving recoverable cleanup work.
 > FieldFlow — full-stack construction scheduling SaaS. React 19 · FastAPI ·
 > PostgreSQL. Drag-and-drop CPM-style scheduler, Gantt + PDF export, executive
 > dashboard, project-scoped Change Order, RFI, Submittal, and Punch List
-> workflows, secure Document Management across six resource types, accessible
-> design system, 523 automated tests. Live demo seeds a complete sample
+> workflows, secure Document Management across six resource types, a project
+> document explorer, accessible design system, 553 automated tests. Live demo
+> seeds a complete sample
 > project in seconds.
 
 ---

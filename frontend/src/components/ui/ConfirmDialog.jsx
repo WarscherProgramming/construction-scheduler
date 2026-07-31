@@ -20,6 +20,7 @@ function ConfirmDialog({
   confirmLabel = "Confirm",
   cancelLabel = "Cancel",
   destructive = false,
+  confirmDisabled = false,
   onConfirm,
   onCancel,
 }) {
@@ -106,6 +107,7 @@ function ConfirmDialog({
           </Button>
           <Button
             variant={destructive ? "danger" : "primary"}
+            disabled={confirmDisabled}
             onClick={onConfirm}
           >
             {destructive && <Icon name="trash" size={16} />}

@@ -11,6 +11,9 @@ const NotesDelaysPage = lazy(() => import("./pages/NotesDelaysPage"));
 const ProjectDashboardPage = lazy(
   () => import("./pages/ProjectDashboardPage")
 );
+const ProjectDocumentsPage = lazy(
+  () => import("./pages/ProjectDocumentsPage")
+);
 const ProjectSettingsPage = lazy(
   () => import("./pages/ProjectSettingsPage")
 );
@@ -396,6 +399,18 @@ function AppRouter({
         onNameChange={forms.setCompanyName}
         onTradeChange={forms.setCompanyTrade}
         onAttachmentError={onAttachmentError}
+      />
+    );
+  }
+
+  if (currentPage === "projectDocuments") {
+    return (
+      <ProjectDocumentsPage
+        key={selectedProjectId}
+        projectId={selectedProjectId}
+        projectName={projectName}
+        {...navProps}
+        onRequestError={onAttachmentError}
       />
     );
   }

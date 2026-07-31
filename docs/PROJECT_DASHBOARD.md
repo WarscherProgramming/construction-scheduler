@@ -227,7 +227,7 @@ refresh.
 
 ## Testing
 
-The frontend suite currently passes 295 tests across 44 files. Dashboard
+The frontend suite currently passes 317 tests across 46 files. Dashboard
 coverage includes:
 
 - API URL and required `as_of` behavior
@@ -243,7 +243,7 @@ coverage includes:
 - Attention Required, Upcoming Schedule, Workflow Analytics, and Recent
   Updates rendering
 
-The backend suite currently passes 228 primary tests, with 271 separately
+The backend suite currently passes 236 primary tests, with 274 separately
 reported subtests. `test_dashboard_api.py` covers authentication, ownership,
 query validation, aggregate definitions, bounded ordering, aware timestamps,
 legacy statuses, and query behavior.
@@ -277,7 +277,7 @@ Final automated verification:
 
 | Check | Result |
 |---|---|
-| Frontend tests | Pass: 295 tests across 44 files |
+| Frontend tests | Pass: 317 tests across 46 files |
 | ESLint | Pass: no errors or warnings |
 | Production build | Pass: 100 modules transformed |
 | Dashboard bundle budget | Pass: 5.22 kB gzip against a 5.25 kB limit |

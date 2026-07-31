@@ -1,8 +1,9 @@
 # Document Storage Foundation
 
-M16.1 establishes the backend storage and metadata layer for future document
-features. It does not add a document explorer, drawing management, OCR, AI
-indexing, rename, move, or version-history workflows.
+M16.1 establishes the backend storage and metadata layer for document
+features. M16.2 adds the project-scoped explorer on that foundation. Drawing
+management, OCR, AI indexing, rename, move, and version-history workflows
+remain outside the shipped scope.
 
 ## Existing Attachment System
 
@@ -117,13 +118,70 @@ All routes require M15 authentication and project ownership:
 - `GET /documents/{document_id}/download`
 - `DELETE /documents/{document_id}`
 - `GET /projects/{project_id}/documents`
+- `GET /projects/{project_id}/documents/explorer`
+- `GET /projects/{project_id}/documents/recent`
 - `GET /projects/{project_id}/folders`
+- `GET /projects/{project_id}/folders/tree`
 - `POST /projects/{project_id}/folders`
 
 Collection endpoints support the shared bounded `limit` and `offset`
 contract. Document listing optionally scopes to one active project folder.
-The frontend API layer includes matching list, upload, metadata, download,
-delete, and folder helpers; M16.1 adds no page, route, or visible UI.
+The frontend API layer includes matching explorer, recent, tree, upload,
+metadata, download, delete, and folder helpers.
+
+## Project Document Explorer
+
+The protected `#/projects/{project_id}/documents` route is lazy loaded and
+uses `ProjectLayout`. A dedicated `useDocumentExplorer` hook owns explorer,
+tree, recent-document, upload, download, folder-creation, and deletion state.
+Identity checks, request cancellation, delayed Strict Mode cleanup, and
+project-keyed mounting prevent an older project or folder response from
+replacing the current view.
+
+The explorer response contains the current folder, safe breadcrumbs,
+immediate child folders with grouped child/document counts, safe document
+metadata, and pagination metadata. The flat folder-tree response is capped at
+500 active folders and validates every ancestry chain to a maximum depth of
+32. The frontend builds the visual hierarchy from parent IDs; there is no
+unbounded recursive API payload.
+
+Document search is metadata-only and limited to 200 characters. It searches
+display name, original filename, extension, document type, and MIME type
+case-insensitively. SQL wildcard characters are escaped and treated
+literally. Explicit allowlists control sort fields and direction. Exact
+document-type, MIME-type, and extension filters are supported. Document
+results default to 50 per page and are capped at 100, with a stable document
+ID secondary order.
+
+Recent documents include only active current versions in active folders and
+are deterministically newest first, with a maximum limit of 25. Explorer,
+tree, and recent responses use `Cache-Control: no-store` and exclude
+checksums, storage metadata, deleted records, cleanup state, and internal
+paths.
+
+Uploads continue through the M16.1 multipart endpoint. The explorer accepts
+picker, multiple-file, and drag-and-drop input, sends files sequentially,
+reports each result, preserves successful files when another fails, and can
+retry only failures. Successful mutations refresh the current listing, tree
+counts, and recent documents without changing location.
+
+Folder creation targets the project root or current folder and preserves the
+existing sibling-uniqueness and ancestry validation. Document deletion uses a
+name-specific confirmation and the existing idempotent soft-delete endpoint.
+The UI deliberately says that removal is not permanent. Downloads use the
+authenticated streaming endpoint and browser Blob downloads; provider URLs
+and paths never reach the UI.
+
+The responsive desktop layout uses a folder sidebar, action/search controls,
+breadcrumbs, one combined folder/document table, and recent documents. At
+smaller widths the tree becomes an explicit folder browser and rows become
+stacked records. Controls retain visible labels, keyboard alternatives,
+focus-visible styling, modal focus traps/restoration, Escape handling, live
+upload results, and non-color-only status text.
+
+M16.2 provides metadata details and authenticated download only. It does not
+render active HTML, SVG, Office documents, or a drawing/PDF annotation
+viewer.
 
 ## Security and Validation
 
@@ -151,12 +209,15 @@ existing records and one Alembic head.
 Coverage includes provider contracts, unsafe keys, upload/download/list
 behavior, safe responses, ownership, folder hierarchy and cycles, validation,
 checksums, metadata rollback, durable cleanup fallback, soft-delete
-idempotency, migration reversibility, and frontend API requests.
+idempotency, migration reversibility, explorer responses, grouped counts,
+breadcrumbs, escaped search, allowlisted sorting, filters, pagination, recent
+documents, stale-request protection, upload retry, dialogs, routing,
+accessibility, and frontend API requests.
 
 ## Deferred Work
 
-M16.2 may build the document explorer and workflow integration on this
-foundation. Rename, move, folder deletion, restore, permanent purge,
-user-facing version history, duplicate detection, signed-URL delivery,
-thumbnails, bulk operations, drawings, OCR, AI indexing, and antivirus
-implementation remain out of M16.1.
+M16.3 and later document phases remain unimplemented. Rename, move, folder
+deletion, restore, permanent purge, user-facing version history, duplicate
+detection, direct-to-cloud upload, signed-URL delivery, thumbnails, bulk
+operations, drawing workflows, PDF annotation, OCR, AI indexing, and
+antivirus implementation remain deferred.

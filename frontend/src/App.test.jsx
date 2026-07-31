@@ -48,6 +48,13 @@ vi.mock("./services/api", () => ({
   uploadAttachment: vi.fn(),
   downloadAttachment: vi.fn(),
   deleteAttachment: vi.fn(),
+  exploreDocuments: vi.fn(),
+  listFolderTree: vi.fn(),
+  listRecentDocuments: vi.fn(),
+  uploadDocument: vi.fn(),
+  downloadDocument: vi.fn(),
+  deleteDocument: vi.fn(),
+  createFolder: vi.fn(),
   reorderTasks: vi.fn(),
   loginUser: vi.fn(),
   registerUser: vi.fn(),
@@ -80,6 +87,9 @@ import {
   fetchSubmittals,
   fetchTasks,
   fetchTemplates,
+  exploreDocuments,
+  listFolderTree,
+  listRecentDocuments,
   listAttachments,
   updateRFI,
   updateChangeOrder,
@@ -222,6 +232,21 @@ describe("App integration (hooks wiring)", () => {
     updateSubmittal.mockResolvedValue({});
     deleteSubmittal.mockResolvedValue({ message: "Submittal deleted" });
     fetchPunchItems.mockResolvedValue({ punch_items: [] });
+    exploreDocuments.mockResolvedValue({
+      project_id: 1,
+      current_folder: null,
+      breadcrumbs: [],
+      folders: [],
+      documents: [],
+      pagination: {
+        limit: 50,
+        offset: 0,
+        total: 0,
+        has_more: false,
+      },
+    });
+    listFolderTree.mockResolvedValue({ folders: [] });
+    listRecentDocuments.mockResolvedValue({ documents: [] });
     createPunchItem.mockResolvedValue({});
     updatePunchItem.mockResolvedValue({});
     deletePunchItem.mockResolvedValue({ message: "Punch Item deleted" });
@@ -367,6 +392,34 @@ describe("App integration (hooks wiring)", () => {
     await waitFor(() => {
       expect(listAttachments).toHaveBeenCalledTimes(1);
     });
+  });
+
+  it("routes to the project document explorer without loading attachment panels", async () => {
+    const user = userEvent.setup();
+    fetchProjects.mockResolvedValue({
+      projects: [{ id: 1, name: "Riverside" }],
+    });
+
+    renderApp();
+
+    await screen.findByRole("option", { name: "Riverside" });
+    await user.selectOptions(screen.getByLabelText("Project"), "1");
+    await screen.findByRole("heading", { name: "Project Dashboard" });
+    await user.click(screen.getByRole("button", { name: "Documents" }));
+
+    expect(window.location.hash).toBe("#/projects/1/documents");
+    expect(
+      await screen.findByRole("heading", {
+        name: "Project Documents",
+        level: 1,
+      })
+    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(exploreDocuments).toHaveBeenCalledTimes(1);
+      expect(listFolderTree).toHaveBeenCalledTimes(1);
+      expect(listRecentDocuments).toHaveBeenCalledTimes(1);
+    });
+    expect(listAttachments).not.toHaveBeenCalled();
   });
 
   it("clears dashboard data, aborts the old request, and rejects stale results", async () => {

@@ -14,6 +14,7 @@ const NAV_ITEMS = [
   { id: "rfis", label: "RFIs", icon: "message-square" },
   { id: "submittals", label: "Submittals", icon: "file-text" },
   { id: "punchItems", label: "Punch List", icon: "clipboard-check" },
+  { id: "projectDocuments", label: "Documents", icon: "folder" },
   { id: "projectSettings", label: "Project Settings", icon: "settings" },
 ];
 

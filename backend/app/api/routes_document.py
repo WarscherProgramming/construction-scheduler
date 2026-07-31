@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import (
     APIRouter,
@@ -7,6 +7,7 @@ from fastapi import (
     Form,
     Header,
     Query,
+    Response,
     UploadFile,
 )
 from fastapi.responses import StreamingResponse
@@ -28,16 +29,22 @@ from app.models.project import Project
 from app.schemas.common import MessageResponse
 from app.schemas.document import (
     DocumentListResponse,
+    DocumentExplorerResponse,
     DocumentResponse,
+    FolderTreeResponse,
     FolderCreate,
     FolderListResponse,
     FolderResponse,
+    RecentDocumentsResponse,
 )
 from app.services.document import (
     create_document,
     create_folder,
     document_content_disposition,
+    get_document_explorer,
+    get_folder_tree,
     get_owned_document,
+    get_recent_documents,
     list_project_documents,
     list_project_folders,
     open_document_stream,
@@ -47,6 +54,14 @@ from app.storage.provider import StorageProvider
 
 
 router = APIRouter()
+ExplorerSort = Literal[
+    "name",
+    "created_at",
+    "updated_at",
+    "size_bytes",
+    "document_type",
+]
+SortOrder = Literal["asc", "desc"]
 
 
 @router.post(
@@ -166,6 +181,65 @@ def get_project_documents(
 
 
 @router.get(
+    "/projects/{project_id}/documents/explorer",
+    response_model=DocumentExplorerResponse,
+)
+def explore_project_documents(
+    project_id: int,
+    response: Response,
+    folder_id: Annotated[
+        int | None,
+        Query(ge=1, le=2_147_483_647),
+    ] = None,
+    search: Annotated[str | None, Query(max_length=200)] = None,
+    document_type: Annotated[str | None, Query(max_length=50)] = None,
+    mime_type: Annotated[str | None, Query(max_length=255)] = None,
+    extension: Annotated[str | None, Query(max_length=20)] = None,
+    sort: ExplorerSort = "name",
+    order: SortOrder = "asc",
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    offset: Annotated[int, Query(ge=0, le=2_147_483_647)] = 0,
+    db: Session = Depends(get_db),
+    project: Project = Depends(get_owned_project),
+):
+    response.headers["Cache-Control"] = "no-store"
+    return get_document_explorer(
+        db,
+        project_id,
+        folder_id=folder_id,
+        search=search,
+        document_type=document_type,
+        mime_type=mime_type,
+        extension=extension,
+        sort=sort,
+        order=order,
+        limit=limit,
+        offset=offset,
+    )
+
+
+@router.get(
+    "/projects/{project_id}/documents/recent",
+    response_model=RecentDocumentsResponse,
+)
+def get_project_recent_documents(
+    project_id: int,
+    response: Response,
+    limit: Annotated[int, Query(ge=1, le=25)] = 8,
+    db: Session = Depends(get_db),
+    project: Project = Depends(get_owned_project),
+):
+    response.headers["Cache-Control"] = "no-store"
+    return {
+        "documents": get_recent_documents(
+            db,
+            project_id,
+            limit=limit,
+        )
+    }
+
+
+@router.get(
     "/projects/{project_id}/folders",
     response_model=FolderListResponse,
 )
@@ -183,6 +257,20 @@ def get_project_folders(
             offset=page.offset,
         )
     }
+
+
+@router.get(
+    "/projects/{project_id}/folders/tree",
+    response_model=FolderTreeResponse,
+)
+def get_project_folder_tree(
+    project_id: int,
+    response: Response,
+    db: Session = Depends(get_db),
+    project: Project = Depends(get_owned_project),
+):
+    response.headers["Cache-Control"] = "no-store"
+    return {"folders": get_folder_tree(db, project_id)}
 
 
 @router.post(

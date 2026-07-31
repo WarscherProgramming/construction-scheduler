@@ -4,9 +4,12 @@ import {
   createFolder,
   deleteDocument,
   downloadDocument,
+  exploreDocuments,
   getDocument,
+  listFolderTree,
   listDocuments,
   listFolders,
+  listRecentDocuments,
   uploadDocument,
 } from "./api";
 import { configureAuthentication } from "./httpClient";
@@ -118,5 +121,36 @@ describe("document API", () => {
       name: "Drawings",
       parent_folder_id: 5,
     });
+  });
+
+  it("requests the explorer, recent documents, and bounded folder tree", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockImplementation(() => Promise.resolve(jsonResponse({})));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await exploreDocuments(7, {
+      folderId: 2,
+      search: "issued plans",
+      documentType: "Drawing",
+      mimeType: "application/pdf",
+      extension: ".pdf",
+      sort: "updated_at",
+      order: "desc",
+      limit: 25,
+      offset: 50,
+    });
+    await listRecentDocuments(7, { limit: 6 });
+    await listFolderTree(7);
+
+    expect(fetchMock.mock.calls[0][0]).toContain(
+      "/projects/7/documents/explorer?folder_id=2&search=issued+plans&document_type=Drawing&mime_type=application%2Fpdf&extension=.pdf&sort=updated_at&order=desc&limit=25&offset=50"
+    );
+    expect(fetchMock.mock.calls[1][0]).toContain(
+      "/projects/7/documents/recent?limit=6"
+    );
+    expect(fetchMock.mock.calls[2][0]).toContain(
+      "/projects/7/folders/tree"
+    );
   });
 });

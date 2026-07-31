@@ -9,6 +9,7 @@ from urllib.parse import quote
 import uuid
 
 from fastapi import HTTPException, UploadFile, status
+from sqlalchemy import func, or_
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -36,6 +37,8 @@ MAX_FILENAME_LENGTH = 255
 MAX_EXTENSION_LENGTH = 20
 MAX_DISPLAY_NAME_LENGTH = 255
 MAX_DOCUMENT_TYPE_LENGTH = 50
+MAX_FOLDER_TREE_ITEMS = 500
+MAX_FOLDER_DEPTH = 32
 RESERVED_FILENAME_STEMS = {
     "CON",
     "PRN",
@@ -482,6 +485,384 @@ def list_project_documents(
         .limit(limit)
         .all()
     )
+
+
+def _active_document_query(db: Session, project_id: int):
+    return (
+        db.query(Document)
+        .outerjoin(Folder, Folder.id == Document.folder_id)
+        .filter(
+            Document.project_id == project_id,
+            Document.deleted_at.is_(None),
+            Document.is_current_version.is_(True),
+            or_(
+                Document.folder_id.is_(None),
+                Folder.deleted_at.is_(None),
+            ),
+        )
+    )
+
+
+def _folder_count_maps(
+    db: Session,
+    project_id: int,
+) -> tuple[dict[int, int], dict[int, int]]:
+    child_counts = {
+        parent_id: count
+        for parent_id, count in (
+            db.query(
+                Folder.parent_folder_id,
+                func.count(Folder.id),
+            )
+            .filter(
+                Folder.project_id == project_id,
+                Folder.deleted_at.is_(None),
+                Folder.parent_folder_id.is_not(None),
+            )
+            .group_by(Folder.parent_folder_id)
+            .all()
+        )
+    }
+    document_counts = {
+        folder_id: count
+        for folder_id, count in (
+            db.query(
+                Document.folder_id,
+                func.count(Document.id),
+            )
+            .join(Folder, Folder.id == Document.folder_id)
+            .filter(
+                Document.project_id == project_id,
+                Document.deleted_at.is_(None),
+                Document.is_current_version.is_(True),
+                Folder.deleted_at.is_(None),
+            )
+            .group_by(Document.folder_id)
+            .all()
+        )
+    }
+    return child_counts, document_counts
+
+
+def _folder_response(
+    folder: Folder,
+    child_counts: dict[int, int],
+    document_counts: dict[int, int],
+) -> dict:
+    return {
+        "id": folder.id,
+        "name": folder.name,
+        "parent_folder_id": folder.parent_folder_id,
+        "created_at": folder.created_at,
+        "updated_at": folder.updated_at,
+        "child_folder_count": child_counts.get(folder.id, 0),
+        "document_count": document_counts.get(folder.id, 0),
+    }
+
+
+def _document_response(document: Document) -> dict:
+    return {
+        "id": document.id,
+        "folder_id": document.folder_id,
+        "display_name": document.display_name,
+        "original_filename": document.original_filename,
+        "extension": document.extension,
+        "mime_type": document.mime_type,
+        "size_bytes": document.size_bytes,
+        "document_type": document.document_type,
+        "status": document.status,
+        "version": document.version,
+        "created_at": document.created_at,
+        "updated_at": document.updated_at,
+    }
+
+
+def _folder_breadcrumbs(
+    db: Session,
+    project_id: int,
+    current_folder: Folder | None,
+) -> list[dict]:
+    if current_folder is None:
+        return []
+
+    folder_ids = [
+        int(value)
+        for value in current_folder.path.strip("/").split("/")
+        if value
+    ]
+    if (
+        not folder_ids
+        or len(folder_ids) > MAX_FOLDER_DEPTH
+        or folder_ids[-1] != current_folder.id
+        or len(set(folder_ids)) != len(folder_ids)
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Folder hierarchy is invalid",
+        )
+
+    folders = (
+        db.query(Folder)
+        .filter(
+            Folder.project_id == project_id,
+            Folder.id.in_(folder_ids),
+            Folder.deleted_at.is_(None),
+        )
+        .all()
+    )
+    by_id = {folder.id: folder for folder in folders}
+    if len(by_id) != len(folder_ids):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Folder hierarchy is invalid",
+        )
+    return [
+        {"id": folder_id, "name": by_id[folder_id].name}
+        for folder_id in folder_ids
+    ]
+
+
+def _normalize_filter(
+    value: str | None,
+    *,
+    field_name: str,
+    maximum: int,
+) -> str | None:
+    if value is None:
+        return None
+    normalized = unicodedata.normalize("NFKC", value).strip()
+    if (
+        not normalized
+        or len(normalized) > maximum
+        or any(
+            character == "\x00"
+            or unicodedata.category(character).startswith("C")
+            for character in normalized
+        )
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=f"A valid {field_name} is required",
+        )
+    return normalized
+
+
+def get_document_explorer(
+    db: Session,
+    project_id: int,
+    *,
+    folder_id: int | None,
+    search: str | None,
+    document_type: str | None,
+    mime_type: str | None,
+    extension: str | None,
+    sort: str,
+    order: str,
+    limit: int,
+    offset: int,
+) -> dict:
+    current_folder = (
+        get_project_folder(db, project_id, folder_id)
+        if folder_id is not None
+        else None
+    )
+    child_counts, document_counts = _folder_count_maps(db, project_id)
+    folder_query = db.query(Folder).filter(
+        Folder.project_id == project_id,
+        Folder.deleted_at.is_(None),
+    )
+    if current_folder is None:
+        folder_query = folder_query.filter(
+            Folder.parent_folder_id.is_(None)
+        )
+    else:
+        folder_query = folder_query.filter(
+            Folder.parent_folder_id == current_folder.id
+        )
+    folders = folder_query.order_by(
+        func.lower(Folder.name).asc(),
+        Folder.id.asc(),
+    ).all()
+
+    query = _active_document_query(db, project_id)
+    if current_folder is None:
+        query = query.filter(Document.folder_id.is_(None))
+    else:
+        query = query.filter(Document.folder_id == current_folder.id)
+
+    normalized_search = _normalize_filter(
+        search,
+        field_name="search query",
+        maximum=200,
+    )
+    if normalized_search:
+        escaped = (
+            normalized_search.lower()
+            .replace("\\", "\\\\")
+            .replace("%", "\\%")
+            .replace("_", "\\_")
+        )
+        pattern = f"%{escaped}%"
+        query = query.filter(
+            or_(
+                func.lower(Document.display_name).like(
+                    pattern,
+                    escape="\\",
+                ),
+                func.lower(Document.original_filename).like(
+                    pattern,
+                    escape="\\",
+                ),
+                func.lower(Document.extension).like(pattern, escape="\\"),
+                func.lower(Document.document_type).like(
+                    pattern,
+                    escape="\\",
+                ),
+                func.lower(Document.mime_type).like(pattern, escape="\\"),
+            )
+        )
+
+    normalized_document_type = _normalize_filter(
+        document_type,
+        field_name="document type",
+        maximum=MAX_DOCUMENT_TYPE_LENGTH,
+    )
+    if normalized_document_type:
+        query = query.filter(
+            func.lower(Document.document_type)
+            == normalized_document_type.lower()
+        )
+
+    normalized_mime_type = _normalize_filter(
+        mime_type,
+        field_name="MIME type",
+        maximum=255,
+    )
+    if normalized_mime_type:
+        query = query.filter(
+            func.lower(Document.mime_type) == normalized_mime_type.lower()
+        )
+
+    normalized_extension = _normalize_filter(
+        extension,
+        field_name="file extension",
+        maximum=MAX_EXTENSION_LENGTH,
+    )
+    if normalized_extension:
+        extension_value = normalized_extension.lower()
+        if not extension_value.startswith("."):
+            extension_value = f".{extension_value}"
+        query = query.filter(Document.extension == extension_value)
+
+    total = query.count()
+    sort_columns = {
+        "name": func.lower(Document.display_name),
+        "created_at": Document.created_at,
+        "updated_at": Document.updated_at,
+        "size_bytes": Document.size_bytes,
+        "document_type": func.lower(Document.document_type),
+    }
+    primary_order = (
+        sort_columns[sort].desc()
+        if order == "desc"
+        else sort_columns[sort].asc()
+    )
+    documents = (
+        query.order_by(primary_order, Document.id.asc())
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
+
+    return {
+        "project_id": project_id,
+        "current_folder": (
+            _folder_response(
+                current_folder,
+                child_counts,
+                document_counts,
+            )
+            if current_folder
+            else None
+        ),
+        "breadcrumbs": _folder_breadcrumbs(
+            db,
+            project_id,
+            current_folder,
+        ),
+        "folders": [
+            _folder_response(folder, child_counts, document_counts)
+            for folder in folders
+        ],
+        "documents": [
+            _document_response(document) for document in documents
+        ],
+        "pagination": {
+            "limit": limit,
+            "offset": offset,
+            "total": total,
+            "has_more": offset + len(documents) < total,
+        },
+    }
+
+
+def get_folder_tree(db: Session, project_id: int) -> list[dict]:
+    folders = (
+        db.query(Folder)
+        .filter(
+            Folder.project_id == project_id,
+            Folder.deleted_at.is_(None),
+        )
+        .order_by(func.lower(Folder.name).asc(), Folder.id.asc())
+        .limit(MAX_FOLDER_TREE_ITEMS + 1)
+        .all()
+    )
+    if len(folders) > MAX_FOLDER_TREE_ITEMS:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Folder tree exceeds the supported size",
+        )
+
+    by_id = {folder.id: folder for folder in folders}
+    for folder in folders:
+        seen: set[int] = set()
+        current = folder
+        depth = 0
+        while current.parent_folder_id is not None:
+            if current.id in seen or depth >= MAX_FOLDER_DEPTH:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Folder hierarchy is invalid",
+                )
+            seen.add(current.id)
+            current = by_id.get(current.parent_folder_id)
+            if current is None:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Folder hierarchy is invalid",
+                )
+            depth += 1
+
+    child_counts, document_counts = _folder_count_maps(db, project_id)
+    return [
+        _folder_response(folder, child_counts, document_counts)
+        for folder in folders
+    ]
+
+
+def get_recent_documents(
+    db: Session,
+    project_id: int,
+    *,
+    limit: int,
+) -> list[dict]:
+    documents = (
+        _active_document_query(db, project_id)
+        .order_by(Document.created_at.desc(), Document.id.desc())
+        .limit(limit)
+        .all()
+    )
+    return [_document_response(document) for document in documents]
 
 
 def get_owned_document(
