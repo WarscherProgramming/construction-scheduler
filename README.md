@@ -11,7 +11,7 @@ and Punch Lists) with their supporting documents.
 ![React 19](https://img.shields.io/badge/React-19-61dafb?logo=react&logoColor=white&labelColor=20232a)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.1x-009688?logo=fastapi&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169e1?logo=postgresql&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-553%20passing-2ea44f)
+![Tests](https://img.shields.io/badge/tests-585%20passing-2ea44f)
 ![Vite](https://img.shields.io/badge/Vite-8-646cff?logo=vite&logoColor=white)
 
 ![FieldFlow executive dashboard](docs/screenshots/dashboard.png)
@@ -103,6 +103,10 @@ question — *"what needs my attention today?"* — has a one-screen answer.
   metadata search, allowlisted filtering and sorting, bounded pagination,
   recent documents, batch and drag-and-drop uploads, metadata inspection,
   authenticated downloads, and soft deletion.
+- **Construction Drawing Management** with project-owned drawing sets,
+  allowlisted disciplines, a searchable drawing register, set-scoped sheet
+  identities, atomic PDF revision upload and superseding, retained revision
+  history, formal draft/issued/void issues, and authenticated downloads.
 - **Accessible design system**: tokens, reusable UI primitives (Button, Card,
   Sidebar, PageHeader, Icon, ConfirmDialog, Skeleton), skip links, focus
   management, `aria-current` navigation, and screen-reader-labeled loading
@@ -112,9 +116,9 @@ question — *"what needs my attention today?"* — has a one-screen answer.
 - **Client-side onboarding**: first-run detection seeds a realistic demo
   project through the public API with visible progress — the app is never
   empty.
-- **Automated testing: 553 tests** — 317 frontend across 46 files (Vitest +
-  React Testing Library, behavior- and accessibility-focused) and 236 backend
-  tests plus 274 separately reported subtests (pytest,
+- **Automated testing: 585 tests** — 335 frontend across 49 files (Vitest +
+  React Testing Library, behavior- and accessibility-focused) and 250 backend
+  tests plus 279 separately reported subtests (pytest,
   covering the scheduling engine, critical path, services, migrations, CORS,
   and TestClient API integration).
 
@@ -164,6 +168,10 @@ The provider contract, document and folder models, storage-key format,
 service transactions, API boundary, retention decision, and M16 roadmap are
 documented in
 [`docs/DOCUMENT_STORAGE.md`](docs/DOCUMENT_STORAGE.md).
+
+Drawing terminology, models, normalization, revision transactions, issue
+lifecycle, APIs, UI behavior, and deferred viewer work are documented in
+[`docs/DRAWING_MANAGEMENT.md`](docs/DRAWING_MANAGEMENT.md).
 
 Change Orders use a focused service layer for validation and project-scoped
 `CO-###` allocation. A persistent per-project sequence table prevents deleted
@@ -398,6 +406,11 @@ job. FieldFlow does not include a built-in worker or scheduler, and
 - Secure backend file validation and project ownership enforcement
 - Local development storage and private S3-compatible production storage
 - Durable standalone and parent-deletion object cleanup
+- Drawing sets, allowlisted disciplines, set-scoped normalized sheet numbers,
+  current and superseded PDF revisions, formal drawing issues, and a
+  project-scoped drawing register
+- Drawing-linked documents remain visible in the explorer, while ordinary
+  explorer deletion is blocked to protect revision history
 
 **Product quality**
 - Branded landing/login, first-run onboarding with demo seeding
@@ -423,15 +436,15 @@ job. FieldFlow does not include a built-in worker or scheduler, and
 | Backend | FastAPI, SQLAlchemy, Alembic, Pydantic |
 | Database | PostgreSQL |
 | Auth | Memory-only access JWT + rotating opaque refresh sessions |
-| Testing | Vitest + React Testing Library (317), pytest (236) |
+| Testing | Vitest + React Testing Library (335), pytest (250) |
 | Hosting | Vercel (frontend) · Render (API + migrations) |
 
 ## Testing
 
-**553 primary automated tests passed.** Backend subtests are reported
+**585 primary automated tests passed.** Backend subtests are reported
 separately rather than added to that total.
 
-- **Frontend (317 across 46 files)** — Vitest + React Testing Library. Tests
+- **Frontend (335 across 49 files)** — Vitest + React Testing Library. Tests
   target behavior and accessibility: roles and names, keyboard flows
   (Enter/Escape editing,
   grid cursor navigation, focus traps), aggregate dashboard rendering,
@@ -444,8 +457,11 @@ separately rather than added to that total.
   includes routing, folder navigation, breadcrumbs, query controls,
   pagination, batch uploads, partial failures, stale-response protection,
   details and delete dialogs, focus restoration, status-specific failures,
-  and responsive folder access.
-- **Backend (236, plus 274 subtests)** — pytest. Covers the workday scheduling
+  and responsive folder access. Drawing coverage includes routing, register
+  queries, project switching, stale requests, set and sheet workflows,
+  revision upload/history/download, issue membership, confirmations, focus
+  restoration, and advisory PDF validation.
+- **Backend (250, plus 279 subtests)** — pytest. Covers the workday scheduling
   engine (dependencies, lag, federal holidays), critical path and total float,
   task services, relationship migrations, CORS configuration, and
   TestClient API integration (auth, ownership enforcement, task lifecycle,
@@ -458,7 +474,10 @@ separately rather than added to that total.
   authorization, secure upload/download, checksums, rollback, soft deletion,
   response exposure, migration cycles, explorer counts and breadcrumbs,
   escaped metadata search, filtering, stable sorting, pagination, recent
-  documents, and project isolation. Security
+  documents, and project isolation. Drawing coverage includes ownership,
+  normalized uniqueness, PDF validation, revision sequencing and rollback,
+  one-current constraints, issue lifecycle, safe register responses,
+  explorer retention, and migration reversibility. Security
   coverage includes strict JWT claims, rotating refresh sessions, replay
   revocation, CSRF, exact CORS origins, rate and body limits, route-wide
   ownership, transaction rollback, safe errors, production configuration,
@@ -618,6 +637,11 @@ commit production credentials.
   bounded metadata search, filtering, sorting and pagination, recent
   documents, batch uploads with retry, details, authenticated downloads,
   soft deletion, accessibility, and responsive layouts
+- ✅ M16.3 Construction Drawing Management with drawing sets, allowlisted
+  disciplines, normalized sheet registration, atomic PDF revisions,
+  automatic superseding, retained history, formal drawing issues, searchable
+  project register, explorer integration, accessibility, and responsive
+  layouts
 - ✅ Branded landing page and first-run demo seeding
 - ✅ Icon system, confirmation dialogs, notifications, loading skeletons
 - ✅ Scheduler showcase: WBS numbering, inline validation, critical path +
@@ -635,8 +659,8 @@ commit production credentials.
 - Distributed rate limiting, password reset, email verification, MFA, OAuth,
   organizations, roles, audit logs, a same-site API domain, and expanded
   browser/security scanning
-- Document and attachment version history, bulk download, thumbnails, and
-  image galleries
+- General document and attachment version history, bulk download, thumbnails,
+  and image galleries
 - Drawing annotations, OCR, full-text document search, antivirus integration,
   and document approvals
 - Direct multipart browser uploads and bucket-wide orphan scanning

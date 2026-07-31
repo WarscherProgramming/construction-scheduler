@@ -136,7 +136,7 @@ class SecurityHardeningMigrationTests(unittest.TestCase):
         command.upgrade(self.config, "head")
         command.check(self.config)
         heads = ScriptDirectory.from_config(self.config).get_heads()
-        self.assertEqual(heads, ["a6d3e9f1b742"])
+        self.assertEqual(heads, ["b7e4f2a9c631"])
 
 
 if __name__ == "__main__":

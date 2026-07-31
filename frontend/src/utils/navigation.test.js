@@ -24,6 +24,9 @@ describe("navigation utilities", () => {
     expect(buildAppHash("projectDocuments", 42)).toBe(
       "#/projects/42/documents"
     );
+    expect(buildAppHash("projectDrawings", 42)).toBe(
+      "#/projects/42/drawings"
+    );
     expect(buildAppHash("home", 42)).toBe("#/");
   });
 
@@ -46,6 +49,10 @@ describe("navigation utilities", () => {
     });
     expect(parseAppHash("#/projects/42/documents")).toEqual({
       page: "projectDocuments",
+      projectId: 42,
+    });
+    expect(parseAppHash("#/projects/42/drawings")).toEqual({
+      page: "projectDrawings",
       projectId: 42,
     });
     expect(parseAppHash("#/projects/nope/dashboard")).toEqual({

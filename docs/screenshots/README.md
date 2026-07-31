@@ -27,6 +27,9 @@ for both referenced and planned module screenshots.
 | `first-run.gif` | ~6 s: first-run welcome screen → click "Load Sample Project" → progress bar filling → dashboard appears. Requires a fresh account. |
 | `change-orders.png` | Populated Change Orders page: a generated `CO` number; create or edit workflow; proposed and approved amounts; schedule impact; lifecycle dates; multiple status badges; and, where practical, a readable legacy record. |
 | `punch-lists.png` | Punch Lists page: populated Punch Items table with visible status and priority labels, an overdue indicator, and the create or edit workflow visible. |
+| `drawing-register.png` | Populated Drawing Register with multiple disciplines, clear current revisions, set/filter controls, and sheet actions visible. |
+| `drawing-history.png` | Revision History dialog showing one current and one superseded PDF revision, dates, successor information, issue membership, and download actions. |
+| `drawing-issues.png` | Drawing Issues section with a draft issue containing revisions and an issued or void issue showing frozen membership. |
 | `mobile.png` | Dashboard or a record page at ~390 px width: collapsed horizontal nav and stacked record cards. (Optional composite of two views side by side.) |
 
 ## Document Management captures
@@ -59,3 +62,6 @@ files.
   attachment images above and recapture `change-orders.png` or
   `punch-lists.png` when their attachment controls should be visible in the
   primary module story.
+- M16.3 adds the Drawing Register and controlled revision workflow. Capture
+  `drawing-register.png`, `drawing-history.png`, and `drawing-issues.png`;
+  this phase does not generate or replace image files.

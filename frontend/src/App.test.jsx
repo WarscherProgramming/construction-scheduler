@@ -55,6 +55,26 @@ vi.mock("./services/api", () => ({
   downloadDocument: vi.fn(),
   deleteDocument: vi.fn(),
   createFolder: vi.fn(),
+  listDrawingSets: vi.fn(),
+  createDrawingSet: vi.fn(),
+  updateDrawingSet: vi.fn(),
+  archiveDrawingSet: vi.fn(),
+  getDrawingRegister: vi.fn(),
+  listDrawingSetSheets: vi.fn(),
+  createDrawingSheet: vi.fn(),
+  updateDrawingSheet: vi.fn(),
+  archiveDrawingSheet: vi.fn(),
+  listDrawingRevisions: vi.fn(),
+  uploadDrawingRevision: vi.fn(),
+  downloadDrawingRevision: vi.fn(),
+  listDrawingIssues: vi.fn(),
+  createDrawingIssue: vi.fn(),
+  updateDrawingIssue: vi.fn(),
+  deleteDrawingIssue: vi.fn(),
+  addDrawingIssueRevision: vi.fn(),
+  removeDrawingIssueRevision: vi.fn(),
+  issueDrawingIssue: vi.fn(),
+  voidDrawingIssue: vi.fn(),
   reorderTasks: vi.fn(),
   loginUser: vi.fn(),
   registerUser: vi.fn(),
@@ -91,6 +111,10 @@ import {
   listFolderTree,
   listRecentDocuments,
   listAttachments,
+  getDrawingRegister,
+  listDrawingIssues,
+  listDrawingSets,
+  listDrawingSetSheets,
   updateRFI,
   updateChangeOrder,
   updatePunchItem,
@@ -247,6 +271,19 @@ describe("App integration (hooks wiring)", () => {
     });
     listFolderTree.mockResolvedValue({ folders: [] });
     listRecentDocuments.mockResolvedValue({ documents: [] });
+    listDrawingSets.mockResolvedValue({ drawing_sets: [] });
+    getDrawingRegister.mockResolvedValue({
+      project_id: 1,
+      sheets: [],
+      pagination: {
+        limit: 50,
+        offset: 0,
+        total: 0,
+        has_more: false,
+      },
+    });
+    listDrawingSetSheets.mockResolvedValue({ sheets: [] });
+    listDrawingIssues.mockResolvedValue({ issues: [] });
     createPunchItem.mockResolvedValue({});
     updatePunchItem.mockResolvedValue({});
     deletePunchItem.mockResolvedValue({ message: "Punch Item deleted" });
@@ -420,6 +457,34 @@ describe("App integration (hooks wiring)", () => {
       expect(listRecentDocuments).toHaveBeenCalledTimes(1);
     });
     expect(listAttachments).not.toHaveBeenCalled();
+  });
+
+  it("routes to project drawings with one bounded register request", async () => {
+    const user = userEvent.setup();
+    fetchProjects.mockResolvedValue({
+      projects: [{ id: 1, name: "Riverside" }],
+    });
+
+    renderApp();
+
+    await screen.findByRole("option", { name: "Riverside" });
+    await user.selectOptions(screen.getByLabelText("Project"), "1");
+    await screen.findByRole("heading", { name: "Project Dashboard" });
+    await user.click(screen.getByRole("button", { name: "Drawings" }));
+
+    expect(window.location.hash).toBe("#/projects/1/drawings");
+    expect(
+      await screen.findByRole("heading", {
+        name: "Drawing Register",
+        level: 1,
+      })
+    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(listDrawingSets).toHaveBeenCalledTimes(1);
+      expect(getDrawingRegister).toHaveBeenCalledTimes(1);
+    });
+    expect(listAttachments).not.toHaveBeenCalled();
+    expect(exploreDocuments).not.toHaveBeenCalled();
   });
 
   it("clears dashboard data, aborts the old request, and rejects stale results", async () => {

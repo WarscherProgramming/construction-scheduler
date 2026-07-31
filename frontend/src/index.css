@@ -712,6 +712,553 @@ button:disabled {
   }
 }
 
+/* Construction drawing management */
+.drawing-register-page {
+  min-width: 0;
+}
+
+.drawing-sets-section,
+.drawing-register-section,
+.drawing-issues-section {
+  margin-top: 24px;
+  min-width: 0;
+}
+
+.drawing-section-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.drawing-section-heading p {
+  margin: 0 0 3px;
+  color: var(--text);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.drawing-section-heading h2 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.drawing-set-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 10px;
+}
+
+.drawing-set-record {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+}
+
+.drawing-set-record--selected {
+  border-color: var(--accent);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.drawing-set-record__select {
+  display: flex;
+  width: 100%;
+  min-height: 64px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  padding: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.drawing-set-record__select > span:first-child {
+  min-width: 0;
+}
+
+.drawing-set-record__select strong,
+.drawing-set-record__select small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.drawing-set-record__select small {
+  margin-top: 4px;
+  color: var(--text);
+}
+
+.drawing-set-record__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 4px;
+  border-top: 1px solid var(--border);
+  padding: 6px 8px;
+}
+
+.drawing-register-filters {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.6fr) repeat(4, minmax(130px, 1fr));
+  align-items: end;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.drawing-register-filters > label,
+.drawing-register-search {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+}
+
+.drawing-register-filters label > span,
+.drawing-register-search > label {
+  color: var(--text);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.drawing-register-search > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+}
+
+.drawing-register-table-wrap {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow-x: auto;
+  background: var(--surface);
+}
+
+.drawing-register-table {
+  width: 100%;
+  min-width: 980px;
+  border-collapse: collapse;
+}
+
+.drawing-register-table th,
+.drawing-register-table td {
+  border-bottom: 1px solid var(--border);
+  padding: 11px 12px;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.drawing-register-table thead th {
+  background: var(--surface-muted);
+  color: var(--text);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+}
+
+.drawing-register-table tbody tr:last-child > * {
+  border-bottom: 0;
+}
+
+.drawing-register-table tbody th {
+  color: var(--text-h);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.drawing-register-table td {
+  max-width: 260px;
+  overflow-wrap: anywhere;
+}
+
+.drawing-current-revision {
+  display: grid;
+  gap: 2px;
+}
+
+.drawing-current-revision span {
+  color: var(--success);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.drawing-current-revision time {
+  color: var(--text);
+  font-size: 0.78rem;
+}
+
+.drawing-row-actions {
+  display: flex;
+  min-width: max-content;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.drawing-inline-empty,
+.drawing-load-error {
+  margin: 0;
+  border-block: 1px solid var(--border);
+  padding: 24px 0;
+  color: var(--text);
+}
+
+.drawing-load-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.drawing-issue-list {
+  display: grid;
+  gap: 12px;
+}
+
+.drawing-issue-record {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  padding: 14px;
+}
+
+.drawing-issue-record__heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.drawing-issue-record__heading h3 {
+  margin: 0;
+  font-size: 1rem;
+  overflow-wrap: anywhere;
+}
+
+.drawing-issue-record__heading p,
+.drawing-issue-record > p {
+  margin: 4px 0 0;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.drawing-issue-members {
+  margin-top: 14px;
+}
+
+.drawing-issue-members h4 {
+  margin: 0 0 7px;
+  font-size: 0.82rem;
+}
+
+.drawing-issue-members p {
+  margin: 0;
+  color: var(--text);
+}
+
+.drawing-issue-members ul {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.drawing-issue-members li {
+  display: flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.drawing-issue-add {
+  display: grid;
+  grid-template-columns: auto minmax(180px, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.drawing-issue-add label {
+  color: var(--text);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.drawing-issue-record__actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.drawing-membership-frozen {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.drawing-dialog {
+  width: min(680px, calc(100vw - 32px));
+  max-height: min(840px, calc(100vh - 32px));
+  overflow: hidden;
+}
+
+.drawing-dialog__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.drawing-dialog__header p {
+  margin: 0 0 4px;
+  color: var(--text);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.drawing-dialog__header h2 {
+  margin: 0;
+  font-size: 1.2rem;
+  overflow-wrap: anywhere;
+}
+
+.drawing-dialog__body {
+  min-height: 0;
+  overflow-y: auto;
+  padding-block: 16px;
+}
+
+.drawing-form {
+  display: grid;
+  gap: 13px;
+}
+
+.drawing-form__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.drawing-form textarea {
+  resize: vertical;
+}
+
+.drawing-form-error {
+  margin: 0;
+  border-left: 3px solid var(--danger);
+  padding: 8px 10px;
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+.drawing-supersede-note {
+  margin: 0 0 14px;
+  border-left: 3px solid var(--amber);
+  padding: 9px 11px;
+  background: var(--amber-bg);
+  overflow-wrap: anywhere;
+}
+
+.drawing-revision-history {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.drawing-revision-history > li {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px;
+}
+
+.drawing-revision-history__heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.drawing-revision-history__heading strong,
+.drawing-revision-history__heading span {
+  display: block;
+}
+
+.drawing-revision-history__heading > div > span {
+  margin-top: 2px;
+  color: var(--text);
+  font-size: 0.76rem;
+}
+
+.drawing-revision-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
+.drawing-revision-state--current {
+  color: var(--success);
+}
+
+.drawing-revision-state--superseded {
+  color: var(--text);
+}
+
+.drawing-revision-meta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px 14px;
+  margin: 12px 0;
+}
+
+.drawing-revision-meta div {
+  min-width: 0;
+}
+
+.drawing-revision-meta dt {
+  color: var(--text);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.drawing-revision-meta dd {
+  margin: 2px 0 0;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 1100px) {
+  .drawing-register-filters {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .drawing-register-search {
+    grid-column: span 2;
+  }
+}
+
+@media (max-width: 768px) {
+  .drawing-register-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .drawing-register-search {
+    grid-column: 1 / -1;
+  }
+
+  .drawing-register-table-wrap {
+    border: 0;
+    overflow: visible;
+    background: transparent;
+  }
+
+  .drawing-register-table {
+    display: block;
+    min-width: 0;
+  }
+
+  .drawing-register-table thead {
+    display: none;
+  }
+
+  .drawing-register-table tbody {
+    display: grid;
+    gap: 10px;
+  }
+
+  .drawing-register-table tr {
+    display: grid;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface);
+    padding: 12px;
+  }
+
+  .drawing-register-table th,
+  .drawing-register-table td {
+    display: grid;
+    grid-template-columns: minmax(92px, 0.36fr) minmax(0, 1fr);
+    gap: 10px;
+    max-width: none;
+    border: 0;
+    padding: 6px 0;
+  }
+
+  .drawing-register-table th::before,
+  .drawing-register-table td::before {
+    content: attr(data-label);
+    color: var(--text);
+    font-size: 0.74rem;
+    font-weight: 700;
+  }
+
+  .drawing-row-actions {
+    min-width: 0;
+  }
+
+  .drawing-issue-add {
+    grid-template-columns: 1fr auto;
+  }
+
+  .drawing-issue-add label {
+    grid-column: 1 / -1;
+  }
+
+  .drawing-revision-meta {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 480px) {
+  .drawing-section-heading,
+  .drawing-issue-record__heading,
+  .drawing-revision-history__heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .drawing-register-filters,
+  .drawing-form__grid,
+  .drawing-revision-meta {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .drawing-set-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .drawing-issue-add {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .drawing-issue-add label {
+    grid-column: auto;
+  }
+
+  .drawing-issue-members li {
+    align-items: flex-start;
+    flex-direction: column;
+    padding-block: 7px;
+  }
+
+  .drawing-dialog {
+    width: calc(100vw - 16px);
+    max-height: calc(100vh - 16px);
+  }
+}
+
 /* Project document explorer */
 .document-explorer-page {
   min-width: 0;

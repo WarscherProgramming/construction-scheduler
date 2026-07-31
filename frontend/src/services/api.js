@@ -403,3 +403,224 @@ export function createFolder(projectId, folder, options = {}) {
     }
   );
 }
+
+function drawingQuery(options = {}) {
+  const query = new URLSearchParams();
+  const parameters = {
+    drawing_set_id: options.drawingSetId,
+    discipline: options.discipline,
+    search: options.search,
+    sheet_status: options.sheetStatus,
+    sort: options.sort,
+    order: options.order,
+    limit: options.limit,
+    offset: options.offset,
+  };
+  for (const [name, value] of Object.entries(parameters)) {
+    if (value !== undefined && value !== null && value !== "") {
+      query.set(name, String(value));
+    }
+  }
+  return query.size ? `?${query.toString()}` : "";
+}
+
+export function listDrawingSets(projectId, options = {}) {
+  const suffix = options.includeArchived ? "?include_archived=true" : "";
+  return authenticatedRequest(
+    `/projects/${encodeURIComponent(String(projectId))}/drawing-sets${suffix}`,
+    { signal: options.signal }
+  );
+}
+
+export function createDrawingSet(projectId, drawingSet, options = {}) {
+  return authenticatedRequest(
+    `/projects/${encodeURIComponent(String(projectId))}/drawing-sets`,
+    {
+      method: "POST",
+      body: JSON.stringify(drawingSet),
+      signal: options.signal,
+    }
+  );
+}
+
+export function updateDrawingSet(drawingSetId, drawingSet, options = {}) {
+  return authenticatedRequest(
+    `/drawing-sets/${encodeURIComponent(String(drawingSetId))}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(drawingSet),
+      signal: options.signal,
+    }
+  );
+}
+
+export function archiveDrawingSet(drawingSetId, options = {}) {
+  return authenticatedRequest(
+    `/drawing-sets/${encodeURIComponent(String(drawingSetId))}`,
+    { method: "DELETE", signal: options.signal }
+  );
+}
+
+export function getDrawingRegister(projectId, options = {}) {
+  return authenticatedRequest(
+    `/projects/${encodeURIComponent(String(projectId))}/drawings${drawingQuery(options)}`,
+    { signal: options.signal }
+  );
+}
+
+export function listDrawingSetSheets(drawingSetId, options = {}) {
+  return authenticatedRequest(
+    `/drawing-sets/${encodeURIComponent(String(drawingSetId))}/sheets`,
+    { signal: options.signal }
+  );
+}
+
+export function createDrawingSheet(
+  drawingSetId,
+  metadata,
+  file,
+  options = {}
+) {
+  const formData = new FormData();
+  formData.append("metadata", JSON.stringify(metadata));
+  formData.append("file", file);
+  return authenticatedRequest(
+    `/drawing-sets/${encodeURIComponent(String(drawingSetId))}/sheets`,
+    {
+      method: "POST",
+      body: formData,
+      signal: options.signal,
+    }
+  );
+}
+
+export function updateDrawingSheet(sheetId, sheet, options = {}) {
+  return authenticatedRequest(
+    `/drawing-sheets/${encodeURIComponent(String(sheetId))}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(sheet),
+      signal: options.signal,
+    }
+  );
+}
+
+export function archiveDrawingSheet(sheetId, options = {}) {
+  return authenticatedRequest(
+    `/drawing-sheets/${encodeURIComponent(String(sheetId))}`,
+    { method: "DELETE", signal: options.signal }
+  );
+}
+
+export function listDrawingRevisions(sheetId, options = {}) {
+  const query = new URLSearchParams();
+  if (options.limit != null) query.set("limit", String(options.limit));
+  if (options.offset != null) query.set("offset", String(options.offset));
+  const suffix = query.size ? `?${query.toString()}` : "";
+  return authenticatedRequest(
+    `/drawing-sheets/${encodeURIComponent(String(sheetId))}/revisions${suffix}`,
+    { signal: options.signal }
+  );
+}
+
+export function uploadDrawingRevision(
+  sheetId,
+  metadata,
+  file,
+  options = {}
+) {
+  const formData = new FormData();
+  formData.append("metadata", JSON.stringify(metadata));
+  formData.append("file", file);
+  return authenticatedRequest(
+    `/drawing-sheets/${encodeURIComponent(String(sheetId))}/revisions`,
+    {
+      method: "POST",
+      body: formData,
+      signal: options.signal,
+    }
+  );
+}
+
+export function downloadDrawingRevision(revisionId, options = {}) {
+  return downloadAuthenticatedResponse(
+    `/drawing-revisions/${encodeURIComponent(String(revisionId))}/download`,
+    { signal: options.signal }
+  );
+}
+
+export function listDrawingIssues(drawingSetId, options = {}) {
+  return authenticatedRequest(
+    `/drawing-sets/${encodeURIComponent(String(drawingSetId))}/issues`,
+    { signal: options.signal }
+  );
+}
+
+export function createDrawingIssue(drawingSetId, issue, options = {}) {
+  return authenticatedRequest(
+    `/drawing-sets/${encodeURIComponent(String(drawingSetId))}/issues`,
+    {
+      method: "POST",
+      body: JSON.stringify(issue),
+      signal: options.signal,
+    }
+  );
+}
+
+export function updateDrawingIssue(issueId, issue, options = {}) {
+  return authenticatedRequest(
+    `/drawing-issues/${encodeURIComponent(String(issueId))}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(issue),
+      signal: options.signal,
+    }
+  );
+}
+
+export function deleteDrawingIssue(issueId, options = {}) {
+  return authenticatedRequest(
+    `/drawing-issues/${encodeURIComponent(String(issueId))}`,
+    { method: "DELETE", signal: options.signal }
+  );
+}
+
+export function addDrawingIssueRevision(
+  issueId,
+  revisionId,
+  options = {}
+) {
+  return authenticatedRequest(
+    `/drawing-issues/${encodeURIComponent(String(issueId))}/revisions`,
+    {
+      method: "POST",
+      body: JSON.stringify({ revision_id: revisionId }),
+      signal: options.signal,
+    }
+  );
+}
+
+export function removeDrawingIssueRevision(
+  issueId,
+  revisionId,
+  options = {}
+) {
+  return authenticatedRequest(
+    `/drawing-issues/${encodeURIComponent(String(issueId))}/revisions/${encodeURIComponent(String(revisionId))}`,
+    { method: "DELETE", signal: options.signal }
+  );
+}
+
+export function issueDrawingIssue(issueId, options = {}) {
+  return authenticatedRequest(
+    `/drawing-issues/${encodeURIComponent(String(issueId))}/issue`,
+    { method: "POST", signal: options.signal }
+  );
+}
+
+export function voidDrawingIssue(issueId, options = {}) {
+  return authenticatedRequest(
+    `/drawing-issues/${encodeURIComponent(String(issueId))}/void`,
+    { method: "POST", signal: options.signal }
+  );
+}

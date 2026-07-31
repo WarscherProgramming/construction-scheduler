@@ -287,6 +287,7 @@ def create_document(
     display_name: str | None,
     document_type: str | None,
     content_length: int | None,
+    commit: bool = True,
 ) -> Document:
     folder = (
         get_project_folder(db, project_id, folder_id)
@@ -404,7 +405,10 @@ def create_document(
     db.add(document)
 
     try:
-        db.commit()
+        if commit:
+            db.commit()
+        else:
+            db.flush()
     except SQLAlchemyError as error:
         db.rollback()
         _cleanup_failed_document_upload(
@@ -418,7 +422,8 @@ def create_document(
             detail="Unable to save document metadata",
         ) from error
 
-    db.refresh(document)
+    if commit:
+        db.refresh(document)
     return document
 
 
@@ -946,6 +951,22 @@ def soft_delete_document(
     )
     if document.deleted_at is not None:
         return document
+
+    from app.models.drawing import DrawingRevision
+
+    drawing_revision = (
+        db.query(DrawingRevision.id)
+        .filter(DrawingRevision.document_id == document.id)
+        .first()
+    )
+    if drawing_revision is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "Drawing revision documents must be retained in drawing "
+                "history"
+            ),
+        )
 
     document.deleted_at = utc_now()
     document.is_current_version = False

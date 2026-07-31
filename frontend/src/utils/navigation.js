@@ -8,6 +8,7 @@ const PAGE_SEGMENTS = {
   rfis: "rfis",
   submittals: "submittals",
   punchItems: "punch-items",
+  projectDrawings: "drawings",
   projectDocuments: "documents",
   projectSettings: "settings",
 };

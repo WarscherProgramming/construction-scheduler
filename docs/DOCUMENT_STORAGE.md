@@ -1,9 +1,11 @@
 # Document Storage Foundation
 
 M16.1 establishes the backend storage and metadata layer for document
-features. M16.2 adds the project-scoped explorer on that foundation. Drawing
-management, OCR, AI indexing, rename, move, and version-history workflows
-remain outside the shipped scope.
+features. M16.2 adds the project-scoped explorer on that foundation. M16.3
+adds construction drawing sets, sheets, revisions, issues, and a project
+drawing register while retaining one `Document` per stored revision. OCR, AI
+indexing, rename, move, and advanced viewer workflows remain outside the
+shipped scope.
 
 ## Existing Attachment System
 
@@ -183,6 +185,27 @@ M16.2 provides metadata details and authenticated download only. It does not
 render active HTML, SVG, Office documents, or a drawing/PDF annotation
 viewer.
 
+## Drawing Integration
+
+M16.3 keeps explorer location independent of drawing classification. Every
+drawing revision is one root-level `Document` with type `Drawing`, linked by
+`DrawingRevision`; no second file or provider path is created. The same
+authenticated explorer and revision download flows therefore read the same
+stored object.
+
+Drawing revisions initially accept PDF only and reuse the document service's
+bounded streaming, MIME, extension, and signature checks. Revision creation
+defers the document commit so the document metadata, drawing revision,
+previous-revision superseding, and sheet current pointer commit together. A
+database failure rolls back metadata and removes the newly stored object.
+
+Ordinary explorer deletion returns a conflict when a document is referenced
+by drawing history. Drawing sets and sheets archive instead of erasing
+history; drawing revisions are not directly deletable; issued drawing issues
+are voided rather than removed. See
+[`DRAWING_MANAGEMENT.md`](DRAWING_MANAGEMENT.md) for the complete drawing
+contract.
+
 ## Security and Validation
 
 Ownership is inherited from the project. Direct document routes join through
@@ -216,8 +239,7 @@ accessibility, and frontend API requests.
 
 ## Deferred Work
 
-M16.3 and later document phases remain unimplemented. Rename, move, folder
-deletion, restore, permanent purge, user-facing version history, duplicate
-detection, direct-to-cloud upload, signed-URL delivery, thumbnails, bulk
-operations, drawing workflows, PDF annotation, OCR, AI indexing, and
-antivirus implementation remain deferred.
+Rename, move, folder deletion, restore, permanent purge, general document
+version history, duplicate detection, direct-to-cloud upload, signed-URL
+delivery, thumbnails, bulk operations, an advanced drawing viewer, PDF
+annotation, OCR, AI indexing, and antivirus implementation remain deferred.

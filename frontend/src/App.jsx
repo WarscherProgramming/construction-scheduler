@@ -28,6 +28,7 @@ const PAGE_TITLES = {
   rfis: "RFIs",
   submittals: "Submittals",
   punchItems: "Punch List",
+  projectDrawings: "Drawings",
   projectDocuments: "Documents",
   projectSettings: "Settings",
 };
