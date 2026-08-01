@@ -6,7 +6,18 @@ import ProjectDrawingViewerPage from "./ProjectDrawingViewerPage";
 
 
 const useDrawingViewerMock = vi.hoisted(() => vi.fn());
+const relationshipPanelMock = vi.hoisted(() => vi.fn());
 vi.mock("../hooks/useDrawingViewer", () => ({ default: useDrawingViewerMock }));
+vi.mock("../components/relationships/RelationshipPanel", () => ({
+  default: (props) => {
+    relationshipPanelMock(props);
+    return (
+      <section aria-label={props.title}>
+        <h2>{props.title}</h2>
+      </section>
+    );
+  },
+}));
 vi.mock("../utils/pdfViewer", () => ({
   PDF_ANNOTATION_MODE_DISABLED: 0,
   PDF_SEARCH_QUERY_MAX: 200,
@@ -124,6 +135,7 @@ describe("ProjectDrawingViewerPage", () => {
     };
     useDrawingViewerMock.mockReset();
     useDrawingViewerMock.mockImplementation(() => viewer);
+    relationshipPanelMock.mockClear();
   });
 
   it("displays safe sheet, revision, and page metadata with one h1", () => {
@@ -225,6 +237,41 @@ describe("ProjectDrawingViewerPage", () => {
       sheetId: 21,
       revisionId: 31,
     });
+  });
+
+  it("loads revision relationships on demand without a PDF action", async () => {
+    const user = userEvent.setup();
+    const props = pageProps();
+    const view = render(<ProjectDrawingViewerPage {...props} />);
+    expect(relationshipPanelMock).not.toHaveBeenCalled();
+    expect(viewer.download).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Relationships" }));
+    expect(
+      screen.getByRole("heading", { name: "Revision 1 Relationships" })
+    ).toBeInTheDocument();
+    expect(relationshipPanelMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        projectId: 1,
+        entityType: "drawing_revision",
+        entityId: 30,
+        onNavigate: props.onNavigate,
+        onError: props.onRequestError,
+      })
+    );
+    expect(viewer.download).not.toHaveBeenCalled();
+
+    viewer = { ...viewer, revision: OLD_REVISION };
+    view.rerender(
+      <ProjectDrawingViewerPage {...pageProps({ revisionId: 29 })} />
+    );
+    expect(relationshipPanelMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        entityType: "drawing_revision",
+        entityId: 29,
+      })
+    );
+    expect(viewer.download).not.toHaveBeenCalled();
   });
 
   it("reuses the loaded PDF for download and returns to the register", async () => {

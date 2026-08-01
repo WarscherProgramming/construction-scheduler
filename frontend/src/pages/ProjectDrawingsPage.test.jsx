@@ -12,8 +12,19 @@ import ProjectDrawingsPage from "./ProjectDrawingsPage";
 
 
 const useDrawingsMock = vi.hoisted(() => vi.fn());
+const relationshipPanelMock = vi.hoisted(() => vi.fn());
 
 vi.mock("../hooks/useDrawings", () => ({ default: useDrawingsMock }));
+vi.mock("../components/relationships/RelationshipPanel", () => ({
+  default: (props) => {
+    relationshipPanelMock(props);
+    return (
+      <section aria-label={props.title}>
+        <h2>{props.title}</h2>
+      </section>
+    );
+  },
+}));
 
 
 const CURRENT_REVISION = {
@@ -175,6 +186,7 @@ describe("ProjectDrawingsPage", () => {
     };
     useDrawingsMock.mockReset();
     useDrawingsMock.mockImplementation(() => hookState);
+    relationshipPanelMock.mockClear();
   });
 
   it("renders the project register, current revision, sets, and issues", () => {
@@ -208,6 +220,36 @@ describe("ProjectDrawingsPage", () => {
       sheetId: 20,
       revisionId: 30,
     });
+  });
+
+  it("mounts one selected drawing-sheet relationship panel", async () => {
+    const user = userEvent.setup();
+    const pageProps = props();
+    render(<ProjectDrawingsPage {...pageProps} />);
+    expect(relationshipPanelMock).not.toHaveBeenCalled();
+
+    await user.click(
+      screen.getByRole("button", { name: "Relationships for A-101" })
+    );
+    expect(
+      screen.getByRole("heading", { name: "A-101 Relationships" })
+    ).toBeInTheDocument();
+    expect(relationshipPanelMock).toHaveBeenCalledOnce();
+    expect(relationshipPanelMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        projectId: 1,
+        entityType: "drawing_sheet",
+        entityId: 20,
+        onNavigate: pageProps.onNavigate,
+        onError: pageProps.onRequestError,
+      })
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Close relationships for A-101" })
+    );
+    expect(
+      screen.queryByRole("heading", { name: "A-101 Relationships" })
+    ).not.toBeInTheDocument();
   });
 
   it("opens the selected historical revision from revision history", async () => {

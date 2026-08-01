@@ -13,7 +13,7 @@ from sqlalchemy import create_engine, inspect
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 DOCUMENT_FOUNDATION_REVISION = "a6d3e9f1b742"
 DRAWING_MANAGEMENT_REVISION = "b7e4f2a9c631"
-CURRENT_REVISION = "c8f1a4d7e290"
+CURRENT_REVISION = "d9a2f5c8e173"
 MEMBERSHIP_UNIQUE_NAME = "uq_drawing_issue_revisions_membership"
 
 
@@ -74,7 +74,8 @@ class DrawingMigrationTests(unittest.TestCase):
             FROM sqlite_master
             WHERE tbl_name NOT IN (
                 'alembic_version',
-                'drawing_issue_revisions'
+                'drawing_issue_revisions',
+                'entity_relationships'
             )
               AND name NOT LIKE 'sqlite_%'
             ORDER BY type, name

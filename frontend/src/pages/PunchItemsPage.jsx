@@ -4,6 +4,7 @@ import AttachmentPanel from "../components/AttachmentPanel";
 import FormField from "../components/FormField";
 import RecordCell from "../components/RecordCell";
 import RecordTable from "../components/RecordTable";
+import RelationshipPanel from "../components/relationships/RelationshipPanel";
 import StatusBadge from "../components/StatusBadge";
 import Button from "../components/ui/Button";
 import Card from "../components/ui/Card";
@@ -55,8 +56,13 @@ function PunchItemsPage({
 }) {
   const isEditing = editingPunchItemId !== null;
   const [attachmentPunchItemId, setAttachmentPunchItemId] = useState(null);
+  const [relationshipPunchItemId, setRelationshipPunchItemId] =
+    useState(null);
   const selectedPunchItem = punchItems.find(
     (punchItem) => punchItem.id === attachmentPunchItemId
+  );
+  const relationshipPunchItem = punchItems.find(
+    (punchItem) => punchItem.id === relationshipPunchItemId
   );
 
   return (
@@ -313,6 +319,29 @@ function PunchItemsPage({
                     : "Attachments"}
                 </Button>
                 <Button
+                  aria-expanded={
+                    relationshipPunchItem?.id === punchItem.id
+                  }
+                  aria-controls={`punch-item-relationships-${punchItem.id}`}
+                  aria-label={`${
+                    relationshipPunchItem?.id === punchItem.id
+                      ? "Close relationships"
+                      : "Relationships"
+                  } for Punch Item ${punchItem.number}`}
+                  onClick={() =>
+                    setRelationshipPunchItemId(
+                      relationshipPunchItem?.id === punchItem.id
+                        ? null
+                        : punchItem.id
+                    )
+                  }
+                >
+                  <Icon name="link" size={16} />
+                  {relationshipPunchItem?.id === punchItem.id
+                    ? "Close"
+                    : "Relationships"}
+                </Button>
+                <Button
                   onClick={() => onEdit(punchItem)}
                   aria-label={`Edit ${punchItem.number}`}
                 >
@@ -349,6 +378,23 @@ function PunchItemsPage({
             title="Punch Item Attachments"
             canUpload
             canDelete
+            onError={onAttachmentError}
+          />
+        </div>
+      )}
+      {relationshipPunchItem && (
+        <div
+          id={`punch-item-relationships-${relationshipPunchItem.id}`}
+          className="record-relationship-detail"
+          role="region"
+          aria-label={`Relationships for Punch Item ${relationshipPunchItem.number}`}
+        >
+          <RelationshipPanel
+            projectId={projectId}
+            entityType="punch_item"
+            entityId={relationshipPunchItem.id}
+            title="Punch Item Relationships"
+            onNavigate={onNavigate}
             onError={onAttachmentError}
           />
         </div>

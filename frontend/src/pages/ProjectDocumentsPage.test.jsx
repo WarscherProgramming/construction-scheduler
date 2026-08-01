@@ -12,9 +12,20 @@ import ProjectDocumentsPage from "./ProjectDocumentsPage";
 
 
 const useDocumentExplorerMock = vi.hoisted(() => vi.fn());
+const relationshipPanelMock = vi.hoisted(() => vi.fn());
 
 vi.mock("../hooks/useDocumentExplorer", () => ({
   default: useDocumentExplorerMock,
+}));
+vi.mock("../components/relationships/RelationshipPanel", () => ({
+  default: (props) => {
+    relationshipPanelMock(props);
+    return (
+      <section aria-label={props.title}>
+        <h2>{props.title}</h2>
+      </section>
+    );
+  },
 }));
 
 
@@ -119,6 +130,7 @@ describe("ProjectDocumentsPage", () => {
     };
     useDocumentExplorerMock.mockReset();
     useDocumentExplorerMock.mockImplementation(() => hookState);
+    relationshipPanelMock.mockClear();
   });
 
   it("renders the root, folder tree, document metadata, and recent files", () => {
@@ -326,6 +338,34 @@ describe("ProjectDocumentsPage", () => {
     fireEvent.keyDown(dialog, { key: "Escape" });
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(detailsButton).toHaveFocus();
+  });
+
+  it("opens one document relationship panel from metadata details", async () => {
+    const user = userEvent.setup();
+    const props = pageProps();
+    render(<ProjectDocumentsPage {...props} />);
+    expect(relationshipPanelMock).not.toHaveBeenCalled();
+
+    await user.click(
+      screen.getByRole("button", { name: "View details for Issued Plans" })
+    );
+    await user.click(screen.getByRole("button", { name: "Relationships" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", {
+        name: "Issued Plans Relationships",
+      })
+    ).toBeInTheDocument();
+    expect(relationshipPanelMock).toHaveBeenCalledOnce();
+    expect(relationshipPanelMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        projectId: 1,
+        entityType: "document",
+        entityId: 11,
+        onNavigate: props.onNavigate,
+        onError: props.onRequestError,
+      })
+    );
   });
 
   it("confirms soft deletion, prevents repeated submission, and keeps failures visible", async () => {

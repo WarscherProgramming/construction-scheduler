@@ -33,10 +33,13 @@ function DrawingDialog({
       return;
     }
     if (event.key !== "Tab") return;
-    const focusable =
-      dialogRef.current?.querySelectorAll(
+    const focusable = Array.from(
+      dialogRef.current?.querySelectorAll("*") || []
+    ).filter((element) =>
+      element.matches(
         "button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled)"
-      ) || [];
+      )
+    );
     if (!focusable.length) return;
     const first = focusable[0];
     const last = focusable[focusable.length - 1];

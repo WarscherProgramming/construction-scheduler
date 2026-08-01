@@ -1,3 +1,8 @@
+import { useState } from "react";
+
+import RelationshipPanel from "../../relationships/RelationshipPanel";
+import Button from "../../ui/Button";
+import Icon from "../../ui/Icon";
 import {
   formatAttachmentDateTime,
   formatAttachmentFileSize,
@@ -11,8 +16,12 @@ function DrawingMetadataPanel({
   revision,
   revisions,
   pageCount,
+  projectId,
   onRevisionChange,
+  onNavigate,
+  onError,
 }) {
+  const [showRelationships, setShowRelationships] = useState(false);
   if (!sheet || !revision) return null;
   return (
     <aside className="drawing-metadata-panel" aria-labelledby="drawing-details-title">
@@ -60,6 +69,37 @@ function DrawingMetadataPanel({
       <section aria-labelledby="drawing-revision-description-title">
         <h3 id="drawing-revision-description-title">Revision Description</h3>
         <p>{revision.description || "No revision description."}</p>
+      </section>
+      <section
+        className="drawing-metadata-relationships"
+        aria-labelledby="drawing-relationships-title"
+      >
+        <div className="drawing-metadata-relationships__header">
+          <h3 id="drawing-relationships-title">Related Records</h3>
+          <Button
+            size="sm"
+            aria-expanded={showRelationships}
+            aria-controls="drawing-revision-relationships"
+            onClick={() => setShowRelationships((value) => !value)}
+          >
+            <Icon name="link" size={15} />
+            {showRelationships ? "Close" : "Relationships"}
+          </Button>
+        </div>
+        {showRelationships && (
+          <div id="drawing-revision-relationships">
+            <RelationshipPanel
+              key={revision.id}
+              projectId={projectId}
+              entityType="drawing_revision"
+              entityId={revision.id}
+              title={`Revision ${revision.revision_code} Relationships`}
+              compact
+              onNavigate={onNavigate}
+              onError={onError}
+            />
+          </div>
+        )}
       </section>
     </aside>
   );

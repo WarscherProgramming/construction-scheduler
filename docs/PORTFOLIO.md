@@ -1,8 +1,8 @@
 # FieldFlow — Portfolio Copy
 
 Ready-to-use descriptions for resumes, portfolio sites, and LinkedIn.
-Keep the metrics in sync with the repo (currently **615 primary tests: 365
-frontend across 54 files + 250 backend**, with 279 backend subtests reported
+Keep the metrics in sync with the repo (currently **676 primary tests: 412
+frontend across 58 files + 264 backend**, with 317 backend subtests reported
 separately).
 
 ---
@@ -16,7 +16,8 @@ separately).
 > executive dashboard, enhanced project-scoped Change Order, RFI, Submittal,
 > and Punch List workflows, reusable Document Management across six resource
 > types, a project document explorer, construction drawing revision
-> management with a secure PDF viewer, hardened rotating-session authentication, and 615 automated
+> management with a secure PDF viewer, explicit cross-record construction
+> relationships, hardened rotating-session authentication, and 676 automated
 > tests.
 
 ### Resume bullets
@@ -64,10 +65,15 @@ separately).
 >   sheet identities, atomic PDF revision superseding, retained historical
 >   downloads, formal issue membership, and a lazy authenticated PDF viewer
 >   with page, sheet, revision, zoom, and existing-text search controls.
+> - Added a secure construction-record relationship graph across ten
+>   allowlisted entity types, with directional and symmetric links, bounded
+>   metadata candidate search, project isolation, retained unavailable-record
+>   context, exact drawing-revision navigation, and reusable lazy React panels
+>   that add no dashboard or table-row request fan-out.
 > - Hardened authentication with memory-only access JWTs, rotating opaque
 >   refresh sessions, replay-family revocation, CSRF and exact-Origin
 >   enforcement, route-wide tenant isolation, and bounded abuse controls;
->   verified the complete platform with 615 automated tests (Vitest/RTL +
+>   verified the complete platform with 676 automated tests (Vitest/RTL +
 >   pytest).
 
 ### Portfolio-site paragraph
@@ -87,7 +93,8 @@ separately).
 > production-hardened rotating-session authentication, reusable secure
 > attachments across six construction workflows, a responsive project
 > document explorer, construction drawing revision management with secure
-> browser viewing, and 615
+> browser viewing, explicit user-created relationships across construction
+> records and drawing context, and 676
 > automated tests
 > across the stack.
 
@@ -115,7 +122,10 @@ storage or private S3-compatible production storage. A shared React
 `AttachmentPanel` and `useAttachments` hook provide multiple-file upload,
 partial-success feedback, authenticated preview/download, deletion, stale
 response protection, and accessible mobile interaction without duplicating
-resource-specific upload code or growing dashboard requests.
+resource-specific upload code or growing dashboard requests. A separate
+project-scoped relationship model and resolver registry connect those
+Documents, drawing records, and field workflows through controlled links
+without duplicating storage or specialized drawing associations.
 
 ### The transaction-boundary challenge
 
@@ -134,9 +144,11 @@ available while preserving recoverable cleanup work.
   attachment and document APIs, models, storage abstractions, hooks, and UI
 - 25 MiB per-file limit with PDF, image, text, Word, and Excel support
 - Private authenticated delivery with no public object keys or credentials
-- 365 frontend tests across 54 files and 250 backend tests, for 615 primary
-  tests passed; 279 backend subtests are tracked separately
+- 412 frontend tests across 58 files and 264 backend tests, for 676 primary
+  tests passed; 317 backend subtests are tracked separately
 - Lazy per-record panel mounting with no dashboard attachment preloading
+- Ten allowlisted relationship entity types with bounded candidate search and
+  no dashboard or table-row relationship preloading
 
 ---
 
@@ -159,9 +171,11 @@ available while preserving recoverable cleanup work.
 > 📎 Secure project documents and record attachments across six workflows,
 > with nested folder browsing, metadata search, private object storage, and
 > durable cleanup
+> Explicit links among Documents, drawings, RFIs, Submittals, Punch Items,
+> Change Orders, and Daily Logs, with project isolation and contextual navigation
 >
 > Under the hood: React 19 + Vite, FastAPI + SQLAlchemy + PostgreSQL, hardened
-> rotating-session auth, an accessible component design system, and 615
+> rotating-session auth, an accessible component design system, and 676
 > automated tests.
 >
 > The demo seeds a full sample project in ~10 seconds — no signup friction:
@@ -177,7 +191,8 @@ available while preserving recoverable cleanup work.
 > dashboard, project-scoped Change Order, RFI, Submittal, and Punch List
 > workflows, secure Document Management across six resource types, a project
 > document explorer, drawing revision management with a secure PDF viewer,
-> accessible design system, 615 automated tests. Live demo
+> explicit construction-record relationships, accessible design system, 676
+> automated tests. Live demo
 > seeds a complete sample
 > project in seconds.
 
@@ -213,3 +228,8 @@ available while preserving recoverable cleanup work.
    stored as keyed digests. Replay revokes the token family; exact Origin,
    CSRF, database-backed identity, and project-scoped queries protect the
    cross-site deployment without introducing a generic authorization layer.
+8. **Polymorphic integrity without arbitrary models.** One relationship table
+   connects ten construction entity types, while an explicit resolver and
+   allowed-link matrix enforce project ownership, availability, display
+   summaries, direction, and navigation. The tradeoff is documented because
+   polymorphic IDs cannot use native foreign keys to every parent table.

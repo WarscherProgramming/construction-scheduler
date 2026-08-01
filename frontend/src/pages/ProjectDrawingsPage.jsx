@@ -9,6 +9,7 @@ import {
   DrawingSheetDialog,
 } from "../components/drawings/DrawingWorkflowDialogs";
 import EmptyState from "../components/EmptyState";
+import RelationshipPanel from "../components/relationships/RelationshipPanel";
 import StatusBadge from "../components/StatusBadge";
 import Button from "../components/ui/Button";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
@@ -49,11 +50,15 @@ function ProjectDrawingsPage({
   const [searchDraft, setSearchDraft] = useState("");
   const [dialog, setDialog] = useState(null);
   const [confirmation, setConfirmation] = useState(null);
+  const [relationshipSheetId, setRelationshipSheetId] = useState(null);
   const currentSet =
     drawings.drawingSets.find(
       (drawingSet) => drawingSet.id === drawings.selectedSetId
     ) || null;
   const register = drawings.register;
+  const relationshipSheet = register?.sheets.find(
+    (sheet) => sheet.id === relationshipSheetId
+  );
 
   const isActive = (key) => drawings.activeOperations.includes(key);
 
@@ -448,6 +453,28 @@ function ProjectDrawingsPage({
                           </Button>
                           <Button
                             size="sm"
+                            aria-expanded={relationshipSheet?.id === sheet.id}
+                            aria-controls={`drawing-sheet-relationships-${sheet.id}`}
+                            aria-label={`${
+                              relationshipSheet?.id === sheet.id
+                                ? "Close relationships"
+                                : "Relationships"
+                            } for ${sheet.sheet_number}`}
+                            onClick={() =>
+                              setRelationshipSheetId(
+                                relationshipSheet?.id === sheet.id
+                                  ? null
+                                  : sheet.id
+                              )
+                            }
+                          >
+                            <Icon name="link" size={14} />
+                            {relationshipSheet?.id === sheet.id
+                              ? "Close"
+                              : "Relationships"}
+                          </Button>
+                          <Button
+                            size="sm"
                             variant="ghost"
                             onClick={() =>
                               setConfirmation({
@@ -507,6 +534,24 @@ function ProjectDrawingsPage({
           </>
         )}
       </section>
+
+      {relationshipSheet && (
+        <div
+          id={`drawing-sheet-relationships-${relationshipSheet.id}`}
+          className="record-relationship-detail"
+          role="region"
+          aria-label={`Relationships for drawing sheet ${relationshipSheet.sheet_number}`}
+        >
+          <RelationshipPanel
+            projectId={projectId}
+            entityType="drawing_sheet"
+            entityId={relationshipSheet.id}
+            title={`${relationshipSheet.sheet_number} Relationships`}
+            onNavigate={onNavigate}
+            onError={onRequestError}
+          />
+        </div>
+      )}
 
       {currentSet && (
         <DrawingIssueSection

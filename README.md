@@ -11,7 +11,7 @@ and Punch Lists) with their supporting documents.
 ![React 19](https://img.shields.io/badge/React-19-61dafb?logo=react&logoColor=white&labelColor=20232a)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.1x-009688?logo=fastapi&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169e1?logo=postgresql&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-615%20passing-2ea44f)
+![Tests](https://img.shields.io/badge/tests-676%20passing-2ea44f)
 ![Vite](https://img.shields.io/badge/Vite-8-646cff?logo=vite&logoColor=white)
 
 ![FieldFlow executive dashboard](docs/screenshots/dashboard.png)
@@ -108,6 +108,11 @@ question — *"what needs my attention today?"* — has a one-screen answer.
   identities, atomic PDF revision upload and superseding, retained revision
   history, formal draft/issued/void issues, authenticated downloads, and a
   secure in-browser PDF viewer for current and historical revisions.
+- **Construction record relationships** with explicit project-scoped links
+  across Documents, drawing records, RFIs, Submittals, Punch Items, Change
+  Orders, and Daily Logs; controlled direction and reverse labels, bounded
+  candidate search, retained unavailable-record context, and lazy per-record
+  panels without table-row or dashboard request fan-out.
 - **Accessible design system**: tokens, reusable UI primitives (Button, Card,
   Sidebar, PageHeader, Icon, ConfirmDialog, Skeleton), skip links, focus
   management, `aria-current` navigation, and screen-reader-labeled loading
@@ -117,9 +122,9 @@ question — *"what needs my attention today?"* — has a one-screen answer.
 - **Client-side onboarding**: first-run detection seeds a realistic demo
   project through the public API with visible progress — the app is never
   empty.
-- **Automated testing: 615 tests** — 365 frontend across 54 files (Vitest +
-  React Testing Library, behavior- and accessibility-focused) and 250 backend
-  tests plus 279 separately reported subtests (pytest,
+- **Automated testing: 676 tests** — 412 frontend across 58 files (Vitest +
+  React Testing Library, behavior- and accessibility-focused) and 264 backend
+  tests plus 317 separately reported subtests (pytest,
   covering the scheduling engine, critical path, services, migrations, CORS,
   and TestClient API integration).
 
@@ -173,6 +178,11 @@ documented in
 Drawing terminology, models, normalization, revision transactions, issue
 lifecycle, APIs, secure viewer behavior, and deferred drawing work are documented in
 [`docs/DRAWING_MANAGEMENT.md`](docs/DRAWING_MANAGEMENT.md).
+
+Relationship terminology, the allowlisted entity and relationship matrix,
+resolver and API design, lifecycle behavior, frontend integrations, and
+deferred work are documented in
+[`docs/DOCUMENT_RELATIONSHIPS.md`](docs/DOCUMENT_RELATIONSHIPS.md).
 
 Change Orders use a focused service layer for validation and project-scoped
 `CO-###` allocation. A persistent per-project sequence table prevents deleted
@@ -415,6 +425,9 @@ job. FieldFlow does not include a built-in worker or scheduler, and
 - Lazy, authenticated PDF viewer with current/historical revision routes,
   page and sheet navigation, bounded thumbnails, zoom modes, selectable text,
   existing-text search, metadata, and one-session download reuse
+- Explicit relationships across ten construction entity types with controlled
+  direction, reverse labels, bounded candidate search, safe unavailable-record
+  history, and one lazily mounted panel per active record context
 
 **Product quality**
 - Branded landing/login, first-run onboarding with demo seeding
@@ -440,15 +453,15 @@ job. FieldFlow does not include a built-in worker or scheduler, and
 | Backend | FastAPI, SQLAlchemy, Alembic, Pydantic |
 | Database | PostgreSQL |
 | Auth | Memory-only access JWT + rotating opaque refresh sessions |
-| Testing | Vitest + React Testing Library (365), pytest (250) |
+| Testing | Vitest + React Testing Library (412), pytest (264) |
 | Hosting | Vercel (frontend) · Render (API + migrations) |
 
 ## Testing
 
-**615 primary automated tests passed.** Backend subtests are reported
+**676 primary automated tests passed.** Backend subtests are reported
 separately rather than added to that total.
 
-- **Frontend (365 across 54 files)** — Vitest + React Testing Library. Tests
+- **Frontend (412 across 58 files)** — Vitest + React Testing Library. Tests
   target behavior and accessibility: roles and names, keyboard flows
   (Enter/Escape editing,
   grid cursor navigation, focus traps), aggregate dashboard rendering,
@@ -466,7 +479,10 @@ separately rather than added to that total.
   revision upload/history/download/viewing, issue membership, viewer routing,
   request cancellation, PDF security settings, page/zoom/search controls,
   Blob cleanup, confirmations, focus restoration, and advisory PDF validation.
-- **Backend (250, plus 279 subtests)** — pytest. Covers the workday scheduling
+  Relationship coverage includes API requests, hook deduplication and stale
+  response handling, bounded keyboard candidate selection, direction-aware
+  rendering, deletion, navigation, and all supported page integrations.
+- **Backend (264, plus 317 subtests)** — pytest. Covers the workday scheduling
   engine (dependencies, lag, federal holidays), critical path and total float,
   task services, relationship migrations, CORS configuration, and
   TestClient API integration (auth, ownership enforcement, task lifecycle,
@@ -482,7 +498,11 @@ separately rather than added to that total.
   documents, and project isolation. Drawing coverage includes ownership,
   normalized uniqueness, PDF validation, revision sequencing and rollback,
   one-current constraints, issue lifecycle, safe register responses,
-  explorer retention, and migration reversibility. Security
+  explorer retention, and migration reversibility. Relationship coverage
+  includes migration constraints, all ten resolvers, directional and
+  symmetric creation, duplicate prevention, filtering, pagination,
+  authorization, unavailable targets, transaction rollback, and bounded
+  candidate search. Security
   coverage includes strict JWT claims, rotating refresh sessions, replay
   revocation, CSRF, exact CORS origins, rate and body limits, route-wide
   ownership, transaction rollback, safe errors, production configuration,
@@ -651,6 +671,11 @@ commit production credentials.
   rendering, project-scoped deep links, page/sheet/revision navigation,
   bounded thumbnails, zoom, selectable text, existing-text search, metadata,
   secure download reuse, accessibility, and responsive layouts
+- ✅ M16.5 Construction Document Relationships with one project-scoped
+  relationship model, an explicit ten-entity resolver and allowed-link
+  matrix, directional and symmetric links, bounded candidate search, safe
+  historical context, and lazy relationship workflows across documents,
+  drawings, RFIs, Submittals, Punch Items, Change Orders, and Daily Logs
 - ✅ Branded landing page and first-run demo seeding
 - ✅ Icon system, confirmation dialogs, notifications, loading skeletons
 - ✅ Scheduler showcase: WBS numbering, inline validation, critical path +

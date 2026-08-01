@@ -4,6 +4,7 @@ import AttachmentPanel from "../components/AttachmentPanel";
 import FormField from "../components/FormField";
 import RecordCell from "../components/RecordCell";
 import RecordTable from "../components/RecordTable";
+import RelationshipPanel from "../components/relationships/RelationshipPanel";
 import StatusBadge from "../components/StatusBadge";
 import Button from "../components/ui/Button";
 import Card from "../components/ui/Card";
@@ -61,8 +62,13 @@ function SubmittalsPage({
 }) {
   const isEditing = editingSubmittalId !== null;
   const [attachmentSubmittalId, setAttachmentSubmittalId] = useState(null);
+  const [relationshipSubmittalId, setRelationshipSubmittalId] =
+    useState(null);
   const selectedSubmittal = submittals.find(
     (submittal) => submittal.id === attachmentSubmittalId
+  );
+  const relationshipSubmittal = submittals.find(
+    (submittal) => submittal.id === relationshipSubmittalId
   );
 
   return (
@@ -323,6 +329,29 @@ function SubmittalsPage({
                     : "Attachments"}
                 </Button>
                 <Button
+                  aria-expanded={
+                    relationshipSubmittal?.id === submittal.id
+                  }
+                  aria-controls={`submittal-relationships-${submittal.id}`}
+                  aria-label={`${
+                    relationshipSubmittal?.id === submittal.id
+                      ? "Close relationships"
+                      : "Relationships"
+                  } for Submittal ${submittal.number}`}
+                  onClick={() =>
+                    setRelationshipSubmittalId(
+                      relationshipSubmittal?.id === submittal.id
+                        ? null
+                        : submittal.id
+                    )
+                  }
+                >
+                  <Icon name="link" size={16} />
+                  {relationshipSubmittal?.id === submittal.id
+                    ? "Close"
+                    : "Relationships"}
+                </Button>
+                <Button
                   onClick={() => onEdit(submittal)}
                   aria-label={`Edit ${submittal.number}`}
                 >
@@ -359,6 +388,23 @@ function SubmittalsPage({
             title="Submittal Attachments"
             canUpload
             canDelete
+            onError={onAttachmentError}
+          />
+        </div>
+      )}
+      {relationshipSubmittal && (
+        <div
+          id={`submittal-relationships-${relationshipSubmittal.id}`}
+          className="record-relationship-detail"
+          role="region"
+          aria-label={`Relationships for Submittal ${relationshipSubmittal.number}`}
+        >
+          <RelationshipPanel
+            projectId={projectId}
+            entityType="submittal"
+            entityId={relationshipSubmittal.id}
+            title="Submittal Relationships"
+            onNavigate={onNavigate}
             onError={onAttachmentError}
           />
         </div>

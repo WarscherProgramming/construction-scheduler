@@ -13,6 +13,7 @@ function DocumentDetailsDialog({
   folderLocation,
   isDownloading = false,
   onDownload,
+  onRelationships,
   onClose,
 }) {
   const titleId = useId();
@@ -107,6 +108,10 @@ function DocumentDetailsDialog({
         </dl>
         <div className="dialog__actions">
           <Button onClick={onClose}>Close</Button>
+          <Button onClick={() => onRelationships(documentRecord)}>
+            <Icon name="link" size={16} />
+            Relationships
+          </Button>
           <Button
             variant="primary"
             disabled={isDownloading}

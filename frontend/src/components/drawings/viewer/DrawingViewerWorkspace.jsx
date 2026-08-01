@@ -14,7 +14,10 @@ function DrawingViewerWorkspace({
   viewer,
   showThumbnails,
   showMetadata,
+  projectId,
   onRevisionChange,
+  onNavigate,
+  onError,
   onRenderStateChange,
 }) {
   const handleKeyDown = (event) => {
@@ -70,7 +73,10 @@ function DrawingViewerWorkspace({
           revision={viewer.revision}
           revisions={viewer.revisions}
           pageCount={viewer.pageCount}
+          projectId={projectId}
           onRevisionChange={onRevisionChange}
+          onNavigate={onNavigate}
+          onError={onError}
         />
       )}
     </div>

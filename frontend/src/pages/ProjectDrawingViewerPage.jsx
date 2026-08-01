@@ -114,9 +114,12 @@ function ProjectDrawingViewerPage({
           />
           <DrawingViewerWorkspace
             viewer={viewer}
+            projectId={projectId}
             showThumbnails={showThumbnails}
             showMetadata={showMetadata}
             onRevisionChange={navigateRevision}
+            onNavigate={onNavigate}
+            onError={onRequestError}
             onRenderStateChange={setRenderStatus}
           />
         </>

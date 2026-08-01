@@ -7,10 +7,14 @@ vi.mock("../services/api", () => ({
   uploadAttachment: vi.fn(),
   downloadAttachment: vi.fn(),
   deleteAttachment: vi.fn(),
+  listRelationships: vi.fn(),
+  createRelationship: vi.fn(),
+  deleteRelationship: vi.fn(),
+  listRelationshipCandidates: vi.fn(),
 }));
 
 import DailyLogsPage from "./DailyLogsPage";
-import { listAttachments } from "../services/api";
+import { listAttachments, listRelationships } from "../services/api";
 
 
 function attachment(id, filename) {
@@ -71,6 +75,15 @@ describe("DailyLogsPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     listAttachments.mockResolvedValue({ attachments: [] });
+    listRelationships.mockResolvedValue({
+      relationships: [],
+      pagination: {
+        limit: 50,
+        offset: 0,
+        total: 0,
+        has_more: false,
+      },
+    });
   });
 
   it("labels required fields and submits the form", async () => {
@@ -355,5 +368,77 @@ describe("DailyLogsPage", () => {
     );
     expect(screen.getByRole("button", { name: "Save Daily Log" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "Refresh Logs" })).toBeEnabled();
+  });
+
+  it("loads relationships for only one selected persisted log", async () => {
+    const user = userEvent.setup();
+    render(<DailyLogsPage {...pageProps()} />);
+    await new Promise((resolve) => window.setTimeout(resolve, 0));
+    expect(listRelationships).not.toHaveBeenCalled();
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "Relationships for daily log 2026-06-20 for Desert Concrete",
+      })
+    );
+    expect(
+      screen.getByRole("heading", { name: "Daily Log Relationships" })
+    ).toBeInTheDocument();
+    await waitFor(() => expect(listRelationships).toHaveBeenCalledTimes(1));
+    expect(listRelationships).toHaveBeenCalledWith(
+      1,
+      "daily_log",
+      10,
+      expect.objectContaining({ signal: expect.any(AbortSignal) })
+    );
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "Relationships for daily log 2026-06-19 for Valley Electric",
+      })
+    );
+    await waitFor(() => expect(listRelationships).toHaveBeenCalledTimes(2));
+    expect(listRelationships).toHaveBeenLastCalledWith(
+      1,
+      "daily_log",
+      20,
+      expect.objectContaining({ signal: expect.any(AbortSignal) })
+    );
+    expect(
+      screen.getAllByRole("heading", { name: "Daily Log Relationships" })
+    ).toHaveLength(1);
+  });
+
+  it("clears Daily Log relationships on project change and reports failure", async () => {
+    const user = userEvent.setup();
+    const requestError = new Error("Relationships unavailable");
+    const onAttachmentError = vi.fn();
+    listRelationships.mockRejectedValueOnce(requestError);
+    const view = render(
+      <DailyLogsPage
+        key={1}
+        {...pageProps({ onAttachmentError })}
+      />
+    );
+    await user.click(
+      screen.getByRole("button", {
+        name: "Relationships for daily log 2026-06-20 for Desert Concrete",
+      })
+    );
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      requestError.message
+    );
+    expect(onAttachmentError).toHaveBeenCalledWith(
+      "Unable to load relationships",
+      requestError
+    );
+
+    view.rerender(
+      <DailyLogsPage key={2} {...pageProps({ projectId: 2 })} />
+    );
+    expect(
+      screen.queryByRole("heading", { name: "Daily Log Relationships" })
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save Daily Log" })).toBeEnabled();
   });
 });

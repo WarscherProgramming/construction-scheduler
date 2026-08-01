@@ -5,6 +5,7 @@ import FormField from "../components/FormField";
 import RecordCell from "../components/RecordCell";
 import RecordFilters from "../components/RecordFilters";
 import RecordTable from "../components/RecordTable";
+import RelationshipPanel from "../components/relationships/RelationshipPanel";
 import StatusBadge from "../components/StatusBadge";
 import Button from "../components/ui/Button";
 import Card from "../components/ui/Card";
@@ -90,6 +91,8 @@ function ChangeOrdersPage({
   const [companyFilter, setCompanyFilter] = useState("");
   const [attachmentChangeOrderId, setAttachmentChangeOrderId] =
     useState(null);
+  const [relationshipChangeOrderId, setRelationshipChangeOrderId] =
+    useState(null);
   const isEditing = editingChangeOrderId !== null;
   const hasKnownStatus = CHANGE_ORDER_STATUSES.includes(changeOrderStatus);
 
@@ -136,6 +139,9 @@ function ChangeOrdersPage({
   }, [changeOrders, companyFilter, searchQuery, statusFilter]);
   const selectedChangeOrder = filteredChangeOrders.find(
     (changeOrder) => changeOrder.id === attachmentChangeOrderId
+  );
+  const relationshipChangeOrder = filteredChangeOrders.find(
+    (changeOrder) => changeOrder.id === relationshipChangeOrderId
   );
 
   return (
@@ -582,6 +588,29 @@ function ChangeOrdersPage({
                     : "Attachments"}
                 </Button>
                 <Button
+                  aria-expanded={
+                    relationshipChangeOrder?.id === changeOrder.id
+                  }
+                  aria-controls={`change-order-relationships-${changeOrder.id}`}
+                  aria-label={`${
+                    relationshipChangeOrder?.id === changeOrder.id
+                      ? "Close relationships"
+                      : "Relationships"
+                  } for change order ${changeOrder.co_number}`}
+                  onClick={() =>
+                    setRelationshipChangeOrderId(
+                      relationshipChangeOrder?.id === changeOrder.id
+                        ? null
+                        : changeOrder.id
+                    )
+                  }
+                >
+                  <Icon name="link" size={16} />
+                  {relationshipChangeOrder?.id === changeOrder.id
+                    ? "Close"
+                    : "Relationships"}
+                </Button>
+                <Button
                   onClick={() => onEdit(changeOrder)}
                   aria-label={`Edit change order ${changeOrder.co_number}`}
                 >
@@ -618,6 +647,23 @@ function ChangeOrdersPage({
             title="Change Order Attachments"
             canUpload
             canDelete
+            onError={onAttachmentError}
+          />
+        </div>
+      )}
+      {relationshipChangeOrder && (
+        <div
+          id={`change-order-relationships-${relationshipChangeOrder.id}`}
+          className="record-relationship-detail"
+          role="region"
+          aria-label={`Relationships for change order ${relationshipChangeOrder.co_number}`}
+        >
+          <RelationshipPanel
+            projectId={projectId}
+            entityType="change_order"
+            entityId={relationshipChangeOrder.id}
+            title="Change Order Relationships"
+            onNavigate={onNavigate}
             onError={onAttachmentError}
           />
         </div>

@@ -5,6 +5,7 @@ import FormField from "../components/FormField";
 import RecordCell from "../components/RecordCell";
 import RecordFilters from "../components/RecordFilters";
 import RecordTable from "../components/RecordTable";
+import RelationshipPanel from "../components/relationships/RelationshipPanel";
 import Button from "../components/ui/Button";
 import Card from "../components/ui/Card";
 import Icon from "../components/ui/Icon";
@@ -38,6 +39,7 @@ function DailyLogsPage({
   const [searchQuery, setSearchQuery] = useState("");
   const [companyFilter, setCompanyFilter] = useState("");
   const [attachmentLogId, setAttachmentLogId] = useState(null);
+  const [relationshipLogId, setRelationshipLogId] = useState(null);
 
   const filteredLogs = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -57,6 +59,9 @@ function DailyLogsPage({
 
   const selectedLog = filteredLogs.find(
     (log) => log.id === attachmentLogId
+  );
+  const relationshipLog = filteredLogs.find(
+    (log) => log.id === relationshipLogId
   );
 
   return (
@@ -194,7 +199,7 @@ function DailyLogsPage({
             ? "No daily logs match the current filters."
             : "No daily logs yet. Create the first log above."
         }
-        headers={["Date", "Company", "Manpower", "Notes", "Attachments"]}
+        headers={["Date", "Company", "Manpower", "Notes", "Actions"]}
       >
         {filteredLogs.map((log) => {
           const detailId = `daily-log-attachments-${log.id}`;
@@ -207,7 +212,7 @@ function DailyLogsPage({
               <RecordCell label="Company">{log.company}</RecordCell>
               <RecordCell label="Manpower">{log.manpower}</RecordCell>
               <RecordCell label="Notes">{log.notes}</RecordCell>
-              <RecordCell label="Attachments" className="record-actions">
+              <RecordCell label="Actions" className="record-actions">
                 <Button
                   size="sm"
                   aria-expanded={isExpanded}
@@ -221,6 +226,26 @@ function DailyLogsPage({
                 >
                   <Icon name="file-text" size={15} />
                   {isExpanded ? "Close" : "Attachments"}
+                </Button>
+                <Button
+                  size="sm"
+                  aria-expanded={relationshipLog?.id === log.id}
+                  aria-controls={`daily-log-relationships-${log.id}`}
+                  aria-label={`${
+                    relationshipLog?.id === log.id
+                      ? "Close relationships"
+                      : "Relationships"
+                  } for daily log ${logLabel}`}
+                  onClick={() =>
+                    setRelationshipLogId(
+                      relationshipLog?.id === log.id ? null : log.id
+                    )
+                  }
+                >
+                  <Icon name="link" size={15} />
+                  {relationshipLog?.id === log.id
+                    ? "Close"
+                    : "Relationships"}
                 </Button>
               </RecordCell>
             </tr>
@@ -244,6 +269,25 @@ function DailyLogsPage({
             title="Daily Log Attachments"
             canUpload
             canDelete
+            onError={onAttachmentError}
+          />
+        </div>
+      )}
+      {relationshipLog && (
+        <div
+          id={`daily-log-relationships-${relationshipLog.id}`}
+          className="record-relationship-detail"
+          role="region"
+          aria-label={`Relationships for daily log ${formatDate(
+            relationshipLog.date
+          )} for ${relationshipLog.company}`}
+        >
+          <RelationshipPanel
+            projectId={projectId}
+            entityType="daily_log"
+            entityId={relationshipLog.id}
+            title="Daily Log Relationships"
+            onNavigate={onNavigate}
             onError={onAttachmentError}
           />
         </div>

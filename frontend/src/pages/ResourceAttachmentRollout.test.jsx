@@ -7,13 +7,17 @@ vi.mock("../services/api", () => ({
   uploadAttachment: vi.fn(),
   downloadAttachment: vi.fn(),
   deleteAttachment: vi.fn(),
+  listRelationships: vi.fn(),
+  createRelationship: vi.fn(),
+  deleteRelationship: vi.fn(),
+  listRelationshipCandidates: vi.fn(),
 }));
 
 import ChangeOrdersPage from "./ChangeOrdersPage";
 import PunchItemsPage from "./PunchItemsPage";
 import RFIsPage from "./RFIsPage";
 import SubmittalsPage from "./SubmittalsPage";
-import { listAttachments } from "../services/api";
+import { listAttachments, listRelationships } from "../services/api";
 
 
 const noop = () => {};
@@ -162,6 +166,7 @@ const resources = [
     Component: RFIsPage,
     parentType: "rfi",
     title: "RFI Attachments",
+    relationshipTitle: "RFI Relationships",
     records: [
       {
         id: 11,
@@ -194,6 +199,7 @@ const resources = [
     Component: SubmittalsPage,
     parentType: "submittal",
     title: "Submittal Attachments",
+    relationshipTitle: "Submittal Relationships",
     records: [
       {
         id: 21,
@@ -224,6 +230,7 @@ const resources = [
     Component: PunchItemsPage,
     parentType: "punch_item",
     title: "Punch Item Attachments",
+    relationshipTitle: "Punch Item Relationships",
     records: [
       {
         id: 31,
@@ -256,6 +263,7 @@ const resources = [
     Component: ChangeOrdersPage,
     parentType: "change_order",
     title: "Change Order Attachments",
+    relationshipTitle: "Change Order Relationships",
     records: [
       {
         id: 41,
@@ -480,5 +488,121 @@ describe.each(resources)("$name attachment rollout", (resource) => {
         ? "Create Change Order"
         : `Create ${resource.name}`,
     })).toBeEnabled();
+  });
+});
+
+
+describe.each(resources)("$name relationship rollout", (resource) => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    listRelationships.mockResolvedValue({
+      relationships: [],
+      pagination: {
+        limit: 50,
+        offset: 0,
+        total: 0,
+        has_more: false,
+      },
+    });
+  });
+
+  it("loads exactly one selected persisted record without row fan-out", async () => {
+    const user = userEvent.setup();
+    const props = resource.props(1, resource.records);
+    const { Component } = resource;
+    render(<Component {...props} />);
+
+    await new Promise((resolve) => window.setTimeout(resolve, 0));
+    expect(listRelationships).not.toHaveBeenCalled();
+    expect(
+      screen.queryByRole("heading", { name: resource.relationshipTitle })
+    ).not.toBeInTheDocument();
+
+    const firstIdentifier = resource.identifier(resource.records[0]);
+    await user.click(
+      screen.getByRole("button", {
+        name: `Relationships for ${firstIdentifier}`,
+      })
+    );
+    expect(
+      screen.getByRole("heading", { name: resource.relationshipTitle })
+    ).toBeInTheDocument();
+    await waitFor(() => expect(listRelationships).toHaveBeenCalledTimes(1));
+    expect(listRelationships).toHaveBeenLastCalledWith(
+      1,
+      resource.parentType,
+      resource.records[0].id,
+      expect.objectContaining({
+        limit: 50,
+        offset: 0,
+        signal: expect.any(AbortSignal),
+      })
+    );
+
+    await user.click(
+      screen.getByRole("button", {
+        name: `Relationships for ${resource.identifier(resource.records[1])}`,
+      })
+    );
+    await waitFor(() => expect(listRelationships).toHaveBeenCalledTimes(2));
+    expect(listRelationships).toHaveBeenLastCalledWith(
+      1,
+      resource.parentType,
+      resource.records[1].id,
+      expect.objectContaining({ signal: expect.any(AbortSignal) })
+    );
+    expect(
+      screen.getAllByRole("heading", { name: resource.relationshipTitle })
+    ).toHaveLength(1);
+  });
+
+  it("keeps create and edit forms independent from relationship state", async () => {
+    const user = userEvent.setup();
+    const props = resource.props(1, resource.records);
+    const { Component } = resource;
+    render(<Component {...props} />);
+
+    expect(screen.queryByText("No relationships yet.")).not.toBeInTheDocument();
+    await user.click(
+      screen.getByRole("button", {
+        name: `Relationships for ${resource.identifier(resource.records[0])}`,
+      })
+    );
+    await screen.findByText("No relationships yet.");
+    await user.click(screen.getByRole("button", { name: resource.editLabel }));
+    expect(props.onEdit).toHaveBeenCalledWith(resource.records[1]);
+    expect(
+      screen.getByRole("heading", { name: resource.relationshipTitle })
+    ).toBeInTheDocument();
+    expect(listRelationships).toHaveBeenCalledTimes(1);
+  });
+
+  it("clears on project change and reports request failures globally", async () => {
+    const user = userEvent.setup();
+    const requestError = new Error("Relationships unavailable");
+    listRelationships.mockRejectedValueOnce(requestError);
+    const props = resource.props(1, resource.records);
+    const { Component } = resource;
+    const view = render(<Component key={1} {...props} />);
+
+    await user.click(
+      screen.getByRole("button", {
+        name: `Relationships for ${resource.identifier(resource.records[0])}`,
+      })
+    );
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      requestError.message
+    );
+    expect(props.onAttachmentError).toHaveBeenCalledWith(
+      "Unable to load relationships",
+      requestError
+    );
+
+    view.rerender(
+      <Component key={2} {...resource.props(2, resource.records)} />
+    );
+    expect(
+      screen.queryByRole("heading", { name: resource.relationshipTitle })
+    ).not.toBeInTheDocument();
   });
 });

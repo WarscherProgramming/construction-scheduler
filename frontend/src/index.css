@@ -712,6 +712,321 @@ button:disabled {
   }
 }
 
+.drawing-metadata-relationships {
+  min-width: 0;
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+}
+
+.drawing-metadata-relationships__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.drawing-metadata-relationships__header h3 {
+  margin: 0;
+}
+
+.drawing-metadata-relationships .relationship-panel {
+  margin-top: var(--space-3);
+}
+
+@media (max-width: 480px) {
+  .drawing-metadata-relationships__header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
+
+/* Project-scoped record relationships */
+.record-relationship-detail {
+  min-width: 0;
+  margin-top: var(--space-5);
+}
+
+.relationship-panel {
+  width: 100%;
+  min-width: 0;
+  padding: var(--space-5);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.relationship-panel--compact {
+  padding: var(--space-4);
+}
+
+.relationship-panel__header,
+.relationship-panel__heading,
+.relationship-panel__header-actions,
+.relationship-panel__error,
+.relationship-panel__error > div,
+.relationship-list__actions {
+  display: flex;
+  align-items: center;
+}
+
+.relationship-panel__header {
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.relationship-panel__heading {
+  min-width: 0;
+  gap: var(--space-2);
+  color: var(--text-h);
+}
+
+.relationship-panel__heading h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  line-height: 1.3;
+}
+
+.relationship-panel__heading h2:focus {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.relationship-panel__header-actions {
+  flex-shrink: 0;
+  gap: var(--space-3);
+  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.relationship-panel__error {
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid #fecaca;
+  border-radius: var(--radius-md);
+  color: var(--danger);
+  background: var(--danger-bg);
+}
+
+.relationship-panel__error > div {
+  flex-shrink: 0;
+  gap: var(--space-2);
+}
+
+.relationship-panel__state {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  min-height: 96px;
+  gap: var(--space-2);
+  color: var(--text);
+  text-align: center;
+}
+
+.relationship-list {
+  padding: 0;
+  margin: 0 0 var(--space-3);
+  border-top: 1px solid var(--border);
+  list-style: none;
+}
+
+.relationship-list__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  min-width: 0;
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.relationship-list__content {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.relationship-list__relation {
+  color: var(--accent-strong);
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.relationship-list__identity {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  color: var(--text-h);
+}
+
+.relationship-list__identity span,
+.relationship-list__metadata {
+  color: var(--text);
+  font-size: 0.86rem;
+}
+
+.relationship-list__content p,
+.relationship-list__identity strong,
+.relationship-list__metadata span {
+  overflow-wrap: anywhere;
+}
+
+.relationship-list__content p {
+  margin: 0;
+}
+
+.relationship-list__metadata {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.relationship-list__actions {
+  flex-shrink: 0;
+  gap: var(--space-2);
+}
+
+.relationship-dialog__fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.relationship-dialog__fields > :last-child {
+  grid-column: 1 / -1;
+}
+
+.relationship-candidate-status {
+  min-height: 1.5em;
+  margin-top: var(--space-2);
+  color: var(--text);
+  font-size: 0.86rem;
+}
+
+.relationship-candidates {
+  display: grid;
+  max-height: min(300px, 38vh);
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.relationship-candidates > p {
+  margin: 0;
+  padding: var(--space-4);
+  color: var(--text);
+  text-align: center;
+}
+
+.relationship-candidate {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  min-width: 0;
+  padding: var(--space-3);
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  color: var(--text);
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.relationship-candidate:last-child {
+  border-bottom: 0;
+}
+
+.relationship-candidate:hover,
+.relationship-candidate--active {
+  background: var(--surface-muted);
+}
+
+.relationship-candidate:focus-visible {
+  position: relative;
+  outline: 3px solid var(--accent);
+  outline-offset: -3px;
+}
+
+.relationship-candidate strong,
+.relationship-candidate span {
+  overflow-wrap: anywhere;
+}
+
+.relationship-candidate strong {
+  color: var(--text-h);
+}
+
+.relationship-candidate span:last-child {
+  font-size: 0.86rem;
+}
+
+.relationship-dialog__error,
+.relationship-dialog__review {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin: var(--space-3) 0;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+}
+
+.relationship-dialog__error {
+  border: 1px solid #fecaca;
+  color: var(--danger);
+  background: var(--danger-bg);
+}
+
+.relationship-dialog__review {
+  border: 1px solid var(--border);
+  color: var(--text);
+  background: var(--surface-muted);
+}
+
+@media (max-width: 640px) {
+  .relationship-panel {
+    padding: var(--space-4);
+  }
+
+  .relationship-panel__header,
+  .relationship-panel__error,
+  .relationship-list__item {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .relationship-panel__header-actions,
+  .relationship-list__actions {
+    flex-wrap: wrap;
+  }
+
+  .relationship-list__actions .button {
+    flex: 1 1 auto;
+  }
+
+  .relationship-dialog__fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .relationship-dialog__fields > :last-child {
+    grid-column: auto;
+  }
+
+  .relationship-dialog__error,
+  .relationship-dialog__review {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
+
 /* Secure drawing viewer */
 .drawing-viewer-page {
   min-width: 0;

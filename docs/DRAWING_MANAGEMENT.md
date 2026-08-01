@@ -4,7 +4,9 @@ M16.3 adds construction-specific metadata and workflow around the existing
 document storage foundation. Drawing files remain ordinary project-owned
 `Document` records and use the configured local or private S3-compatible
 provider. M16.4 adds a secure, lazy-loaded PDF viewer without creating a
-second file path or changing drawing persistence.
+second file path or changing drawing persistence. M16.5 adds explicit links
+between drawing context, Documents, and construction records while preserving
+the specialized drawing lifecycle.
 
 ## Domain Model
 
@@ -158,10 +160,34 @@ Apache-2.0 licensed. The production dependency audit reports zero
 vulnerabilities; the full development tree retains two high advisories in
 existing build tooling (`brace-expansion` and `postcss`).
 
-Automated verification passes 365 frontend tests across 54 files and 250
-backend tests, plus 279 separately reported backend subtests. Manual browser,
-responsive, large-fixture, and source-PDF security checks were unavailable in
-this phase and remain explicitly unverified.
+The M16.5 production build keeps the drawing viewer lazy at 448.85 kB raw /
+133.62 kB gzip and adds a separate 17.96 kB raw / 5.45 kB gzip relationship
+chunk. Relative to M16.4, viewer gzip changes by +0.23 kB, main gzip by +0.27
+kB, and CSS gzip by +0.64 kB. Automated verification passes 412 frontend
+tests across 58 files and 264 backend tests, plus 317 separately reported
+backend subtests. Manual browser, responsive, large-fixture, and source-PDF
+security checks remain explicitly unverified in the command-only
+environment.
+
+## Drawing Relationships
+
+The Drawing Register can open one relationship panel for the selected
+Drawing Sheet. The viewer metadata area exposes an opt-in Related Records
+section for the exact `drawing_revision`, including superseded historical
+revisions. Relationships load only when that panel is opened; they do not add
+a request per register row or PDF page. Creation and deletion refresh only
+relationship state, so the authenticated PDF Blob is not fetched again.
+
+Related drawing revisions navigate to the exact sheet/revision viewer route.
+Drawing sets, sheets, and issues use the existing Drawing Register route.
+Archived drawing records remain factual and viewable where the drawing domain
+permits, while unavailable records cannot receive new links.
+
+Generic relationships provide broader construction context. They do not
+replace `DrawingIssueRevision` membership, `DrawingRevision` superseding
+lineage, current-revision pointers, Document version lineage, or Folder
+placement. The allowed matrix, resolver rules, and API are documented in
+[`DOCUMENT_RELATIONSHIPS.md`](DOCUMENT_RELATIONSHIPS.md).
 
 ## Explorer and Retention
 
@@ -175,6 +201,8 @@ This prevents dangling revision references and silent historical loss.
 Drawings remain PDF-only and cannot be assigned from existing explorer
 documents. M16.4 does not provide HTTP range delivery, offline caching,
 password entry, OCR, annotations, links/forms, measurements, overlays,
-revision comparison, markups, relationships, server-side content search, or
-AI analysis. Manual visual and source-PDF accessibility verification remains
-necessary in a working browser environment.
+revision comparison, markups, server-side content search, or AI analysis.
+Generic record relationships are now available, but relationship overlays,
+automatic suggestions, and graph visualization are not. Manual visual and
+source-PDF accessibility verification remains necessary in a working browser
+environment.

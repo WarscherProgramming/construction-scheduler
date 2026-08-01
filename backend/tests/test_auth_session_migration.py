@@ -13,7 +13,7 @@ from alembic.script import ScriptDirectory
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 PREVIOUS_REVISION = "e7b1c5d9f204"
 REVISION = "f8c2d6e0a315"
-CURRENT_REVISION = "c8f1a4d7e290"
+CURRENT_REVISION = "d9a2f5c8e173"
 
 
 class AuthSessionMigrationTests(unittest.TestCase):

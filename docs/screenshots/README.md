@@ -30,7 +30,7 @@ for both referenced and planned module screenshots.
 | `drawing-register.png` | Populated Drawing Register with multiple disciplines, clear current revisions, set/filter controls, and sheet actions visible. |
 | `drawing-history.png` | Revision History dialog showing one current and one superseded PDF revision, dates, successor information, issue membership, and View/Download actions. |
 | `drawing-issues.png` | Drawing Issues section with a draft issue containing revisions and an issued or void issue showing frozen membership. |
-| `drawing-viewer.png` | Secure Drawing Viewer showing a synthetic multipage sheet, selected thumbnail, current or superseded revision text, metadata panel, page/zoom/search controls, and no confidential drawing content. |
+| `drawing-viewer.png` | Secure Drawing Viewer showing a synthetic multipage sheet, selected thumbnail, current or superseded revision text, metadata panel with Related Records open, page/zoom/search controls, and no confidential drawing content. |
 | `mobile.png` | Dashboard or a record page at ~390 px width: collapsed horizontal nav and stacked record cards. (Optional composite of two views side by side.) |
 
 ## Document Management captures
@@ -49,6 +49,18 @@ files.
 | `attachment-upload-results.png` | Any attachment-enabled workflow | Sequential multiple-file upload showing progress or a synthetic partial-success result | 1440×900 | Local filesystem paths and sensitive error details | Demonstrates resilient multi-file UX rather than an idealized happy path |
 | `attachment-delete-confirmation.png` | Any attachment-enabled workflow | Filename-specific accessible confirmation dialog with the background panel visible | 1440×900 | Sensitive filenames or document contents | Shows deliberate destructive-action and focus-management design |
 | `attachment-mobile.png` | RFI, Punch Item, or Daily Log attachments | One open panel with a long synthetic filename and wrapped actions | 390×844 | Notification previews, browser account UI, and real filenames | Proves the shared attachment workflow remains usable on site-sized screens |
+
+## Relationship captures
+
+M16.5 does not create or replace image files. Recapture these views with
+explicit, synthetic links; do not imply automatic relationship discovery.
+
+| File | Page / workflow | State to capture | Viewport | Avoid | Portfolio value |
+|---|---|---|---|---|---|
+| `record-relationships.png` | RFI, Submittal, Punch Item, Change Order, or Daily Log | One persisted record with its Related Records panel open; show forward and reverse wording, identifiers, statuses, and navigation actions | 1440x900 | Real record text, pricing, client names, and unavailable private records | Shows reusable cross-workflow context without row-level request fan-out |
+| `drawing-relationships.png` | Drawing Register or Secure Drawing Viewer | Selected sheet or exact revision with Related Records open and a link to a synthetic RFI, Submittal, or Document | 1440x900 | Proprietary drawings, provider details, tokens, and claims of drawing annotations | Shows exact revision context while keeping formal revision and issue workflows intact |
+| `relationship-dialog.png` | Any supported persisted record | Create Relationship dialog with relationship type, related entity type, bounded search results, and one selected candidate | 1440x900 | Raw IDs, storage metadata, and cross-project records | Demonstrates the controlled matrix and accessible metadata-only candidate flow |
+| `relationship-mobile.png` | RFI, Punch Item, or Daily Log | One Related Records panel with a long synthetic title and reachable actions | 390x844 | Browser account UI and sensitive record text | Verifies narrow-screen wrapping and action access |
 
 ## Tips
 
@@ -69,3 +81,8 @@ files.
 - M16.4 adds the Secure Drawing Viewer. Capture `drawing-viewer.png` at desktop
   and include its mobile layout in `mobile.png`; use a synthetic PDF and keep
   storage URLs, tokens, and real project drawings out of the frame.
+- M16.5 adds explicit construction-record relationships. Recapture
+  `project-documents.png`, `drawing-viewer.png`, and at least one persisted
+  RFI, Submittal, Punch Item, Change Order, or Daily Log with its Related
+  Records panel visible. Add the four relationship captures above where the
+  portfolio needs the complete creation, navigation, and responsive story.

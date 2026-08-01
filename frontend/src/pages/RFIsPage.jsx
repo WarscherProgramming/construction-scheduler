@@ -4,6 +4,7 @@ import AttachmentPanel from "../components/AttachmentPanel";
 import FormField from "../components/FormField";
 import RecordCell from "../components/RecordCell";
 import RecordTable from "../components/RecordTable";
+import RelationshipPanel from "../components/relationships/RelationshipPanel";
 import StatusBadge from "../components/StatusBadge";
 import Button from "../components/ui/Button";
 import Card from "../components/ui/Card";
@@ -48,7 +49,11 @@ function RFIsPage({
 }) {
   const isEditing = editingRFIId !== null;
   const [attachmentRFIId, setAttachmentRFIId] = useState(null);
+  const [relationshipRFIId, setRelationshipRFIId] = useState(null);
   const selectedRFI = rfis.find((rfi) => rfi.id === attachmentRFIId);
+  const relationshipRFI = rfis.find(
+    (rfi) => rfi.id === relationshipRFIId
+  );
 
   return (
     <ProjectLayout
@@ -258,6 +263,25 @@ function RFIsPage({
                   {selectedRFI?.id === rfi.id ? "Close" : "Attachments"}
                 </Button>
                 <Button
+                  aria-expanded={relationshipRFI?.id === rfi.id}
+                  aria-controls={`rfi-relationships-${rfi.id}`}
+                  aria-label={`${
+                    relationshipRFI?.id === rfi.id
+                      ? "Close relationships"
+                      : "Relationships"
+                  } for RFI ${rfi.number}`}
+                  onClick={() =>
+                    setRelationshipRFIId(
+                      relationshipRFI?.id === rfi.id ? null : rfi.id
+                    )
+                  }
+                >
+                  <Icon name="link" size={16} />
+                  {relationshipRFI?.id === rfi.id
+                    ? "Close"
+                    : "Relationships"}
+                </Button>
+                <Button
                   onClick={() => onEdit(rfi)}
                   aria-label={`Edit ${rfi.number}`}
                 >
@@ -292,6 +316,23 @@ function RFIsPage({
             title="RFI Attachments"
             canUpload
             canDelete
+            onError={onAttachmentError}
+          />
+        </div>
+      )}
+      {relationshipRFI && (
+        <div
+          id={`rfi-relationships-${relationshipRFI.id}`}
+          className="record-relationship-detail"
+          role="region"
+          aria-label={`Relationships for RFI ${relationshipRFI.number}`}
+        >
+          <RelationshipPanel
+            projectId={projectId}
+            entityType="rfi"
+            entityId={relationshipRFI.id}
+            title="RFI Relationships"
+            onNavigate={onNavigate}
             onError={onAttachmentError}
           />
         </div>

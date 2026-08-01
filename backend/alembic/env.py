@@ -23,6 +23,7 @@ from app.models.drawing import (  # noqa: F401
     DrawingSet,
     DrawingSheet,
 )
+from app.models.entity_relationship import EntityRelationship  # noqa: F401
 from app.models.folder import Folder  # noqa: F401
 from app.models.inspection import Inspection  # noqa: F401
 from app.models.note_delay import NoteDelay  # noqa: F401

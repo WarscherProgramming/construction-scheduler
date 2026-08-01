@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 
 import DocumentDetailsDialog from "../components/documents/DocumentDetailsDialog";
 import DocumentFolderTree from "../components/documents/DocumentFolderTree";
+import RelationshipPanel from "../components/relationships/RelationshipPanel";
 import Button from "../components/ui/Button";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
 import Icon from "../components/ui/Icon";
@@ -51,6 +52,7 @@ function ProjectDocumentsPage({
   const [folderPanelOpen, setFolderPanelOpen] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState(null);
+  const [relationshipDocument, setRelationshipDocument] = useState(null);
   const [pendingDelete, setPendingDelete] = useState(null);
 
   const explorer = useDocumentExplorer({
@@ -92,6 +94,9 @@ function ProjectDocumentsPage({
     if (deleted) {
       setPendingDelete(null);
       setSelectedDocument((current) =>
+        current?.id === documentRecord.id ? null : current
+      );
+      setRelationshipDocument((current) =>
         current?.id === documentRecord.id ? null : current
       );
       locationHeadingRef.current?.focus();
@@ -622,6 +627,23 @@ function ProjectDocumentsPage({
         )}
       </section>
 
+      {relationshipDocument && (
+        <div
+          className="record-relationship-detail"
+          role="region"
+          aria-label={`Relationships for document ${relationshipDocument.display_name}`}
+        >
+          <RelationshipPanel
+            projectId={projectId}
+            entityType="document"
+            entityId={relationshipDocument.id}
+            title={`${relationshipDocument.display_name} Relationships`}
+            onNavigate={onNavigate}
+            onError={onRequestError}
+          />
+        </div>
+      )}
+
       <DocumentDetailsDialog
         documentRecord={selectedDocument}
         folderLocation={folderLocationFor(selectedDocument)}
@@ -630,6 +652,10 @@ function ProjectDocumentsPage({
           explorer.downloadingIds.includes(selectedDocument.id)
         }
         onDownload={explorer.download}
+        onRelationships={(documentRecord) => {
+          setSelectedDocument(null);
+          setRelationshipDocument(documentRecord);
+        }}
         onClose={() => setSelectedDocument(null)}
       />
       <ConfirmDialog

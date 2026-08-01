@@ -4,9 +4,11 @@ M16.1 establishes the backend storage and metadata layer for document
 features. M16.2 adds the project-scoped explorer on that foundation. M16.3
 adds construction drawing sets, sheets, revisions, issues, and a project
 drawing register while retaining one `Document` per stored revision. M16.4
-adds authenticated browser rendering for those PDF revisions. OCR, AI
-indexing, rename, move, annotations, and comparison remain outside the
-shipped scope.
+adds authenticated browser rendering for those PDF revisions. M16.5 adds
+explicit project-scoped relationships between Documents, drawings, and
+construction records without creating another file or attachment system.
+OCR, AI indexing, rename, move, annotations, and comparison remain outside
+the shipped scope.
 
 ## Existing Attachment System
 
@@ -215,6 +217,29 @@ to a same-origin PDF.js worker, and reuses that Blob for explicit download.
 HTTP range delivery is deferred, so local and S3-compatible providers keep
 the same full-stream behavior.
 
+## Relationship Integration
+
+M16.5 adds one generic `EntityRelationship` table and an explicit resolver
+registry for Documents, drawing sets, sheets, revisions and issues, RFIs,
+Submittals, Punch Items, Change Orders, and Daily Logs. Relationships point
+to existing metadata records; they do not copy files, change Attachment
+parent identity, alter Document folder placement, or expose provider data.
+
+The reusable frontend panel loads only for one explicitly selected persisted
+record. Document details, selected drawing sheets, exact viewer revisions,
+and the five construction-record pages share this workflow. There is no
+relationship field in explorer list responses, no request per document row,
+and no dashboard relationship loading.
+
+Relationship history is retained when a Document is soft-deleted or a
+drawing record is archived. The resolver then supplies a factual archived or
+unavailable summary and blocks new links to unavailable records. Formal
+drawing issue membership, revision supersession, Document version lineage,
+Attachment ownership, and Folder hierarchy remain authoritative specialized
+models. See
+[`DOCUMENT_RELATIONSHIPS.md`](DOCUMENT_RELATIONSHIPS.md) for the matrix,
+direction rules, API, lifecycle, and UI contract.
+
 ## Security and Validation
 
 Ownership is inherited from the project. Direct document routes join through
@@ -238,17 +263,27 @@ constraints; and project listing indexes. It supports a fresh upgrade,
 upgrade from the prior head, downgrade, and re-upgrade while preserving
 existing records and one Alembic head.
 
+Migration `d9a2f5c8e173` later adds only the generic relationship table. It
+uses project and creator foreign keys, controlled type and positive-ID
+checks, lookup indexes, and partial active-pair uniqueness while leaving
+Document, Folder, Attachment, and drawing storage rows unchanged.
+
 Coverage includes provider contracts, unsafe keys, upload/download/list
 behavior, safe responses, ownership, folder hierarchy and cycles, validation,
 checksums, metadata rollback, durable cleanup fallback, soft-delete
 idempotency, migration reversibility, explorer responses, grouped counts,
 breadcrumbs, escaped search, allowlisted sorting, filters, pagination, recent
 documents, stale-request protection, upload retry, dialogs, routing,
-accessibility, and frontend API requests.
+accessibility, and frontend API requests. The complete M16.5 verification
+passes 412 frontend tests across 58 files and 264 backend tests, with 317
+backend subtests reported separately; relationship coverage is detailed in
+[`DOCUMENT_RELATIONSHIPS.md`](DOCUMENT_RELATIONSHIPS.md).
 
 ## Deferred Work
 
 Rename, move, folder deletion, restore, permanent purge, general document
 version history, duplicate detection, direct-to-cloud upload, signed-URL
 delivery, explorer thumbnails, bulk operations, PDF annotation/comparison,
-OCR, AI indexing, and antivirus implementation remain deferred.
+OCR, AI indexing, automatic relationship suggestions, relationship graph
+visualization, permanent relationship purge cleanup, and antivirus
+implementation remain deferred.

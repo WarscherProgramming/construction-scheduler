@@ -631,3 +631,74 @@ export function voidDrawingIssue(issueId, options = {}) {
     { method: "POST", signal: options.signal }
   );
 }
+
+function relationshipQuery(parameters) {
+  const query = new URLSearchParams();
+  for (const [name, value] of Object.entries(parameters)) {
+    if (value !== undefined && value !== null && value !== "") {
+      query.set(name, String(value));
+    }
+  }
+  return query.toString();
+}
+
+export function listRelationships(
+  projectId,
+  entityType,
+  entityId,
+  options = {}
+) {
+  const query = relationshipQuery({
+    entity_type: entityType,
+    entity_id: entityId,
+    direction: options.direction,
+    relationship_type: options.relationshipType,
+    related_type: options.relatedType,
+    limit: options.limit,
+    offset: options.offset,
+  });
+  return authenticatedRequest(
+    `/projects/${encodeURIComponent(String(projectId))}/relationships?${query}`,
+    { signal: options.signal }
+  );
+}
+
+export function createRelationship(projectId, relationship, options = {}) {
+  return authenticatedRequest(
+    `/projects/${encodeURIComponent(String(projectId))}/relationships`,
+    {
+      method: "POST",
+      body: JSON.stringify(relationship),
+      signal: options.signal,
+    }
+  );
+}
+
+export function deleteRelationship(
+  projectId,
+  relationshipId,
+  options = {}
+) {
+  return authenticatedRequest(
+    `/projects/${encodeURIComponent(String(projectId))}/relationships/${encodeURIComponent(String(relationshipId))}`,
+    { method: "DELETE", signal: options.signal }
+  );
+}
+
+export function listRelationshipCandidates(
+  projectId,
+  entityType,
+  options = {}
+) {
+  const query = relationshipQuery({
+    entity_type: entityType,
+    search: options.search,
+    limit: options.limit,
+    exclude_type: options.excludeType,
+    exclude_id: options.excludeId,
+  });
+  return authenticatedRequest(
+    `/projects/${encodeURIComponent(String(projectId))}/relationship-candidates?${query}`,
+    { signal: options.signal }
+  );
+}
