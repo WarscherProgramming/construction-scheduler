@@ -17,6 +17,9 @@ const ProjectDocumentsPage = lazy(
 const ProjectDrawingsPage = lazy(
   () => import("./pages/ProjectDrawingsPage")
 );
+const ProjectDrawingViewerPage = lazy(
+  () => import("./pages/ProjectDrawingViewerPage")
+);
 const ProjectSettingsPage = lazy(
   () => import("./pages/ProjectSettingsPage")
 );
@@ -32,6 +35,7 @@ const SubmittalsPage = lazy(() => import("./pages/SubmittalsPage"));
  */
 function AppRouter({
   currentPage,
+  routeParams,
   selectedProjectId,
   navigateTo,
   onLogout,
@@ -424,6 +428,19 @@ function AppRouter({
         key={selectedProjectId}
         projectId={selectedProjectId}
         projectName={projectName}
+        {...navProps}
+        onRequestError={onAttachmentError}
+      />
+    );
+  }
+
+  if (currentPage === "drawingViewer") {
+    return (
+      <ProjectDrawingViewerPage
+        projectId={selectedProjectId}
+        projectName={projectName}
+        sheetId={routeParams?.sheetId}
+        revisionId={routeParams?.revisionId}
         {...navProps}
         onRequestError={onAttachmentError}
       />

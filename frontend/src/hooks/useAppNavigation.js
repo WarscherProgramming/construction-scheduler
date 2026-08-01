@@ -8,12 +8,17 @@ import { parseAppHash, updateBrowserRoute } from "../utils/navigation";
  * back/forward listeners.
  */
 function useAppNavigation() {
+  const [initialRoute] = useState(() => parseAppHash(window.location.hash));
   const [selectedProjectId, setSelectedProjectId] = useState(
-    () => parseAppHash(window.location.hash).projectId
+    () => initialRoute.projectId
   );
   const [currentPage, setCurrentPage] = useState(
-    () => parseAppHash(window.location.hash).page
+    () => initialRoute.page
   );
+  const [routeParams, setRouteParams] = useState(() => ({
+    sheetId: initialRoute.sheetId || null,
+    revisionId: initialRoute.revisionId || null,
+  }));
   const selectedProjectIdRef = useRef(selectedProjectId);
 
   useEffect(() => {
@@ -30,18 +35,25 @@ function useAppNavigation() {
       if (page === "home") {
         selectProject(null);
         setCurrentPage("home");
+        setRouteParams({ sheetId: null, revisionId: null });
         updateBrowserRoute("home", null, options);
         return;
       }
 
       if (page !== "home" && !projectId) {
         setCurrentPage("home");
+        setRouteParams({ sheetId: null, revisionId: null });
         updateBrowserRoute("home", null, options);
         return;
       }
 
       if (projectId) selectProject(projectId);
       setCurrentPage(page);
+      setRouteParams({
+        sheetId: page === "drawingViewer" ? options?.sheetId || null : null,
+        revisionId:
+          page === "drawingViewer" ? options?.revisionId || null : null,
+      });
       updateBrowserRoute(page, projectId, options);
     },
     [selectProject]
@@ -52,6 +64,7 @@ function useAppNavigation() {
     selectedProjectIdRef.current = null;
     setSelectedProjectId(null);
     setCurrentPage("home");
+    setRouteParams({ sheetId: null, revisionId: null });
     updateBrowserRoute("home", null, { replace: true });
   }, []);
 
@@ -61,6 +74,10 @@ function useAppNavigation() {
 
       selectProject(route.projectId);
       setCurrentPage(route.page);
+      setRouteParams({
+        sheetId: route.sheetId || null,
+        revisionId: route.revisionId || null,
+      });
     };
 
     window.addEventListener("popstate", handleBrowserNavigation);
@@ -74,11 +91,16 @@ function useAppNavigation() {
 
   useEffect(() => {
     const route = parseAppHash(window.location.hash);
-    updateBrowserRoute(route.page, route.projectId, { replace: true });
+    updateBrowserRoute(route.page, route.projectId, {
+      replace: true,
+      sheetId: route.sheetId,
+      revisionId: route.revisionId,
+    });
   }, []);
 
   return {
     currentPage,
+    routeParams,
     selectedProjectId,
     selectedProjectIdRef,
     selectProject,

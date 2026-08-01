@@ -1,8 +1,8 @@
 # FieldFlow — Portfolio Copy
 
 Ready-to-use descriptions for resumes, portfolio sites, and LinkedIn.
-Keep the metrics in sync with the repo (currently **585 primary tests: 335
-frontend across 49 files + 250 backend**, with 279 backend subtests reported
+Keep the metrics in sync with the repo (currently **615 primary tests: 365
+frontend across 54 files + 250 backend**, with 279 backend subtests reported
 separately).
 
 ---
@@ -16,7 +16,7 @@ separately).
 > executive dashboard, enhanced project-scoped Change Order, RFI, Submittal,
 > and Punch List workflows, reusable Document Management across six resource
 > types, a project document explorer, construction drawing revision
-> management, hardened rotating-session authentication, and 585 automated
+> management with a secure PDF viewer, hardened rotating-session authentication, and 615 automated
 > tests.
 
 ### Resume bullets
@@ -62,11 +62,12 @@ separately).
 > - Built a construction drawing register around the existing document
 >   storage layer: project-owned sets, allowlisted disciplines, normalized
 >   sheet identities, atomic PDF revision superseding, retained historical
->   downloads, formal issue membership, and responsive accessible workflows.
+>   downloads, formal issue membership, and a lazy authenticated PDF viewer
+>   with page, sheet, revision, zoom, and existing-text search controls.
 > - Hardened authentication with memory-only access JWTs, rotating opaque
 >   refresh sessions, replay-family revocation, CSRF and exact-Origin
 >   enforcement, route-wide tenant isolation, and bounded abuse controls;
->   verified the complete platform with 585 automated tests (Vitest/RTL +
+>   verified the complete platform with 615 automated tests (Vitest/RTL +
 >   pytest).
 
 ### Portfolio-site paragraph
@@ -85,7 +86,8 @@ separately).
 > system, first-run onboarding that seeds a realistic demo project,
 > production-hardened rotating-session authentication, reusable secure
 > attachments across six construction workflows, a responsive project
-> document explorer, construction drawing revision management, and 585
+> document explorer, construction drawing revision management with secure
+> browser viewing, and 615
 > automated tests
 > across the stack.
 
@@ -132,7 +134,7 @@ available while preserving recoverable cleanup work.
   attachment and document APIs, models, storage abstractions, hooks, and UI
 - 25 MiB per-file limit with PDF, image, text, Word, and Excel support
 - Private authenticated delivery with no public object keys or credentials
-- 335 frontend tests across 49 files and 250 backend tests, for 585 primary
+- 365 frontend tests across 54 files and 250 backend tests, for 615 primary
   tests passed; 279 backend subtests are tracked separately
 - Lazy per-record panel mounting with no dashboard attachment preloading
 
@@ -159,7 +161,7 @@ available while preserving recoverable cleanup work.
 > durable cleanup
 >
 > Under the hood: React 19 + Vite, FastAPI + SQLAlchemy + PostgreSQL, hardened
-> rotating-session auth, an accessible component design system, and 585
+> rotating-session auth, an accessible component design system, and 615
 > automated tests.
 >
 > The demo seeds a full sample project in ~10 seconds — no signup friction:
@@ -174,8 +176,8 @@ available while preserving recoverable cleanup work.
 > PostgreSQL. Drag-and-drop CPM-style scheduler, Gantt + PDF export, executive
 > dashboard, project-scoped Change Order, RFI, Submittal, and Punch List
 > workflows, secure Document Management across six resource types, a project
-> document explorer, drawing revision management, accessible design system,
-> 585 automated tests. Live demo
+> document explorer, drawing revision management with a secure PDF viewer,
+> accessible design system, 615 automated tests. Live demo
 > seeds a complete sample
 > project in seconds.
 

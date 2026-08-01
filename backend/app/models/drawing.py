@@ -298,11 +298,6 @@ class DrawingIssue(Base):
 class DrawingIssueRevision(Base):
     __tablename__ = "drawing_issue_revisions"
     __table_args__ = (
-        UniqueConstraint(
-            "drawing_issue_id",
-            "drawing_revision_id",
-            name="uq_drawing_issue_revisions_membership",
-        ),
         Index(
             "ix_drawing_issue_revisions_revision",
             "drawing_revision_id",

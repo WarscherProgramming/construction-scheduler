@@ -3,7 +3,8 @@
 M16.3 adds construction-specific metadata and workflow around the existing
 document storage foundation. Drawing files remain ordinary project-owned
 `Document` records and use the configured local or private S3-compatible
-provider.
+provider. M16.4 adds a secure, lazy-loaded PDF viewer without creating a
+second file path or changing drawing persistence.
 
 ## Domain Model
 
@@ -92,6 +93,76 @@ Dialogs use semantic headings, labeled controls, focus trapping, Escape
 handling, and focus restoration. Current and superseded states and issue
 membership are visible as text rather than color alone.
 
+## Secure PDF Viewer
+
+The protected route
+`#/projects/{project_id}/drawings/sheets/{sheet_id}/revisions/{revision_id}/view`
+opens the exact current or historical revision. The client fetches safe sheet
+metadata, a bounded newest-first history, active sheets in the same set, and
+one authenticated PDF Blob. It verifies project, sheet, and revision IDs
+before requesting bytes. Browser Back/Forward uses the existing hash router;
+no token, object key, provider URL, or filename appears in the route.
+
+`useDrawingViewer` owns cancellation, stale-response rejection, PDF lifetime,
+page, zoom, search, retry, and revision identity. The route is lazy loaded.
+`pdfjs-dist` `6.2.108` renders the active page and selectable text; its worker
+is emitted by Vite from `pdf.worker.min.mjs` and loaded same-origin. XFA and
+eval support are disabled, and the UI does not render annotations, links,
+forms, embedded files, launch actions, or PDF JavaScript.
+
+The viewer supports first/previous/next/last and direct page navigation,
+25%-400% zoom, 100% reset, fit width, fit page, native scrolling, revision
+selection, active-set previous/next sheet navigation, metadata, and explicit
+download. Scoped shortcuts apply only inside the viewer workspace: arrows or
+PageUp/PageDown change pages, Home/End jump boundaries, `+`/`-` zoom, `0`
+resets, and `f` fits width. Input controls ignore shortcuts.
+
+At most one full-size page is rendered. The page rail contains at most 31
+page controls and renders thumbnail canvases only for the current page and
+two neighbors. Search extracts existing PDF text sequentially only after a
+trimmed, literal, case-insensitive query (maximum 200 characters); image-only
+drawings remain viewable and state that searchable text is unavailable. OCR
+is not performed.
+
+The revision download route remains the binary endpoint. It streams from the
+configured provider with `Content-Length`, PDF content type, safe attachment
+disposition, `nosniff`, sandbox CSP, and `Cache-Control: private, no-store`.
+Range requests are not implemented or claimed; the browser downloads the PDF
+once per viewer session, and page rendering, zooming, searching, and explicit
+download reuse that Blob. The optional open-in-new-tab action is omitted to
+keep Blob URL lifetime deterministic.
+
+Metadata, download, parsing, page rendering, thumbnail, search, revision
+switch, corrupt PDF, worker failure, and encrypted-PDF states are handled
+without exposing storage details. Password-protected/encrypted PDFs are not
+opened and no password is requested or stored; an already authorized Blob
+may still be downloaded. Source-PDF accessibility depends on the uploaded
+file and is not claimed by the application.
+
+### Performance and Verification
+
+The existing 25 MiB drawing upload limit is unchanged. Revision history is
+bounded at 100 records, navigation uses the active sheets from one drawing
+set, the page rail mounts at most 31 controls, and only five thumbnail
+canvases are eligible to render at once. Text extraction is not part of
+initial load and proceeds one page at a time only after search begins. Full
+page rendering remains limited to the selected page and caps device-pixel
+ratio at 2.
+
+The M16.4 production build emits a 447.92 kB raw / 133.39 kB gzip lazy viewer
+chunk and a 1,262.39 kB raw / 374.85 kB gzip PDF worker. Main JavaScript is 275.87 kB raw /
+84.62 kB gzip and CSS is 64.34 kB raw / 12.26 kB gzip. Relative to M16.3,
+main gzip grows 0.42 kB and CSS gzip grows 1.24 kB; the PDF implementation is
+otherwise isolated behind the viewer route. `pdfjs-dist` `6.2.108` is
+Apache-2.0 licensed. The production dependency audit reports zero
+vulnerabilities; the full development tree retains two high advisories in
+existing build tooling (`brace-expansion` and `postcss`).
+
+Automated verification passes 365 frontend tests across 54 files and 250
+backend tests, plus 279 separately reported backend subtests. Manual browser,
+responsive, large-fixture, and source-PDF security checks were unavailable in
+this phase and remain explicitly unverified.
+
 ## Explorer and Retention
 
 Drawing documents appear in the project explorer independently of drawing
@@ -101,7 +172,9 @@ This prevents dangling revision references and silent historical loss.
 
 ## Limitations
 
-M16.3 is upload-only and PDF-only. It does not assign existing documents,
-render PDFs, generate thumbnails, extract metadata, compare revisions, add
-markups or relationships, search file contents, or implement OCR or AI
-analysis. Those capabilities are deferred beyond this phase.
+Drawings remain PDF-only and cannot be assigned from existing explorer
+documents. M16.4 does not provide HTTP range delivery, offline caching,
+password entry, OCR, annotations, links/forms, measurements, overlays,
+revision comparison, markups, relationships, server-side content search, or
+AI analysis. Manual visual and source-PDF accessibility verification remains
+necessary in a working browser environment.

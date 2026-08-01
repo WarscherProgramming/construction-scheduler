@@ -3,8 +3,9 @@
 M16.1 establishes the backend storage and metadata layer for document
 features. M16.2 adds the project-scoped explorer on that foundation. M16.3
 adds construction drawing sets, sheets, revisions, issues, and a project
-drawing register while retaining one `Document` per stored revision. OCR, AI
-indexing, rename, move, and advanced viewer workflows remain outside the
+drawing register while retaining one `Document` per stored revision. M16.4
+adds authenticated browser rendering for those PDF revisions. OCR, AI
+indexing, rename, move, annotations, and comparison remain outside the
 shipped scope.
 
 ## Existing Attachment System
@@ -206,6 +207,14 @@ are voided rather than removed. See
 [`DRAWING_MANAGEMENT.md`](DRAWING_MANAGEMENT.md) for the complete drawing
 contract.
 
+M16.4 reuses the drawing revision download route and the same stored
+`Document`; it does not add a viewer object, migration, provider URL, signed
+URL, or duplicate storage service. The authenticated response is private and
+`no-store`. The frontend holds one Blob for the viewer session, passes bytes
+to a same-origin PDF.js worker, and reuses that Blob for explicit download.
+HTTP range delivery is deferred, so local and S3-compatible providers keep
+the same full-stream behavior.
+
 ## Security and Validation
 
 Ownership is inherited from the project. Direct document routes join through
@@ -241,5 +250,5 @@ accessibility, and frontend API requests.
 
 Rename, move, folder deletion, restore, permanent purge, general document
 version history, duplicate detection, direct-to-cloud upload, signed-URL
-delivery, thumbnails, bulk operations, an advanced drawing viewer, PDF
-annotation, OCR, AI indexing, and antivirus implementation remain deferred.
+delivery, explorer thumbnails, bulk operations, PDF annotation/comparison,
+OCR, AI indexing, and antivirus implementation remain deferred.

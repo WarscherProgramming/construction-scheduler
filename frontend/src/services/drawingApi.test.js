@@ -7,6 +7,7 @@ import {
   createDrawingSet,
   createDrawingSheet,
   downloadDrawingRevision,
+  getDrawingSheet,
   getDrawingRegister,
   issueDrawingIssue,
   listDrawingIssues,
@@ -55,6 +56,7 @@ describe("drawing API", () => {
       offset: 50,
     });
     await listDrawingSetSheets(8);
+    await getDrawingSheet(12);
     await listDrawingRevisions(12, { limit: 20, offset: 5 });
     await listDrawingIssues(8);
 
@@ -68,10 +70,11 @@ describe("drawing API", () => {
       "sort=revision_date&order=desc&limit=25&offset=50"
     );
     expect(fetchMock.mock.calls[2][0]).toContain("/drawing-sets/8/sheets");
-    expect(fetchMock.mock.calls[3][0]).toContain(
+    expect(fetchMock.mock.calls[3][0]).toContain("/drawing-sheets/12");
+    expect(fetchMock.mock.calls[4][0]).toContain(
       "/drawing-sheets/12/revisions?limit=20&offset=5"
     );
-    expect(fetchMock.mock.calls[4][0]).toContain("/drawing-sets/8/issues");
+    expect(fetchMock.mock.calls[5][0]).toContain("/drawing-sets/8/issues");
   });
 
   it("uses JSON mutations and multipart PDF uploads safely", async () => {

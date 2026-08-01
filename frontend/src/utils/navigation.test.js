@@ -27,6 +27,10 @@ describe("navigation utilities", () => {
     expect(buildAppHash("projectDrawings", 42)).toBe(
       "#/projects/42/drawings"
     );
+    expect(
+      buildAppHash("drawingViewer", 42, { sheetId: 7, revisionId: 9 })
+    ).toBe("#/projects/42/drawings/sheets/7/revisions/9/view");
+    expect(buildAppHash("drawingViewer", 42, { sheetId: 7 })).toBe("#/");
     expect(buildAppHash("home", 42)).toBe("#/");
   });
 
@@ -55,6 +59,17 @@ describe("navigation utilities", () => {
       page: "projectDrawings",
       projectId: 42,
     });
+    expect(
+      parseAppHash("#/projects/42/drawings/sheets/7/revisions/9/view")
+    ).toEqual({
+      page: "drawingViewer",
+      projectId: 42,
+      sheetId: 7,
+      revisionId: 9,
+    });
+    expect(
+      parseAppHash("#/projects/42/drawings/sheets/nope/revisions/9/view")
+    ).toEqual({ page: "home", projectId: null });
     expect(parseAppHash("#/projects/nope/dashboard")).toEqual({
       page: "home",
       projectId: null,
@@ -80,6 +95,23 @@ describe("navigation utilities", () => {
     expect(window.history.state).toEqual({
       page: "home",
       projectId: null,
+    });
+  });
+
+  it("stores safe drawing viewer identifiers in browser history", () => {
+    updateBrowserRoute("drawingViewer", 7, {
+      sheetId: 12,
+      revisionId: 20,
+    });
+
+    expect(window.location.hash).toBe(
+      "#/projects/7/drawings/sheets/12/revisions/20/view"
+    );
+    expect(window.history.state).toEqual({
+      page: "drawingViewer",
+      projectId: 7,
+      sheetId: 12,
+      revisionId: 20,
     });
   });
 });

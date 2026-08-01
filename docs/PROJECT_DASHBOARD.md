@@ -227,7 +227,7 @@ refresh.
 
 ## Testing
 
-The frontend suite currently passes 335 tests across 49 files. Dashboard
+The frontend suite currently passes 365 tests across 54 files. Dashboard
 coverage includes:
 
 - API URL and required `as_of` behavior
@@ -277,7 +277,7 @@ Final automated verification:
 
 | Check | Result |
 |---|---|
-| Frontend tests | Pass: 335 tests across 49 files |
+| Frontend tests | Pass: 365 tests across 54 files |
 | ESLint | Pass: no errors or warnings |
 | Production build | Pass: 100 modules transformed |
 | Dashboard bundle budget | Pass: 5.22 kB gzip against a 5.25 kB limit |

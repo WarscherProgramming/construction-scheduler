@@ -207,6 +207,12 @@ class DrawingApiTests(ApiTestCase):
         )
         self.assertEqual(download.status_code, 200)
         self.assertEqual(download.content, PDF_CONTENT)
+        self.assertEqual(download.headers["content-type"], "application/pdf")
+        self.assertEqual(download.headers["content-length"], str(len(PDF_CONTENT)))
+        self.assertNotIn("accept-ranges", download.headers)
+        self.assertEqual(download.headers["cache-control"], "private, no-store")
+        self.assertEqual(download.headers["x-content-type-options"], "nosniff")
+        self.assertEqual(download.headers["content-security-policy"], "sandbox")
 
     def test_sheet_number_normalization_discipline_and_mass_assignment(self):
         drawing_set = self.create_set().json()

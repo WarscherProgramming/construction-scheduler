@@ -394,6 +394,7 @@ def download_drawing_revision(
         headers={
             "Content-Disposition": document_content_disposition(document),
             "Content-Length": str(document.size_bytes),
+            "Cache-Control": "private, no-store",
             "Content-Security-Policy": "sandbox",
             "X-Content-Type-Options": "nosniff",
         },

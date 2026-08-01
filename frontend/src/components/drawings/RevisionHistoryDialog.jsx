@@ -13,6 +13,7 @@ function RevisionHistoryDialog({
   revisions,
   isLoading,
   activeOperations,
+  onView,
   onDownload,
   onClose,
 }) {
@@ -100,15 +101,25 @@ function RevisionHistoryDialog({
                   </div>
                 </dl>
                 {revision.description && <p>{revision.description}</p>}
-                <Button
-                  size="sm"
-                  disabled={downloading}
-                  onClick={() => onDownload(revision)}
-                  aria-label={`Download ${sheet.sheet_number} revision ${revision.revision_code}`}
-                >
-                  <Icon name="download" size={15} />
-                  {downloading ? "Downloading..." : "Download"}
-                </Button>
+                <div className="drawing-row-actions">
+                  <Button
+                    size="sm"
+                    variant="primary"
+                    onClick={() => onView(revision)}
+                    aria-label={`View ${sheet.sheet_number} revision ${revision.revision_code}`}
+                  >
+                    View
+                  </Button>
+                  <Button
+                    size="sm"
+                    disabled={downloading}
+                    onClick={() => onDownload(revision)}
+                    aria-label={`Download ${sheet.sheet_number} revision ${revision.revision_code}`}
+                  >
+                    <Icon name="download" size={15} />
+                    {downloading ? "Downloading..." : "Download"}
+                  </Button>
+                </div>
               </li>
             );
           })}

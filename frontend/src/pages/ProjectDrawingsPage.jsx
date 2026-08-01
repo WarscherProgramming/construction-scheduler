@@ -62,6 +62,14 @@ function ProjectDrawingsPage({
     void drawings.loadRevisions(sheet.id);
   };
 
+  const viewRevision = (sheet, revision) => {
+    setDialog(null);
+    onNavigate("drawingViewer", projectId, {
+      sheetId: sheet.id,
+      revisionId: revision.id,
+    });
+  };
+
   const handleConfirmation = async () => {
     if (!confirmation) return;
     let result = null;
@@ -412,6 +420,16 @@ function ProjectDrawingsPage({
                         <div className="drawing-row-actions">
                           <Button
                             size="sm"
+                            variant="primary"
+                            onClick={() =>
+                              viewRevision(sheet, sheet.current_revision)
+                            }
+                            aria-label={`View current revision for ${sheet.sheet_number}`}
+                          >
+                            View
+                          </Button>
+                          <Button
+                            size="sm"
                             onClick={() => openHistory(sheet)}
                             aria-label={`Revision history for ${sheet.sheet_number}`}
                           >
@@ -554,6 +572,7 @@ function ProjectDrawingsPage({
           }
           isLoading={drawings.isLoadingRevisions}
           activeOperations={drawings.activeOperations}
+          onView={(revision) => viewRevision(dialog.sheet, revision)}
           onDownload={drawings.downloadRevision}
           onClose={() => setDialog(null)}
         />

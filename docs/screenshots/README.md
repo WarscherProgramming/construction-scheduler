@@ -28,8 +28,9 @@ for both referenced and planned module screenshots.
 | `change-orders.png` | Populated Change Orders page: a generated `CO` number; create or edit workflow; proposed and approved amounts; schedule impact; lifecycle dates; multiple status badges; and, where practical, a readable legacy record. |
 | `punch-lists.png` | Punch Lists page: populated Punch Items table with visible status and priority labels, an overdue indicator, and the create or edit workflow visible. |
 | `drawing-register.png` | Populated Drawing Register with multiple disciplines, clear current revisions, set/filter controls, and sheet actions visible. |
-| `drawing-history.png` | Revision History dialog showing one current and one superseded PDF revision, dates, successor information, issue membership, and download actions. |
+| `drawing-history.png` | Revision History dialog showing one current and one superseded PDF revision, dates, successor information, issue membership, and View/Download actions. |
 | `drawing-issues.png` | Drawing Issues section with a draft issue containing revisions and an issued or void issue showing frozen membership. |
+| `drawing-viewer.png` | Secure Drawing Viewer showing a synthetic multipage sheet, selected thumbnail, current or superseded revision text, metadata panel, page/zoom/search controls, and no confidential drawing content. |
 | `mobile.png` | Dashboard or a record page at ~390 px width: collapsed horizontal nav and stacked record cards. (Optional composite of two views side by side.) |
 
 ## Document Management captures
@@ -65,3 +66,6 @@ files.
 - M16.3 adds the Drawing Register and controlled revision workflow. Capture
   `drawing-register.png`, `drawing-history.png`, and `drawing-issues.png`;
   this phase does not generate or replace image files.
+- M16.4 adds the Secure Drawing Viewer. Capture `drawing-viewer.png` at desktop
+  and include its mobile layout in `mobile.png`; use a synthetic PDF and keep
+  storage URLs, tokens, and real project drawings out of the frame.

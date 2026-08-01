@@ -494,6 +494,13 @@ export function createDrawingSheet(
   );
 }
 
+export function getDrawingSheet(sheetId, options = {}) {
+  return authenticatedRequest(
+    `/drawing-sheets/${encodeURIComponent(String(sheetId))}`,
+    { signal: options.signal }
+  );
+}
+
 export function updateDrawingSheet(sheetId, sheet, options = {}) {
   return authenticatedRequest(
     `/drawing-sheets/${encodeURIComponent(String(sheetId))}`,

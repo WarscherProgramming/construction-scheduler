@@ -29,6 +29,7 @@ const PAGE_TITLES = {
   submittals: "Submittals",
   punchItems: "Punch List",
   projectDrawings: "Drawings",
+  drawingViewer: "Drawing Viewer",
   projectDocuments: "Documents",
   projectSettings: "Settings",
 };
@@ -47,6 +48,7 @@ function App() {
 
   const {
     currentPage,
+    routeParams,
     selectedProjectId,
     selectedProjectIdRef,
     selectProject,
@@ -335,6 +337,7 @@ function App() {
           {isAuthenticated ? (
             <AppRouter
               currentPage={currentPage}
+              routeParams={routeParams}
               selectedProjectId={selectedProjectId}
               navigateTo={navigateTo}
               onLogout={handleLogout}

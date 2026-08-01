@@ -195,6 +195,39 @@ describe("ProjectDrawingsPage", () => {
     );
   });
 
+  it("opens the exact current revision in the secure viewer", async () => {
+    const user = userEvent.setup();
+    const pageProps = props();
+    render(<ProjectDrawingsPage {...pageProps} />);
+
+    await user.click(
+      screen.getByRole("button", { name: "View current revision for A-101" })
+    );
+
+    expect(pageProps.onNavigate).toHaveBeenCalledWith("drawingViewer", 1, {
+      sheetId: 20,
+      revisionId: 30,
+    });
+  });
+
+  it("opens the selected historical revision from revision history", async () => {
+    const user = userEvent.setup();
+    const pageProps = props();
+    render(<ProjectDrawingsPage {...pageProps} />);
+
+    await user.click(
+      screen.getByRole("button", { name: "Revision history for A-101" })
+    );
+    await user.click(
+      screen.getByRole("button", { name: "View A-101 revision 0" })
+    );
+
+    expect(pageProps.onNavigate).toHaveBeenCalledWith("drawingViewer", 1, {
+      sheetId: 20,
+      revisionId: 29,
+    });
+  });
+
   it("renders loading, empty, and status-specific error states", () => {
     hookState.isLoadingRegister = true;
     hookState.register = null;

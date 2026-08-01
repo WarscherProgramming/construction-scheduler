@@ -11,7 +11,7 @@ and Punch Lists) with their supporting documents.
 ![React 19](https://img.shields.io/badge/React-19-61dafb?logo=react&logoColor=white&labelColor=20232a)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.1x-009688?logo=fastapi&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169e1?logo=postgresql&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-585%20passing-2ea44f)
+![Tests](https://img.shields.io/badge/tests-615%20passing-2ea44f)
 ![Vite](https://img.shields.io/badge/Vite-8-646cff?logo=vite&logoColor=white)
 
 ![FieldFlow executive dashboard](docs/screenshots/dashboard.png)
@@ -106,7 +106,8 @@ question — *"what needs my attention today?"* — has a one-screen answer.
 - **Construction Drawing Management** with project-owned drawing sets,
   allowlisted disciplines, a searchable drawing register, set-scoped sheet
   identities, atomic PDF revision upload and superseding, retained revision
-  history, formal draft/issued/void issues, and authenticated downloads.
+  history, formal draft/issued/void issues, authenticated downloads, and a
+  secure in-browser PDF viewer for current and historical revisions.
 - **Accessible design system**: tokens, reusable UI primitives (Button, Card,
   Sidebar, PageHeader, Icon, ConfirmDialog, Skeleton), skip links, focus
   management, `aria-current` navigation, and screen-reader-labeled loading
@@ -116,7 +117,7 @@ question — *"what needs my attention today?"* — has a one-screen answer.
 - **Client-side onboarding**: first-run detection seeds a realistic demo
   project through the public API with visible progress — the app is never
   empty.
-- **Automated testing: 585 tests** — 335 frontend across 49 files (Vitest +
+- **Automated testing: 615 tests** — 365 frontend across 54 files (Vitest +
   React Testing Library, behavior- and accessibility-focused) and 250 backend
   tests plus 279 separately reported subtests (pytest,
   covering the scheduling engine, critical path, services, migrations, CORS,
@@ -170,7 +171,7 @@ documented in
 [`docs/DOCUMENT_STORAGE.md`](docs/DOCUMENT_STORAGE.md).
 
 Drawing terminology, models, normalization, revision transactions, issue
-lifecycle, APIs, UI behavior, and deferred viewer work are documented in
+lifecycle, APIs, secure viewer behavior, and deferred drawing work are documented in
 [`docs/DRAWING_MANAGEMENT.md`](docs/DRAWING_MANAGEMENT.md).
 
 Change Orders use a focused service layer for validation and project-scoped
@@ -411,6 +412,9 @@ job. FieldFlow does not include a built-in worker or scheduler, and
   project-scoped drawing register
 - Drawing-linked documents remain visible in the explorer, while ordinary
   explorer deletion is blocked to protect revision history
+- Lazy, authenticated PDF viewer with current/historical revision routes,
+  page and sheet navigation, bounded thumbnails, zoom modes, selectable text,
+  existing-text search, metadata, and one-session download reuse
 
 **Product quality**
 - Branded landing/login, first-run onboarding with demo seeding
@@ -436,15 +440,15 @@ job. FieldFlow does not include a built-in worker or scheduler, and
 | Backend | FastAPI, SQLAlchemy, Alembic, Pydantic |
 | Database | PostgreSQL |
 | Auth | Memory-only access JWT + rotating opaque refresh sessions |
-| Testing | Vitest + React Testing Library (335), pytest (250) |
+| Testing | Vitest + React Testing Library (365), pytest (250) |
 | Hosting | Vercel (frontend) · Render (API + migrations) |
 
 ## Testing
 
-**585 primary automated tests passed.** Backend subtests are reported
+**615 primary automated tests passed.** Backend subtests are reported
 separately rather than added to that total.
 
-- **Frontend (335 across 49 files)** — Vitest + React Testing Library. Tests
+- **Frontend (365 across 54 files)** — Vitest + React Testing Library. Tests
   target behavior and accessibility: roles and names, keyboard flows
   (Enter/Escape editing,
   grid cursor navigation, focus traps), aggregate dashboard rendering,
@@ -459,8 +463,9 @@ separately rather than added to that total.
   details and delete dialogs, focus restoration, status-specific failures,
   and responsive folder access. Drawing coverage includes routing, register
   queries, project switching, stale requests, set and sheet workflows,
-  revision upload/history/download, issue membership, confirmations, focus
-  restoration, and advisory PDF validation.
+  revision upload/history/download/viewing, issue membership, viewer routing,
+  request cancellation, PDF security settings, page/zoom/search controls,
+  Blob cleanup, confirmations, focus restoration, and advisory PDF validation.
 - **Backend (250, plus 279 subtests)** — pytest. Covers the workday scheduling
   engine (dependencies, lag, federal holidays), critical path and total float,
   task services, relationship migrations, CORS configuration, and
@@ -642,6 +647,10 @@ commit production credentials.
   automatic superseding, retained history, formal drawing issues, searchable
   project register, explorer integration, accessibility, and responsive
   layouts
+- ✅ M16.4 Secure Drawing Viewer with authenticated current/historical PDF
+  rendering, project-scoped deep links, page/sheet/revision navigation,
+  bounded thumbnails, zoom, selectable text, existing-text search, metadata,
+  secure download reuse, accessibility, and responsive layouts
 - ✅ Branded landing page and first-run demo seeding
 - ✅ Icon system, confirmation dialogs, notifications, loading skeletons
 - ✅ Scheduler showcase: WBS numbering, inline validation, critical path +
@@ -661,8 +670,8 @@ commit production credentials.
   browser/security scanning
 - General document and attachment version history, bulk download, thumbnails,
   and image galleries
-- Drawing annotations, OCR, full-text document search, antivirus integration,
-  and document approvals
+- Drawing annotations, comparison, OCR, server-side full-text document search,
+  antivirus integration, and document approvals
 - Direct multipart browser uploads and bucket-wide orphan scanning
 - A built-in background worker and cleanup-job administration interface
 - Project and Daily Log parent-deletion workflows
