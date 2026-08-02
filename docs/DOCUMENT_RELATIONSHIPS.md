@@ -215,6 +215,11 @@ per row. Lists and searches are bounded; there is no full-project graph,
 polling, table-row fan-out, dashboard request, attachment binary access, or
 viewer PDF refetch.
 
+M16.6 project document search remains a separate read-only capability.
+Extracted terms do not create, suggest, rank, or modify relationships, and
+the search route does not load the relationship graph. Users continue to
+create every link explicitly through the controlled candidate workflow.
+
 Responsive CSS allows long labels, identifiers, and titles to wrap, stacks
 actions at narrow widths, bounds the dialog to the viewport, and keeps the
 viewer metadata integration usable. Automated semantic, keyboard, stale
@@ -224,8 +229,8 @@ not verified in the current command-only environment.
 
 ## Verification
 
-The complete suites pass 676 primary tests: 412 frontend tests across 58
-files and 264 backend tests, with 317 backend subtests reported separately.
+The complete suites pass 720 primary tests: 433 frontend tests across 62
+files and 287 backend tests, with 317 backend subtests reported separately.
 ESLint and the production build pass with no dependency changes. M16.5 adds a
 17.96 kB raw / 5.45 kB gzip lazy relationship chunk. Relative to M16.4, main
 JavaScript changes by +1.23 kB raw / +0.27 kB gzip, the viewer by +0.93 kB raw
@@ -233,10 +238,11 @@ JavaScript changes by +1.23 kB raw / +0.27 kB gzip, the viewer by +0.93 kB raw
 
 ## Limitations and Deferred Work
 
-M16.5 does not include automatic or AI-suggested links, OCR, document
-classification, content search, graph visualization, bulk imports, comments,
+The relationship system does not include automatic or AI-suggested links,
+document classification, graph visualization, bulk imports, comments,
 relationship version history, custom relationship types, or cross-project
-links. Inspection and delay-note resolvers were deferred to keep the initial
-matrix focused. Permanent-purge cleanup, drawing comparison, annotations,
-markups, and relationship analytics are also deferred; none is implied by the
-current explicit-link workflow.
+links. Document content search now exists independently, while production OCR
+remains unavailable. Inspection and delay-note resolvers were deferred to
+keep the initial matrix focused. Permanent-purge cleanup, drawing comparison,
+annotations, markups, and relationship analytics are also deferred; none is
+implied by the current explicit-link workflow.

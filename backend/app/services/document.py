@@ -13,7 +13,11 @@ from sqlalchemy import func, or_
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from app.core.config import AttachmentConfig
+from app.core.config import (
+    DOCUMENT_EXTRACTION_CONFIG,
+    AttachmentConfig,
+    DocumentExtractionConfig,
+)
 from app.models.document import Document
 from app.models.folder import Folder
 from app.models.project import Project
@@ -24,6 +28,11 @@ from app.services.attachment import (
     validated_file_rule,
 )
 from app.services.attachment_cleanup import enqueue_cleanup_job
+from app.services.document_extraction import (
+    cancel_document_extraction,
+    enqueue_document_extraction,
+    get_document_extraction_summaries,
+)
 from app.storage.provider import (
     StorageObjectMissing,
     StorageProvider,
@@ -288,6 +297,7 @@ def create_document(
     document_type: str | None,
     content_length: int | None,
     commit: bool = True,
+    extraction_config: DocumentExtractionConfig = DOCUMENT_EXTRACTION_CONFIG,
 ) -> Document:
     folder = (
         get_project_folder(db, project_id, folder_id)
@@ -405,10 +415,15 @@ def create_document(
     db.add(document)
 
     try:
+        db.flush()
+        enqueue_document_extraction(
+            db,
+            document,
+            uploaded_by,
+            extraction_config,
+        )
         if commit:
             db.commit()
-        else:
-            db.flush()
     except SQLAlchemyError as error:
         db.rollback()
         _cleanup_failed_document_upload(
@@ -565,8 +580,11 @@ def _folder_response(
     }
 
 
-def _document_response(document: Document) -> dict:
-    return {
+def _document_response(
+    document: Document,
+    extraction: dict | None = None,
+) -> dict:
+    response = {
         "id": document.id,
         "folder_id": document.folder_id,
         "display_name": document.display_name,
@@ -580,6 +598,9 @@ def _document_response(document: Document) -> dict:
         "created_at": document.created_at,
         "updated_at": document.updated_at,
     }
+    if extraction is not None:
+        response["extraction"] = extraction
+    return response
 
 
 def _folder_breadcrumbs(
@@ -665,6 +686,7 @@ def get_document_explorer(
     order: str,
     limit: int,
     offset: int,
+    extraction_config: DocumentExtractionConfig = DOCUMENT_EXTRACTION_CONFIG,
 ) -> dict:
     current_folder = (
         get_project_folder(db, project_id, folder_id)
@@ -778,6 +800,11 @@ def get_document_explorer(
         .limit(limit)
         .all()
     )
+    extraction_summaries = get_document_extraction_summaries(
+        db,
+        documents,
+        extraction_config,
+    )
 
     return {
         "project_id": project_id,
@@ -800,7 +827,11 @@ def get_document_explorer(
             for folder in folders
         ],
         "documents": [
-            _document_response(document) for document in documents
+            _document_response(
+                document,
+                extraction_summaries[document.id],
+            )
+            for document in documents
         ],
         "pagination": {
             "limit": limit,
@@ -860,6 +891,7 @@ def get_recent_documents(
     project_id: int,
     *,
     limit: int,
+    extraction_config: DocumentExtractionConfig = DOCUMENT_EXTRACTION_CONFIG,
 ) -> list[dict]:
     documents = (
         _active_document_query(db, project_id)
@@ -867,7 +899,15 @@ def get_recent_documents(
         .limit(limit)
         .all()
     )
-    return [_document_response(document) for document in documents]
+    summaries = get_document_extraction_summaries(
+        db,
+        documents,
+        extraction_config,
+    )
+    return [
+        _document_response(document, summaries[document.id])
+        for document in documents
+    ]
 
 
 def get_owned_document(
@@ -971,6 +1011,7 @@ def soft_delete_document(
     document.deleted_at = utc_now()
     document.is_current_version = False
     document.status = "Deleted"
+    cancel_document_extraction(db, document)
     try:
         db.commit()
     except SQLAlchemyError as error:

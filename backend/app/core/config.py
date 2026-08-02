@@ -280,6 +280,32 @@ class AttachmentConfig:
     cleanup_retention_days: int = 30
 
 
+@dataclass(frozen=True)
+class DocumentExtractionConfig:
+    enabled: bool
+    ocr_enabled: bool
+    ocr_provider: str
+    ocr_language: str
+    max_pages: int
+    ocr_max_pages: int
+    max_chars_per_page: int
+    max_chars_per_document: int
+    embedded_text_threshold: int
+    ocr_dpi: int
+    ocr_max_pixels: int
+    ocr_max_dimension: int
+    extraction_timeout_seconds: int
+    ocr_page_timeout_seconds: int
+    max_attempts: int
+    retry_base_seconds: int
+    retry_max_seconds: int
+    lease_seconds: int
+    batch_size: int
+    retention_days: int
+    reprocess_rate_limit: int
+    reprocess_rate_window_seconds: int
+
+
 _default_attachment_root = (
     Path(__file__).resolve().parents[2] / ".attachment_storage"
 )
@@ -394,6 +420,152 @@ ATTACHMENT_CONFIG = AttachmentConfig(
         maximum=3_650,
     ),
 )
+
+_document_ocr_provider = os.getenv(
+    "DOCUMENT_OCR_PROVIDER",
+    "disabled",
+).strip().lower()
+if _document_ocr_provider not in {"disabled"}:
+    raise RuntimeError("DOCUMENT_OCR_PROVIDER must be disabled")
+
+_document_ocr_language = os.getenv(
+    "DOCUMENT_OCR_LANGUAGE",
+    "eng",
+).strip().lower()
+if (
+    not _document_ocr_language
+    or len(_document_ocr_language) > 16
+    or any(
+        not (character.isalnum() or character in {"-", "_"})
+        for character in _document_ocr_language
+    )
+):
+    raise RuntimeError("DOCUMENT_OCR_LANGUAGE is invalid")
+
+DOCUMENT_EXTRACTION_CONFIG = DocumentExtractionConfig(
+    enabled=boolean_environment_variable(
+        "DOCUMENT_EXTRACTION_ENABLED",
+        True,
+    ),
+    ocr_enabled=boolean_environment_variable(
+        "DOCUMENT_OCR_ENABLED",
+        False,
+    ),
+    ocr_provider=_document_ocr_provider,
+    ocr_language=_document_ocr_language,
+    max_pages=positive_integer_environment_variable(
+        "DOCUMENT_EXTRACTION_MAX_PAGES",
+        500,
+        maximum=2_000,
+    ),
+    ocr_max_pages=positive_integer_environment_variable(
+        "DOCUMENT_OCR_MAX_PAGES",
+        50,
+        maximum=500,
+    ),
+    max_chars_per_page=positive_integer_environment_variable(
+        "DOCUMENT_EXTRACTION_MAX_CHARS_PER_PAGE",
+        100_000,
+        maximum=1_000_000,
+    ),
+    max_chars_per_document=positive_integer_environment_variable(
+        "DOCUMENT_EXTRACTION_MAX_CHARS_PER_DOCUMENT",
+        2_000_000,
+        maximum=10_000_000,
+    ),
+    embedded_text_threshold=positive_integer_environment_variable(
+        "DOCUMENT_EXTRACTION_EMBEDDED_TEXT_THRESHOLD",
+        20,
+        maximum=1_000,
+    ),
+    ocr_dpi=positive_integer_environment_variable(
+        "DOCUMENT_OCR_DPI",
+        200,
+        maximum=300,
+    ),
+    ocr_max_pixels=positive_integer_environment_variable(
+        "DOCUMENT_OCR_MAX_PIXELS",
+        40_000_000,
+        maximum=100_000_000,
+    ),
+    ocr_max_dimension=positive_integer_environment_variable(
+        "DOCUMENT_OCR_MAX_DIMENSION",
+        12_000,
+        maximum=20_000,
+    ),
+    extraction_timeout_seconds=positive_integer_environment_variable(
+        "DOCUMENT_EXTRACTION_TIMEOUT_SECONDS",
+        120,
+        maximum=900,
+    ),
+    ocr_page_timeout_seconds=positive_integer_environment_variable(
+        "DOCUMENT_OCR_PAGE_TIMEOUT_SECONDS",
+        30,
+        maximum=300,
+    ),
+    max_attempts=positive_integer_environment_variable(
+        "DOCUMENT_EXTRACTION_MAX_ATTEMPTS",
+        3,
+        maximum=10,
+    ),
+    retry_base_seconds=positive_integer_environment_variable(
+        "DOCUMENT_EXTRACTION_RETRY_BASE_SECONDS",
+        60,
+        maximum=86_400,
+    ),
+    retry_max_seconds=positive_integer_environment_variable(
+        "DOCUMENT_EXTRACTION_RETRY_MAX_SECONDS",
+        3_600,
+        maximum=86_400,
+    ),
+    lease_seconds=positive_integer_environment_variable(
+        "DOCUMENT_EXTRACTION_LEASE_SECONDS",
+        900,
+        maximum=86_400,
+    ),
+    batch_size=positive_integer_environment_variable(
+        "DOCUMENT_EXTRACTION_BATCH_SIZE",
+        10,
+        maximum=100,
+    ),
+    retention_days=positive_integer_environment_variable(
+        "DOCUMENT_EXTRACTION_RETENTION_DAYS",
+        30,
+        maximum=3_650,
+    ),
+    reprocess_rate_limit=positive_integer_environment_variable(
+        "DOCUMENT_EXTRACTION_REPROCESS_RATE_LIMIT",
+        5,
+        maximum=100,
+    ),
+    reprocess_rate_window_seconds=positive_integer_environment_variable(
+        "DOCUMENT_EXTRACTION_REPROCESS_RATE_WINDOW_SECONDS",
+        3_600,
+        maximum=86_400,
+    ),
+)
+
+if DOCUMENT_EXTRACTION_CONFIG.ocr_enabled:
+    raise RuntimeError(
+        "DOCUMENT_OCR_ENABLED requires a deployable OCR provider; "
+        "this release supports DOCUMENT_OCR_PROVIDER=disabled"
+    )
+if (
+    DOCUMENT_EXTRACTION_CONFIG.ocr_max_pages
+    > DOCUMENT_EXTRACTION_CONFIG.max_pages
+):
+    raise RuntimeError(
+        "DOCUMENT_OCR_MAX_PAGES cannot exceed "
+        "DOCUMENT_EXTRACTION_MAX_PAGES"
+    )
+if (
+    DOCUMENT_EXTRACTION_CONFIG.retry_base_seconds
+    > DOCUMENT_EXTRACTION_CONFIG.retry_max_seconds
+):
+    raise RuntimeError(
+        "DOCUMENT_EXTRACTION_RETRY_BASE_SECONDS cannot exceed "
+        "DOCUMENT_EXTRACTION_RETRY_MAX_SECONDS"
+    )
 
 MAX_REQUEST_BODY_BYTES = positive_integer_environment_variable(
     "MAX_REQUEST_BODY_BYTES",

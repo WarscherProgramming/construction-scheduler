@@ -5,11 +5,14 @@ import {
   deleteDocument,
   downloadDocument,
   exploreDocuments,
+  getDocumentExtraction,
   getDocument,
   listFolderTree,
   listDocuments,
   listFolders,
   listRecentDocuments,
+  reprocessDocumentExtraction,
+  searchProjectDocuments,
   uploadDocument,
 } from "./api";
 import { configureAuthentication } from "./httpClient";
@@ -152,5 +155,41 @@ describe("document API", () => {
     expect(fetchMock.mock.calls[2][0]).toContain(
       "/projects/7/folders/tree"
     );
+  });
+
+  it("gets extraction state, queues reprocessing, and safely encodes search", async () => {
+    const fetchMock = vi.fn().mockImplementation(() =>
+      Promise.resolve(jsonResponse({ extraction: {}, results: [] }))
+    );
+    const controller = new AbortController();
+    vi.stubGlobal("fetch", fetchMock);
+
+    await getDocumentExtraction(4, 12, { signal: controller.signal });
+    await reprocessDocumentExtraction(4, 12, {
+      signal: controller.signal,
+    });
+    await searchProjectDocuments(4, {
+      query: "AHU-7 & <script>",
+      scope: "drawings",
+      documentType: "Drawing",
+      drawingSetId: 8,
+      discipline: "M",
+      currentRevisionsOnly: false,
+      extractionMethod: "embedded_text",
+      limit: 20,
+      offset: 40,
+      signal: controller.signal,
+    });
+
+    expect(fetchMock.mock.calls[0][0]).toContain(
+      "/projects/4/documents/12/extraction"
+    );
+    expect(fetchMock.mock.calls[1][1]).toEqual(
+      expect.objectContaining({ method: "POST", body: "{}" })
+    );
+    expect(fetchMock.mock.calls[2][0]).toContain(
+      "/projects/4/search?q=AHU-7+%26+%3Cscript%3E&scope=drawings&document_type=Drawing&drawing_set_id=8&discipline=M&current_revisions_only=false&extraction_method=embedded_text&limit=20&offset=40"
+    );
+    expect(fetchMock.mock.calls[2][1].signal).toBe(controller.signal);
   });
 });

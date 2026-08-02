@@ -1,24 +1,43 @@
-import { useEffect, useId, useRef } from "react";
+import { Fragment, useEffect, useId, useRef, useState } from "react";
 
 import {
   formatAttachmentDateTime,
   formatAttachmentFileSize,
 } from "../../utils/attachment";
 import Button from "../ui/Button";
+import ConfirmDialog from "../ui/ConfirmDialog";
 import Icon from "../ui/Icon";
+import useDocumentExtraction from "../../hooks/useDocumentExtraction";
+import {
+  extractionMethodLabel,
+  extractionStatusLabel,
+} from "../../utils/documentSearch";
 
 
 function DocumentDetailsDialog({
   documentRecord,
+  projectId,
   folderLocation,
   isDownloading = false,
   onDownload,
   onRelationships,
+  onOpenSearch,
+  onExtractionUpdate,
+  onError,
   onClose,
 }) {
   const titleId = useId();
   const dialogRef = useRef(null);
   const closeRef = useRef(null);
+  const [confirmReprocess, setConfirmReprocess] = useState(false);
+  const extraction = useDocumentExtraction({
+    projectId,
+    documentId: documentRecord?.id,
+    initialExtraction: documentRecord?.extraction,
+    load: false,
+    onError,
+    onUpdate: onExtractionUpdate,
+  });
 
   useEffect(() => {
     if (!documentRecord) return undefined;
@@ -32,6 +51,12 @@ function DocumentDetailsDialog({
   }, [documentRecord]);
 
   if (!documentRecord) return null;
+
+  const extractionRecord = extraction.extraction || documentRecord.extraction;
+  const runReprocess = async () => {
+    setConfirmReprocess(false);
+    await extraction.reprocess();
+  };
 
   const handleKeyDown = (event) => {
     if (event.key === "Escape") {
@@ -69,7 +94,8 @@ function DocumentDetailsDialog({
   ];
 
   return (
-    <div
+    <Fragment>
+      <div
       className="dialog-overlay"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose();
@@ -106,6 +132,45 @@ function DocumentDetailsDialog({
             </div>
           ))}
         </dl>
+        <section className="document-extraction-details" aria-labelledby={`${titleId}-extraction`}>
+          <div className="document-extraction-details__header">
+            <h3 id={`${titleId}-extraction`}>Searchable Text</h3>
+            <span>{extractionStatusLabel(extractionRecord)}</span>
+          </div>
+          <dl>
+            <div>
+              <dt>Text source</dt>
+              <dd>{extractionMethodLabel(extractionRecord?.extraction_method)}</dd>
+            </div>
+            <div>
+              <dt>Pages processed</dt>
+              <dd>{extractionRecord?.pages_processed ?? 0}</dd>
+            </div>
+          </dl>
+          {extractionRecord?.failure_message && (
+            <p>{extractionRecord.failure_message}</p>
+          )}
+          {extraction.error && <p role="alert">{extraction.error.message}</p>}
+          <div className="document-extraction-details__actions">
+            <Button size="sm" onClick={() => onOpenSearch(documentRecord)}>
+              <Icon name="search" size={15} />
+              Open Search
+            </Button>
+            <Button
+              size="sm"
+              disabled={
+                extraction.isReprocessing || !extractionRecord?.retry_eligible
+              }
+              onClick={() => {
+                if (extractionRecord?.searchable) setConfirmReprocess(true);
+                else void runReprocess();
+              }}
+            >
+              <Icon name="refresh" size={15} />
+              {extraction.isReprocessing ? "Queueing..." : "Reprocess Text"}
+            </Button>
+          </div>
+        </section>
         <div className="dialog__actions">
           <Button onClick={onClose}>Close</Button>
           <Button onClick={() => onRelationships(documentRecord)}>
@@ -122,7 +187,16 @@ function DocumentDetailsDialog({
           </Button>
         </div>
       </div>
-    </div>
+      </div>
+      <ConfirmDialog
+        open={confirmReprocess}
+        title="Reprocess searchable text?"
+        message="Current search results remain available until replacement processing succeeds."
+        confirmLabel="Reprocess Text"
+        onConfirm={() => void runReprocess()}
+        onCancel={() => setConfirmReprocess(false)}
+      />
+    </Fragment>
   );
 }
 

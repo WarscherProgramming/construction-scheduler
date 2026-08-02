@@ -7,7 +7,11 @@ import ProjectDrawingViewerPage from "./ProjectDrawingViewerPage";
 
 const useDrawingViewerMock = vi.hoisted(() => vi.fn());
 const relationshipPanelMock = vi.hoisted(() => vi.fn());
+const useDocumentExtractionMock = vi.hoisted(() => vi.fn());
 vi.mock("../hooks/useDrawingViewer", () => ({ default: useDrawingViewerMock }));
+vi.mock("../hooks/useDocumentExtraction", () => ({
+  default: useDocumentExtractionMock,
+}));
 vi.mock("../components/relationships/RelationshipPanel", () => ({
   default: (props) => {
     relationshipPanelMock(props);
@@ -55,6 +59,7 @@ const CURRENT_REVISION = {
   size_bytes: 2048,
   created_at: "2026-08-01T12:00:00Z",
   issue_ids: [50],
+  document_id: 40,
 };
 const OLD_REVISION = {
   ...CURRENT_REVISION,
@@ -136,6 +141,18 @@ describe("ProjectDrawingViewerPage", () => {
     useDrawingViewerMock.mockReset();
     useDrawingViewerMock.mockImplementation(() => viewer);
     relationshipPanelMock.mockClear();
+    useDocumentExtractionMock.mockReset();
+    useDocumentExtractionMock.mockReturnValue({
+      extraction: {
+        status: "completed",
+        extraction_method: "embedded_text",
+        searchable: true,
+      },
+      isLoading: false,
+      error: null,
+      isReprocessing: false,
+      reprocess: vi.fn(),
+    });
   });
 
   it("displays safe sheet, revision, and page metadata with one h1", () => {
@@ -220,6 +237,23 @@ describe("ProjectDrawingViewerPage", () => {
     viewer.search = { ...viewer.search, query: "note", hasText: false };
     render(<ProjectDrawingViewerPage {...pageProps()} />);
     expect(screen.getByText("Searchable text is not available for this revision.")).toBeInTheDocument();
+  });
+
+  it("distinguishes viewer search from project index status", async () => {
+    const user = userEvent.setup();
+    const page = pageProps();
+    render(<ProjectDrawingViewerPage {...page} />);
+    expect(screen.getByText("Current PDF embedded text")).toBeInTheDocument();
+    expect(screen.getByText("Embedded PDF text")).toBeInTheDocument();
+    expect(useDocumentExtractionMock).toHaveBeenCalledWith(
+      expect.objectContaining({ projectId: 1, documentId: 40, load: true })
+    );
+    await user.click(screen.getByRole("button", { name: "Open Search" }));
+    expect(page.onNavigate).toHaveBeenCalledWith(
+      "projectDocumentSearch",
+      1
+    );
+    expect(viewer.download).not.toHaveBeenCalled();
   });
 
   it("navigates exact revisions and adjacent sheets through safe IDs", async () => {

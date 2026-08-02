@@ -1,8 +1,8 @@
 # FieldFlow — Portfolio Copy
 
 Ready-to-use descriptions for resumes, portfolio sites, and LinkedIn.
-Keep the metrics in sync with the repo (currently **676 primary tests: 412
-frontend across 58 files + 264 backend**, with 317 backend subtests reported
+Keep the metrics in sync with the repo (currently **720 primary tests: 433
+frontend across 62 files + 287 backend**, with 317 backend subtests reported
 separately).
 
 ---
@@ -17,7 +17,8 @@ separately).
 > and Punch List workflows, reusable Document Management across six resource
 > types, a project document explorer, construction drawing revision
 > management with a secure PDF viewer, explicit cross-record construction
-> relationships, hardened rotating-session authentication, and 676 automated
+> relationships, project-scoped PDF content search, hardened rotating-session
+> authentication, and 720 automated
 > tests.
 
 ### Resume bullets
@@ -70,10 +71,14 @@ separately).
 >   metadata candidate search, project isolation, retained unavailable-record
 >   context, exact drawing-revision navigation, and reusable lazy React panels
 >   that add no dashboard or table-row request fan-out.
+> - Added durable page-level PDF extraction and project-scoped PostgreSQL
+>   full-text search with checksum-bound jobs, bounded plain-text snippets,
+>   exact drawing-revision navigation, and a pluggable OCR boundary that
+>   reports production OCR as unavailable until a provider is approved.
 > - Hardened authentication with memory-only access JWTs, rotating opaque
 >   refresh sessions, replay-family revocation, CSRF and exact-Origin
 >   enforcement, route-wide tenant isolation, and bounded abuse controls;
->   verified the complete platform with 676 automated tests (Vitest/RTL +
+>   verified the complete platform with 720 automated tests (Vitest/RTL +
 >   pytest).
 
 ### Portfolio-site paragraph
@@ -94,7 +99,7 @@ separately).
 > attachments across six construction workflows, a responsive project
 > document explorer, construction drawing revision management with secure
 > browser viewing, explicit user-created relationships across construction
-> records and drawing context, and 676
+> records and drawing context, secure project PDF content search, and 720
 > automated tests
 > across the stack.
 
@@ -126,6 +131,10 @@ resource-specific upload code or growing dashboard requests. A separate
 project-scoped relationship model and resolver registry connect those
 Documents, drawing records, and field workflows through controlled links
 without duplicating storage or specialized drawing associations.
+Durable extraction jobs open the same authorized objects, preserve page
+boundaries, verify checksums, and index native PDF text through PostgreSQL;
+the frontend returns bounded plain-text snippets and exact document or drawing
+navigation without loading binaries during search.
 
 ### The transaction-boundary challenge
 
@@ -144,11 +153,13 @@ available while preserving recoverable cleanup work.
   attachment and document APIs, models, storage abstractions, hooks, and UI
 - 25 MiB per-file limit with PDF, image, text, Word, and Excel support
 - Private authenticated delivery with no public object keys or credentials
-- 412 frontend tests across 58 files and 264 backend tests, for 676 primary
+- 433 frontend tests across 62 files and 287 backend tests, for 720 primary
   tests passed; 317 backend subtests are tracked separately
 - Lazy per-record panel mounting with no dashboard attachment preloading
 - Ten allowlisted relationship entity types with bounded candidate search and
   no dashboard or table-row relationship preloading
+- Native PDF content search with page-level results; production OCR remains an
+  explicit disabled-provider boundary rather than an overstated capability
 
 ---
 
@@ -173,9 +184,11 @@ available while preserving recoverable cleanup work.
 > durable cleanup
 > Explicit links among Documents, drawings, RFIs, Submittals, Punch Items,
 > Change Orders, and Daily Logs, with project isolation and contextual navigation
+> Project-scoped native PDF content search with page snippets and exact drawing
+> revision navigation
 >
 > Under the hood: React 19 + Vite, FastAPI + SQLAlchemy + PostgreSQL, hardened
-> rotating-session auth, an accessible component design system, and 676
+> rotating-session auth, an accessible component design system, and 720
 > automated tests.
 >
 > The demo seeds a full sample project in ~10 seconds — no signup friction:
@@ -191,7 +204,8 @@ available while preserving recoverable cleanup work.
 > dashboard, project-scoped Change Order, RFI, Submittal, and Punch List
 > workflows, secure Document Management across six resource types, a project
 > document explorer, drawing revision management with a secure PDF viewer,
-> explicit construction-record relationships, accessible design system, 676
+> explicit construction-record relationships, native PDF content search,
+> accessible design system, 720
 > automated tests. Live demo
 > seeds a complete sample
 > project in seconds.

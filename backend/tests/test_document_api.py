@@ -567,8 +567,11 @@ class DocumentApiTests(ApiTestCase):
                 "version",
                 "created_at",
                 "updated_at",
+                "extraction",
             },
         )
+        self.assertEqual(item["extraction"]["status"], "pending")
+        self.assertFalse(item["extraction"]["searchable"])
         for internal in (
             "storage_key",
             "storage_bucket",

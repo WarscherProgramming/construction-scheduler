@@ -8,6 +8,7 @@ import ViewerStatusRegion from "../components/drawings/viewer/ViewerStatusRegion
 import Button from "../components/ui/Button";
 import ProjectLayout from "../components/ui/ProjectLayout";
 import useDrawingViewer from "../hooks/useDrawingViewer";
+import useDocumentExtraction from "../hooks/useDocumentExtraction";
 
 
 const LOADING_MESSAGES = {
@@ -30,6 +31,12 @@ function ProjectDrawingViewerPage({
     projectId,
     sheetId,
     revisionId,
+    onError: onRequestError,
+  });
+  const extraction = useDocumentExtraction({
+    projectId,
+    documentId: viewer.revision?.document_id,
+    load: true,
     onError: onRequestError,
   });
   const [showThumbnails, setShowThumbnails] = useState(true);
@@ -113,7 +120,7 @@ function ProjectDrawingViewerPage({
             onClear={viewer.clearSearch}
           />
           <DrawingViewerWorkspace
-            viewer={viewer}
+            viewer={{ ...viewer, extraction }}
             projectId={projectId}
             showThumbnails={showThumbnails}
             showMetadata={showMetadata}

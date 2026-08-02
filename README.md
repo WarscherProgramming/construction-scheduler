@@ -11,7 +11,7 @@ and Punch Lists) with their supporting documents.
 ![React 19](https://img.shields.io/badge/React-19-61dafb?logo=react&logoColor=white&labelColor=20232a)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.1x-009688?logo=fastapi&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169e1?logo=postgresql&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-676%20passing-2ea44f)
+![Tests](https://img.shields.io/badge/tests-720%20passing-2ea44f)
 ![Vite](https://img.shields.io/badge/Vite-8-646cff?logo=vite&logoColor=white)
 
 ![FieldFlow executive dashboard](docs/screenshots/dashboard.png)
@@ -108,6 +108,11 @@ question — *"what needs my attention today?"* — has a one-screen answer.
   identities, atomic PDF revision upload and superseding, retained revision
   history, formal draft/issued/void issues, authenticated downloads, and a
   secure in-browser PDF viewer for current and historical revisions.
+- **Project document content search** with durable extraction jobs, native
+  page-level PDF text extraction, PostgreSQL full-text indexing, bounded
+  snippets, exact drawing-revision navigation, and an explicit OCR provider
+  boundary. Production OCR remains disabled until a deployable provider is
+  approved.
 - **Construction record relationships** with explicit project-scoped links
   across Documents, drawing records, RFIs, Submittals, Punch Items, Change
   Orders, and Daily Logs; controlled direction and reverse labels, bounded
@@ -122,8 +127,8 @@ question — *"what needs my attention today?"* — has a one-screen answer.
 - **Client-side onboarding**: first-run detection seeds a realistic demo
   project through the public API with visible progress — the app is never
   empty.
-- **Automated testing: 676 tests** — 412 frontend across 58 files (Vitest +
-  React Testing Library, behavior- and accessibility-focused) and 264 backend
+- **Automated testing: 720 tests** — 433 frontend across 62 files (Vitest +
+  React Testing Library, behavior- and accessibility-focused) and 287 backend
   tests plus 317 separately reported subtests (pytest,
   covering the scheduling engine, critical path, services, migrations, CORS,
   and TestClient API integration).
@@ -161,6 +166,11 @@ uses one authenticated aggregate endpoint instead of loading each resource
 collection. Backend queries calculate bounded summary metrics, attention
 items, upcoming tasks, and recent updates; the frontend handles formatting,
 navigation, loading, retry, cancellation, and stale-response protection.
+Document uploads also queue checksum-bound extraction work in their existing
+transaction. A finite externally scheduled command opens the same private
+object through the storage provider, persists bounded page text, and updates
+PostgreSQL full-text vectors; project search remains a separate lazy route and
+does not widen dashboard loading.
 
 The complete dashboard hierarchy, API contract, request lifecycle, test
 coverage, bundle history, and deferred work are documented in
@@ -183,6 +193,10 @@ Relationship terminology, the allowlisted entity and relationship matrix,
 resolver and API design, lifecycle behavior, frontend integrations, and
 deferred work are documented in
 [`docs/DOCUMENT_RELATIONSHIPS.md`](docs/DOCUMENT_RELATIONSHIPS.md).
+
+Document extraction lifecycle, OCR capability boundaries, durable processing,
+PostgreSQL indexing, ranking, APIs, frontend search, and operations are
+documented in [`docs/DOCUMENT_SEARCH.md`](docs/DOCUMENT_SEARCH.md).
 
 Change Orders use a focused service layer for validation and project-scoped
 `CO-###` allocation. A persistent per-project sequence table prevents deleted
@@ -453,15 +467,15 @@ job. FieldFlow does not include a built-in worker or scheduler, and
 | Backend | FastAPI, SQLAlchemy, Alembic, Pydantic |
 | Database | PostgreSQL |
 | Auth | Memory-only access JWT + rotating opaque refresh sessions |
-| Testing | Vitest + React Testing Library (412), pytest (264) |
-| Hosting | Vercel (frontend) · Render (API + migrations) |
+| Testing | Vitest + React Testing Library (433), pytest (287) |
+| Hosting | Vercel (frontend) · Render (API + migrations + finite cron jobs) |
 
 ## Testing
 
-**676 primary automated tests passed.** Backend subtests are reported
+**720 primary automated tests passed.** Backend subtests are reported
 separately rather than added to that total.
 
-- **Frontend (412 across 58 files)** — Vitest + React Testing Library. Tests
+- **Frontend (433 across 62 files)** — Vitest + React Testing Library. Tests
   target behavior and accessibility: roles and names, keyboard flows
   (Enter/Escape editing,
   grid cursor navigation, focus traps), aggregate dashboard rendering,
@@ -482,7 +496,11 @@ separately rather than added to that total.
   Relationship coverage includes API requests, hook deduplication and stale
   response handling, bounded keyboard candidate selection, direction-aware
   rendering, deletion, navigation, and all supported page integrations.
-- **Backend (264, plus 317 subtests)** — pytest. Covers the workday scheduling
+  Document-search coverage includes safe API encoding, explicit-submit and
+  stale-request hooks, extraction state and reprocessing, plain-text snippet
+  highlighting, filters, pagination, exact result navigation, and lazy route
+  integration.
+- **Backend (287, plus 317 subtests)** — pytest. Covers the workday scheduling
   engine (dependencies, lag, federal holidays), critical path and total float,
   task services, relationship migrations, CORS configuration, and
   TestClient API integration (auth, ownership enforcement, task lifecycle,
@@ -507,6 +525,10 @@ separately rather than added to that total.
   revocation, CSRF, exact CORS origins, rate and body limits, route-wide
   ownership, transaction rollback, safe errors, production configuration,
   logging redaction, and health behavior.
+  Extraction and search coverage includes PDF/raster boundaries, deterministic
+  OCR-provider tests, checksums, limits, durable claims and retries, migration
+  lifecycle, status and reprocess authorization, project isolation, ranking,
+  bounded snippets, and drawing-revision enrichment.
 
 ```bash
 # frontend
@@ -676,6 +698,10 @@ commit production credentials.
   matrix, directional and symmetric links, bounded candidate search, safe
   historical context, and lazy relationship workflows across documents,
   drawings, RFIs, Submittals, Punch Items, Change Orders, and Daily Logs
+- ✅ M16.6 Document Text Extraction and Search with native page-level PDF
+  extraction, a production-disabled OCR provider boundary, durable leased
+  jobs, PostgreSQL `simple` full-text indexing, bounded safe snippets,
+  project-scoped search, reprocessing, and exact drawing-revision navigation
 - ✅ Branded landing page and first-run demo seeding
 - ✅ Icon system, confirmation dialogs, notifications, loading skeletons
 - ✅ Scheduler showcase: WBS numbering, inline validation, critical path +
@@ -695,7 +721,7 @@ commit production credentials.
   browser/security scanning
 - General document and attachment version history, bulk download, thumbnails,
   and image galleries
-- Drawing annotations, comparison, OCR, server-side full-text document search,
+- Drawing annotations, comparison, a deployable production OCR provider,
   antivirus integration, and document approvals
 - Direct multipart browser uploads and bucket-wide orphan scanning
 - A built-in background worker and cleanup-job administration interface

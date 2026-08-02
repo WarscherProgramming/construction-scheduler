@@ -224,11 +224,12 @@ one aggregate request and does not request task, company, Daily Log,
 inspection, delay, Change Order, RFI, Submittal, Punch Item, or attachment
 collections. It also makes no Document Explorer, drawing, relationship-list,
 or relationship-candidate request. There is no dashboard polling, hover
-prefetch, or background refresh.
+prefetch, or background refresh. M16.6 also adds no extraction-status,
+reprocess, or project-content-search request to the dashboard.
 
 ## Testing
 
-The frontend suite currently passes 412 tests across 58 files. Dashboard
+The frontend suite currently passes 433 tests across 62 files. Dashboard
 coverage includes:
 
 - API URL and required `as_of` behavior
@@ -244,7 +245,7 @@ coverage includes:
 - Attention Required, Upcoming Schedule, Workflow Analytics, and Recent
   Updates rendering
 
-The backend suite currently passes 264 primary tests, with 317 separately
+The backend suite currently passes 287 primary tests, with 317 separately
 reported subtests. `test_dashboard_api.py` covers authentication, ownership,
 query validation, aggregate definitions, bounded ordering, aware timestamps,
 legacy statuses, and query behavior.
@@ -262,6 +263,7 @@ M16.5 with the installed Vite toolchain:
 | M14.4 | 20.15 / 4.97 kB | 264.10 / 81.48 kB | 42.18 / 8.68 kB |
 | M14.5 | 21.06 / 5.22 kB | 264.10 / 81.50 kB | 41.21 / 8.61 kB |
 | M16.5 | 21.07 / 5.24 kB | 277.10 / 84.89 kB | 69.36 / 12.90 kB |
+| M16.6 | 21.07 / 5.23 kB | 278.29 / 85.15 kB | 74.45 / 13.53 kB |
 
 M14.2 replaced the previous client-derived dashboard and removed obsolete
 dashboard utilities. M14.3 added action lists, M14.4 added workflow analytics
@@ -269,7 +271,9 @@ and recent updates, and M14.5 added accessibility and request hardening while
 removing duplicate CSS. At M14 closeout the main and CSS bundles remained
 below the M14.1 baselines. The M16.5 build still keeps the dashboard below its
 5.25 kB gzip budget; later document and drawing features account for the
-application-wide main and CSS growth.
+application-wide main and CSS growth. M16.6 keeps the dashboard unchanged
+and lazy, with no extraction or search request; its document-search UI is a
+separate 9.91 kB raw / 2.84 kB gzip route chunk.
 
 No chart or date dependency was added, no duplicate shared utility chunk is
 emitted, and the dashboard remains route-level lazy-loaded. M16.5 adds no
@@ -281,12 +285,12 @@ Final automated verification:
 
 | Check | Result |
 |---|---|
-| Frontend tests | Pass: 412 tests across 58 files |
+| Frontend tests | Pass: 433 tests across 62 files |
 | ESLint | Pass: no errors or warnings |
-| Production build | Pass: 129 modules transformed |
-| Dashboard bundle budget | Pass: 5.24 kB gzip against a 5.25 kB limit |
+| Production build | Pass: 137 modules transformed |
+| Dashboard bundle budget | Pass: 5.23 kB gzip against a 5.25 kB limit |
 | Aggregate request count | Pass: one dashboard request |
-| Resource, attachment, and relationship requests | Pass: zero on dashboard load |
+| Resource, attachment, relationship, extraction, and search requests | Pass: zero on dashboard load |
 | Semantic DOM and keyboard tests | Pass |
 
 Bounded browser verification was attempted on July 28, 2026 with the installed

@@ -712,6 +712,300 @@ button:disabled {
   }
 }
 
+/* Project document content search */
+.project-document-search-page {
+  min-width: 0;
+}
+
+.project-document-search-controls {
+  display: grid;
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.project-document-search-form {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.project-document-search-form > label,
+.project-document-search-filters label > span:first-child {
+  color: var(--text-h);
+  font-size: 0.88rem;
+  font-weight: 650;
+}
+
+.project-document-search-form__controls {
+  display: grid;
+  grid-template-columns: minmax(160px, 1fr) auto auto;
+  gap: var(--space-2);
+}
+
+.project-document-search-filters {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(120px, 1fr));
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--space-4) 0 0;
+  border: 0;
+  border-top: 1px solid var(--border);
+}
+
+.project-document-search-filters legend {
+  padding: 0;
+  color: var(--text-h);
+  font-weight: 700;
+}
+
+.project-document-search-filters label {
+  display: grid;
+  align-content: start;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.project-document-search-filters__checkbox {
+  grid-column: 1 / -1;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  justify-self: start;
+}
+
+.project-document-search-filters__checkbox input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+}
+
+.project-document-search-content {
+  min-width: 0;
+}
+
+.project-document-search-summary {
+  margin-bottom: var(--space-3);
+}
+
+.project-document-search-summary h2,
+.project-document-search-state h2 {
+  margin: 0;
+  color: var(--text-h);
+  font-size: 1.15rem;
+}
+
+.project-document-search-summary p,
+.project-document-search-state p {
+  margin: var(--space-1) 0 0;
+}
+
+.project-document-search-summary:focus {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.project-document-search-results {
+  display: grid;
+  gap: var(--space-3);
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.project-document-search-result {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.project-document-search-result__heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.project-document-search-result__heading > div {
+  min-width: 0;
+}
+
+.project-document-search-result__heading h3 {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--text-h);
+  font-size: 1rem;
+}
+
+.project-document-search-result__heading p,
+.project-document-search-result__type {
+  margin: 0;
+}
+
+.project-document-search-result__type {
+  color: var(--accent-hover);
+  font-size: 0.78rem;
+  font-weight: 750;
+  text-transform: uppercase;
+}
+
+.project-document-search-result__snippet {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--text-h);
+}
+
+.project-document-search-result__snippet mark {
+  padding: 0 2px;
+  color: var(--text-h);
+  background: #fde68a;
+}
+
+.project-document-search-result__metadata,
+.document-extraction-details dl,
+.drawing-metadata-search-status dl {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-5);
+  margin: 0;
+}
+
+.project-document-search-result__metadata div,
+.document-extraction-details dl div,
+.drawing-metadata-search-status dl div {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.project-document-search-result__metadata dt,
+.document-extraction-details dt,
+.drawing-metadata-search-status dt {
+  color: var(--text);
+  font-weight: 650;
+}
+
+.project-document-search-result__metadata dd,
+.document-extraction-details dd,
+.drawing-metadata-search-status dd {
+  margin: 0;
+  color: var(--text-h);
+}
+
+.project-document-search-state {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-2);
+  min-height: 144px;
+  align-content: center;
+}
+
+.project-document-search-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.document-name-button__status {
+  display: block;
+  color: var(--text);
+  font-size: 0.76rem;
+  font-weight: 500;
+}
+
+.document-extraction-details,
+.drawing-metadata-search-status {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4) 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.document-extraction-details__header,
+.drawing-metadata-search-status__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.document-extraction-details h3,
+.drawing-metadata-search-status h3 {
+  margin: 0;
+  color: var(--text-h);
+  font-size: 0.95rem;
+}
+
+.document-extraction-details__header > span {
+  font-size: 0.86rem;
+  font-weight: 650;
+}
+
+.document-extraction-details > p,
+.drawing-metadata-search-status > p {
+  margin: 0;
+}
+
+.document-extraction-details__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+@media (max-width: 1100px) {
+  .project-document-search-filters {
+    grid-template-columns: repeat(3, minmax(140px, 1fr));
+  }
+}
+
+@media (max-width: 700px) {
+  .project-document-search-form__controls,
+  .project-document-search-filters {
+    grid-template-columns: 1fr;
+  }
+
+  .project-document-search-filters__checkbox {
+    grid-column: auto;
+    grid-template-columns: auto 1fr;
+  }
+
+  .project-document-search-form__controls .button,
+  .project-document-search-pagination .button {
+    min-width: 0;
+  }
+
+  .project-document-search-result__heading,
+  .document-extraction-details__header,
+  .drawing-metadata-search-status__header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .project-document-search-result__heading .button {
+    align-self: flex-start;
+  }
+}
+
+@media (max-width: 390px) {
+  .project-document-search-controls,
+  .project-document-search-result {
+    padding: var(--space-3);
+  }
+
+  .project-document-search-pagination {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
+
 .drawing-metadata-relationships {
   min-width: 0;
   margin-top: var(--space-4);

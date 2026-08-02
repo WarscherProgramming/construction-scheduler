@@ -58,6 +58,9 @@ vi.mock("./services/api", () => ({
   uploadDocument: vi.fn(),
   downloadDocument: vi.fn(),
   deleteDocument: vi.fn(),
+  getDocumentExtraction: vi.fn(),
+  reprocessDocumentExtraction: vi.fn(),
+  searchProjectDocuments: vi.fn(),
   createFolder: vi.fn(),
   listDrawingSets: vi.fn(),
   createDrawingSet: vi.fn(),
@@ -115,6 +118,7 @@ import {
   listFolderTree,
   listRecentDocuments,
   listAttachments,
+  searchProjectDocuments,
   getDrawingRegister,
   listDrawingIssues,
   listDrawingSets,
@@ -460,6 +464,32 @@ describe("App integration (hooks wiring)", () => {
       expect(listFolderTree).toHaveBeenCalledTimes(1);
       expect(listRecentDocuments).toHaveBeenCalledTimes(1);
     });
+    expect(listAttachments).not.toHaveBeenCalled();
+  });
+
+  it("lazy-routes to document search without issuing an initial search", async () => {
+    const user = userEvent.setup();
+    fetchProjects.mockResolvedValue({
+      projects: [{ id: 1, name: "Riverside" }],
+    });
+    renderApp();
+
+    await screen.findByRole("option", { name: "Riverside" });
+    await user.selectOptions(screen.getByLabelText("Project"), "1");
+    await screen.findByRole("heading", { name: "Project Dashboard" });
+    await user.click(
+      screen.getByRole("button", { name: "Document Search" })
+    );
+
+    expect(window.location.hash).toBe("#/projects/1/search");
+    expect(
+      await screen.findByRole("heading", {
+        name: "Document Search",
+        level: 1,
+      })
+    ).toBeInTheDocument();
+    expect(searchProjectDocuments).not.toHaveBeenCalled();
+    expect(exploreDocuments).not.toHaveBeenCalled();
     expect(listAttachments).not.toHaveBeenCalled();
   });
 

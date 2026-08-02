@@ -16,6 +16,11 @@ from app.models.change_order import (  # noqa: F401
 )
 from app.models.daily_log import DailyLog  # noqa: F401
 from app.models.document import Document  # noqa: F401
+from app.models.document_extraction import (  # noqa: F401
+    DocumentExtraction,
+    DocumentExtractionJob,
+    DocumentPageText,
+)
 from app.models.drawing import (  # noqa: F401
     DrawingIssue,
     DrawingIssueRevision,

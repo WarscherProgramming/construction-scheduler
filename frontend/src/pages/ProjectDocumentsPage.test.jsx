@@ -13,6 +13,8 @@ import ProjectDocumentsPage from "./ProjectDocumentsPage";
 
 const useDocumentExplorerMock = vi.hoisted(() => vi.fn());
 const relationshipPanelMock = vi.hoisted(() => vi.fn());
+const useDocumentExtractionMock = vi.hoisted(() => vi.fn());
+const extractionReprocessMock = vi.hoisted(() => vi.fn());
 
 vi.mock("../hooks/useDocumentExplorer", () => ({
   default: useDocumentExplorerMock,
@@ -26,6 +28,9 @@ vi.mock("../components/relationships/RelationshipPanel", () => ({
       </section>
     );
   },
+}));
+vi.mock("../hooks/useDocumentExtraction", () => ({
+  default: useDocumentExtractionMock,
 }));
 
 
@@ -52,6 +57,14 @@ const DOCUMENT = {
   version: 1,
   created_at: "2026-07-30T12:00:00Z",
   updated_at: "2026-07-30T13:00:00Z",
+  extraction: {
+    status: "completed",
+    extraction_method: "embedded_text",
+    page_count: 2,
+    pages_processed: 2,
+    searchable: true,
+    retry_eligible: true,
+  },
 };
 
 const EXPLORER = {
@@ -131,6 +144,15 @@ describe("ProjectDocumentsPage", () => {
     useDocumentExplorerMock.mockReset();
     useDocumentExplorerMock.mockImplementation(() => hookState);
     relationshipPanelMock.mockClear();
+    useDocumentExtractionMock.mockReset();
+    useDocumentExtractionMock.mockImplementation(({ initialExtraction }) => ({
+      extraction: initialExtraction,
+      error: null,
+      isLoading: false,
+      isReprocessing: false,
+      reprocess: extractionReprocessMock.mockResolvedValue(true),
+    }));
+    extractionReprocessMock.mockClear();
   });
 
   it("renders the root, folder tree, document metadata, and recent files", () => {
@@ -366,6 +388,43 @@ describe("ProjectDocumentsPage", () => {
         onError: props.onRequestError,
       })
     );
+  });
+
+  it("shows bundled extraction state and navigates to project search", async () => {
+    const user = userEvent.setup();
+    const page = pageProps();
+    render(<ProjectDocumentsPage {...page} />);
+    expect(screen.getByRole("table")).toHaveTextContent("Searchable");
+    await user.click(
+      screen.getByRole("button", { name: "View details for Issued Plans" })
+    );
+    expect(screen.getByRole("dialog")).toHaveTextContent("Embedded PDF text");
+    expect(useDocumentExtractionMock).toHaveBeenCalledWith(
+      expect.objectContaining({ load: false, documentId: 11 })
+    );
+    await user.click(screen.getByRole("button", { name: "Open Search" }));
+    expect(page.onNavigate).toHaveBeenCalledWith(
+      "projectDocumentSearch",
+      1
+    );
+  });
+
+  it("confirms replacement before reprocessing searchable text", async () => {
+    const user = userEvent.setup();
+    render(<ProjectDocumentsPage {...pageProps()} />);
+    await user.click(
+      screen.getByRole("button", { name: "View details for Issued Plans" })
+    );
+    await user.click(screen.getByRole("button", { name: "Reprocess Text" }));
+    expect(screen.getByRole("alertdialog")).toHaveTextContent(
+      "Current search results remain available"
+    );
+    await user.click(
+      within(screen.getByRole("alertdialog")).getByRole("button", {
+        name: "Reprocess Text",
+      })
+    );
+    expect(extractionReprocessMock).toHaveBeenCalledOnce();
   });
 
   it("confirms soft deletion, prevents repeated submission, and keeps failures visible", async () => {

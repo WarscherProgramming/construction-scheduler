@@ -22,6 +22,7 @@ from app.api.routes_note_delay import router as note_delay_router
 from app.api.routes_change_order import router as change_order_router
 from app.api.routes_dashboard import router as dashboard_router
 from app.api.routes_document import router as document_router
+from app.api.routes_document_search import router as document_search_router
 from app.api.routes_drawing import router as drawing_router
 from app.api.routes_relationship import router as relationship_router
 from app.api.routes_project_company import router as project_company_router
@@ -87,6 +88,7 @@ app.include_router(note_delay_router)
 app.include_router(change_order_router)
 app.include_router(dashboard_router)
 app.include_router(document_router)
+app.include_router(document_search_router)
 app.include_router(drawing_router)
 app.include_router(relationship_router)
 app.include_router(project_company_router)

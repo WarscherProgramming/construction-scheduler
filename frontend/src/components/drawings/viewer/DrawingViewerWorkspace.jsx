@@ -77,6 +77,7 @@ function DrawingViewerWorkspace({
           onRevisionChange={onRevisionChange}
           onNavigate={onNavigate}
           onError={onError}
+          extraction={viewer.extraction}
         />
       )}
     </div>

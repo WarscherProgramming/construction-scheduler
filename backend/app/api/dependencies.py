@@ -4,7 +4,12 @@ from typing import Annotated
 from fastapi import Depends, HTTPException, Path, Query, status
 from sqlalchemy.orm import Session
 
-from app.core.config import ATTACHMENT_CONFIG, AttachmentConfig
+from app.core.config import (
+    ATTACHMENT_CONFIG,
+    DOCUMENT_EXTRACTION_CONFIG,
+    AttachmentConfig,
+    DocumentExtractionConfig,
+)
 from app.core.security import get_current_user
 from app.db.database import get_db
 from app.models.project import Project
@@ -59,6 +64,10 @@ def get_owned_project(
 
 def get_attachment_config() -> AttachmentConfig:
     return ATTACHMENT_CONFIG
+
+
+def get_document_extraction_config() -> DocumentExtractionConfig:
+    return DOCUMENT_EXTRACTION_CONFIG
 
 
 def get_attachment_storage(

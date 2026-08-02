@@ -15,6 +15,7 @@ import {
   formatAttachmentFileSize,
   getAttachmentFileType,
 } from "../utils/attachment";
+import { extractionStatusLabel } from "../utils/documentSearch";
 
 
 function hasDraggedFiles(dataTransfer) {
@@ -494,7 +495,12 @@ function ProjectDocumentsPage({
                                 }
                               >
                                 <Icon name="file-text" size={18} />
-                                <span>{documentRecord.display_name}</span>
+                                <span>
+                                  {documentRecord.display_name}
+                                  <small className="document-name-button__status">
+                                    {extractionStatusLabel(documentRecord.extraction)}
+                                  </small>
+                                </span>
                               </button>
                             </th>
                             <td data-label="Type">
@@ -645,6 +651,7 @@ function ProjectDocumentsPage({
       )}
 
       <DocumentDetailsDialog
+        projectId={projectId}
         documentRecord={selectedDocument}
         folderLocation={folderLocationFor(selectedDocument)}
         isDownloading={
@@ -656,6 +663,19 @@ function ProjectDocumentsPage({
           setSelectedDocument(null);
           setRelationshipDocument(documentRecord);
         }}
+        onOpenSearch={() => {
+          setSelectedDocument(null);
+          onNavigate("projectDocumentSearch", projectId);
+        }}
+        onExtractionUpdate={(nextExtraction) => {
+          setSelectedDocument((current) =>
+            current
+              ? { ...current, extraction: nextExtraction }
+              : current
+          );
+          void explorer.refresh();
+        }}
+        onError={onRequestError}
         onClose={() => setSelectedDocument(null)}
       />
       <ConfirmDialog

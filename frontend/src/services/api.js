@@ -375,6 +375,56 @@ export function deleteDocument(documentId, options = {}) {
   );
 }
 
+export function getDocumentExtraction(projectId, documentId, options = {}) {
+  return authenticatedRequest(
+    `/projects/${encodeURIComponent(String(projectId))}/documents/${encodeURIComponent(
+      String(documentId)
+    )}/extraction`,
+    { signal: options.signal }
+  );
+}
+
+export function reprocessDocumentExtraction(
+  projectId,
+  documentId,
+  options = {}
+) {
+  return authenticatedRequest(
+    `/projects/${encodeURIComponent(String(projectId))}/documents/${encodeURIComponent(
+      String(documentId)
+    )}/extraction/reprocess`,
+    {
+      method: "POST",
+      body: JSON.stringify({}),
+      signal: options.signal,
+    }
+  );
+}
+
+export function searchProjectDocuments(projectId, options = {}) {
+  const query = new URLSearchParams();
+  const parameters = {
+    q: options.query,
+    scope: options.scope,
+    document_type: options.documentType,
+    drawing_set_id: options.drawingSetId,
+    discipline: options.discipline,
+    current_revisions_only: options.currentRevisionsOnly,
+    extraction_method: options.extractionMethod,
+    limit: options.limit,
+    offset: options.offset,
+  };
+  for (const [name, value] of Object.entries(parameters)) {
+    if (value !== undefined && value !== null && value !== "") {
+      query.set(name, String(value));
+    }
+  }
+  return authenticatedRequest(
+    `/projects/${encodeURIComponent(String(projectId))}/search?${query.toString()}`,
+    { signal: options.signal }
+  );
+}
+
 export function listFolders(projectId, options = {}) {
   const query = new URLSearchParams();
   if (options.limit != null) query.set("limit", String(options.limit));

@@ -45,3 +45,51 @@ services:
         sync: false
       - key: ATTACHMENT_S3_KEY_PREFIX
         value: fieldflow/attachments
+      - key: DOCUMENT_EXTRACTION_ENABLED
+        value: true
+      - key: DOCUMENT_OCR_ENABLED
+        value: false
+      - key: DOCUMENT_OCR_PROVIDER
+        value: disabled
+
+  - type: cron
+    name: construction-scheduler-document-extraction
+    runtime: python
+    schedule: "*/10 * * * *"
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m app.commands.process_document_extractions --max-jobs 25 --prune-completed
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: false
+      - key: DATABASE_URL
+        sync: false
+      - key: SECRET_KEY
+        sync: false
+      - key: ALLOWED_ORIGINS
+        value: https://construction-scheduler-eight.vercel.app
+      - key: REFRESH_TOKEN_SECRET
+        sync: false
+      - key: COOKIE_SECURE
+        value: true
+      - key: COOKIE_SAMESITE
+        value: none
+      - key: ATTACHMENT_STORAGE_PROVIDER
+        value: s3
+      - key: ATTACHMENT_S3_BUCKET
+        sync: false
+      - key: ATTACHMENT_S3_REGION
+        sync: false
+      - key: ATTACHMENT_S3_ACCESS_KEY_ID
+        sync: false
+      - key: ATTACHMENT_S3_SECRET_ACCESS_KEY
+        sync: false
+      - key: ATTACHMENT_S3_KEY_PREFIX
+        value: fieldflow/attachments
+      - key: DOCUMENT_EXTRACTION_ENABLED
+        value: true
+      - key: DOCUMENT_OCR_ENABLED
+        value: false
+      - key: DOCUMENT_OCR_PROVIDER
+        value: disabled

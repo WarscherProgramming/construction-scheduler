@@ -62,6 +62,18 @@ explicit, synthetic links; do not imply automatic relationship discovery.
 | `relationship-dialog.png` | Any supported persisted record | Create Relationship dialog with relationship type, related entity type, bounded search results, and one selected candidate | 1440x900 | Raw IDs, storage metadata, and cross-project records | Demonstrates the controlled matrix and accessible metadata-only candidate flow |
 | `relationship-mobile.png` | RFI, Punch Item, or Daily Log | One Related Records panel with a long synthetic title and reachable actions | 390x844 | Browser account UI and sensitive record text | Verifies narrow-screen wrapping and action access |
 
+## Document search captures
+
+M16.6 does not create or replace image files. Use synthetic PDFs and plain
+search terms; do not imply semantic search or production OCR.
+
+| File | Page / workflow | State to capture | Viewport | Avoid | Portfolio value |
+|---|---|---|---|---|---|
+| `document-search.png` | Project Document Search | Populated page-level results with safe snippets, match emphasis, metadata, extraction method, and one exact drawing-revision result | 1440x900 | Real document text, storage metadata, AI claims, or unavailable OCR shown as successful | Demonstrates project-scoped content discovery and contextual navigation |
+| `document-search-empty.png` | Project Document Search | Submitted factual no-results state with filters visible | 1440x900 | Empty initial state presented as a failed search | Shows clear query and filter feedback |
+| `document-search-mobile.png` | Project Document Search | Results, wrapping snippets, filters, and pagination at a narrow viewport | 390x844 | Clipped metadata, horizontal scrolling, or browser account UI | Demonstrates responsive search usability |
+| `document-extraction-status.png` | Project Document Explorer details | Searchable, processing, warning, failed, or OCR-unavailable status with the controlled reprocess action | 1440x900 | Provider credentials, checksums, raw errors, or extracted page text | Shows honest lifecycle and recovery behavior |
+
 ## Tips
 
 - Crop out the browser chrome (or use a clean device frame consistently).
@@ -86,3 +98,8 @@ explicit, synthetic links; do not imply automatic relationship discovery.
   RFI, Submittal, Punch Item, Change Order, or Daily Log with its Related
   Records panel visible. Add the four relationship captures above where the
   portfolio needs the complete creation, navigation, and responsive story.
+- M16.6 adds native PDF extraction and project content search. Capture the
+  search page, recapture `project-documents.png` with extraction status in the
+  selected details, and recapture `drawing-viewer.png` with the distinct
+  Viewer search and Project index labels. Production OCR must remain labeled
+  unavailable unless a provider is deployed and verified.

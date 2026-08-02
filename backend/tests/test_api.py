@@ -7,6 +7,7 @@ from sqlalchemy.pool import StaticPool
 
 from app.api.dependencies import get_db
 from app.api.routes_auth import login_rate_limiter, register_rate_limiter
+from app.api.routes_document_search import reprocess_rate_limiter
 from app.db.database import Base
 from app.main import app
 from app.models.change_order import ChangeOrder, ChangeOrderNumberSequence
@@ -21,6 +22,7 @@ class ApiTestCase(unittest.TestCase):
     def setUp(self):
         login_rate_limiter.clear()
         register_rate_limiter.clear()
+        reprocess_rate_limiter.clear()
         self.engine = create_engine(
             "sqlite://",
             connect_args={"check_same_thread": False},

@@ -123,8 +123,16 @@ At most one full-size page is rendered. The page rail contains at most 31
 page controls and renders thumbnail canvases only for the current page and
 two neighbors. Search extracts existing PDF text sequentially only after a
 trimmed, literal, case-insensitive query (maximum 200 characters); image-only
-drawings remain viewable and state that searchable text is unavailable. OCR
-is not performed.
+drawings remain viewable and state that in-viewer searchable text is
+unavailable. This browser search does not perform OCR.
+
+M16.6 adds a separate project content index over each revision's existing
+Document. Native embedded PDF text is extracted durably by page; image-only
+pages enter an OCR provider boundary that is disabled in production. Viewer
+metadata names these capabilities separately as `Viewer search` and `Project
+index`, exposes the exact revision's extraction state, and links to the lazy
+project search route. Opening index status or search does not refetch the
+authorized PDF Blob.
 
 The revision download route remains the binary endpoint. It streams from the
 configured provider with `Content-Length`, PDF content type, safe attachment
@@ -163,11 +171,16 @@ existing build tooling (`brace-expansion` and `postcss`).
 The M16.5 production build keeps the drawing viewer lazy at 448.85 kB raw /
 133.62 kB gzip and adds a separate 17.96 kB raw / 5.45 kB gzip relationship
 chunk. Relative to M16.4, viewer gzip changes by +0.23 kB, main gzip by +0.27
-kB, and CSS gzip by +0.64 kB. Automated verification passes 412 frontend
-tests across 58 files and 264 backend tests, plus 317 separately reported
+kB, and CSS gzip by +0.64 kB. Automated verification passes 433 frontend
+tests across 62 files and 287 backend tests, plus 317 separately reported
 backend subtests. Manual browser, responsive, large-fixture, and source-PDF
 security checks remain explicitly unverified in the command-only
 environment.
+
+The M16.6 build keeps the viewer lazy at 450.07 kB raw / 133.87 kB gzip and
+the PDF worker unchanged at 1,262.39 kB raw / 374.85 kB gzip. The separate
+project document-search route is 9.91 kB raw / 2.84 kB gzip. Relative to
+M16.5, viewer gzip grows 0.25 kB, main gzip 0.26 kB, and CSS gzip 0.63 kB.
 
 ## Drawing Relationships
 
@@ -199,9 +212,11 @@ This prevents dangling revision references and silent historical loss.
 ## Limitations
 
 Drawings remain PDF-only and cannot be assigned from existing explorer
-documents. M16.4 does not provide HTTP range delivery, offline caching,
+documents. The viewer does not provide HTTP range delivery, offline caching,
 password entry, OCR, annotations, links/forms, measurements, overlays,
-revision comparison, markups, server-side content search, or AI analysis.
+revision comparison, markups, or AI analysis. M16.6 project search is
+server-side lexical search, not a replacement for the viewer's current-PDF
+search, and production OCR remains unavailable.
 Generic record relationships are now available, but relationship overlays,
 automatic suggestions, and graph visualization are not. Manual visual and
 source-PDF accessibility verification remains necessary in a working browser

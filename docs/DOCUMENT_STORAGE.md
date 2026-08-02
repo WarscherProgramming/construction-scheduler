@@ -7,8 +7,9 @@ drawing register while retaining one `Document` per stored revision. M16.4
 adds authenticated browser rendering for those PDF revisions. M16.5 adds
 explicit project-scoped relationships between Documents, drawings, and
 construction records without creating another file or attachment system.
-OCR, AI indexing, rename, move, annotations, and comparison remain outside
-the shipped scope.
+M16.6 adds durable page-level text extraction and PostgreSQL content search
+over those same Documents. Production OCR, AI indexing, rename, move,
+annotations, and comparison remain outside the shipped scope.
 
 ## Existing Attachment System
 
@@ -91,8 +92,11 @@ and a deleted folder would leave its documents unfiled through `SET NULL`.
    rules.
 5. Generate an opaque key and stream once to the selected provider while
    calculating SHA-256.
-6. Commit safe metadata only after storage succeeds.
-7. If metadata persistence fails, delete the object. If that cleanup also
+6. Queue extraction metadata and a durable job in the same transaction as
+   the safe Document metadata; drawing uploads preserve their existing outer
+   transaction.
+7. Commit only after storage succeeds.
+8. If metadata persistence fails, delete the object. If that cleanup also
    fails, persist a durable cleanup job without leaking the key to the client.
 
 ### Download
@@ -240,6 +244,26 @@ models. See
 [`DOCUMENT_RELATIONSHIPS.md`](DOCUMENT_RELATIONSHIPS.md) for the matrix,
 direction rules, API, lifecycle, and UI contract.
 
+## Text Extraction and Search
+
+M16.6 uses the existing Document ID, checksum, provider, and authorized
+storage-open path; it does not create another file record or derivative
+object. A finite externally scheduled command claims durable leased jobs,
+re-hashes the bounded object stream, extracts embedded PDF text by page, and
+persists replacement page rows transactionally. PNG, JPEG, WebP, and
+image-only PDF pages require the OCR provider boundary. The production
+provider is currently disabled, so those states are reported as unavailable
+rather than falsely searchable.
+
+Explorer and recent-document responses batch lightweight extraction
+summaries without returning page text or making one request per row. Project
+search uses PostgreSQL `simple` full-text search and a page-text GIN index;
+soft-deleted Documents are excluded. Drawing revisions enrich the same
+Document results and navigate to an exact revision. Extraction never creates
+relationships or changes Folder, version, Attachment, or drawing lineage.
+See [`DOCUMENT_SEARCH.md`](DOCUMENT_SEARCH.md) for limits, jobs, ranking,
+APIs, security, deployment, and frontend behavior.
+
 ## Security and Validation
 
 Ownership is inherited from the project. Direct document routes join through
@@ -268,22 +292,29 @@ uses project and creator foreign keys, controlled type and positive-ID
 checks, lookup indexes, and partial active-pair uniqueness while leaving
 Document, Folder, Attachment, and drawing storage rows unchanged.
 
+Migration `e4b7c2d9f651` adds the extraction, page-text, and durable job
+tables, including page uniqueness, active-job uniqueness, leasing indexes,
+and a PostgreSQL GIN search index. It does not mutate existing Documents or
+stored objects and remains dialect-aware for SQLite migration tests.
+
 Coverage includes provider contracts, unsafe keys, upload/download/list
 behavior, safe responses, ownership, folder hierarchy and cycles, validation,
 checksums, metadata rollback, durable cleanup fallback, soft-delete
 idempotency, migration reversibility, explorer responses, grouped counts,
 breadcrumbs, escaped search, allowlisted sorting, filters, pagination, recent
 documents, stale-request protection, upload retry, dialogs, routing,
-accessibility, and frontend API requests. The complete M16.5 verification
-passes 412 frontend tests across 58 files and 264 backend tests, with 317
-backend subtests reported separately; relationship coverage is detailed in
-[`DOCUMENT_RELATIONSHIPS.md`](DOCUMENT_RELATIONSHIPS.md).
+accessibility, frontend API requests, native extraction, OCR-provider
+boundaries, durable jobs, project-scoped search, safe snippets, and exact
+drawing navigation. The complete M16.6 verification passes 433 frontend
+tests across 62 files and 287 backend tests, with 317 backend subtests
+reported separately; extraction/search coverage is detailed in
+[`DOCUMENT_SEARCH.md`](DOCUMENT_SEARCH.md).
 
 ## Deferred Work
 
 Rename, move, folder deletion, restore, permanent purge, general document
 version history, duplicate detection, direct-to-cloud upload, signed-URL
 delivery, explorer thumbnails, bulk operations, PDF annotation/comparison,
-OCR, AI indexing, automatic relationship suggestions, relationship graph
-visualization, permanent relationship purge cleanup, and antivirus
-implementation remain deferred.
+a deployable production OCR provider, AI indexing, automatic relationship
+suggestions, relationship graph visualization, permanent relationship purge
+cleanup, and antivirus implementation remain deferred.

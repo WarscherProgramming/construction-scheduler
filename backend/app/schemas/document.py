@@ -3,6 +3,7 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 
 from app.schemas.common import MutationModel, ORMModel
+from app.schemas.document_search import DocumentExtractionSummaryResponse
 
 
 class FolderCreate(MutationModel):
@@ -80,6 +81,7 @@ class ExplorerDocumentResponse(BaseModel):
     version: int
     created_at: datetime
     updated_at: datetime
+    extraction: DocumentExtractionSummaryResponse | None = None
 
 
 class ExplorerPaginationResponse(BaseModel):

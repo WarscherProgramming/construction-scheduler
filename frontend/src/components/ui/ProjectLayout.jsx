@@ -16,6 +16,7 @@ const NAV_ITEMS = [
   { id: "punchItems", label: "Punch List", icon: "clipboard-check" },
   { id: "projectDrawings", label: "Drawings", icon: "file-text" },
   { id: "projectDocuments", label: "Documents", icon: "folder" },
+  { id: "projectDocumentSearch", label: "Document Search", icon: "search" },
   { id: "projectSettings", label: "Project Settings", icon: "settings" },
 ];
 

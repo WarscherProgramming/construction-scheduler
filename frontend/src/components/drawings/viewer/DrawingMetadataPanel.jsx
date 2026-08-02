@@ -9,6 +9,10 @@ import {
 } from "../../../utils/attachment";
 import { formatDisplayDate } from "../../../utils/date";
 import { drawingDisciplineLabel } from "../../../utils/drawing";
+import {
+  extractionMethodLabel,
+  extractionStatusLabel,
+} from "../../../utils/documentSearch";
 
 
 function DrawingMetadataPanel({
@@ -20,6 +24,7 @@ function DrawingMetadataPanel({
   onRevisionChange,
   onNavigate,
   onError,
+  extraction,
 }) {
   const [showRelationships, setShowRelationships] = useState(false);
   if (!sheet || !revision) return null;
@@ -69,6 +74,46 @@ function DrawingMetadataPanel({
       <section aria-labelledby="drawing-revision-description-title">
         <h3 id="drawing-revision-description-title">Revision Description</h3>
         <p>{revision.description || "No revision description."}</p>
+      </section>
+      <section
+        className="drawing-metadata-search-status"
+        aria-labelledby="drawing-project-search-title"
+      >
+        <div className="drawing-metadata-search-status__header">
+          <h3 id="drawing-project-search-title">Document Search</h3>
+          <Button
+            size="sm"
+            onClick={() => onNavigate("projectDocumentSearch", projectId)}
+          >
+            <Icon name="search" size={15} />
+            Open Search
+          </Button>
+        </div>
+        <dl>
+          <div>
+            <dt>Project index</dt>
+            <dd>
+              {extraction?.isLoading
+                ? "Loading status"
+                : extractionStatusLabel(extraction?.extraction)}
+            </dd>
+          </div>
+          <div>
+            <dt>Indexed text</dt>
+            <dd>
+              {extraction?.isLoading
+                ? "Loading status"
+                : extractionMethodLabel(
+                    extraction?.extraction?.extraction_method
+                  )}
+            </dd>
+          </div>
+          <div>
+            <dt>Viewer search</dt>
+            <dd>Current PDF embedded text</dd>
+          </div>
+        </dl>
+        {extraction?.error && <p role="alert">{extraction.error.message}</p>}
       </section>
       <section
         className="drawing-metadata-relationships"

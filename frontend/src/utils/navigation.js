@@ -10,6 +10,7 @@ const PAGE_SEGMENTS = {
   punchItems: "punch-items",
   projectDrawings: "drawings",
   projectDocuments: "documents",
+  projectDocumentSearch: "search",
   projectSettings: "settings",
 };
 
