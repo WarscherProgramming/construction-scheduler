@@ -86,6 +86,77 @@ export function updateScheduleSettings(projectId, settings, options = {}) {
   );
 }
 
+export function listScheduleBaselines(projectId, options = {}) {
+  const query = new URLSearchParams({
+    status: options.status || "all",
+    limit: String(options.limit || 100),
+    offset: String(options.offset || 0),
+  });
+  return authenticatedRequest(
+    `/projects/${encodeURIComponent(String(projectId))}/schedule-baselines?${query}`,
+    { signal: options.signal }
+  );
+}
+
+export function createScheduleBaseline(
+  projectId,
+  baseline,
+  options = {}
+) {
+  return jsonRequest(
+    `/projects/${encodeURIComponent(String(projectId))}/schedule-baselines`,
+    "POST",
+    baseline,
+    options
+  );
+}
+
+export function getScheduleBaseline(projectId, baselineId, options = {}) {
+  const query = new URLSearchParams({
+    limit: String(options.limit || 100),
+    offset: String(options.offset || 0),
+  });
+  return authenticatedRequest(
+    `/projects/${encodeURIComponent(String(projectId))}/schedule-baselines/${encodeURIComponent(String(baselineId))}?${query}`,
+    { signal: options.signal }
+  );
+}
+
+export function archiveScheduleBaseline(projectId, baselineId, options = {}) {
+  return authenticatedRequest(
+    `/projects/${encodeURIComponent(String(projectId))}/schedule-baselines/${encodeURIComponent(String(baselineId))}/archive`,
+    { method: "POST", signal: options.signal }
+  );
+}
+
+export function selectScheduleBaseline(projectId, baselineId, options = {}) {
+  return jsonRequest(
+    `/projects/${encodeURIComponent(String(projectId))}/schedule-baseline-comparison`,
+    "PUT",
+    { baseline_id: baselineId },
+    options
+  );
+}
+
+export function fetchScheduleVariance(projectId, options = {}) {
+  const query = new URLSearchParams();
+  if (options.baselineId) query.set("baseline_id", String(options.baselineId));
+  query.set("include_summaries", String(options.includeSummaries !== false));
+  if (options.status) query.set("status", options.status);
+  if (options.criticalChange) {
+    query.set("critical_change", options.criticalChange);
+  }
+  if (options.search) query.set("search", options.search);
+  query.set("sort", options.sort || "wbs");
+  query.set("order", options.order || "asc");
+  query.set("limit", String(options.limit || 50));
+  query.set("offset", String(options.offset || 0));
+  return authenticatedRequest(
+    `/projects/${encodeURIComponent(String(projectId))}/schedule-variance?${query}`,
+    { signal: options.signal }
+  );
+}
+
 export function fetchTemplates() {
   return authenticatedRequest("/templates");
 }

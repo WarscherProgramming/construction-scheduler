@@ -39,6 +39,10 @@ from app.models.project_schedule_settings import (  # noqa: F401
 from app.models.project_company import ProjectCompany  # noqa: F401
 from app.models.punch_item import PunchItem, PunchItemNumberSequence  # noqa: F401
 from app.models.rfi import RFI, RFINumberSequence  # noqa: F401
+from app.models.schedule_baseline import (  # noqa: F401
+    ScheduleBaseline,
+    ScheduleBaselineTask,
+)
 from app.models.refresh_session import RefreshSession  # noqa: F401
 from app.models.submittal import Submittal, SubmittalNumberSequence  # noqa: F401
 from app.models.task import Task  # noqa: F401

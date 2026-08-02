@@ -11,5 +11,6 @@ class ProjectScheduleSettingsUpdate(MutationModel):
 class ProjectScheduleSettingsResponse(ORMModel):
     project_id: int
     schedule_start_date: str
+    comparison_baseline_id: int | None
     created_at: datetime
     updated_at: datetime

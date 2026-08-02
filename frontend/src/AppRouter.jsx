@@ -44,6 +44,7 @@ function AppRouter({
   onLogout,
   data,
   schedule,
+  scheduleBaselines,
   forms,
   onboarding,
   onDeleteTask,
@@ -466,6 +467,7 @@ function AppRouter({
 
   return (
     <SchedulerPage
+      key={selectedProjectId}
       projectName={projectName}
       tasks={tasks}
       templates={templates}
@@ -477,6 +479,7 @@ function AppRouter({
       templateName={schedule.templateName}
       selectedTemplateId={schedule.selectedTemplateId}
       scheduleView={schedule.scheduleView}
+      baselines={scheduleBaselines}
       setSelectedTaskId={schedule.setSelectedTaskId}
       setEditValue={schedule.setEditValue}
       setTemplateName={schedule.setTemplateName}

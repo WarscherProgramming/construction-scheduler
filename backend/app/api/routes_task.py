@@ -14,6 +14,7 @@ from app.schemas.task import (
 )
 from app.services.task_scheduling import (
     annotate_critical_path,
+    lock_project_schedule,
     recalculate_schedule,
 )
 from app.services.task_validation import (
@@ -127,6 +128,7 @@ def create_task(
     db: Session = Depends(get_db),
     project: Project = Depends(get_owned_project),
 ):
+    lock_project_schedule(db, project_id)
     values = task.model_dump(
         exclude={
             "predecessor",
@@ -176,6 +178,7 @@ def reorder_tasks(
     db: Session = Depends(get_db),
     project: Project = Depends(get_owned_project),
 ):
+    lock_project_schedule(db, project_id)
     task_ids = payload.task_ids
     if len(set(task_ids)) != len(task_ids):
         raise HTTPException(
@@ -211,6 +214,7 @@ def update_task(
     db: Session = Depends(get_db),
     project: Project = Depends(get_owned_project),
 ):
+    lock_project_schedule(db, project_id)
     task = (
         db.query(Task)
         .filter(Task.id == task_id, Task.project_id == project_id)
@@ -274,6 +278,7 @@ def delete_task(
     db: Session = Depends(get_db),
     project: Project = Depends(get_owned_project),
 ):
+    lock_project_schedule(db, project_id)
     task = (
         db.query(Task)
         .filter(Task.id == task_id, Task.project_id == project_id)

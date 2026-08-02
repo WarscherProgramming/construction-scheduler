@@ -16,6 +16,12 @@ vi.mock("./services/api", () => ({
   fetchTasks: vi.fn(),
   fetchScheduleSettings: vi.fn(),
   updateScheduleSettings: vi.fn(),
+  listScheduleBaselines: vi.fn(),
+  createScheduleBaseline: vi.fn(),
+  getScheduleBaseline: vi.fn(),
+  archiveScheduleBaseline: vi.fn(),
+  selectScheduleBaseline: vi.fn(),
+  fetchScheduleVariance: vi.fn(),
   createTask: vi.fn(),
   deleteTask: vi.fn(),
   updateTask: vi.fn(),
@@ -114,6 +120,7 @@ import {
   fetchProjectDashboard,
   fetchProjects,
   fetchRFIs,
+  fetchScheduleVariance,
   fetchScheduleSettings,
   fetchSubmittals,
   fetchTasks,
@@ -122,6 +129,7 @@ import {
   listFolderTree,
   listRecentDocuments,
   listAttachments,
+  listScheduleBaselines,
   searchProjectDocuments,
   getDrawingRegister,
   listDrawingIssues,
@@ -253,14 +261,31 @@ describe("App integration (hooks wiring)", () => {
     fetchScheduleSettings.mockResolvedValue({
       project_id: 1,
       schedule_start_date: "2026-06-22",
+      comparison_baseline_id: null,
       created_at: "2026-06-22T00:00:00Z",
       updated_at: "2026-06-22T00:00:00Z",
     });
     updateScheduleSettings.mockResolvedValue({
       project_id: 1,
       schedule_start_date: "2026-06-22",
+      comparison_baseline_id: null,
       created_at: "2026-06-22T00:00:00Z",
       updated_at: "2026-06-22T00:00:00Z",
+    });
+    listScheduleBaselines.mockResolvedValue({
+      baselines: [],
+      comparison_baseline_id: null,
+      total: 0,
+      limit: 100,
+      offset: 0,
+    });
+    fetchScheduleVariance.mockResolvedValue({
+      baseline: null,
+      summary: null,
+      tasks: [],
+      total: 0,
+      limit: 50,
+      offset: 0,
     });
     fetchProjectCompanies.mockResolvedValue({ companies: [] });
     fetchDailyLogs.mockResolvedValue({ daily_logs: [] });
@@ -2513,6 +2538,8 @@ describe("App integration (hooks wiring)", () => {
     );
     expect(fetchTasks).toHaveBeenCalledTimes(1);
     expect(fetchScheduleSettings).toHaveBeenCalledTimes(1);
+    expect(listScheduleBaselines).toHaveBeenCalledTimes(1);
+    expect(fetchScheduleVariance).toHaveBeenCalledTimes(1);
   });
 
   it("clears schedule data and settings while switching projects", async () => {

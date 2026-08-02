@@ -19,7 +19,10 @@ from app.schemas.template import (
     TemplateListResponse,
     TemplateResponse,
 )
-from app.services.task_scheduling import recalculate_schedule
+from app.services.task_scheduling import (
+    lock_project_schedule,
+    recalculate_schedule,
+)
 from app.services.project_schedule_settings import get_project_schedule_start
 from app.services.task_validation import (
     validate_hierarchy_order,
@@ -128,6 +131,7 @@ def apply_template_to_project(
     db: Session = Depends(get_db),
     project: Project = Depends(get_owned_project),
 ):
+    lock_project_schedule(db, project_id)
     template = (
         db.query(ScheduleTemplate)
         .filter(

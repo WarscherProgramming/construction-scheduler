@@ -22,6 +22,9 @@ for both referenced and planned module screenshots.
 | `dashboard.png` | Populated Project Dashboard showing Project Summary, Follow-up Indicators, Attention Required, Upcoming Schedule, Workflow Analytics, and Recent Updates. Include readable RFI, Submittal, Punch Item, and Change Order states plus large Change Order values where practical. |
 | `schedule-grid.png` | Schedule table view: visible Schedule Start Date, a selected row, one cell in inline-edit mode, and at least one parent task with indented children. |
 | `schedule-settings.png` | Schedule sidebar with the persisted Schedule Start Date and the accessible recalculation confirmation open over synthetic task data. |
+| `schedule-baseline-create.png` | Accessible Capture Schedule Baseline dialog showing a synthetic name, optional description, Schedule Start Date, task count, server-generated timestamp note, and immutable-snapshot explanation. |
+| `schedule-baseline-comparison.png` | Baseline Comparison view with a selected named baseline, capture time, project-finish direction, slipped/improved/added/removed/newly-critical metrics, filters, and readable current-versus-baseline task rows. |
+| `schedule-baseline-mobile.png` | Baseline Comparison at ~390 px with the selector, textual summary metrics, filters, and one stacked task comparison record fully reachable without page-level horizontal overflow. |
 | `schedule-dnd.gif` | ~5 s: grab a task's drag handle, drag it two rows, drop; dates recalculate. |
 | `login.png` | Logged-out landing page at desktop width: split panel with marketing copy, highlights, app preview, and the auth card. |
 | `gantt.png` | Schedule → Gantt view of the demo project. |
@@ -129,3 +132,8 @@ Use the exact filenames above where defined; do not add placeholders.
   rollups. Recapture `schedule-grid.png`, add `schedule-settings.png`, and
   recapture `gantt.png` after changing the anchor so all displayed dates tell
   one consistent synthetic schedule story.
+- M17.2 adds immutable schedule baselines and table-first variance analysis.
+  Capture the create dialog, a populated desktop comparison with slipped,
+  improved, added, removed, and critical-change context, and the stacked
+  mobile comparison. Do not imply progress, actual dates, a dashboard
+  baseline KPI, export comparison, or a Gantt overlay.

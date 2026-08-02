@@ -5,6 +5,40 @@ import { describe, expect, it, vi } from "vitest";
 import SchedulerPage from "./SchedulerPage";
 
 
+const baseBaselines = {
+  baselines: [],
+  selectedBaseline: null,
+  viewBaselineId: null,
+  variance: null,
+  filters: {
+    includeSummaries: true,
+    status: "",
+    criticalChange: "",
+    search: "",
+    sort: "wbs",
+    order: "asc",
+    limit: 50,
+    offset: 0,
+  },
+  listError: null,
+  varianceError: null,
+  mutationError: null,
+  isLoadingList: false,
+  isLoadingVariance: false,
+  isCreating: false,
+  isArchiving: false,
+  isSelecting: false,
+  requiresSelection: false,
+  retryBaselines: vi.fn(),
+  retryVariance: vi.fn(),
+  createBaseline: vi.fn(),
+  archiveBaseline: vi.fn(),
+  selectBaseline: vi.fn(),
+  updateFilters: vi.fn(),
+  clearMutationError: vi.fn(),
+};
+
+
 const baseProps = {
   tasks: [],
   templates: [],
@@ -19,6 +53,7 @@ const baseProps = {
   templateName: "",
   selectedTemplateId: "",
   scheduleView: "table",
+  baselines: baseBaselines,
   setSelectedTaskId: vi.fn(),
   setEditValue: vi.fn(),
   setTemplateName: vi.fn(),
@@ -191,5 +226,32 @@ describe("SchedulerPage", () => {
 
     await user.click(screen.getByRole("button", { name: "Outdent" }));
     expect(onOutdent).toHaveBeenCalledWith(task);
+  });
+
+  it("switches between the current schedule and baseline comparison", async () => {
+    const user = userEvent.setup();
+    const retryVariance = vi.fn();
+
+    render(
+      <SchedulerPage
+        {...baseProps}
+        baselines={{ ...baseBaselines, retryVariance }}
+      />
+    );
+
+    await user.click(
+      screen.getByRole("button", { name: "Baseline Comparison" })
+    );
+
+    expect(retryVariance).toHaveBeenCalledOnce();
+    expect(
+      screen.getByText(/No comparison baseline is available/)
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Dependency format help")).not.toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", { name: "Current Schedule" })
+    );
+    expect(screen.getByText("Dependency format help")).toBeInTheDocument();
   });
 });

@@ -29,6 +29,7 @@ class ScheduleSettingsApiTests(ApiTestCase):
             {
                 "project_id",
                 "schedule_start_date",
+                "comparison_baseline_id",
                 "created_at",
                 "updated_at",
             },

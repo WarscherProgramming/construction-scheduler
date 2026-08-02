@@ -10,6 +10,8 @@ record updates without loading each resource collection in the browser.
 The dashboard is informational. It does not calculate percent complete,
 critical path, total float, or a synthetic project-health score because the
 aggregate contract does not provide enough data to make those claims.
+M17.2 schedule baselines and variance remain Schedule-route concerns: the
+dashboard adds no baseline request, comparison metric, or collection fan-out.
 
 ## Architecture
 
@@ -232,7 +234,7 @@ from dashboard loading.
 
 ## Testing
 
-The frontend suite currently passes 455 tests across 65 files. Dashboard
+The frontend suite currently passes 483 tests across 71 files. Dashboard
 coverage includes:
 
 - API URL and required `as_of` behavior
@@ -248,7 +250,7 @@ coverage includes:
 - Attention Required, Upcoming Schedule, Workflow Analytics, and Recent
   Updates rendering
 
-The backend suite currently passes 308 primary tests, with 327 separately
+The backend suite currently passes 327 primary tests, with 354 separately
 reported subtests. `test_dashboard_api.py` covers authentication, ownership,
 query validation, aggregate definitions, bounded ordering, aware timestamps,
 legacy statuses, and query behavior.
@@ -256,7 +258,7 @@ legacy statuses, and query behavior.
 ## Performance
 
 Production builds were measured directly at each M14 commit and again through
-M17.1 with the installed Vite toolchain:
+M17.2 with the installed Vite toolchain:
 
 | Phase | Dashboard raw/gzip | Main raw/gzip | CSS raw/gzip |
 |---|---:|---:|---:|
@@ -269,6 +271,7 @@ M17.1 with the installed Vite toolchain:
 | M16.6 | 21.07 / 5.23 kB | 278.29 / 85.15 kB | 74.45 / 13.53 kB |
 | M16.7 | 21.07 / 5.23 kB | 278.29 / 85.15 kB | 74.45 / 13.53 kB |
 | M17.1 | 21.07 / 5.23 kB | 280.82 / 85.81 kB | 74.79 / 13.55 kB |
+| M17.2 | 21.07 / 5.23 kB | 288.19 / 87.65 kB | 80.91 / 14.36 kB |
 
 M14.2 replaced the previous client-derived dashboard and removed obsolete
 dashboard utilities. M14.3 added action lists, M14.4 added workflow analytics
@@ -285,6 +288,9 @@ M17.1 keeps the dashboard chunk and request contract unchanged. Its persistent
 schedule-settings resource and stale-mutation safeguards add 2.53 kB raw /
 0.66 kB gzip to main and 0.34 / 0.02 kB to CSS versus M16.7. The lazy
 Scheduler route is 62.66 kB raw / 20.07 kB gzip.
+M17.2 also leaves the dashboard chunk and one-request contract unchanged.
+Focused baseline state loads only on the Schedule route; the table-first
+comparison raises the lazy Scheduler chunk to 79.45 kB raw / 23.90 kB gzip.
 
 No chart or date dependency was added, no duplicate shared utility chunk is
 emitted, and the dashboard remains route-level lazy-loaded. M16.5 adds no
@@ -296,9 +302,9 @@ Final automated verification:
 
 | Check | Result |
 |---|---|
-| Frontend tests | Pass: 455 tests across 65 files |
+| Frontend tests | Pass: 483 tests across 71 files |
 | ESLint | Pass: no errors or warnings |
-| Production build | Pass: 138 modules transformed |
+| Production build | Pass: 143 modules transformed |
 | Dashboard bundle budget | Pass: 5.23 kB gzip against a 5.25 kB limit |
 | Aggregate request count | Pass: one dashboard request |
 | Resource, attachment, relationship, extraction, and search requests | Pass: zero on dashboard load |

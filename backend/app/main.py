@@ -29,6 +29,7 @@ from app.api.routes_project_company import router as project_company_router
 from app.api.routes_punch_item import router as punch_item_router
 from app.api.routes_rfi import router as rfi_router
 from app.api.routes_schedule_settings import router as schedule_settings_router
+from app.api.routes_schedule_baseline import router as schedule_baseline_router
 from app.api.routes_submittal import router as submittal_router
 
 app = FastAPI(
@@ -96,6 +97,7 @@ app.include_router(project_company_router)
 app.include_router(punch_item_router)
 app.include_router(rfi_router)
 app.include_router(schedule_settings_router)
+app.include_router(schedule_baseline_router)
 app.include_router(submittal_router)
 
 # ----------------------------------------------------

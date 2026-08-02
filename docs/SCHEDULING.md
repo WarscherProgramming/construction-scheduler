@@ -1,22 +1,23 @@
 # Scheduling Architecture
 
 This document defines the deterministic scheduling contract established in
-M17.1. It describes shipped behavior only; baselines, progress, look-ahead
-planning, resource loading, and configurable calendars are not implemented.
+M17.1 and extended with immutable baselines and variance in M17.2. It
+describes shipped behavior only; progress, actual dates, look-ahead planning,
+resource loading, and configurable calendars are not implemented.
 
 ## Architecture
 
 ```text
-SchedulerPage / useScheduleActions
+SchedulerPage / useScheduleActions + useScheduleBaselines
         |
         v
-project-scoped task and schedule-settings APIs
+project-scoped task, settings, baseline, and variance APIs
         |
         v
 FastAPI routers -> scheduling/validation services
         |
         v
-pure scheduling domain -> SQLAlchemy Task + ProjectScheduleSettings
+pure scheduling domain -> scheduling services -> SQLAlchemy schedule models
 ```
 
 `backend/app/domain/scheduling.py` is a pure calculation layer. It receives
@@ -25,9 +26,11 @@ or server-clock access. Routers own project authorization and transaction
 boundaries. Services translate ORM tasks into immutable domain values and
 persist calculated dates.
 
-The frontend loads tasks and schedule settings as separate project resources
-only on the lazy Schedule route. It does not add either request to the project
-dashboard.
+The frontend loads tasks, schedule settings, and focused baseline state only
+on the lazy Schedule route. It does not add any of those requests to the
+project dashboard. Baseline lifecycle, snapshot contents, variance formulas,
+and deliberate deferrals are documented in
+[`SCHEDULE_BASELINES.md`](SCHEDULE_BASELINES.md).
 
 ## Schedule Start Anchor
 
@@ -35,6 +38,7 @@ Every project owns exactly one `ProjectScheduleSettings` row:
 
 - `project_id` is both the primary key and project foreign key.
 - `schedule_start_date` is a non-null ISO `YYYY-MM-DD` string.
+- `comparison_baseline_id` is the nullable project comparison pointer.
 - `created_at` and `updated_at` are timezone-aware timestamps.
 - deleting a project cascades to its settings row.
 
@@ -59,8 +63,9 @@ constraint.
 
 ## Task Lifecycle
 
-Task create, update, delete, reorder, template apply, and schedule-start update
-each use one transaction:
+Task create, update, delete, reorder, template apply, schedule-start update,
+and baseline capture serialize on the same project row. Each mutation uses
+one transaction:
 
 1. Authenticate and resolve the owned project.
 2. Validate input, ownership, references, hierarchy, and graph structure.
@@ -177,6 +182,8 @@ Templates remain owner-scoped and cannot be applied across users.
 
 The dashboard and PDF export read persisted deterministic task dates. Neither
 uses the server date as a schedule anchor or exposes schedule settings.
+M17.2 intentionally adds no dashboard baseline request or metric and does not
+change the current-schedule PDF.
 
 Dashboard schedule counts, planned range, attention items, and upcoming work
 continue to include summary rows for compatibility. PDF export preserves the
@@ -194,6 +201,13 @@ DELETE /projects/{project_id}/tasks/{task_id}
 
 GET    /projects/{project_id}/schedule-settings
 PUT    /projects/{project_id}/schedule-settings
+
+POST   /projects/{project_id}/schedule-baselines
+GET    /projects/{project_id}/schedule-baselines
+GET    /projects/{project_id}/schedule-baselines/{baseline_id}
+POST   /projects/{project_id}/schedule-baselines/{baseline_id}/archive
+PUT    /projects/{project_id}/schedule-baseline-comparison
+GET    /projects/{project_id}/schedule-variance
 ```
 
 The settings request accepts only:
@@ -202,8 +216,9 @@ The settings request accepts only:
 {"schedule_start_date": "2026-04-06"}
 ```
 
-The response contains `project_id`, `schedule_start_date`, `created_at`, and
-`updated_at`. Authentication and `get_owned_project` apply to both routes.
+The response contains `project_id`, `schedule_start_date`,
+`comparison_baseline_id`, `created_at`, and `updated_at`. Authentication and
+`get_owned_project` apply to all routes.
 Invalid dates, unknown fields, and client-supplied ownership fields return
 safe 422 responses.
 
@@ -221,9 +236,13 @@ tasks exist. The existing dialog traps focus, supports Escape, and restores
 focus. Task-load failure retains the global feedback banner and adds one local
 keyboard-accessible retry that issues one fresh request.
 
-Automated component and integration coverage verifies these behaviors.
-Browser checks at 320, 375, 768, and 1024 pixels, wide desktop, and 200% zoom
-were not performed in M17.1 and remain manual release verification.
+Baseline capture and archive use focus-managed dialogs. Comparison metrics
+use explicit direction text, and the semantic desktop table becomes labeled
+stacked records on narrow screens. Project switching aborts and rejects stale
+baseline work and remounts local scheduler state. Automated component and
+integration coverage verifies these behaviors. Browser checks at 320, 375,
+768, and 1024 pixels, wide desktop, and 200% zoom were not performed in M17.2
+and remain manual release verification.
 
 ## Scale Budgets
 
@@ -267,24 +286,27 @@ predecessor and parent validation:
 - `(project_id, parent_task_id)`
 
 The settings primary key already supplies the unique project index, so no
-redundant index is added.
+redundant index is added. Baseline headers enforce project/name uniqueness,
+status, and counts; snapshot rows enforce one original task ID per baseline
+and index deterministic order, parent, and predecessor lookups.
 
 ## Verification and Limits
 
-M17.1 verification passes 455 frontend tests across 65 files and 308 backend
-tests, with 327 backend subtests reported separately. PostgreSQL and SQLite
+M17.2 verification passes 483 frontend tests across 71 files and 327 backend
+tests, with 354 backend subtests reported separately. PostgreSQL and SQLite
 migration upgrade/downgrade/re-upgrade paths pass at Alembic revision
-`f6a1c9d3e742`.
+`a2c7e9f4b610`.
 
 Known limitations and deferred M17 work:
 
 - one predecessor per task; FS and SS only;
-- no baselines, variance, actual dates, progress, or data date;
+- no actual dates, progress, percent complete, or data date;
 - no milestones, constraints, look-ahead planning, resources, or crews;
 - no configurable project calendars or timezones;
 - summary duration remains direct-child count;
 - summary-predecessor CPM propagation remains limited as described above;
+- no baseline Gantt overlay, baseline dashboard metric, or variance export;
 - no Gantt dependency arrows, timeline zoom, or schedule virtualization.
 
-M17.2 must preserve this anchor, transaction, hierarchy, and deterministic
-graph contract when the next scheduling capability is selected.
+M17.3 must preserve this anchor, immutable history, transaction, hierarchy,
+and deterministic graph contract when progress tracking is introduced.

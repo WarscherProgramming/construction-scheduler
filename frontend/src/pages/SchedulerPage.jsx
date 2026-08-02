@@ -10,6 +10,8 @@ import FormField from "../components/FormField";
 import LoadingState from "../components/LoadingState";
 import NewTaskInput from "../components/NewTaskInput";
 import ScheduleStartControl from "../components/ScheduleStartControl";
+import ScheduleBaselineControl from "../components/schedule/ScheduleBaselineControl";
+import ScheduleVarianceView from "../components/schedule/ScheduleVarianceView";
 import SortableTaskRow from "../components/SortableTaskRow";
 import Button from "../components/ui/Button";
 import Card from "../components/ui/Card";
@@ -38,6 +40,7 @@ function SchedulerPage({
   templateName,
   selectedTemplateId,
   scheduleView,
+  baselines,
   setSelectedTaskId,
   setEditValue,
   setTemplateName,
@@ -91,6 +94,7 @@ function SchedulerPage({
   // Roving cell cursor (Excel-style): one tab stop for the grid, arrows and
   // Tab move between editable cells, Enter activates the focused cell.
   const [focusedCell, setFocusedCell] = useState({ row: 0, field: "name" });
+  const [scheduleMode, setScheduleMode] = useState("current");
   const tableRegionRef = useRef(null);
   const previousEditingCellRef = useRef(editingCell);
 
@@ -233,6 +237,18 @@ function SchedulerPage({
         onUpdate={onUpdateScheduleStart}
       />
 
+      <ScheduleBaselineControl
+        baselines={baselines}
+        scheduleStartDate={scheduleSettings?.schedule_start_date}
+        taskCount={tasks.length}
+        isScheduleLoading={
+          isLoadingTasks ||
+          isLoadingScheduleSettings ||
+          Boolean(taskLoadError) ||
+          !scheduleSettings
+        }
+      />
+
       <Card title="Templates" style={{ marginBottom: "var(--space-4)" }}>
         <form
           className="form-stack"
@@ -320,6 +336,52 @@ function SchedulerPage({
       mainClassName="scheduler-main"
     >
         <PageHeader title="Schedule" />
+
+        <div
+          className="schedule-mode-tabs"
+          role="group"
+          aria-label="Schedule views"
+        >
+          <Button
+            className="schedule-mode-button"
+            id="current-schedule-tab"
+            aria-pressed={scheduleMode === "current"}
+            onClick={() => setScheduleMode("current")}
+          >
+            Current Schedule
+          </Button>
+          <Button
+            className="schedule-mode-button"
+            id="baseline-comparison-tab"
+            aria-pressed={scheduleMode === "comparison"}
+            onClick={() => {
+              setScheduleMode("comparison");
+              void baselines.retryVariance();
+            }}
+          >
+            Baseline Comparison
+          </Button>
+        </div>
+
+        {scheduleMode === "comparison" ? (
+          <div
+            id="baseline-comparison-panel"
+            role="region"
+            aria-labelledby="baseline-comparison-tab"
+          >
+            <ErrorBoundary
+              title="The baseline comparison failed to display"
+              description="Your schedule and baseline data are safe. Try the comparison again."
+            >
+              <ScheduleVarianceView baselines={baselines} />
+            </ErrorBoundary>
+          </div>
+        ) : (
+          <div
+            id="current-schedule-panel"
+            role="region"
+            aria-labelledby="current-schedule-tab"
+          >
 
         <div className="schedule-toolbar">
           <div className="schedule-toolbar-selection">
@@ -517,6 +579,8 @@ function SchedulerPage({
             >
               <GanttChart tasks={tasks} selectedTaskId={selectedTaskId} />
             </ErrorBoundary>
+          </div>
+        )}
           </div>
         )}
     </ProjectLayout>

@@ -12,6 +12,7 @@ import useNotifications from "./hooks/useNotifications";
 import useProjectResource from "./hooks/useProjectResource";
 import useRecordForms from "./hooks/useRecordForms";
 import useScheduleActions from "./hooks/useScheduleActions";
+import useScheduleBaselines from "./hooks/useScheduleBaselines";
 import AuthPage from "./pages/AuthPage";
 import { seedDemoProject } from "./services/demoSeeder";
 
@@ -88,6 +89,14 @@ function App() {
     showNotice,
     reportRequestError,
     reportValidationError,
+  });
+
+  const scheduleBaselines = useScheduleBaselines({
+    projectId: selectedProjectId,
+    enabled: isAuthenticated && currentPage === "scheduler",
+    setScheduleSettings: data.setScheduleSettings,
+    showNotice,
+    reportRequestError,
   });
 
   const forms = useRecordForms({
@@ -350,6 +359,7 @@ function App() {
               onLogout={handleLogout}
               data={data}
               schedule={schedule}
+              scheduleBaselines={scheduleBaselines}
               forms={forms}
               onboarding={{
                 dismissed: onboardingDismissed,

@@ -78,7 +78,6 @@ class ScheduleFoundationMigrationTests(unittest.TestCase):
             )
 
         command.upgrade(self.config, M17_1_REVISION)
-        command.check(self.config)
 
         with closing(sqlite3.connect(self.database_path)) as connection:
             connection.execute("PRAGMA foreign_keys = ON")

@@ -1,5 +1,7 @@
 from datetime import date
 
+from sqlalchemy.orm import Session
+
 from app.domain.scheduling import (
     ScheduledTask,
     ScheduleTask,
@@ -7,6 +9,17 @@ from app.domain.scheduling import (
     calculate_schedule,
 )
 from app.models.task import Task
+from app.models.project import Project
+
+
+def lock_project_schedule(db: Session, project_id: int) -> None:
+    """Serialize schedule mutations and baseline capture for one project."""
+    (
+        db.query(Project.id)
+        .filter(Project.id == project_id)
+        .with_for_update()
+        .one()
+    )
 
 
 def recalculate_schedule(

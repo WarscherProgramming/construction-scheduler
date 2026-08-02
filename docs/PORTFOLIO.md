@@ -1,8 +1,8 @@
 # FieldFlow — Portfolio Copy
 
 Ready-to-use descriptions for resumes, portfolio sites, and LinkedIn.
-Keep the metrics in sync with the repo (M17.1 verified **763 primary tests: 455
-frontend across 65 files + 308 backend**, with 327 backend subtests reported
+Keep the metrics in sync with the repo (M17.2 verified **810 primary tests: 483
+frontend across 71 files + 327 backend**, with 354 backend subtests reported
 separately).
 
 ---
@@ -18,7 +18,7 @@ separately).
 > types, a project document explorer, construction drawing revision
 > management with a secure PDF viewer, explicit cross-record construction
 > relationships, project-scoped PDF content search, hardened rotating-session
-> authentication, and 763 automated
+> authentication, and 810 automated
 > tests.
 
 ### Resume bullets
@@ -30,7 +30,9 @@ separately).
 >   project start anchors, FS/SS dependencies, lag, summary-predecessor
 >   rollups, workday/holiday-aware date math, validated task hierarchy, and
 >   keyboard-accessible drag-and-drop reordering, plus Gantt visualization and
->   PDF export.
+>   PDF export; added immutable named baselines, persistent comparison
+>   selection, archive history, workday variance, and critical/structural
+>   change analysis through a responsive table-first workflow.
 > - Designed an accessible design system (15+ reusable components: dialogs
 >   with focus traps, skeleton loading, toasts, icon system) and a
 >   project-owned analytics endpoint that replaces dashboard collection
@@ -80,7 +82,7 @@ separately).
 > - Hardened authentication with memory-only access JWTs, rotating opaque
 >   refresh sessions, replay-family revocation, CSRF and exact-Origin
 >   enforcement, route-wide tenant isolation, and bounded abuse controls;
->   verified the complete platform with 763 automated tests (Vitest/RTL +
+>   verified the complete platform with 810 automated tests (Vitest/RTL +
 >   pytest).
 
 ### Portfolio-site paragraph
@@ -102,7 +104,7 @@ separately).
 > attachments across six construction workflows, a responsive project
 > document explorer, construction drawing revision management with secure
 > browser viewing, explicit user-created relationships across construction
-> records and drawing context, secure project PDF content search, and 763
+> records and drawing context, secure project PDF content search, and 810
 > automated tests
 > across the stack.
 
@@ -160,8 +162,8 @@ available while preserving recoverable cleanup work.
   attachment and document APIs, models, storage abstractions, hooks, and UI
 - 25 MiB per-file limit with PDF, image, text, Word, and Excel support
 - Private authenticated delivery with no public object keys or credentials
-- 455 frontend tests across 65 files and 308 backend tests, for 763 primary
-  tests passed; 327 backend subtests are tracked separately
+- 483 frontend tests across 71 files and 327 backend tests, for 810 primary
+  tests passed; 354 backend subtests are tracked separately
 - Lazy per-record panel mounting with no dashboard attachment preloading
 - Ten allowlisted relationship entity types with bounded candidate search and
   no dashboard or table-row relationship preloading
@@ -184,7 +186,8 @@ available while preserving recoverable cleanup work.
 >
 > 📅 A deterministic spreadsheet-fast scheduler — persistent project anchor,
 > inline editing, FS/SS dependencies with lag, summary rollups,
-> workday/holiday-aware dates, hierarchy, and drag-and-drop reordering
+> workday/holiday-aware dates, hierarchy, drag-and-drop reordering, and
+> immutable baseline comparison with workday variance
 > ▦ A Gantt view and one-click PDF export
 > 📊 An executive dashboard that answers "what needs my attention today?"
 > 📝 Daily logs, inspections, delays, and project-scoped Change Order, RFI,
@@ -198,7 +201,7 @@ available while preserving recoverable cleanup work.
 > revision navigation
 >
 > Under the hood: React 19 + Vite, FastAPI + SQLAlchemy + PostgreSQL, hardened
-> rotating-session auth, an accessible component design system, and 763
+> rotating-session auth, an accessible component design system, and 810
 > automated tests.
 >
 > The demo seeds a full sample project in ~10 seconds — no signup friction:
@@ -215,7 +218,7 @@ available while preserving recoverable cleanup work.
 > workflows, secure Document Management across six resource types, a project
 > document explorer, drawing revision management with a secure PDF viewer,
 > explicit construction-record relationships, native PDF content search,
-> accessible design system, 763
+> immutable schedule baseline comparison, accessible design system, 810
 > automated tests. Live demo
 > seeds a complete sample
 > project in seconds.
@@ -228,6 +231,9 @@ available while preserving recoverable cleanup work.
    local `YYYY-MM-DD` schedule anchor, so recalculation is independent of the
    day a request runs. A graph-based pass handles FS/SS dependencies and
    summary rollups, while workday math skips weekends and federal holidays.
+   Immutable snapshots preserve stable task identity, historical hierarchy,
+   dates, float, and critical state; comparison joins in memory and reports
+   factual workday and structural variance without mutating the live plan.
 2. **Honest aggregate metrics.** Tasks have no completion field, so the
    dashboard reports planned-finish attention and upcoming starts instead of
    pretending to know percent complete. One authenticated aggregate endpoint

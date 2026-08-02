@@ -13,7 +13,10 @@ from app.schemas.project_schedule_settings import (
 from app.services.project_schedule_settings import (
     get_project_schedule_settings,
 )
-from app.services.task_scheduling import recalculate_schedule
+from app.services.task_scheduling import (
+    lock_project_schedule,
+    recalculate_schedule,
+)
 from app.services.task_validation import validate_schedule_structure
 
 
@@ -42,6 +45,7 @@ def update_schedule_settings(
     db: Session = Depends(get_db),
     project: Project = Depends(get_owned_project),
 ):
+    lock_project_schedule(db, project_id)
     settings = get_project_schedule_settings(db, project_id)
     if settings.schedule_start_date == payload.schedule_start_date:
         return settings
