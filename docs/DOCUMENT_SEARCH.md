@@ -7,7 +7,8 @@ semantic search, embeddings, classification, or relationship inference.
 
 ## Capability Level
 
-Native text extraction is production-ready for PDFs with embedded text.
+Native text extraction is shipped and covered for PDFs with embedded text;
+live production extraction remains subject to the M16 deployment gate.
 PNG, JPEG, WebP, and image-only PDF pages enter the OCR path, but the current
 production OCR provider is deliberately `disabled`. Those files report OCR
 as unavailable; FieldFlow does not fabricate successful text extraction.
@@ -300,15 +301,26 @@ project isolation; snippets; filters; current and superseded revisions;
 migration lifecycle; API helpers; stale hooks; accessible page states; exact
 navigation; explorer/viewer integrations; and App lazy routing.
 
-The complete verification passes 287 backend tests plus 317 separately
+The M16.7 complete verification passes 287 backend tests plus 317 separately
 reported subtests and 433 frontend tests across 62 files. ESLint, production
 build, `pip check`, Alembic current/head/check, the finite processor smoke,
 and the production frontend dependency audit pass. The full frontend
-development tree retains two pre-existing high advisories in build tooling.
+development tree retains two pre-existing high advisories in build tooling;
+`pip-audit` is not installed, so no Python advisory scan is claimed.
+
+Local PostgreSQL confirms the page-vector GIN index and required partial
+constraints. A transactional service smoke returned one project-scoped page
+result while excluding same-term deleted and foreign-project Documents. A
+100,000-row temporary `simple`-configuration probe used a Bitmap Index Scan
+and matched synthetic sheet/product codes. The local database contained no
+persisted page rows before that rolled-back probe, so this is correctness and
+plan evidence rather than production-corpus benchmarking.
 
 M16.6 does not include production OCR, Office/CAD extraction, HTTP range
 search, semantic search, embeddings, AI summaries, classification, automatic
 relationships, drawing comparison, annotations, offline indexing, signed
 search URLs, or cross-project search. Manual browser, production-corpus load,
 and OCR-provider verification remain operational follow-up rather than
-automated claims.
+automated claims. Recovery steps are in
+[`DOCUMENT_OPERATIONS.md`](DOCUMENT_OPERATIONS.md), and the unexecuted live
+matrix remains checkable in [`DOCUMENT_QA.md`](DOCUMENT_QA.md).

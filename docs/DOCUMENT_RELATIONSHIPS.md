@@ -236,6 +236,12 @@ ESLint and the production build pass with no dependency changes. M16.5 adds a
 JavaScript changes by +1.23 kB raw / +0.27 kB gzip, the viewer by +0.93 kB raw
 / +0.23 kB gzip, and CSS by +5.02 kB raw / +0.64 kB gzip.
 
+M16.7 reconfirms the same complete test totals and a final 17.97 kB raw /
+5.45 kB gzip relationship chunk. The two-user API matrix, batched resolver
+query test, lazy loading, stale-response, keyboard, and navigation tests pass;
+live browser and responsive execution remains Not Verified and is listed in
+[`DOCUMENT_QA.md`](DOCUMENT_QA.md).
+
 ## Limitations and Deferred Work
 
 The relationship system does not include automatic or AI-suggested links,

@@ -174,7 +174,7 @@ flowchart LR
 - Frontend: `https://construction-scheduler-eight.vercel.app`
 - API: `https://construction-scheduler-api.onrender.com`
 - Database: managed PostgreSQL
-- Attachments: private S3-compatible object storage
+- Attachments and Documents: private S3-compatible object storage
 - Topology: HTTPS, cross-origin, and cross-site
 - Preview policy: Vercel previews do not receive credentialed production API
   access unless their exact origin is deliberately configured.
@@ -200,7 +200,10 @@ inventory. Never copy production values into repository files.
 | `COOKIE_SECURE`, `COOKIE_SAMESITE` | Production requires `true` and `none` for the current cross-site topology. |
 | Request and rate limits | Keep the request ceiling above the file limit plus multipart overhead and within configured maxima. |
 | Refresh cleanup | Keep batch and retention values bounded; current defaults are 100 rows and 30 days. |
-| Attachment variables | Production uses `s3`, a private bucket, least-privilege credentials, secure transport, bounded retries, and durable cleanup settings. |
+| Shared attachment/Document variables | The compatibility-prefixed `ATTACHMENT_*` settings select `s3`, a private bucket, least-privilege credentials, secure transport, MIME/file bounds, retries, and durable cleanup. |
+| Document extraction variables | `DOCUMENT_EXTRACTION_*` bounds enablement, pages, text, timeout, attempts, retry, lease, batch, retention, and reprocess throttling. |
+| OCR variables | Production remains `DOCUMENT_OCR_ENABLED=false` and `DOCUMENT_OCR_PROVIDER=disabled`; do not claim OCR until a reviewed deployable provider exists. |
+| Document search | Requires PostgreSQL and the migration-managed `simple` FTS vectors/GIN index; there is no search-configuration environment override. |
 | `VITE_API_URL` | Public build-time value set to the HTTPS Render API. |
 | `VITE_AUTH_REQUEST_TIMEOUT_MS` | Public build-time integer from 1,000 to 60,000; default 10,000. |
 
@@ -217,9 +220,11 @@ inventory. Never copy production values into repository files.
    ```
 
 5. Confirm the Render health check returns exactly `{"status":"online"}`.
-6. Deploy Vercel with `VITE_API_URL` set to the production API.
-7. Confirm Vercel serves the committed headers from `frontend/vercel.json`.
-8. Run the post-deployment browser and API checks before announcing release.
+6. Confirm the finite extraction cron uses the API's database/provider values,
+   and configure the separate recurring attachment-cleanup command.
+7. Deploy Vercel with `VITE_API_URL` set to the production API.
+8. Confirm Vercel serves the committed headers from `frontend/vercel.json`.
+9. Run [`DOCUMENT_QA.md`](DOCUMENT_QA.md) before announcing release.
 
 Database migrations run before the new API process starts. Do not run
 concurrent deploys against different migration heads.
@@ -326,16 +331,18 @@ before API traffic and verify the API before restoring the frontend release.
 
 ### Current Deployment Gate
 
-Verification on July 29, 2026 found:
+Verification on August 1, 2026 found:
 
-- Vercel returned 200 and HSTS, but did not yet serve the M15.5 security
-  headers.
-- The Render API returned no response bytes within a finite 60-second probe.
+- Vercel returned 200, HSTS, and the committed `nosniff`, frame, referrer, and
+  permissions headers. A site-wide CSP remains an explicitly documented
+  residual risk and is not configured by `frontend/vercel.json`.
+- The Render API returned no response bytes within a finite 30-second probe.
 
-Do not approve the production release until the M15.5 commit is deployed and
-every applicable item above passes.
+Do not approve the M16 production release until the API and M16 commits are
+deployed and every applicable production item in
+[`DOCUMENT_QA.md`](DOCUMENT_QA.md) passes.
 
-### Repository Verification Record
+### M15 Repository Verification Record
 
 Verification completed on July 29, 2026:
 
@@ -351,7 +358,32 @@ Verification completed on July 29, 2026:
 | Alembic head/current | `f8c2d6e0a315` / `f8c2d6e0a315` |
 | Alembic check | Pass: no new upgrade operations |
 
+### M16.7 Repository Verification Record
+
+Verification completed on August 1, 2026:
+
+| Check | Result |
+|---|---|
+| Backend tests | Pass: 287 tests and 317 subtests |
+| Frontend tests | Pass: 433 tests across 62 files |
+| ESLint | Pass |
+| Production build | Pass: 137 modules transformed |
+| Main bundle | 278.29 kB raw / 85.15 kB gzip |
+| CSS bundle | 74.45 kB raw / 13.53 kB gzip |
+| `pip check` | Pass: no broken requirements |
+| Python dependency audit | Not available: `pip-audit` is not installed |
+| npm production audit | Pass: zero vulnerabilities |
+| Full npm audit | Two pre-existing high development-tool advisories (`brace-expansion`, `postcss`) |
+| Alembic head/current | `e4b7c2d9f651` / `e4b7c2d9f651` |
+| Alembic check | Pass: no new upgrade operations |
+| M16 authorization/search/storage suites | Pass; live S3 and authenticated browser matrix remain Not Verified |
+
 ## Operational Runbooks
+
+Document-specific storage, cleanup, extraction, search, viewer, relationship,
+migration, purge-preparation, and future-restore procedures are in
+[`DOCUMENT_OPERATIONS.md`](DOCUMENT_OPERATIONS.md). The runbooks below remain
+the security and session incident baseline.
 
 ### Refresh Token Replay
 

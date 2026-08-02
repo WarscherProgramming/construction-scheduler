@@ -182,6 +182,12 @@ the PDF worker unchanged at 1,262.39 kB raw / 374.85 kB gzip. The separate
 project document-search route is 9.91 kB raw / 2.84 kB gzip. Relative to
 M16.5, viewer gzip grows 0.25 kB, main gzip 0.26 kB, and CSS gzip 0.63 kB.
 
+M16.7 changes documentation and release evidence only, so those chunks are
+unchanged. Focused and complete suites pass, but representative-PDF browser,
+responsive, Safari/WebKit, Firefox, and source-PDF accessibility checks remain
+Not Verified. Run the matrix in [`DOCUMENT_QA.md`](DOCUMENT_QA.md) before
+production approval.
+
 ## Drawing Relationships
 
 The Drawing Register can open one relationship panel for the selected

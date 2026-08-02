@@ -224,8 +224,9 @@ one aggregate request and does not request task, company, Daily Log,
 inspection, delay, Change Order, RFI, Submittal, Punch Item, or attachment
 collections. It also makes no Document Explorer, drawing, relationship-list,
 or relationship-candidate request. There is no dashboard polling, hover
-prefetch, or background refresh. M16.6 also adds no extraction-status,
-reprocess, or project-content-search request to the dashboard.
+prefetch, or background refresh. M16.7 reconfirms that extraction status,
+reprocess, project content search, and every other M16 workflow remain absent
+from dashboard loading.
 
 ## Testing
 
@@ -252,8 +253,8 @@ legacy statuses, and query behavior.
 
 ## Performance
 
-Production builds were measured directly at each M14 commit and again at
-M16.5 with the installed Vite toolchain:
+Production builds were measured directly at each M14 commit and again through
+M16.7 with the installed Vite toolchain:
 
 | Phase | Dashboard raw/gzip | Main raw/gzip | CSS raw/gzip |
 |---|---:|---:|---:|
@@ -264,6 +265,7 @@ M16.5 with the installed Vite toolchain:
 | M14.5 | 21.06 / 5.22 kB | 264.10 / 81.50 kB | 41.21 / 8.61 kB |
 | M16.5 | 21.07 / 5.24 kB | 277.10 / 84.89 kB | 69.36 / 12.90 kB |
 | M16.6 | 21.07 / 5.23 kB | 278.29 / 85.15 kB | 74.45 / 13.53 kB |
+| M16.7 | 21.07 / 5.23 kB | 278.29 / 85.15 kB | 74.45 / 13.53 kB |
 
 M14.2 replaced the previous client-derived dashboard and removed obsolete
 dashboard utilities. M14.3 added action lists, M14.4 added workflow analytics
@@ -274,6 +276,8 @@ below the M14.1 baselines. The M16.5 build still keeps the dashboard below its
 application-wide main and CSS growth. M16.6 keeps the dashboard unchanged
 and lazy, with no extraction or search request; its document-search UI is a
 separate 9.91 kB raw / 2.84 kB gzip route chunk.
+M16.7 is documentation and release verification only, so no dashboard, main,
+CSS, or document route chunk changes.
 
 No chart or date dependency was added, no duplicate shared utility chunk is
 emitted, and the dashboard remains route-level lazy-loaded. M16.5 adds no

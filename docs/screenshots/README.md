@@ -28,19 +28,24 @@ for both referenced and planned module screenshots.
 | `change-orders.png` | Populated Change Orders page: a generated `CO` number; create or edit workflow; proposed and approved amounts; schedule impact; lifecycle dates; multiple status badges; and, where practical, a readable legacy record. |
 | `punch-lists.png` | Punch Lists page: populated Punch Items table with visible status and priority labels, an overdue indicator, and the create or edit workflow visible. |
 | `drawing-register.png` | Populated Drawing Register with multiple disciplines, clear current revisions, set/filter controls, and sheet actions visible. |
+| `drawing-set-workflow.png` | Drawing-set create or edit dialog with bounded fields, visible set context, and synthetic values. |
 | `drawing-history.png` | Revision History dialog showing one current and one superseded PDF revision, dates, successor information, issue membership, and View/Download actions. |
 | `drawing-issues.png` | Drawing Issues section with a draft issue containing revisions and an issued or void issue showing frozen membership. |
 | `drawing-viewer.png` | Secure Drawing Viewer showing a synthetic multipage sheet, selected thumbnail, current or superseded revision text, metadata panel with Related Records open, page/zoom/search controls, and no confidential drawing content. |
+| `drawing-viewer-mobile.png` | Secure Drawing Viewer at ~390 px with wrapped toolbar, reachable page/zoom controls, internal canvas scrolling, and visible revision identity. |
 | `mobile.png` | Dashboard or a record page at ~390 px width: collapsed horizontal nav and stacked record cards. (Optional composite of two views side by side.) |
 
 ## Document Management captures
 
-These are planned portfolio captures. M13.6 does not create or replace image
-files.
+These are required M16 portfolio captures. M16.7 does not create or replace
+image files, and none of the M16 captures below was recorded during the
+command-only closeout.
 
 | File | Page / workflow | State to capture | Viewport | Avoid | Portfolio value |
 |---|---|---|---|---|---|
-| `project-documents.png` | Project Settings → Project Documents | Populated panel with several synthetic file types and the upload target visible | 1440×900 | Real project/client names and confidential filenames | Shows the project-level document hub and reusable panel |
+| `project-documents.png` | Project Documents root | Populated root with folder tree, breadcrumbs, recent documents, multiple synthetic file types, extraction labels, and upload target visible | 1440×900 | Real project/client names and confidential filenames | Shows the project-level explorer and storage workflow |
+| `project-documents-nested.png` | Project Documents nested folder | Two breadcrumb levels, active folder in the tree, child folder counts, and a populated nested listing | 1440×900 | Real folder names, stale root data, or provider paths | Demonstrates safe hierarchy and navigation |
+| `document-details.png` | Project Document details | Safe metadata, download/delete actions, extraction status, reprocess state where appropriate, and Related Records collapsed or open | 1440×900 | Storage keys, bucket, checksum, credentials, raw errors, or extracted text | Shows the selected-record workflow without a new detail route |
 | `daily-log-attachments.png` | Daily Logs | One persisted log expanded with photos and a PDF; create form remains separate | 1440×900 | Faces, addresses, subcontractor details, and location metadata | Connects field reporting to supporting evidence |
 | `rfi-attachments.png` | RFIs | Selected persisted RFI with a drawing and response exhibit listed | 1440×900 | Proprietary drawings and real RFI content | Demonstrates contextual document access without a new detail route |
 | `submittal-attachments.png` | Submittals | Selected Submittal with product data, PDF package, and download actions | 1440×900 | Manufacturer-confidential or project-specific packages | Shows mixed document formats in a review workflow |
@@ -52,7 +57,7 @@ files.
 
 ## Relationship captures
 
-M16.5 does not create or replace image files. Recapture these views with
+M16.7 does not create or replace image files. Recapture these views with
 explicit, synthetic links; do not imply automatic relationship discovery.
 
 | File | Page / workflow | State to capture | Viewport | Avoid | Portfolio value |
@@ -64,7 +69,7 @@ explicit, synthetic links; do not imply automatic relationship discovery.
 
 ## Document search captures
 
-M16.6 does not create or replace image files. Use synthetic PDFs and plain
+M16.7 does not create or replace image files. Use synthetic PDFs and plain
 search terms; do not imply semantic search or production OCR.
 
 | File | Page / workflow | State to capture | Viewport | Avoid | Portfolio value |
@@ -73,6 +78,19 @@ search terms; do not imply semantic search or production OCR.
 | `document-search-empty.png` | Project Document Search | Submitted factual no-results state with filters visible | 1440x900 | Empty initial state presented as a failed search | Shows clear query and filter feedback |
 | `document-search-mobile.png` | Project Document Search | Results, wrapping snippets, filters, and pagination at a narrow viewport | 390x844 | Clipped metadata, horizontal scrolling, or browser account UI | Demonstrates responsive search usability |
 | `document-extraction-status.png` | Project Document Explorer details | Searchable, processing, warning, failed, or OCR-unavailable status with the controlled reprocess action | 1440x900 | Provider credentials, checksums, raw errors, or extracted page text | Shows honest lifecycle and recovery behavior |
+
+## M16.7 capture status
+
+No screenshot image is currently stored in this directory and M16.7 captures
+none. Before portfolio or production closeout, capture at minimum:
+
+- project root, nested folder, upload results, and document details
+- drawing register, drawing-set workflow, revision history, and drawing issue
+- secure viewer at desktop and mobile widths
+- one relationship panel and the create-relationship dialog
+- extraction status, populated project search, and search at mobile width
+
+Use the exact filenames above where defined; do not add placeholders.
 
 ## Tips
 
@@ -103,3 +121,6 @@ search terms; do not imply semantic search or production OCR.
   selected details, and recapture `drawing-viewer.png` with the distinct
   Viewer search and Project index labels. Production OCR must remain labeled
   unavailable unless a provider is deployed and verified.
+- M16.7 consolidates the release set. The required root/nested explorer,
+  upload, details, set, issue, history, viewer desktop/mobile, relationships,
+  extraction, and search desktop/mobile captures all remain outstanding.

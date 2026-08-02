@@ -10,6 +10,9 @@ construction records without creating another file or attachment system.
 M16.6 adds durable page-level text extraction and PostgreSQL content search
 over those same Documents. Production OCR, AI indexing, rename, move,
 annotations, and comparison remain outside the shipped scope.
+M16.7 closes the platform with the final architecture/API/model inventory,
+production review, operational runbooks, and manual QA guide in
+[`DOCUMENT_MANAGEMENT.md`](DOCUMENT_MANAGEMENT.md).
 
 ## Existing Attachment System
 
@@ -305,10 +308,14 @@ breadcrumbs, escaped search, allowlisted sorting, filters, pagination, recent
 documents, stale-request protection, upload retry, dialogs, routing,
 accessibility, frontend API requests, native extraction, OCR-provider
 boundaries, durable jobs, project-scoped search, safe snippets, and exact
-drawing navigation. The complete M16.6 verification passes 433 frontend
+drawing navigation. The complete M16.7 verification passes 433 frontend
 tests across 62 files and 287 backend tests, with 317 backend subtests
-reported separately; extraction/search coverage is detailed in
-[`DOCUMENT_SEARCH.md`](DOCUMENT_SEARCH.md).
+reported separately. Local and deterministic S3-provider suites pass; live S3
+remains Not Verified because this workstation has no configured bucket or
+credentials. Extraction/search coverage is detailed in
+[`DOCUMENT_SEARCH.md`](DOCUMENT_SEARCH.md), while production recovery and live
+checks are in [`DOCUMENT_OPERATIONS.md`](DOCUMENT_OPERATIONS.md) and
+[`DOCUMENT_QA.md`](DOCUMENT_QA.md).
 
 ## Deferred Work
 

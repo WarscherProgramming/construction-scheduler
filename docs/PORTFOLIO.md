@@ -1,7 +1,7 @@
 # FieldFlow — Portfolio Copy
 
 Ready-to-use descriptions for resumes, portfolio sites, and LinkedIn.
-Keep the metrics in sync with the repo (currently **720 primary tests: 433
+Keep the metrics in sync with the repo (M16.7 verified **720 primary tests: 433
 frontend across 62 files + 287 backend**, with 317 backend subtests reported
 separately).
 
@@ -123,7 +123,7 @@ folder navigation, safe metadata search, bounded sorting and pagination,
 recent documents, batch uploads, and authenticated download. PostgreSQL
 stores metadata and SHA-256 checksums while opaque binary objects stream to
 local development
-storage or private S3-compatible production storage. A shared React
+storage or a private S3-compatible deployment target. A shared React
 `AttachmentPanel` and `useAttachments` hook provide multiple-file upload,
 partial-success feedback, authenticated preview/download, deletion, stale
 response protection, and accessible mobile interaction without duplicating
@@ -135,6 +135,10 @@ Durable extraction jobs open the same authorized objects, preserve page
 boundaries, verify checksums, and index native PDF text through PostgreSQL;
 the frontend returns bounded plain-text snippets and exact document or drawing
 navigation without loading binaries during search.
+The milestone closes with one linear, reversible five-migration chain, an
+API/model inventory, explicit OCR and browser-verification limits, finite
+worker and cleanup runbooks, and a checkable production QA gate rather than
+claiming unexecuted cloud or browser behavior.
 
 ### The transaction-boundary challenge
 
@@ -160,6 +164,8 @@ available while preserving recoverable cleanup work.
   no dashboard or table-row relationship preloading
 - Native PDF content search with page-level results; production OCR remains an
   explicit disabled-provider boundary rather than an overstated capability
+- One M16 release architecture, operations runbook, and manual QA matrix with
+  merge readiness separated from production verification
 
 ---
 

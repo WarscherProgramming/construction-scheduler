@@ -180,9 +180,10 @@ The final authentication architecture, threat model, deployment checklist,
 operational runbooks, manual QA guide, release notes, and deferred security
 roadmap are documented in [`docs/SECURITY.md`](docs/SECURITY.md).
 
-The provider contract, document and folder models, storage-key format,
-service transactions, API boundary, retention decision, and M16 roadmap are
-documented in
+The complete M16 architecture, API and data-model inventory, migration chain,
+production gate, and final bundle record are documented in
+[`docs/DOCUMENT_MANAGEMENT.md`](docs/DOCUMENT_MANAGEMENT.md). Focused provider,
+transaction, explorer, and retention details remain in
 [`docs/DOCUMENT_STORAGE.md`](docs/DOCUMENT_STORAGE.md).
 
 Drawing terminology, models, normalization, revision transactions, issue
@@ -197,6 +198,10 @@ deferred work are documented in
 Document extraction lifecycle, OCR capability boundaries, durable processing,
 PostgreSQL indexing, ranking, APIs, frontend search, and operations are
 documented in [`docs/DOCUMENT_SEARCH.md`](docs/DOCUMENT_SEARCH.md).
+
+Deployment recovery procedures and the checkable live release matrix are in
+[`docs/DOCUMENT_OPERATIONS.md`](docs/DOCUMENT_OPERATIONS.md) and
+[`docs/DOCUMENT_QA.md`](docs/DOCUMENT_QA.md).
 
 Change Orders use a focused service layer for validation and project-scoped
 `CO-###` allocation. A persistent per-project sequence table prevents deleted
@@ -468,7 +473,7 @@ job. FieldFlow does not include a built-in worker or scheduler, and
 | Database | PostgreSQL |
 | Auth | Memory-only access JWT + rotating opaque refresh sessions |
 | Testing | Vitest + React Testing Library (433), pytest (287) |
-| Hosting | Vercel (frontend) · Render (API + migrations + finite cron jobs) |
+| Hosting | Vercel (frontend) · Render (API + migrations + finite extraction cron) |
 
 ## Testing
 
@@ -580,11 +585,13 @@ Set `VITE_API_URL` when pointing at a deployed API. Authentication requests
 default to a 10-second timeout; use `VITE_AUTH_REQUEST_TIMEOUT_MS` only when a
 different bounded deployment value is required.
 
-### Attachment Configuration
+### Document and Attachment Configuration
 
 Local development should use `ATTACHMENT_STORAGE_PROVIDER=local` unless an
 S3 integration is intentionally being tested. The following variables match
-[`backend/.env.example`](backend/.env.example):
+[`backend/.env.example`](backend/.env.example). The established
+`ATTACHMENT_*` prefix is retained for deployment compatibility and configures
+the shared provider used by both attachments and Documents.
 
 | Group | Variable | Purpose |
 |---|---|---|
@@ -592,6 +599,7 @@ S3 integration is intentionally being tested. The following variables match
 | Local | `ATTACHMENT_LOCAL_STORAGE_ROOT` | Optional absolute or expanded local root; blank uses `backend/.attachment_storage` |
 | File limits | `ATTACHMENT_MAX_UPLOAD_SIZE` | Maximum bytes per file; default `26214400` |
 | File limits | `ATTACHMENT_UPLOAD_CHUNK_SIZE` | Backend streaming chunk size; default `65536` |
+| File limits | `ATTACHMENT_PERMITTED_MIME_TYPES` | Optional comma-separated MIME override; defaults cover the shipped PDF, image, text, Word, and Excel formats |
 | S3 | `ATTACHMENT_S3_BUCKET` | Private bucket name; required in `s3` mode |
 | S3 | `ATTACHMENT_S3_REGION` | Bucket region; required in `s3` mode |
 | S3 | `ATTACHMENT_S3_ENDPOINT_URL` | Optional HTTPS endpoint for compatible providers |
@@ -625,7 +633,8 @@ commit production credentials.
 - **Backend — Render.** [`backend/render.yaml`](backend/render.yaml) defines
   the web service, runs Alembic migrations on deploy, sets the health check,
   selects production mode and secure cross-site cookies, pins the exact CORS
-  origin, and selects private S3-compatible storage.
+  origin, selects private S3-compatible storage, and runs the finite document
+  extraction command every ten minutes.
 - **Security release gate.** Follow
   [`docs/SECURITY.md`](docs/SECURITY.md) for secret preparation, migration and
   restart order, rollback, post-deployment cookie/CORS/header checks, and
@@ -638,8 +647,10 @@ commit production credentials.
   check object existence.
 - **Cleanup scheduling.** Run
   `python -m app.commands.process_attachment_cleanup` as a recurring external
-  scheduled job. The current Render blueprint configures only the web service,
-  so cleanup scheduling remains an explicit deployment operation.
+  scheduled job. The current Render blueprint declares the API and extraction
+  cron, but not attachment cleanup, so cleanup scheduling remains an explicit
+  deployment operation. See
+  [`docs/DOCUMENT_OPERATIONS.md`](docs/DOCUMENT_OPERATIONS.md).
 
 ## Roadmap
 
@@ -702,6 +713,10 @@ commit production credentials.
   extraction, a production-disabled OCR provider boundary, durable leased
   jobs, PostgreSQL `simple` full-text indexing, bounded safe snippets,
   project-scoped search, reprocessing, and exact drawing-revision navigation
+- ✅ M16.7 Document Management release readiness with final architecture,
+  API/model and migration inventories, production configuration review,
+  operational runbooks, manual QA, dependency/security gates, and reconciled
+  test and bundle evidence
 - ✅ Branded landing page and first-run demo seeding
 - ✅ Icon system, confirmation dialogs, notifications, loading skeletons
 - ✅ Scheduler showcase: WBS numbering, inline validation, critical path +
