@@ -20,6 +20,11 @@ from app.schemas.template import (
     TemplateResponse,
 )
 from app.services.task_scheduling import recalculate_schedule
+from app.services.project_schedule_settings import get_project_schedule_start
+from app.services.task_validation import (
+    validate_hierarchy_order,
+    validate_schedule_structure,
+)
 
 router = APIRouter()
 
@@ -83,7 +88,9 @@ def save_project_as_template(
             dependency_type=task.dependency_type,
             lag_days=task.lag_days,
             order_index=index,
-            manual_start_date=task.manual_start_date,
+            # Templates preserve structure and relative logic, not absolute
+            # dates from the source project's calendar position.
+            manual_start_date=None,
         )
 
         db.add(template_task)
@@ -158,7 +165,7 @@ def apply_template_to_project(
             dependency_type=template_task.dependency_type,
             lag_days=template_task.lag_days,
             order_index=current_max_order + index,
-            manual_start_date=template_task.manual_start_date,
+            manual_start_date=None,
         )
 
         db.add(new_task)
@@ -174,8 +181,22 @@ def apply_template_to_project(
         new_task.predecessor_task_id = predecessor.id if predecessor else None
         new_task.parent_task_id = parent.id if parent else None
 
-    recalculate_schedule(list(project_task_map.values()))
-
-    db.commit()
+    tasks = (
+        db.query(Task)
+        .filter(Task.project_id == project_id)
+        .order_by(Task.order_index, Task.id)
+        .all()
+    )
+    try:
+        validate_hierarchy_order(tasks, [task.id for task in tasks])
+        validate_schedule_structure(tasks)
+        recalculate_schedule(
+            tasks,
+            project_start=get_project_schedule_start(db, project_id),
+        )
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
 
     return {"message": "Template applied"}

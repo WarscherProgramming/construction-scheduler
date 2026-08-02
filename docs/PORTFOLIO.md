@@ -1,8 +1,8 @@
 # FieldFlow — Portfolio Copy
 
 Ready-to-use descriptions for resumes, portfolio sites, and LinkedIn.
-Keep the metrics in sync with the repo (M16.7 verified **720 primary tests: 433
-frontend across 62 files + 287 backend**, with 317 backend subtests reported
+Keep the metrics in sync with the repo (M17.1 verified **763 primary tests: 455
+frontend across 65 files + 308 backend**, with 327 backend subtests reported
 separately).
 
 ---
@@ -18,7 +18,7 @@ separately).
 > types, a project document explorer, construction drawing revision
 > management with a secure PDF viewer, explicit cross-record construction
 > relationships, project-scoped PDF content search, hardened rotating-session
-> authentication, and 720 automated
+> authentication, and 763 automated
 > tests.
 
 ### Resume bullets
@@ -26,9 +26,11 @@ separately).
 > **FieldFlow — Construction Planning & Field Management SaaS** · React 19,
 > FastAPI, PostgreSQL, SQLAlchemy, Vite · [live demo](https://construction-scheduler-eight.vercel.app)
 >
-> - Built a spreadsheet-style scheduling engine with FS/SS dependencies, lag,
->   workday/holiday-aware date math, task hierarchy, and keyboard-accessible
->   drag-and-drop reordering, plus Gantt visualization and PDF export.
+> - Built a deterministic spreadsheet-style scheduling engine with persistent
+>   project start anchors, FS/SS dependencies, lag, summary-predecessor
+>   rollups, workday/holiday-aware date math, validated task hierarchy, and
+>   keyboard-accessible drag-and-drop reordering, plus Gantt visualization and
+>   PDF export.
 > - Designed an accessible design system (15+ reusable components: dialogs
 >   with focus traps, skeleton loading, toasts, icon system) and a
 >   project-owned analytics endpoint that replaces dashboard collection
@@ -78,16 +80,17 @@ separately).
 > - Hardened authentication with memory-only access JWTs, rotating opaque
 >   refresh sessions, replay-family revocation, CSRF and exact-Origin
 >   enforcement, route-wide tenant isolation, and bounded abuse controls;
->   verified the complete platform with 720 automated tests (Vitest/RTL +
+>   verified the complete platform with 763 automated tests (Vitest/RTL +
 >   pytest).
 
 ### Portfolio-site paragraph
 
 > FieldFlow is a full-stack construction planning platform I designed and
 > built end-to-end: a React 19 SPA over a FastAPI/PostgreSQL backend. The
-> centerpiece is a spreadsheet-fast scheduler — inline cell editing,
-> Finish-to-Start/Start-to-Start dependencies with lag, workday and federal
-> holiday calendars, task hierarchy, and drag-and-drop reordering that works
+> centerpiece is a spreadsheet-fast scheduler — persistent project anchors,
+> inline cell editing, Finish-to-Start/Start-to-Start dependencies with lag,
+> deterministic summary rollups, workday and federal holiday calendars,
+> validated task hierarchy, and drag-and-drop reordering that works
 > from the keyboard — rendered as both an editable grid and a Gantt chart with
 > PDF export. Around it sits a complete field-management suite (daily logs,
 > inspections, delays, enhanced Change Orders, RFIs, Submittals, Punch Lists)
@@ -99,7 +102,7 @@ separately).
 > attachments across six construction workflows, a responsive project
 > document explorer, construction drawing revision management with secure
 > browser viewing, explicit user-created relationships across construction
-> records and drawing context, secure project PDF content search, and 720
+> records and drawing context, secure project PDF content search, and 763
 > automated tests
 > across the stack.
 
@@ -157,8 +160,8 @@ available while preserving recoverable cleanup work.
   attachment and document APIs, models, storage abstractions, hooks, and UI
 - 25 MiB per-file limit with PDF, image, text, Word, and Excel support
 - Private authenticated delivery with no public object keys or credentials
-- 433 frontend tests across 62 files and 287 backend tests, for 720 primary
-  tests passed; 317 backend subtests are tracked separately
+- 455 frontend tests across 65 files and 308 backend tests, for 763 primary
+  tests passed; 327 backend subtests are tracked separately
 - Lazy per-record panel mounting with no dashboard attachment preloading
 - Ten allowlisted relationship entity types with bounded candidate search and
   no dashboard or table-row relationship preloading
@@ -179,8 +182,9 @@ available while preserving recoverable cleanup work.
 > Construction teams run the schedule in one tool, daily logs in another, and
 > change orders over email. FieldFlow puts them behind one login:
 >
-> 📅 A spreadsheet-fast scheduler — inline editing, FS/SS dependencies with
-> lag, workday/holiday-aware dates, hierarchy, and drag-and-drop reordering
+> 📅 A deterministic spreadsheet-fast scheduler — persistent project anchor,
+> inline editing, FS/SS dependencies with lag, summary rollups,
+> workday/holiday-aware dates, hierarchy, and drag-and-drop reordering
 > ▦ A Gantt view and one-click PDF export
 > 📊 An executive dashboard that answers "what needs my attention today?"
 > 📝 Daily logs, inspections, delays, and project-scoped Change Order, RFI,
@@ -194,7 +198,7 @@ available while preserving recoverable cleanup work.
 > revision navigation
 >
 > Under the hood: React 19 + Vite, FastAPI + SQLAlchemy + PostgreSQL, hardened
-> rotating-session auth, an accessible component design system, and 720
+> rotating-session auth, an accessible component design system, and 763
 > automated tests.
 >
 > The demo seeds a full sample project in ~10 seconds — no signup friction:
@@ -211,7 +215,7 @@ available while preserving recoverable cleanup work.
 > workflows, secure Document Management across six resource types, a project
 > document explorer, drawing revision management with a secure PDF viewer,
 > explicit construction-record relationships, native PDF content search,
-> accessible design system, 720
+> accessible design system, 763
 > automated tests. Live demo
 > seeds a complete sample
 > project in seconds.
@@ -220,9 +224,10 @@ available while preserving recoverable cleanup work.
 
 ## Interview talking points
 
-1. **Timezone-safe scheduling.** Dates are handled as local `YYYY-MM-DD`
-   values end-to-end (no UTC drift), with workday math that skips weekends
-   and federal holidays — a classic real-world bug class, designed out.
+1. **Deterministic, timezone-safe scheduling.** Each project persists one
+   local `YYYY-MM-DD` schedule anchor, so recalculation is independent of the
+   day a request runs. A graph-based pass handles FS/SS dependencies and
+   summary rollups, while workday math skips weekends and federal holidays.
 2. **Honest aggregate metrics.** Tasks have no completion field, so the
    dashboard reports planned-finish attention and upcoming starts instead of
    pretending to know percent complete. One authenticated aggregate endpoint

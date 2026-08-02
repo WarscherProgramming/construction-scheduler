@@ -9,6 +9,7 @@ import {
   fetchProjectCompanies,
   fetchProjects,
   fetchRFIs,
+  fetchScheduleSettings,
   fetchSubmittals,
   fetchTasks,
   fetchTemplates,
@@ -36,6 +37,8 @@ function useProjectResource({
   const [hasLoadedProjects, setHasLoadedProjects] = useState(false);
   const [templates, setTemplates] = useState([]);
   const [tasks, setTasks] = useState([]);
+  const [scheduleSettings, setScheduleSettings] = useState(null);
+  const [taskLoadError, setTaskLoadError] = useState(null);
   const [dailyLogs, setDailyLogs] = useState([]);
   const [inspections, setInspections] = useState([]);
   const [notesDelays, setNotesDelays] = useState([]);
@@ -97,7 +100,7 @@ function useProjectResource({
 
   // Shared loader for project-scoped resources.
   const loadProjectResource = useCallback(
-    async (key, fetcher, applyData, errorContext) => {
+    async (key, fetcher, applyData, errorContext, onError) => {
       const projectId = selectedProjectId;
       if (!projectId) return undefined;
 
@@ -109,7 +112,10 @@ function useProjectResource({
             applyData(data);
           }
         } catch (error) {
-          reportRequestError(errorContext, error);
+          if (selectedProjectIdRef.current === projectId) {
+            onError?.(error);
+            reportRequestError(errorContext, error);
+          }
         }
       });
     },
@@ -167,13 +173,27 @@ function useProjectResource({
     });
   }, [reportRequestError, runResourceLoad]);
 
-  const loadTasks = useCallback(
+  const loadTasks = useCallback(() => {
+    setTaskLoadError(null);
+    return loadProjectResource(
+      "tasks",
+      fetchTasks,
+      (data) => {
+        setTasks(data.tasks);
+        setTaskLoadError(null);
+      },
+      "Unable to load tasks",
+      () => setTaskLoadError("Unable to load the project schedule.")
+    );
+  }, [loadProjectResource]);
+
+  const loadScheduleSettings = useCallback(
     () =>
       loadProjectResource(
-        "tasks",
-        fetchTasks,
-        (data) => setTasks(data.tasks),
-        "Unable to load tasks"
+        "scheduleSettings",
+        fetchScheduleSettings,
+        setScheduleSettings,
+        "Unable to load schedule settings"
       ),
     [loadProjectResource]
   );
@@ -272,6 +292,8 @@ function useProjectResource({
     setProjects([]);
     setHasLoadedProjects(false);
     setTasks([]);
+    setScheduleSettings(null);
+    setTaskLoadError(null);
     setTemplates([]);
     setDailyLogs([]);
     setInspections([]);
@@ -300,6 +322,8 @@ function useProjectResource({
 
     const timeoutId = window.setTimeout(() => {
       setTasks([]);
+      setScheduleSettings(null);
+      setTaskLoadError(null);
       setDailyLogs([]);
       setInspections([]);
       setNotesDelays([]);
@@ -324,7 +348,7 @@ function useProjectResource({
     }
 
     const pageLoaders = {
-      scheduler: [loadTasks],
+      scheduler: [loadTasks, loadScheduleSettings],
       dailyLogs: [loadDailyLogs, loadProjectCompanies],
       inspections: [loadInspections, loadProjectCompanies],
       notesDelays: [loadNotesDelays, loadProjectCompanies],
@@ -352,6 +376,7 @@ function useProjectResource({
     loadProjectCompanies,
     loadPunchItems,
     loadRFIs,
+    loadScheduleSettings,
     loadSubmittals,
     loadTasks,
     selectedProjectId,
@@ -365,6 +390,9 @@ function useProjectResource({
     setTemplates,
     tasks,
     setTasks,
+    scheduleSettings,
+    setScheduleSettings,
+    taskLoadError,
     dailyLogs,
     inspections,
     notesDelays,
@@ -376,6 +404,7 @@ function useProjectResource({
     loadProjects,
     loadTemplates,
     loadTasks,
+    loadScheduleSettings,
     loadDailyLogs,
     loadInspections,
     loadNotesDelays,

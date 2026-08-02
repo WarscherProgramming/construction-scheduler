@@ -133,7 +133,9 @@ by the service.
 ### Metric Rules
 
 - Schedule: past planned finish counts tasks ending before `as_of`; upcoming
-  starts include tasks from `as_of` through seven days after it.
+  starts include tasks from `as_of` through seven days after it. These metrics
+  continue to include summary rows and read dates persisted by deterministic
+  recalculation against the project's Schedule Start Date.
 - RFIs: Open and Pending are open; overdue and due-soon counts use `due_date`.
 - Submittals: Draft, Submitted, and Under Review are pending; date counts use
   `required_by_date`.
@@ -230,7 +232,7 @@ from dashboard loading.
 
 ## Testing
 
-The frontend suite currently passes 433 tests across 62 files. Dashboard
+The frontend suite currently passes 455 tests across 65 files. Dashboard
 coverage includes:
 
 - API URL and required `as_of` behavior
@@ -246,7 +248,7 @@ coverage includes:
 - Attention Required, Upcoming Schedule, Workflow Analytics, and Recent
   Updates rendering
 
-The backend suite currently passes 287 primary tests, with 317 separately
+The backend suite currently passes 308 primary tests, with 327 separately
 reported subtests. `test_dashboard_api.py` covers authentication, ownership,
 query validation, aggregate definitions, bounded ordering, aware timestamps,
 legacy statuses, and query behavior.
@@ -254,7 +256,7 @@ legacy statuses, and query behavior.
 ## Performance
 
 Production builds were measured directly at each M14 commit and again through
-M16.7 with the installed Vite toolchain:
+M17.1 with the installed Vite toolchain:
 
 | Phase | Dashboard raw/gzip | Main raw/gzip | CSS raw/gzip |
 |---|---:|---:|---:|
@@ -266,6 +268,7 @@ M16.7 with the installed Vite toolchain:
 | M16.5 | 21.07 / 5.24 kB | 277.10 / 84.89 kB | 69.36 / 12.90 kB |
 | M16.6 | 21.07 / 5.23 kB | 278.29 / 85.15 kB | 74.45 / 13.53 kB |
 | M16.7 | 21.07 / 5.23 kB | 278.29 / 85.15 kB | 74.45 / 13.53 kB |
+| M17.1 | 21.07 / 5.23 kB | 280.82 / 85.81 kB | 74.79 / 13.55 kB |
 
 M14.2 replaced the previous client-derived dashboard and removed obsolete
 dashboard utilities. M14.3 added action lists, M14.4 added workflow analytics
@@ -278,6 +281,10 @@ and lazy, with no extraction or search request; its document-search UI is a
 separate 9.91 kB raw / 2.84 kB gzip route chunk.
 M16.7 is documentation and release verification only, so no dashboard, main,
 CSS, or document route chunk changes.
+M17.1 keeps the dashboard chunk and request contract unchanged. Its persistent
+schedule-settings resource and stale-mutation safeguards add 2.53 kB raw /
+0.66 kB gzip to main and 0.34 / 0.02 kB to CSS versus M16.7. The lazy
+Scheduler route is 62.66 kB raw / 20.07 kB gzip.
 
 No chart or date dependency was added, no duplicate shared utility chunk is
 emitted, and the dashboard remains route-level lazy-loaded. M16.5 adds no
@@ -289,9 +296,9 @@ Final automated verification:
 
 | Check | Result |
 |---|---|
-| Frontend tests | Pass: 433 tests across 62 files |
+| Frontend tests | Pass: 455 tests across 65 files |
 | ESLint | Pass: no errors or warnings |
-| Production build | Pass: 137 modules transformed |
+| Production build | Pass: 138 modules transformed |
 | Dashboard bundle budget | Pass: 5.23 kB gzip against a 5.25 kB limit |
 | Aggregate request count | Pass: one dashboard request |
 | Resource, attachment, relationship, extraction, and search requests | Pass: zero on dashboard load |

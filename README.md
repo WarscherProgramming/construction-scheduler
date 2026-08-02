@@ -11,7 +11,7 @@ and Punch Lists) with their supporting documents.
 ![React 19](https://img.shields.io/badge/React-19-61dafb?logo=react&logoColor=white&labelColor=20232a)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.1x-009688?logo=fastapi&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169e1?logo=postgresql&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-720%20passing-2ea44f)
+![Tests](https://img.shields.io/badge/tests-763%20passing-2ea44f)
 ![Vite](https://img.shields.io/badge/Vite-8-646cff?logo=vite&logoColor=white)
 
 ![FieldFlow executive dashboard](docs/screenshots/dashboard.png)
@@ -62,8 +62,9 @@ question — *"what needs my attention today?"* — has a one-screen answer.
   and production configuration validation.
 - **Interactive scheduler**: spreadsheet-style inline editing, Finish-to-Start
   and Start-to-Start dependencies with lag, workday/holiday-aware date math,
-  parent/child hierarchy, and keyboard-accessible drag-and-drop reordering
-  (dnd-kit).
+  persistent project Schedule Start Dates, deterministic summary-predecessor
+  rollups, parent/child hierarchy, validated subtree ordering, and
+  keyboard-accessible drag-and-drop reordering (dnd-kit).
 - **Dynamic Gantt chart** rendered from the same task data, plus one-click PDF
   export.
 - **Project Dashboard and Analytics** backed by one authenticated,
@@ -127,9 +128,9 @@ question — *"what needs my attention today?"* — has a one-screen answer.
 - **Client-side onboarding**: first-run detection seeds a realistic demo
   project through the public API with visible progress — the app is never
   empty.
-- **Automated testing: 720 tests** — 433 frontend across 62 files (Vitest +
-  React Testing Library, behavior- and accessibility-focused) and 287 backend
-  tests plus 317 separately reported subtests (pytest,
+- **Automated testing: 763 tests** — 455 frontend across 65 files (Vitest +
+  React Testing Library, behavior- and accessibility-focused) and 308 backend
+  tests plus 327 separately reported subtests (pytest,
   covering the scheduling engine, critical path, services, migrations, CORS,
   and TestClient API integration).
 
@@ -158,7 +159,8 @@ centralizes one-retry 401 handling and cross-tab session events. Page
 containers call REST endpoints (`/projects/{id}/tasks`,
 `/daily-logs`, `/inspections`, `/notes-delays`, `/change-orders`, `/rfis`,
 `/submittals`, `/punch-items`, …); the
-FastAPI service layer applies the scheduling rules (dependencies, lag,
+FastAPI service layer applies the scheduling rules against each project's
+persistent Schedule Start Date (dependencies, lag, summary rollups, and
 workday/holiday calendars) and persists through SQLAlchemy models managed by
 Alembic migrations. Responses return the full recalculated task set, so the
 grid and Gantt always render from one consistent source. The project dashboard
@@ -175,6 +177,10 @@ does not widen dashboard loading.
 The complete dashboard hierarchy, API contract, request lifecycle, test
 coverage, bundle history, and deferred work are documented in
 [`docs/PROJECT_DASHBOARD.md`](docs/PROJECT_DASHBOARD.md).
+
+The deterministic scheduling anchor, dependency and hierarchy contracts,
+transaction boundaries, migration behavior, scale budgets, and known limits
+are documented in [`docs/SCHEDULING.md`](docs/SCHEDULING.md).
 
 The final authentication architecture, threat model, deployment checklist,
 operational runbooks, manual QA guide, release notes, and deferred security
@@ -365,10 +371,13 @@ job. FieldFlow does not include a built-in worker or scheduler, and
 
 **Scheduling**
 - Spreadsheet-style schedule editing with full keyboard support
+- Persistent project Schedule Start Date with deterministic recalculation
 - Finish-to-Start and Start-to-Start dependencies with lag (`12`, `12+3`, `12SS+4`)
+- Leaf dependencies on nested summary tasks with deterministic date rollups
 - Workday scheduling that skips weekends and federal holidays
-- Parent/child task hierarchy with indent/outdent and collapse
-- Drag-and-drop ordering (pointer and keyboard)
+- Parent/child task hierarchy with indent/outdent, collapse, and validated
+  parent-before-descendant contiguous ordering
+- Hierarchy-safe drag-and-drop ordering (pointer and keyboard)
 - Gantt visualization and PDF schedule export
 - Reusable schedule templates
 
@@ -472,15 +481,15 @@ job. FieldFlow does not include a built-in worker or scheduler, and
 | Backend | FastAPI, SQLAlchemy, Alembic, Pydantic |
 | Database | PostgreSQL |
 | Auth | Memory-only access JWT + rotating opaque refresh sessions |
-| Testing | Vitest + React Testing Library (433), pytest (287) |
+| Testing | Vitest + React Testing Library (455), pytest (308) |
 | Hosting | Vercel (frontend) · Render (API + migrations + finite extraction cron) |
 
 ## Testing
 
-**720 primary automated tests passed.** Backend subtests are reported
+**763 primary automated tests passed.** Backend subtests are reported
 separately rather than added to that total.
 
-- **Frontend (433 across 62 files)** — Vitest + React Testing Library. Tests
+- **Frontend (455 across 65 files)** — Vitest + React Testing Library. Tests
   target behavior and accessibility: roles and names, keyboard flows
   (Enter/Escape editing,
   grid cursor navigation, focus traps), aggregate dashboard rendering,
@@ -504,9 +513,13 @@ separately rather than added to that total.
   Document-search coverage includes safe API encoding, explicit-submit and
   stale-request hooks, extraction state and reprocessing, plain-text snippet
   highlighting, filters, pagination, exact result navigation, and lazy route
-  integration.
-- **Backend (287, plus 317 subtests)** — pytest. Covers the workday scheduling
-  engine (dependencies, lag, federal holidays), critical path and total float,
+  integration. Scheduling-foundation coverage includes the persistent project
+  anchor, confirmation and retry behavior, mutation deduplication,
+  project-switch cancellation, and stale response and rollback rejection.
+- **Backend (308, plus 327 subtests)** — pytest. Covers the deterministic
+  workday scheduling engine (persistent anchors, FS/SS dependencies, lag,
+  summary predecessors, hierarchy ordering, federal holidays), critical path
+  and total float,
   task services, relationship migrations, CORS configuration, and
   TestClient API integration (auth, ownership enforcement, task lifecycle,
   Change Orders, RFIs, Submittals, Punch Lists, and field records over HTTP).
@@ -717,6 +730,9 @@ commit production credentials.
   API/model and migration inventories, production configuration review,
   operational runbooks, manual QA, dependency/security gates, and reconciled
   test and bundle evidence
+- ✅ M17.1 deterministic scheduling foundation with persistent project
+  anchors, summary-predecessor rollups, atomic recalculation, hierarchy-safe
+  reordering, database safeguards, and stale-mutation protection
 - ✅ Branded landing page and first-run demo seeding
 - ✅ Icon system, confirmation dialogs, notifications, loading skeletons
 - ✅ Scheduler showcase: WBS numbering, inline validation, critical path +

@@ -386,5 +386,184 @@ class CriticalPathTests(unittest.TestCase):
         self.assertIsNone(result[1].total_float)
 
 
+class SummaryPredecessorTests(unittest.TestCase):
+    project_start = date(2026, 3, 2)
+
+    def by_id(self, tasks):
+        return {
+            task.id: task
+            for task in calculate_schedule(
+                tasks,
+                project_start=self.project_start,
+            )
+        }
+
+    def test_finish_to_start_waits_for_summary_finish(self):
+        result = self.by_id(
+            [
+                ScheduleTask(id=1, name="Foundation", duration=1),
+                ScheduleTask(
+                    id=2,
+                    name="Foundation work",
+                    duration=5,
+                    parent_task_id=1,
+                ),
+                ScheduleTask(
+                    id=3,
+                    name="Framing",
+                    duration=1,
+                    predecessor_task_id=1,
+                ),
+            ]
+        )
+
+        self.assertEqual(result[1].end_date, "2026-03-06")
+        self.assertEqual(result[3].start_date, "2026-03-09")
+        self.assertEqual(result[1].duration, 1)
+
+    def test_start_to_start_uses_summary_start_and_lag(self):
+        result = self.by_id(
+            [
+                ScheduleTask(id=1, name="Foundation", duration=1),
+                ScheduleTask(
+                    id=2,
+                    name="Foundation work",
+                    duration=5,
+                    parent_task_id=1,
+                ),
+                ScheduleTask(
+                    id=3,
+                    name="Survey",
+                    duration=1,
+                    predecessor_task_id=1,
+                    dependency_type="SS",
+                    lag_days=2,
+                ),
+            ]
+        )
+
+        self.assertEqual(result[3].start_date, "2026-03-04")
+
+    def test_nested_summary_resolves_before_successor(self):
+        result = self.by_id(
+            [
+                ScheduleTask(id=1, name="Project", duration=1),
+                ScheduleTask(
+                    id=2,
+                    name="Foundation",
+                    duration=1,
+                    parent_task_id=1,
+                ),
+                ScheduleTask(
+                    id=3,
+                    name="Footings",
+                    duration=2,
+                    parent_task_id=2,
+                ),
+                ScheduleTask(
+                    id=4,
+                    name="Framing",
+                    duration=1,
+                    predecessor_task_id=1,
+                ),
+            ]
+        )
+
+        self.assertEqual(result[1].end_date, "2026-03-03")
+        self.assertEqual(result[4].start_date, "2026-03-04")
+
+    def test_unresolved_descendant_keeps_summary_successor_unscheduled(self):
+        result = self.by_id(
+            [
+                ScheduleTask(id=1, name="Summary", duration=1),
+                ScheduleTask(
+                    id=2,
+                    name="Missing dependency",
+                    duration=1,
+                    parent_task_id=1,
+                    predecessor_task_id=999,
+                ),
+                ScheduleTask(
+                    id=3,
+                    name="Successor",
+                    duration=1,
+                    predecessor_task_id=1,
+                ),
+            ]
+        )
+
+        self.assertIsNone(result[1].start_date)
+        self.assertIsNone(result[3].start_date)
+
+    def test_summary_descendant_cycle_is_bounded_and_stable(self):
+        tasks = [
+            ScheduleTask(id=1, name="Summary", duration=1),
+            ScheduleTask(
+                id=2,
+                name="Child",
+                duration=1,
+                parent_task_id=1,
+                predecessor_task_id=1,
+            ),
+        ]
+
+        first = calculate_schedule(tasks, project_start=self.project_start)
+        second = calculate_schedule(tasks, project_start=self.project_start)
+
+        self.assertEqual(first, second)
+        self.assertTrue(all(task.start_date is None for task in first))
+
+    def test_summary_task_cannot_have_its_own_predecessor(self):
+        with self.assertRaisesRegex(
+            ValueError,
+            "Summary tasks cannot have predecessors",
+        ):
+            self.by_id(
+                [
+                    ScheduleTask(id=1, name="Earlier", duration=1),
+                    ScheduleTask(
+                        id=2,
+                        name="Summary",
+                        duration=1,
+                        predecessor_task_id=1,
+                    ),
+                    ScheduleTask(
+                        id=3,
+                        name="Child",
+                        duration=1,
+                        parent_task_id=2,
+                    ),
+                ]
+            )
+
+
+class SchedulingScaleTests(unittest.TestCase):
+    def test_two_thousand_task_chain_is_complete_and_deterministic(self):
+        tasks = [
+            ScheduleTask(
+                id=task_id,
+                name=f"Task {task_id}",
+                duration=1,
+                predecessor_task_id=task_id - 1 if task_id > 1 else None,
+            )
+            for task_id in range(1, 2_001)
+        ]
+
+        first = calculate_schedule(
+            tasks,
+            project_start=date(2026, 1, 5),
+        )
+        second = calculate_schedule(
+            tasks,
+            project_start=date(2026, 1, 5),
+        )
+
+        self.assertEqual(first, second)
+        self.assertEqual(len(first), 2_000)
+        self.assertTrue(
+            all(task.start_date and task.end_date for task in first)
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

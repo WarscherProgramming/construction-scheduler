@@ -53,18 +53,37 @@ export function fetchTasks(projectId) {
   return authenticatedRequest(`/projects/${projectId}/tasks`);
 }
 
-export function createTask(projectId, task) {
-  return jsonRequest(`/projects/${projectId}/tasks`, "POST", task);
+export function createTask(projectId, task, options = {}) {
+  return jsonRequest(`/projects/${projectId}/tasks`, "POST", task, options);
 }
 
-export function deleteTask(projectId, id) {
+export function deleteTask(projectId, id, options = {}) {
   return authenticatedRequest(`/projects/${projectId}/tasks/${id}`, {
     method: "DELETE",
+    signal: options.signal,
   });
 }
 
-export function updateTask(projectId, id, task) {
-  return jsonRequest(`/projects/${projectId}/tasks/${id}`, "PUT", task);
+export function updateTask(projectId, id, task, options = {}) {
+  return jsonRequest(
+    `/projects/${projectId}/tasks/${id}`,
+    "PUT",
+    task,
+    options
+  );
+}
+
+export function fetchScheduleSettings(projectId) {
+  return authenticatedRequest(`/projects/${projectId}/schedule-settings`);
+}
+
+export function updateScheduleSettings(projectId, settings, options = {}) {
+  return jsonRequest(
+    `/projects/${projectId}/schedule-settings`,
+    "PUT",
+    settings,
+    options
+  );
 }
 
 export function fetchTemplates() {
@@ -75,10 +94,10 @@ export function saveTemplate(projectId, template) {
   return jsonRequest(`/projects/${projectId}/templates`, "POST", template);
 }
 
-export function applyTemplate(projectId, templateId) {
+export function applyTemplate(projectId, templateId, options = {}) {
   return authenticatedRequest(
     `/projects/${projectId}/templates/${templateId}/apply`,
-    { method: "POST" }
+    { method: "POST", signal: options.signal }
   );
 }
 
@@ -215,10 +234,10 @@ export function deletePunchItem(projectId, punchItemId) {
   );
 }
 
-export function reorderTasks(projectId, taskIds) {
+export function reorderTasks(projectId, taskIds, options = {}) {
   return jsonRequest(`/projects/${projectId}/tasks/reorder`, "PUT", {
     task_ids: taskIds,
-  });
+  }, options);
 }
 
 export function listAttachments(

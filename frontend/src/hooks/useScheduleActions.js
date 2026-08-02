@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   applyTemplate,
@@ -7,6 +7,7 @@ import {
   exportProjectPdf,
   reorderTasks,
   saveTemplate,
+  updateScheduleSettings,
   updateTask,
 } from "../services/api";
 import { moveArrayItem } from "../utils/array";
@@ -19,20 +20,6 @@ import {
   getTaskDepthFromList,
 } from "../utils/taskHierarchy";
 
-
-function taskMutationPayload(task) {
-  return {
-    name: task.name,
-    duration: task.duration,
-    predecessor: task.predecessor,
-    dependency_type: task.dependency_type,
-    lag_days: task.lag_days,
-    manual_start_date: task.manual_start_date,
-    parent_task_id: task.parent_task_id,
-    is_collapsed: task.is_collapsed,
-  };
-}
-
 /**
  * Owns the scheduler's interaction state (cell editing, selection, view) and
  * every schedule mutation: inline edits, deletion, drag reorder, hierarchy
@@ -40,8 +27,10 @@ function taskMutationPayload(task) {
  */
 function useScheduleActions({
   selectedProjectId,
+  selectedProjectIdRef,
   tasks,
   setTasks,
+  setScheduleSettings,
   setTemplates,
   loadTasks,
   runOperation,
@@ -55,6 +44,87 @@ function useScheduleActions({
   const [scheduleView, setScheduleView] = useState("table");
   const [templateName, setTemplateName] = useState("");
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
+  const [pendingActions, setPendingActions] = useState([]);
+  const projectGenerationRef = useRef(0);
+  const previousProjectIdRef = useRef(selectedProjectId);
+  const pendingTokensRef = useRef(new Map());
+  const mutationControllersRef = useRef(new Set());
+
+  useEffect(() => {
+    const controllers = mutationControllersRef.current;
+    const projectChanged = previousProjectIdRef.current !== selectedProjectId;
+    previousProjectIdRef.current = selectedProjectId;
+    if (!projectChanged) {
+      return () => {
+        for (const controller of controllers) controller.abort();
+      };
+    }
+
+    projectGenerationRef.current += 1;
+    for (const controller of controllers) {
+      controller.abort();
+    }
+    controllers.clear();
+    pendingTokensRef.current.clear();
+    const timeoutId = window.setTimeout(() => {
+      setPendingActions([]);
+      setEditingCell(null);
+      setEditValue("");
+      setSelectedTaskId(null);
+      setTemplateName("");
+      setSelectedTemplateId("");
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+      for (const controller of controllers) {
+        controller.abort();
+      }
+    };
+  }, [selectedProjectId]);
+
+  const runProjectMutation = useCallback(
+    async (key, operation, { onSuccess, onError } = {}) => {
+      const projectId = selectedProjectIdRef.current;
+      if (!projectId || pendingTokensRef.current.has(key)) return undefined;
+
+      const generation = projectGenerationRef.current;
+      const token = Symbol(key);
+      const controller = new AbortController();
+      pendingTokensRef.current.set(key, token);
+      mutationControllersRef.current.add(controller);
+      setPendingActions(Array.from(pendingTokensRef.current.keys()));
+
+      const isCurrentProject = () =>
+        selectedProjectIdRef.current === projectId &&
+        projectGenerationRef.current === generation;
+
+      try {
+        const result = await operation(projectId, {
+          signal: controller.signal,
+        });
+        if (isCurrentProject()) await onSuccess?.(result);
+        return isCurrentProject() ? result : undefined;
+      } catch (error) {
+        if (isCurrentProject() && error?.name !== "AbortError") {
+          onError?.(error);
+        }
+        return undefined;
+      } finally {
+        mutationControllersRef.current.delete(controller);
+        if (pendingTokensRef.current.get(key) === token) {
+          pendingTokensRef.current.delete(key);
+          setPendingActions(Array.from(pendingTokensRef.current.keys()));
+        }
+      }
+    },
+    [selectedProjectIdRef]
+  );
+
+  const isScheduleMutationActive = useCallback(
+    (key) => pendingActions.includes(key),
+    [pendingActions]
+  );
 
   const handleCellClick = (task, field) => {
     setEditingCell({ id: task.id ?? "new", field });
@@ -75,6 +145,12 @@ function useScheduleActions({
 
     if (editingCell.field === "duration") {
       value = Number(editValue);
+      if (!Number.isInteger(value) || value < 1 || value > 36_500) {
+        reportValidationError(
+          "Enter a whole number of workdays from 1 to 36500."
+        );
+        return;
+      }
     }
 
     if (editingCell.field === "predecessor") {
@@ -88,6 +164,10 @@ function useScheduleActions({
       value = predecessor.value;
     }
 
+    if (editingCell.field === "manual_start_date" && !value) {
+      value = null;
+    }
+
     if (
       task.id === null &&
       editingCell.field === "name" &&
@@ -97,27 +177,33 @@ function useScheduleActions({
       return;
     }
 
-    try {
-      const data =
+    await runProjectMutation(
+      "saveTask",
+      (projectId, options) =>
         task.id === null
-          ? await createTask(selectedProjectId, {
+          ? createTask(projectId, {
               name: editingCell.field === "name" ? value : "New Task",
               duration: editingCell.field === "duration" ? value : 1,
               predecessor:
                 editingCell.field === "predecessor" ? value : null,
               manual_start_date:
                 editingCell.field === "manual_start_date" ? value : null,
-            })
-          : await updateTask(selectedProjectId, task.id, {
-              ...taskMutationPayload(task),
-              [editingCell.field]: value,
-            });
-
-      setTasks(data.tasks);
-      setEditingCell(null);
-    } catch (error) {
-      reportRequestError("Unable to save task", error);
-    }
+            }, options)
+          : updateTask(
+              projectId,
+              task.id,
+              { [editingCell.field]: value },
+              options
+            ),
+      {
+        onSuccess: (data) => {
+          setTasks(data.tasks);
+          setEditingCell(null);
+        },
+        onError: (error) =>
+          reportRequestError("Unable to save task", error),
+      }
+    );
   };
 
   const handleCellCancel = () => {
@@ -127,13 +213,18 @@ function useScheduleActions({
 
   /** Executes a confirmed task deletion (the confirm dialog lives in App). */
   const performTaskDelete = async (id) => {
-    try {
-      const data = await deleteTask(selectedProjectId, id);
-      setTasks(data.tasks);
-      showNotice("success", "Task deleted.");
-    } catch (error) {
-      reportRequestError("Unable to delete task", error);
-    }
+    await runProjectMutation(
+      `deleteTask:${id}`,
+      (projectId, options) => deleteTask(projectId, id, options),
+      {
+        onSuccess: (data) => {
+          setTasks(data.tasks);
+          showNotice("success", "Task deleted.");
+        },
+        onError: (error) =>
+          reportRequestError("Unable to delete task", error),
+      }
+    );
   };
 
   const getEmptyRow = () => ({
@@ -176,15 +267,19 @@ function useScheduleActions({
       return;
     }
 
-    return runOperation("applyTemplate", async () => {
-      try {
-        await applyTemplate(selectedProjectId, selectedTemplateId);
-        await loadTasks();
-        showNotice("success", "Schedule template applied.");
-      } catch (error) {
-        reportRequestError("Unable to apply template", error);
+    return runProjectMutation(
+      "applyTemplate",
+      (projectId, options) =>
+        applyTemplate(projectId, selectedTemplateId, options),
+      {
+        onSuccess: async () => {
+          await loadTasks();
+          showNotice("success", "Schedule template applied.");
+        },
+        onError: (error) =>
+          reportRequestError("Unable to apply template", error),
       }
-    });
+    );
   };
 
   const handleExportProjectPdf = async () => {
@@ -213,31 +308,42 @@ function useScheduleActions({
 
     const reorderedTasks = moveArrayItem(tasks, oldIndex, newIndex);
 
+    if (pendingTokensRef.current.has("reorderTasks")) return;
     setTasks(reorderedTasks);
 
-    try {
-      await reorderTasks(
-        selectedProjectId,
-        reorderedTasks.map((task) => task.id)
-      );
-    } catch (error) {
-      setTasks(tasks);
-      reportRequestError("Unable to reorder tasks", error);
-    }
+    await runProjectMutation(
+      "reorderTasks",
+      (projectId, options) =>
+        reorderTasks(
+          projectId,
+          reorderedTasks.map((task) => task.id),
+          options
+        ),
+      {
+        onError: (error) => {
+          setTasks(tasks);
+          reportRequestError("Unable to reorder tasks", error);
+        },
+      }
+    );
   };
 
   const handleToggleCollapse = async (task) => {
-    const updatedTask = {
-      ...taskMutationPayload(task),
-      is_collapsed: task.is_collapsed ? 0 : 1,
-    };
-
-    try {
-      const data = await updateTask(selectedProjectId, task.id, updatedTask);
-      setTasks(data.tasks);
-    } catch (error) {
-      reportRequestError("Unable to update task visibility", error);
-    }
+    await runProjectMutation(
+      `toggleTask:${task.id}`,
+      (projectId, options) =>
+        updateTask(
+          projectId,
+          task.id,
+          { is_collapsed: task.is_collapsed ? 0 : 1 },
+          options
+        ),
+      {
+        onSuccess: (data) => setTasks(data.tasks),
+        onError: (error) =>
+          reportRequestError("Unable to update task visibility", error),
+      }
+    );
   };
 
   // Derived hierarchy lookups: memoized on the task list so grid keystrokes
@@ -280,14 +386,21 @@ function useScheduleActions({
     const parent = findIndentParent(tasks, task.id);
     if (!parent) return;
 
-    try {
-      const data = await updateTask(selectedProjectId, task.id, {
-        parent_task_id: parent.id,
-      });
-      setTasks(data.tasks);
-    } catch (error) {
-      reportRequestError("Unable to indent task", error);
-    }
+    await runProjectMutation(
+      `indentTask:${task.id}`,
+      (projectId, options) =>
+        updateTask(
+          projectId,
+          task.id,
+          { parent_task_id: parent.id },
+          options
+        ),
+      {
+        onSuccess: (data) => setTasks(data.tasks),
+        onError: (error) =>
+          reportRequestError("Unable to indent task", error),
+      }
+    );
   };
 
   const handleOutdentTask = async (task) => {
@@ -295,14 +408,42 @@ function useScheduleActions({
 
     const parent = taskMap.get(task.parent_task_id);
 
-    try {
-      const data = await updateTask(selectedProjectId, task.id, {
-        parent_task_id: parent?.parent_task_id || null,
-      });
-      setTasks(data.tasks);
-    } catch (error) {
-      reportRequestError("Unable to outdent task", error);
-    }
+    await runProjectMutation(
+      `outdentTask:${task.id}`,
+      (projectId, options) =>
+        updateTask(
+          projectId,
+          task.id,
+          { parent_task_id: parent?.parent_task_id || null },
+          options
+        ),
+      {
+        onSuccess: (data) => setTasks(data.tasks),
+        onError: (error) =>
+          reportRequestError("Unable to outdent task", error),
+      }
+    );
+  };
+
+  const handleUpdateScheduleStart = async (scheduleStartDate) => {
+    return runProjectMutation(
+      "updateScheduleSettings",
+      (projectId, options) =>
+        updateScheduleSettings(
+          projectId,
+          { schedule_start_date: scheduleStartDate },
+          options
+        ),
+      {
+        onSuccess: async (settings) => {
+          setScheduleSettings(settings);
+          await loadTasks();
+          showNotice("success", "Schedule start date updated.");
+        },
+        onError: (error) =>
+          reportRequestError("Unable to update schedule start date", error),
+      }
+    );
   };
 
   return {
@@ -332,6 +473,8 @@ function useScheduleActions({
     isTaskHiddenByCollapsedParent,
     handleIndentTask,
     handleOutdentTask,
+    handleUpdateScheduleStart,
+    isScheduleMutationActive,
   };
 }
 

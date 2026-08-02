@@ -8,6 +8,7 @@ from pydantic import (
     BeforeValidator,
     Field,
     StringConstraints,
+    field_validator,
 )
 
 from app.schemas.common import MutationModel, ORMModel, UpdateMutationModel
@@ -68,6 +69,19 @@ class TaskUpdate(UpdateMutationModel):
     manual_start_date: DateString | None = None
     parent_task_id: PositiveTaskId | None = None
     is_collapsed: int | None = Field(default=None, ge=0, le=1)
+
+    @field_validator(
+        "name",
+        "duration",
+        "dependency_type",
+        "lag_days",
+        "is_collapsed",
+    )
+    @classmethod
+    def computational_fields_cannot_be_null(cls, value):
+        if value is None:
+            raise ValueError("Field cannot be null")
+        return value
 
 
 class TaskReorderRequest(MutationModel):

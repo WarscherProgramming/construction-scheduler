@@ -8,6 +8,10 @@ import SchedulerPage from "./SchedulerPage";
 const baseProps = {
   tasks: [],
   templates: [],
+  scheduleSettings: {
+    project_id: 1,
+    schedule_start_date: "2026-06-22",
+  },
   selectedProjectId: 1,
   selectedTaskId: null,
   editingCell: null,
@@ -33,6 +37,8 @@ const baseProps = {
   onIndent: vi.fn(),
   onOutdent: vi.fn(),
   onToggleCollapse: vi.fn(),
+  onRetryTasks: vi.fn(),
+  onUpdateScheduleStart: vi.fn(),
   getEmptyRow: () => ({ id: null, name: "" }),
   formatDate: (value) => value,
   taskHasChildren: () => false,

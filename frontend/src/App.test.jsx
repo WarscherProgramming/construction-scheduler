@@ -5,6 +5,7 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
+import { StrictMode } from "react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -13,6 +14,8 @@ vi.mock("./services/api", () => ({
   fetchProjectDashboard: vi.fn(),
   createProject: vi.fn(),
   fetchTasks: vi.fn(),
+  fetchScheduleSettings: vi.fn(),
+  updateScheduleSettings: vi.fn(),
   createTask: vi.fn(),
   deleteTask: vi.fn(),
   updateTask: vi.fn(),
@@ -111,6 +114,7 @@ import {
   fetchProjectDashboard,
   fetchProjects,
   fetchRFIs,
+  fetchScheduleSettings,
   fetchSubmittals,
   fetchTasks,
   fetchTemplates,
@@ -124,6 +128,7 @@ import {
   listDrawingSets,
   listDrawingSetSheets,
   updateRFI,
+  updateScheduleSettings,
   updateChangeOrder,
   updatePunchItem,
   updateSubmittal,
@@ -245,6 +250,18 @@ describe("App integration (hooks wiring)", () => {
     fetchProjectDashboard.mockResolvedValue(makeDashboard());
     fetchTemplates.mockResolvedValue({ templates: [] });
     fetchTasks.mockResolvedValue({ tasks: [] });
+    fetchScheduleSettings.mockResolvedValue({
+      project_id: 1,
+      schedule_start_date: "2026-06-22",
+      created_at: "2026-06-22T00:00:00Z",
+      updated_at: "2026-06-22T00:00:00Z",
+    });
+    updateScheduleSettings.mockResolvedValue({
+      project_id: 1,
+      schedule_start_date: "2026-06-22",
+      created_at: "2026-06-22T00:00:00Z",
+      updated_at: "2026-06-22T00:00:00Z",
+    });
     fetchProjectCompanies.mockResolvedValue({ companies: [] });
     fetchDailyLogs.mockResolvedValue({ daily_logs: [] });
     fetchInspections.mockResolvedValue({ inspections: [] });
@@ -2382,5 +2399,250 @@ describe("App integration (hooks wiring)", () => {
     expect(
       fetchPunchItems.mock.calls.map(([projectId]) => projectId)
     ).toEqual([1, 2]);
+  });
+
+  it("loads and updates the persistent Schedule Start Date", async () => {
+    const user = userEvent.setup();
+    const task = {
+      id: 1,
+      name: "Mobilization",
+      duration: 1,
+      predecessor: null,
+      predecessor_task_id: null,
+      dependency_type: "FS",
+      lag_days: 0,
+      start_date: "2026-03-02",
+      end_date: "2026-03-02",
+      manual_start_date: null,
+      project_id: 1,
+      order_index: 1,
+      parent_task_id: null,
+      is_collapsed: 0,
+      is_critical: true,
+      total_float: 0,
+    };
+    fetchProjects.mockResolvedValue({
+      projects: [{ id: 1, name: "Riverside" }],
+    });
+    fetchTasks.mockResolvedValue({ tasks: [task] });
+    fetchScheduleSettings.mockResolvedValue({
+      project_id: 1,
+      schedule_start_date: "2026-03-02",
+      created_at: "2026-03-02T00:00:00Z",
+      updated_at: "2026-03-02T00:00:00Z",
+    });
+    updateScheduleSettings.mockResolvedValue({
+      project_id: 1,
+      schedule_start_date: "2026-04-06",
+      created_at: "2026-03-02T00:00:00Z",
+      updated_at: "2026-04-01T00:00:00Z",
+    });
+    window.location.hash = "#/projects/1/schedule";
+
+    renderApp();
+
+    const input = await screen.findByLabelText("Schedule Start Date");
+    expect(input).toHaveValue("2026-03-02");
+    await user.clear(input);
+    await user.type(input, "2026-04-06");
+    await user.click(
+      screen.getByRole("button", { name: "Update Schedule Start" })
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Recalculate Schedule" })
+    );
+
+    await waitFor(() => {
+      expect(updateScheduleSettings).toHaveBeenCalledWith(
+        1,
+        { schedule_start_date: "2026-04-06" },
+        expect.objectContaining({ signal: expect.any(AbortSignal) })
+      );
+    });
+    expect(
+      await screen.findByText("Schedule start date updated.")
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Schedule Start Date")).toHaveValue(
+      "2026-04-06"
+    );
+    expect(fetchScheduleSettings).toHaveBeenCalledTimes(1);
+    expect(fetchTasks).toHaveBeenCalledTimes(2);
+  });
+
+  it("shows a local schedule load error and retries exactly once", async () => {
+    const user = userEvent.setup();
+    fetchProjects.mockResolvedValue({
+      projects: [{ id: 1, name: "Riverside" }],
+    });
+    fetchTasks
+      .mockRejectedValueOnce(new ApiError("Service unavailable", 503))
+      .mockResolvedValueOnce({ tasks: [] });
+    window.location.hash = "#/projects/1/schedule";
+
+    renderApp();
+
+    expect(
+      await screen.findByText("Unable to load the project schedule.")
+    ).toBeInTheDocument();
+    expect(screen.getByText("Unable to load tasks. Service unavailable"))
+      .toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Retry" }));
+
+    expect(
+      await screen.findByText(/No tasks yet\. Use Add task below/)
+    ).toBeInTheDocument();
+    expect(fetchTasks).toHaveBeenCalledTimes(2);
+  });
+
+  it("deduplicates initial schedule loads in Strict Mode", async () => {
+    fetchProjects.mockResolvedValue({
+      projects: [{ id: 1, name: "Riverside" }],
+    });
+    window.location.hash = "#/projects/1/schedule";
+
+    render(
+      <StrictMode>
+        <AuthProvider>
+          <App />
+        </AuthProvider>
+      </StrictMode>
+    );
+
+    expect(await screen.findByLabelText("Schedule Start Date")).toHaveValue(
+      "2026-06-22"
+    );
+    expect(fetchTasks).toHaveBeenCalledTimes(1);
+    expect(fetchScheduleSettings).toHaveBeenCalledTimes(1);
+  });
+
+  it("clears schedule data and settings while switching projects", async () => {
+    let resolveTasks;
+    let resolveSettings;
+    fetchProjects.mockResolvedValue({
+      projects: [
+        { id: 1, name: "Riverside" },
+        { id: 2, name: "North Ridge" },
+      ],
+    });
+    fetchTasks.mockImplementation((projectId) => {
+      if (projectId === 1) {
+        return Promise.resolve({
+          tasks: [
+            {
+              id: 1,
+              name: "Riverside task",
+              duration: 1,
+              project_id: 1,
+              dependency_type: "FS",
+              lag_days: 0,
+              is_collapsed: 0,
+            },
+          ],
+        });
+      }
+      return new Promise((resolve) => {
+        resolveTasks = resolve;
+      });
+    });
+    fetchScheduleSettings.mockImplementation((projectId) => {
+      if (projectId === 1) {
+        return Promise.resolve({
+          project_id: 1,
+          schedule_start_date: "2026-03-02",
+        });
+      }
+      return new Promise((resolve) => {
+        resolveSettings = resolve;
+      });
+    });
+    window.location.hash = "#/projects/1/schedule";
+
+    renderApp();
+
+    expect(await screen.findByText("Riverside task")).toBeInTheDocument();
+    expect(screen.getByLabelText("Schedule Start Date")).toHaveValue(
+      "2026-03-02"
+    );
+    await act(async () => {
+      window.history.pushState({}, "", "#/projects/2/schedule");
+      window.dispatchEvent(new HashChangeEvent("hashchange"));
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByText("Riverside task")).not.toBeInTheDocument();
+    });
+    expect(screen.queryByLabelText("Schedule Start Date")).not.toBeInTheDocument();
+
+    await act(async () => {
+      resolveTasks({ tasks: [] });
+      resolveSettings({
+        project_id: 2,
+        schedule_start_date: "2026-05-04",
+      });
+    });
+    expect(await screen.findByLabelText("Schedule Start Date")).toHaveValue(
+      "2026-05-04"
+    );
+    expect(fetchTasks.mock.calls.map(([projectId]) => projectId)).toEqual([
+      1,
+      2,
+    ]);
+    expect(
+      fetchScheduleSettings.mock.calls.map(([projectId]) => projectId)
+    ).toEqual([1, 2]);
+  });
+
+  it("drops late schedule and settings responses after a project switch", async () => {
+    let resolveOldTasks;
+    let resolveOldSettings;
+    fetchProjects.mockResolvedValue({
+      projects: [
+        { id: 1, name: "Riverside" },
+        { id: 2, name: "North Ridge" },
+      ],
+    });
+    fetchTasks.mockImplementation((projectId) =>
+      projectId === 1
+        ? new Promise((resolve) => {
+            resolveOldTasks = resolve;
+          })
+        : Promise.resolve({ tasks: [] })
+    );
+    fetchScheduleSettings.mockImplementation((projectId) =>
+      projectId === 1
+        ? new Promise((resolve) => {
+            resolveOldSettings = resolve;
+          })
+        : Promise.resolve({
+            project_id: 2,
+            schedule_start_date: "2026-05-04",
+          })
+    );
+    window.location.hash = "#/projects/1/schedule";
+
+    renderApp();
+    await waitFor(() => expect(fetchTasks).toHaveBeenCalledWith(1));
+    await act(async () => {
+      window.history.pushState({}, "", "#/projects/2/schedule");
+      window.dispatchEvent(new HashChangeEvent("hashchange"));
+    });
+    expect(await screen.findByLabelText("Schedule Start Date")).toHaveValue(
+      "2026-05-04"
+    );
+
+    await act(async () => {
+      resolveOldTasks({
+        tasks: [{ id: 9, name: "Stale task", duration: 1 }],
+      });
+      resolveOldSettings({
+        project_id: 1,
+        schedule_start_date: "2026-03-02",
+      });
+    });
+
+    expect(screen.queryByText("Stale task")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Schedule Start Date")).toHaveValue(
+      "2026-05-04"
+    );
   });
 });

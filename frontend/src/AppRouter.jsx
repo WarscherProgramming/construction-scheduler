@@ -59,6 +59,8 @@ function AppRouter({
     hasLoadedProjects,
     templates,
     tasks,
+    scheduleSettings,
+    taskLoadError,
     dailyLogs,
     inspections,
     notesDelays,
@@ -467,6 +469,7 @@ function AppRouter({
       projectName={projectName}
       tasks={tasks}
       templates={templates}
+      scheduleSettings={scheduleSettings}
       selectedProjectId={selectedProjectId}
       selectedTaskId={schedule.selectedTaskId}
       editingCell={schedule.editingCell}
@@ -484,10 +487,15 @@ function AppRouter({
       onApplyTemplate={schedule.handleApplyTemplate}
       onExport={schedule.handleExportProjectPdf}
       isSavingTemplate={isOperationActive("saveTemplate")}
-      isApplyingTemplate={isOperationActive("applyTemplate")}
+      isApplyingTemplate={schedule.isScheduleMutationActive("applyTemplate")}
       isExporting={isOperationActive("exportPdf")}
       isLoadingTasks={loading("tasks")}
+      isLoadingScheduleSettings={loading("scheduleSettings")}
+      isUpdatingScheduleSettings={schedule.isScheduleMutationActive(
+        "updateScheduleSettings"
+      )}
       isLoadingTemplates={isResourceLoading("templates")}
+      taskLoadError={taskLoadError}
       onLogout={onLogout}
       onDragEnd={schedule.handleDragEnd}
       onCellClick={schedule.handleCellClick}
@@ -497,6 +505,8 @@ function AppRouter({
       onIndent={schedule.handleIndentTask}
       onOutdent={schedule.handleOutdentTask}
       onToggleCollapse={schedule.handleToggleCollapse}
+      onRetryTasks={data.loadTasks}
+      onUpdateScheduleStart={schedule.handleUpdateScheduleStart}
       getEmptyRow={schedule.getEmptyRow}
       formatDate={formatDate}
       taskHasChildren={schedule.taskHasChildren}

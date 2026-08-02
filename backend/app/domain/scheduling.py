@@ -1,6 +1,7 @@
 from dataclasses import dataclass, replace
 from datetime import date, timedelta
 from functools import lru_cache
+import heapq
 from typing import Literal
 
 
@@ -179,35 +180,81 @@ def calculate_schedule(
         for task in tasks
     ]
 
-    for _ in range(len(scheduled)):
-        changed = False
+    id_to_index: dict[int, int] = {}
+    for index, task in enumerate(scheduled):
+        if task.id is None:
+            continue
+        if task.id in id_to_index:
+            raise ValueError("Task IDs must be unique")
+        id_to_index[task.id] = index
 
-        for index, task in enumerate(scheduled):
-            if task.start_date and task.end_date:
-                continue
+    children_by_parent: dict[int, list[int]] = {}
+    for index, task in enumerate(scheduled):
+        if task.parent_task_id in id_to_index:
+            children_by_parent.setdefault(task.parent_task_id, []).append(index)
 
-            start_date = _resolve_start_date(
-                task,
-                {candidate.id: candidate for candidate in scheduled},
-                project_start,
-            )
+    prerequisites: list[set[int]] = [set() for _ in scheduled]
+    dependents: dict[int, list[int]] = {}
+    for index, task in enumerate(scheduled):
+        child_indices = children_by_parent.get(task.id, [])
+        if child_indices:
+            if task.predecessor_task_id is not None:
+                raise ValueError("Summary tasks cannot have predecessors")
+            prerequisites[index].update(child_indices)
+        elif task.predecessor_task_id in id_to_index:
+            prerequisites[index].add(id_to_index[task.predecessor_task_id])
 
-            if start_date is None:
-                continue
+        for prerequisite in prerequisites[index]:
+            dependents.setdefault(prerequisite, []).append(index)
 
-            start_date = next_workday(start_date)
-            end_date = add_workdays(start_date, task.duration)
-            scheduled[index] = replace(
-                task,
-                start_date=start_date.isoformat(),
-                end_date=end_date.isoformat(),
-            )
-            changed = True
+    indegree = [len(items) for items in prerequisites]
+    ready = [index for index, count in enumerate(indegree) if count == 0]
+    heapq.heapify(ready)
+    task_map = {
+        task.id: task for task in scheduled if task.id is not None
+    }
 
-        if not changed:
-            break
+    # Every node is finalized at most once. Nodes left outside the topological
+    # order are part of a dependency/hierarchy cycle and remain unscheduled.
+    while ready:
+        index = heapq.heappop(ready)
+        task = scheduled[index]
+        child_indices = children_by_parent.get(task.id, [])
 
-    return apply_critical_path(rollup_parent_tasks(scheduled))
+        if child_indices:
+            children = [scheduled[child_index] for child_index in child_indices]
+            if all(child.start_date and child.end_date for child in children):
+                task = replace(
+                    task,
+                    start_date=min(child.start_date for child in children),
+                    end_date=max(child.end_date for child in children),
+                    # Retained display contract: direct scheduled-child count.
+                    duration=len(children),
+                )
+                scheduled[index] = task
+        else:
+            start_date = _resolve_start_date(task, task_map, project_start)
+            if start_date is not None:
+                start_date = next_workday(start_date)
+                task = replace(
+                    task,
+                    start_date=start_date.isoformat(),
+                    end_date=add_workdays(
+                        start_date,
+                        task.duration,
+                    ).isoformat(),
+                )
+                scheduled[index] = task
+
+        if task.id is not None:
+            task_map[task.id] = task
+
+        for dependent in dependents.get(index, []):
+            indegree[dependent] -= 1
+            if indegree[dependent] == 0:
+                heapq.heappush(ready, dependent)
+
+    return apply_critical_path(scheduled)
 
 
 def _resolve_start_date(
@@ -270,54 +317,60 @@ def compute_critical_path(
 
     node_map = {task.id: task for task in nodes}
     successors: dict[int | None, list[ScheduledTask]] = {}
+    indegree = {task.id: 0 for task in nodes}
 
     for task in nodes:
         if task.predecessor_task_id in node_map:
             successors.setdefault(task.predecessor_task_id, []).append(task)
+            indegree[task.id] += 1
 
     project_end = max(date.fromisoformat(task.end_date) for task in nodes)
     late_start: dict[int | None, date] = {}
+    task_order = {task.id: index for index, task in enumerate(nodes)}
+    ready = [
+        (task_order[task.id], task.id)
+        for task in nodes
+        if indegree[task.id] == 0
+    ]
+    heapq.heapify(ready)
+    topological_ids: list[int | None] = []
 
-    for _ in range(len(nodes)):
-        changed = False
+    while ready:
+        _, task_id = heapq.heappop(ready)
+        topological_ids.append(task_id)
+        for successor in successors.get(task_id, []):
+            indegree[successor.id] -= 1
+            if indegree[successor.id] == 0:
+                heapq.heappush(
+                    ready,
+                    (task_order[successor.id], successor.id),
+                )
 
-        for task in nodes:
-            if task.id in late_start:
-                continue
+    for task_id in reversed(topological_ids):
+        task = node_map[task_id]
+        following = successors.get(task.id, [])
+        candidates = [subtract_workdays(project_end, task.duration)]
 
-            following = successors.get(task.id, [])
+        for successor in following:
+            successor_late_start = late_start[successor.id]
 
-            if any(successor.id not in late_start for successor in following):
-                continue
-
-            # Every task is bounded by the project end; successor links can
-            # only tighten that bound.
-            candidates = [subtract_workdays(project_end, task.duration)]
-
-            for successor in following:
-                successor_late_start = late_start[successor.id]
-
-                if successor.dependency_type == "SS":
-                    candidates.append(
-                        previous_workday(
-                            successor_late_start
-                            - timedelta(days=successor.lag_days)
-                        )
-                    )
-                else:
-                    latest_finish = previous_workday(
+            if successor.dependency_type == "SS":
+                candidates.append(
+                    previous_workday(
                         successor_late_start
-                        - timedelta(days=1 + successor.lag_days)
+                        - timedelta(days=successor.lag_days)
                     )
-                    candidates.append(
-                        subtract_workdays(latest_finish, task.duration)
-                    )
+                )
+            else:
+                latest_finish = previous_workday(
+                    successor_late_start
+                    - timedelta(days=1 + successor.lag_days)
+                )
+                candidates.append(
+                    subtract_workdays(latest_finish, task.duration)
+                )
 
-            late_start[task.id] = min(candidates)
-            changed = True
-
-        if not changed:
-            break
+        late_start[task.id] = min(candidates)
 
     results: dict[int | None, tuple[int | None, bool]] = {}
 
@@ -349,8 +402,10 @@ def apply_critical_path(tasks: list[ScheduledTask]) -> list[ScheduledTask]:
 
     # Summary tasks aggregate their children, deepest parents first so the
     # values bubble up through nested hierarchies.
-    task_map = {task.id: task for task in annotated}
-    depths = {task.id: _hierarchy_depth(task, task_map) for task in annotated}
+    children_by_parent: dict[int | None, list[ScheduledTask]] = {}
+    for task in annotated:
+        children_by_parent.setdefault(task.parent_task_id, []).append(task)
+    depths = _hierarchy_depths(annotated)
     ordered_indices = sorted(
         range(len(annotated)),
         key=lambda index: depths[annotated[index].id],
@@ -359,11 +414,7 @@ def apply_critical_path(tasks: list[ScheduledTask]) -> list[ScheduledTask]:
 
     for index in ordered_indices:
         task = annotated[index]
-        children = [
-            candidate
-            for candidate in annotated
-            if candidate.parent_task_id == task.id
-        ]
+        children = children_by_parent.get(task.id, [])
 
         if not children:
             continue
@@ -378,7 +429,10 @@ def apply_critical_path(tasks: list[ScheduledTask]) -> list[ScheduledTask]:
             is_critical=any(child.is_critical for child in children),
             total_float=min(child_floats) if child_floats else None,
         )
-        task_map[task.id] = annotated[index]
+        children_by_parent[task.parent_task_id] = [
+            annotated[index] if child.id == task.id else child
+            for child in children_by_parent.get(task.parent_task_id, [])
+        ]
 
     return annotated
 
@@ -386,11 +440,10 @@ def apply_critical_path(tasks: list[ScheduledTask]) -> list[ScheduledTask]:
 def rollup_parent_tasks(tasks: list[ScheduledTask]) -> list[ScheduledTask]:
     rolled_up = list(tasks)
 
-    task_map = {task.id: task for task in rolled_up}
-    depths = {
-        task.id: _hierarchy_depth(task, task_map)
-        for task in rolled_up
-    }
+    children_by_parent: dict[int | None, list[ScheduledTask]] = {}
+    for task in rolled_up:
+        children_by_parent.setdefault(task.parent_task_id, []).append(task)
+    depths = _hierarchy_depths(rolled_up)
 
     ordered_indices = sorted(
         range(len(rolled_up)),
@@ -400,11 +453,7 @@ def rollup_parent_tasks(tasks: list[ScheduledTask]) -> list[ScheduledTask]:
 
     for index in ordered_indices:
         task = rolled_up[index]
-        children = [
-            candidate
-            for candidate in rolled_up
-            if candidate.parent_task_id == task.id
-        ]
+        children = children_by_parent.get(task.id, [])
 
         scheduled_children = [
             child
@@ -421,26 +470,50 @@ def rollup_parent_tasks(tasks: list[ScheduledTask]) -> list[ScheduledTask]:
             end_date=max(child.end_date for child in scheduled_children),
             duration=len(scheduled_children),
         )
+        children_by_parent[task.parent_task_id] = [
+            rolled_up[index] if child.id == task.id else child
+            for child in children_by_parent.get(task.parent_task_id, [])
+        ]
 
     return rolled_up
 
 
-def _hierarchy_depth(
-    task: ScheduledTask,
-    task_map: dict[int | None, ScheduledTask],
-) -> int:
-    depth = 0
-    parent_id = task.parent_task_id
-    visited: set[int] = set()
+def _hierarchy_depths(
+    tasks: list[ScheduledTask],
+) -> dict[int | None, int]:
+    task_map = {task.id: task for task in tasks}
+    depths: dict[int | None, int] = {}
 
-    while parent_id is not None and parent_id not in visited:
-        visited.add(parent_id)
-        parent = task_map.get(parent_id)
+    for task in tasks:
+        if task.id in depths:
+            continue
 
-        if parent is None:
-            break
+        trail: list[int | None] = []
+        positions: dict[int | None, int] = {}
+        current_id = task.id
 
-        depth += 1
-        parent_id = parent.parent_task_id
+        while (
+            current_id in task_map
+            and current_id not in depths
+            and current_id not in positions
+        ):
+            positions[current_id] = len(trail)
+            trail.append(current_id)
+            current_id = task_map[current_id].parent_task_id
 
-    return depth
+        if current_id in depths:
+            depth = depths[current_id]
+        elif current_id in positions:
+            cycle_start = positions[current_id]
+            for cycle_id in trail[cycle_start:]:
+                depths[cycle_id] = 0
+            trail = trail[:cycle_start]
+            depth = 0
+        else:
+            depth = -1
+
+        for task_id in reversed(trail):
+            depth += 1
+            depths[task_id] = depth
+
+    return depths

@@ -33,6 +33,9 @@ from app.models.folder import Folder  # noqa: F401
 from app.models.inspection import Inspection  # noqa: F401
 from app.models.note_delay import NoteDelay  # noqa: F401
 from app.models.project import Project  # noqa: F401
+from app.models.project_schedule_settings import (  # noqa: F401
+    ProjectScheduleSettings,
+)
 from app.models.project_company import ProjectCompany  # noqa: F401
 from app.models.punch_item import PunchItem, PunchItemNumberSequence  # noqa: F401
 from app.models.rfi import RFI, RFINumberSequence  # noqa: F401

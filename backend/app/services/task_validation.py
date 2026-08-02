@@ -68,6 +68,17 @@ def validate_parent_assignment(
         )
         current_id = current.parent_task_id if current else None
 
+    parent_task = (
+        db.query(Task)
+        .filter(Task.id == parent_task_id, Task.project_id == project_id)
+        .first()
+    )
+    if parent_task and parent_task.predecessor_task_id is not None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="A task with a predecessor cannot become a summary task",
+        )
+
 
 def validate_dependency_assignment(
     task: Task,
@@ -109,3 +120,93 @@ def validate_dependency_assignment(
             .first()
         )
         current_id = current.predecessor_task_id if current else None
+
+    has_children = (
+        db.query(Task.id)
+        .filter(
+            Task.project_id == project_id,
+            Task.parent_task_id == task.id,
+        )
+        .first()
+        is not None
+    )
+    if has_children:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="Summary tasks cannot have predecessors",
+        )
+
+
+def validate_schedule_structure(tasks: list[Task]) -> None:
+    """Reject dependency/hierarchy combinations with no stable schedule."""
+    task_map = {task.id: task for task in tasks}
+    children_by_parent: dict[int, list[int]] = {}
+    for task in tasks:
+        if task.parent_task_id in task_map:
+            children_by_parent.setdefault(task.parent_task_id, []).append(
+                task.id
+            )
+
+    prerequisites: dict[int, set[int]] = {task.id: set() for task in tasks}
+    dependents: dict[int, list[int]] = {}
+    for task in tasks:
+        children = children_by_parent.get(task.id, [])
+        if children:
+            if task.predecessor_task_id is not None:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                    detail="Summary tasks cannot have predecessors",
+                )
+            prerequisites[task.id].update(children)
+        elif task.predecessor_task_id in task_map:
+            prerequisites[task.id].add(task.predecessor_task_id)
+
+        for prerequisite in prerequisites[task.id]:
+            dependents.setdefault(prerequisite, []).append(task.id)
+
+    ready = [
+        task_id
+        for task_id, required in prerequisites.items()
+        if not required
+    ]
+    resolved = 0
+    while ready:
+        task_id = ready.pop()
+        resolved += 1
+        for dependent in dependents.get(task_id, []):
+            prerequisites[dependent].discard(task_id)
+            if not prerequisites[dependent]:
+                ready.append(dependent)
+
+    if resolved != len(tasks):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=(
+                "Task relationships create an unresolved scheduling cycle"
+            ),
+        )
+
+
+def validate_hierarchy_order(tasks: list[Task], task_ids: list[int]) -> None:
+    """Require a preorder traversal: parent first and each subtree contiguous."""
+    task_map = {task.id: task for task in tasks}
+    open_path: list[int] = []
+
+    for task_id in task_ids:
+        parent_id = task_map[task_id].parent_task_id
+        if parent_id is None:
+            open_path = [task_id]
+            continue
+
+        if parent_id not in open_path:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail=(
+                    "Task order must keep each parent before a contiguous "
+                    "subtree"
+                ),
+            )
+
+        parent_position = open_path.index(parent_id)
+        open_path = open_path[: parent_position + 1]
+        open_path.append(task_id)

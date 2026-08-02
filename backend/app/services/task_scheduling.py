@@ -12,7 +12,7 @@ from app.models.task import Task
 def recalculate_schedule(
     tasks: list[Task],
     *,
-    project_start: date | None = None,
+    project_start: date,
 ) -> None:
     schedule = calculate_schedule(
         [
@@ -28,7 +28,7 @@ def recalculate_schedule(
             )
             for task in tasks
         ],
-        project_start=project_start or date.today(),
+        project_start=project_start,
     )
 
     for task, scheduled_task in zip(tasks, schedule, strict=True):

@@ -20,7 +20,8 @@ for both referenced and planned module screenshots.
 | File | View / state to capture |
 |---|---|
 | `dashboard.png` | Populated Project Dashboard showing Project Summary, Follow-up Indicators, Attention Required, Upcoming Schedule, Workflow Analytics, and Recent Updates. Include readable RFI, Submittal, Punch Item, and Change Order states plus large Change Order values where practical. |
-| `schedule-grid.png` | Schedule table view: a row selected (brand accent visible), one cell in inline-edit mode, at least one parent task with indented children. |
+| `schedule-grid.png` | Schedule table view: visible Schedule Start Date, a selected row, one cell in inline-edit mode, and at least one parent task with indented children. |
+| `schedule-settings.png` | Schedule sidebar with the persisted Schedule Start Date and the accessible recalculation confirmation open over synthetic task data. |
 | `schedule-dnd.gif` | ~5 s: grab a task's drag handle, drag it two rows, drop; dates recalculate. |
 | `login.png` | Logged-out landing page at desktop width: split panel with marketing copy, highlights, app preview, and the auth card. |
 | `gantt.png` | Schedule → Gantt view of the demo project. |
@@ -124,3 +125,7 @@ Use the exact filenames above where defined; do not add placeholders.
 - M16.7 consolidates the release set. The required root/nested explorer,
   upload, details, set, issue, history, viewer desktop/mobile, relationships,
   extraction, and search desktop/mobile captures all remain outstanding.
+- M17.1 adds the deterministic project schedule anchor and summary-predecessor
+  rollups. Recapture `schedule-grid.png`, add `schedule-settings.png`, and
+  recapture `gantt.png` after changing the anchor so all displayed dates tell
+  one consistent synthetic schedule story.

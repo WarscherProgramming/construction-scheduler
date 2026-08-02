@@ -78,8 +78,10 @@ function App() {
 
   const schedule = useScheduleActions({
     selectedProjectId,
+    selectedProjectIdRef,
     tasks: data.tasks,
     setTasks: data.setTasks,
+    setScheduleSettings: data.setScheduleSettings,
     setTemplates: data.setTemplates,
     loadTasks: data.loadTasks,
     runOperation,
@@ -116,6 +118,11 @@ function App() {
   );
   const [seedProgress, setSeedProgress] = useState(null);
   const [pendingDelete, setPendingDelete] = useState(null);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => setPendingDelete(null), 0);
+    return () => window.clearTimeout(timeoutId);
+  }, [selectedProjectId]);
 
   const resetApplicationState = useCallback(() => {
     clearAllData();

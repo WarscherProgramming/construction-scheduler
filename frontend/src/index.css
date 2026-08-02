@@ -3812,6 +3812,26 @@ button:disabled {
   background: #eff6ff;
 }
 
+.schedule-load-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  min-height: 112px;
+  padding: var(--space-5);
+  border: 1px solid #fecaca;
+  border-radius: var(--radius-md);
+  color: var(--danger);
+  background: var(--danger-bg);
+}
+
+@media (max-width: 520px) {
+  .schedule-load-error {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
+
 .schedule-table {
   width: 100%;
   min-width: 1400px;

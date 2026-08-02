@@ -18,14 +18,19 @@ from app.services.task_scheduling import (
 )
 from app.services.task_validation import (
     validate_dependency_assignment,
+    validate_hierarchy_order,
     validate_parent_assignment,
+    validate_schedule_structure,
     validate_task_reference,
 )
+from app.services.project_schedule_settings import get_project_schedule_start
 
 __all__ = [
     "router",
     "validate_dependency_assignment",
+    "validate_hierarchy_order",
     "validate_parent_assignment",
+    "validate_schedule_structure",
     "validate_task_reference",
 ]
 
@@ -59,7 +64,7 @@ def dependency_values(payload: TaskCreate | TaskUpdate) -> dict:
             "lag_days": lag_days,
         }
 
-    return {
+    values = {
         field: value
         for field, value in payload.model_dump(
             include={
@@ -70,6 +75,36 @@ def dependency_values(payload: TaskCreate | TaskUpdate) -> dict:
             exclude_unset=True,
         ).items()
     }
+    if (
+        isinstance(payload, TaskCreate)
+        and values.get("predecessor_task_id") is None
+    ) or (
+        "predecessor_task_id" in values
+        and values["predecessor_task_id"] is None
+    ):
+        values.update(
+            predecessor_task_id=None,
+            dependency_type="FS",
+            lag_days=0,
+        )
+    return values
+
+
+def recalculate_and_commit(
+    db: Session,
+    project_id: int,
+    tasks: list[Task],
+) -> None:
+    try:
+        validate_schedule_structure(tasks)
+        recalculate_schedule(
+            tasks,
+            project_start=get_project_schedule_start(db, project_id),
+        )
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
 
 
 @router.get("/projects/{project_id}/tasks", response_model=TaskListResponse)
@@ -116,12 +151,18 @@ def create_task(
     )
 
     new_task = Task(project_id=project_id, **values)
+    if new_task.parent_task_id is not None:
+        validate_parent_assignment(
+            new_task,
+            new_task.parent_task_id,
+            project_id=project_id,
+            db=db,
+        )
 
     db.add(new_task)
     db.flush()
     tasks = ordered_project_tasks(db, project_id)
-    recalculate_schedule(tasks)
-    db.commit()
+    recalculate_and_commit(db, project_id, tasks)
 
     return task_list_response(tasks)
 
@@ -150,12 +191,12 @@ def reorder_tasks(
         )
 
     task_map = {task.id: task for task in tasks_to_reorder}
+    validate_hierarchy_order(tasks_to_reorder, task_ids)
     for index, task_id in enumerate(task_ids, start=1):
         task_map[task_id].order_index = index
 
     tasks = ordered_project_tasks(db, project_id)
-    recalculate_schedule(tasks)
-    db.commit()
+    recalculate_and_commit(db, project_id, tasks)
 
     return {"message": "Tasks reordered"}
 
@@ -216,8 +257,9 @@ def update_task(
         setattr(task, field, value)
 
     tasks = ordered_project_tasks(db, project_id)
-    recalculate_schedule(tasks)
-    db.commit()
+    if "parent_task_id" in values:
+        validate_hierarchy_order(tasks, [item.id for item in tasks])
+    recalculate_and_commit(db, project_id, tasks)
 
     return task_list_response(tasks)
 
@@ -247,8 +289,7 @@ def delete_task(
     db.delete(task)
     db.flush()
     tasks = ordered_project_tasks(db, project_id)
-    recalculate_schedule(tasks)
-    db.commit()
+    recalculate_and_commit(db, project_id, tasks)
 
     return task_list_response(tasks)
 

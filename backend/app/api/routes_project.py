@@ -5,6 +5,10 @@ from app.api.dependencies import CollectionPage, get_collection_page, get_db
 from app.models.project import Project
 from app.core.security import get_current_user
 from app.schemas.project import ProjectCreate, ProjectListResponse, ProjectResponse
+from app.services.project_schedule_settings import (
+    create_project_schedule_settings,
+    server_schedule_start_date,
+)
 
 router = APIRouter()
 
@@ -47,8 +51,13 @@ def create_project(
     )
 
     db.add(new_project)
+    db.flush()
+    create_project_schedule_settings(
+        db,
+        new_project.id,
+        schedule_start_date=server_schedule_start_date(),
+    )
     db.commit()
-    db.refresh(new_project)
 
     return {
         "id": new_project.id,

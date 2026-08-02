@@ -298,8 +298,9 @@ export async function authenticatedRequest(path, options = {}) {
 }
 
 
-export function jsonRequest(path, method, body) {
+export function jsonRequest(path, method, body, options = {}) {
   return authenticatedRequest(path, {
+    ...options,
     method,
     body: JSON.stringify(body),
   });

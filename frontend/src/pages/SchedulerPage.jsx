@@ -9,6 +9,7 @@ import GanttChart from "../components/GanttChart";
 import FormField from "../components/FormField";
 import LoadingState from "../components/LoadingState";
 import NewTaskInput from "../components/NewTaskInput";
+import ScheduleStartControl from "../components/ScheduleStartControl";
 import SortableTaskRow from "../components/SortableTaskRow";
 import Button from "../components/ui/Button";
 import Card from "../components/ui/Card";
@@ -29,6 +30,7 @@ function SchedulerPage({
   projectName,
   tasks,
   templates,
+  scheduleSettings,
   selectedProjectId,
   selectedTaskId,
   editingCell,
@@ -49,7 +51,10 @@ function SchedulerPage({
   isApplyingTemplate = false,
   isExporting = false,
   isLoadingTasks = false,
+  isLoadingScheduleSettings = false,
+  isUpdatingScheduleSettings = false,
   isLoadingTemplates = false,
+  taskLoadError = null,
   onLogout,
   onDragEnd,
   onCellClick,
@@ -59,6 +64,8 @@ function SchedulerPage({
   onIndent,
   onOutdent,
   onToggleCollapse,
+  onRetryTasks,
+  onUpdateScheduleStart,
   getEmptyRow,
   formatDate,
   taskHasChildren,
@@ -215,6 +222,17 @@ function SchedulerPage({
         </Button>
       </div>
 
+      <ScheduleStartControl
+        key={`${selectedProjectId}:${
+          scheduleSettings?.schedule_start_date || "loading"
+        }`}
+        settings={scheduleSettings}
+        taskCount={tasks.length}
+        isLoading={isLoadingScheduleSettings}
+        isUpdating={isUpdatingScheduleSettings}
+        onUpdate={onUpdateScheduleStart}
+      />
+
       <Card title="Templates" style={{ marginBottom: "var(--space-4)" }}>
         <form
           className="form-stack"
@@ -353,7 +371,14 @@ function SchedulerPage({
           </details>
         </div>
 
-        {isLoadingTasks ? (
+        {taskLoadError ? (
+          <div className="schedule-load-error" role="alert">
+            <p>{taskLoadError}</p>
+            <Button onClick={onRetryTasks} disabled={isLoadingTasks}>
+              {isLoadingTasks ? "Retrying..." : "Retry"}
+            </Button>
+          </div>
+        ) : isLoadingTasks ? (
           <LoadingState message="Loading project schedule…" />
         ) : scheduleView === "table" ? (
           <DndContext collisionDetection={closestCenter} onDragEnd={onDragEnd}>
