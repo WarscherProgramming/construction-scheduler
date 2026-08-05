@@ -12,7 +12,7 @@ from alembic.script import ScriptDirectory
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 PREVIOUS_REVISION = "c8f1a4d7e290"
-CURRENT_REVISION = "e6b4c9a2d715"
+CURRENT_REVISION = "f7c5d0b3e826"
 
 
 class EntityRelationshipMigrationTests(unittest.TestCase):

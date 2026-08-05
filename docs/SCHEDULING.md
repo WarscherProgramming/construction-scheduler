@@ -3,16 +3,17 @@
 This document defines the deterministic scheduling contract established in
 M17.1, immutable baselines and variance from M17.2, progress and Data Date
 semantics from M17.3, and milestones, constraints, and advanced dependencies
-from M17.4, plus live Look-Ahead Planning from M17.5. It describes shipped
-behavior only; resource loading and configurable calendars are not implemented.
+from M17.4, live Look-Ahead Planning from M17.5, and crew and equipment loading
+from M17.6. It describes shipped behavior only; automatic resource leveling
+and configurable calendars are not implemented.
 
 ## Architecture
 
 ```text
-SchedulerPage / useScheduleActions + useScheduleBaselines + useLookAheadPlans
+SchedulerPage / schedule, baseline, look-ahead, and resource hooks
         |
         v
-project-scoped task, settings, baseline, variance, and look-ahead APIs
+project-scoped task, settings, baseline, look-ahead, and resource APIs
         |
         v
 FastAPI routers -> scheduling/validation services
@@ -251,6 +252,10 @@ lazy Schedule route. Look-ahead output uses a print-specific frontend layout;
 the existing PDF endpoint remains the current-schedule export and no second
 server reporting path is introduced.
 
+M17.6 likewise adds no dashboard request or metric. Resource Loading consumes
+the live forecast only on the lazy Schedule route and uses browser print. It
+does not change CPM inputs, task dates, baselines, or the server PDF contract.
+
 ## APIs
 
 ```text
@@ -327,6 +332,12 @@ deduplicates mutations, and reuses the canonical task collection and existing
 progress/planning dialogs. Create and item dialogs trap and restore focus,
 support Escape, and expose textual readiness, blocker, commitment, schedule,
 and attention states. Archived plans are read-only.
+
+Resource Loading is the fourth Schedule mode. Focused hooks batch project
+crews and equipment, lazy-load the bounded loading matrix, reject stale
+project/range responses, and keep assignment and availability metadata outside
+the canonical task collection. Its full contract is documented in
+[`RESOURCE_PLANNING.md`](RESOURCE_PLANNING.md).
 
 ## Scale Budgets
 
@@ -415,6 +426,12 @@ projects, item rows cascade with plans, and optional project-company deletion
 sets the assignment to null. Task IDs intentionally remain non-FK historical
 references so deleted task metadata remains factual and unavailable.
 
+M17.6 adds project-owned crew, equipment, assignment, and availability tables.
+Checks enforce positive whole-number capacities and allocations, nonnegative
+dated overrides, ordered ranges, supported statuses, and exactly one typed
+resource reference. Composite indexes support project lists, task/resource
+assignment joins, and availability range reads without per-task queries.
+
 Indexes support the canonical project/order query and project-scoped
 predecessor and parent validation:
 
@@ -430,16 +447,17 @@ and index deterministic order, parent, and predecessor lookups.
 
 ## Verification and Limits
 
-M17.5 verification passes 536 frontend tests across 78 files and 384 backend
-tests, with 393 backend subtests reported separately. PostgreSQL and SQLite
+M17.6 verification passes 554 frontend tests across 83 files and 396 backend
+tests, with 407 backend subtests reported separately. PostgreSQL and SQLite
 migration upgrade/downgrade/re-upgrade paths use Alembic revision
-`e6b4c9a2d715`.
+`f7c5d0b3e826`.
 
 Known limitations and deferred M17 work:
 
 - look-ahead plans remain live operational views, not immutable snapshots;
 - no look-ahead publish state, commitment audit, dashboard metric, or server PDF;
-- no resources or crews;
+- no automatic resource leveling, resource-driven rescheduling, cost loading,
+  workforce management, or planned-versus-actual manpower analytics;
 - no progress history, earned value, or strict transition graph;
 - no configurable project calendars or timezones;
 - summary duration remains direct-child count;

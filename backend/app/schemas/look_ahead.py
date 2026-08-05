@@ -130,6 +130,17 @@ class LookAheadCompanyResponse(BaseModel):
     trade: str | None
 
 
+class LookAheadResourceAssignmentResponse(BaseModel):
+    id: int
+    resource_type: Literal["crew", "equipment"]
+    resource_id: int
+    name: str
+    detail: str | None
+    allocation_amount: int
+    allocation_unit: Literal["workers", "units"]
+    status: Literal["active", "archived"]
+
+
 class LookAheadItemResponse(BaseModel):
     task_id: int
     task_available: bool
@@ -154,6 +165,7 @@ class LookAheadItemResponse(BaseModel):
     target_resolution_date: str | None
     commitment_note: str | None
     responsible_company: LookAheadCompanyResponse | None
+    resource_assignments: list[LookAheadResourceAssignmentResponse]
     manually_included: bool
     manually_excluded: bool
     override_reason: str | None

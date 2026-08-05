@@ -74,6 +74,30 @@ const baseLookAhead = {
   clearMutationError: vi.fn(),
 };
 
+const baseProjectResources = {
+  crews: [],
+  equipment: [],
+  assignments: [],
+  availability: [],
+  isLoading: false,
+  isLoadingAssignments: false,
+  isLoadingAvailability: false,
+  isPending: vi.fn(() => false),
+  loadAssignments: vi.fn().mockResolvedValue({ assignments: [] }),
+  loadAvailability: vi.fn(),
+  createAssignment: vi.fn(),
+  updateAssignment: vi.fn(),
+  deleteAssignment: vi.fn(),
+};
+
+const baseResourceLoading = {
+  data: null,
+  error: null,
+  isLoading: true,
+  load: vi.fn(),
+  retry: vi.fn(),
+};
+
 
 const baseProps = {
   tasks: [],
@@ -92,6 +116,8 @@ const baseProps = {
   scheduleView: "table",
   baselines: baseBaselines,
   lookAhead: baseLookAhead,
+  projectResources: baseProjectResources,
+  resourceLoading: baseResourceLoading,
   setSelectedTaskId: vi.fn(),
   setEditValue: vi.fn(),
   setTemplateName: vi.fn(),
@@ -128,6 +154,26 @@ const baseProps = {
 
 
 describe("SchedulerPage", () => {
+  it("opens resource loading as the fourth schedule mode", async () => {
+    const user = userEvent.setup();
+    render(<SchedulerPage {...baseProps} />);
+
+    await user.click(screen.getByRole("button", { name: "Resource Loading" }));
+    expect(screen.getByRole("region", { name: "Resource Loading" })).toBeInTheDocument();
+    expect(screen.getByText("Live Resource Loading")).toBeInTheDocument();
+    expect(baseResourceLoading.load).toHaveBeenCalledOnce();
+  });
+
+  it("opens resource assignment only for an executable schedule row", async () => {
+    const user = userEvent.setup();
+    const task = { id: 9, name: "Rough-in", duration: 2, dependencies: [] };
+    render(<SchedulerPage {...baseProps} tasks={[task]} />);
+
+    await user.click(screen.getByRole("button", { name: "Assign resources to Rough-in" }));
+    expect(screen.getByRole("dialog", { name: "Task Resources" })).toBeInTheDocument();
+    expect(baseProjectResources.loadAssignments).toHaveBeenCalledWith(9);
+  });
+
   it("opens look-ahead planning inside the existing scheduler route", async () => {
     const user = userEvent.setup();
     render(<SchedulerPage {...baseProps} />);

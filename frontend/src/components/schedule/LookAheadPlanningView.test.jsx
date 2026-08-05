@@ -121,6 +121,7 @@ const props = {
   dataDate: "2026-08-10",
   onOpenProgress: vi.fn(),
   onOpenPlanning: vi.fn(),
+  onOpenResources: vi.fn(),
 };
 
 describe("LookAheadPlanningView", () => {
@@ -171,6 +172,8 @@ describe("LookAheadPlanningView", () => {
     await user.click(within(taskCard).getByRole("button", { name: "Edit CPM Planning" }));
     expect(props.onOpenProgress).toHaveBeenCalledWith(9);
     expect(props.onOpenPlanning).toHaveBeenCalledWith(9);
+    await user.click(within(taskCard).getByRole("button", { name: "Assign Resources" }));
+    expect(props.onOpenResources).toHaveBeenCalledWith(9);
 
     await user.click(within(taskCard).getByRole("button", { name: "Edit Item" }));
     const dialog = screen.getByRole("dialog", { name: /Edit Look-Ahead Item/ });

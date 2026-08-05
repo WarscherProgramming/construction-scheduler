@@ -188,11 +188,19 @@ tasks backfill to Not Started with zero percent, remaining duration equal to
 planned duration, null actuals, and null updater metadata. Existing baseline
 rows and planned task dates are not rewritten.
 
+## Resource Loading Boundary
+
+M17.6 uses these live progress and Data Date fields only to determine remaining
+forecast workdays for planned crew and equipment demand. Completed tasks add no
+demand, and in-progress demand starts no earlier than the Data Date. Resource
+allocation never infers percent complete, remaining duration, actual dates, or
+task status. Daily Log manpower remains separate historical actual reporting.
+
 ## Verification
 
-M17.5 passes 536 frontend tests across 78 files and 384 backend tests, with
-393 backend subtests reported separately. The local PostgreSQL database is at
-the single Alembic head `d4e8a1c7f925`, autogenerate detects no schema drift,
+M17.6 passes 554 frontend tests across 83 files and 396 backend tests, with
+407 backend subtests reported separately. The local PostgreSQL database is at
+the single Alembic head `f7c5d0b3e826`, autogenerate detects no schema drift,
 and the temporary-SQLite lifecycle test passes upgrade, downgrade, re-upgrade,
 constraint, index, and data-preservation checks.
 
@@ -204,7 +212,8 @@ database, network, or browser-performance claims.
 ## Limits
 
 - no progress history or strict transition graph;
-- no earned value, cost, resource, crew, or productivity calculations;
+- no earned value, cost loading, productivity inference, resource leveling, or
+  planned-versus-actual manpower comparison;
 - no configurable calendars;
 - no dashboard progress visualization in M17.3;
 - no baseline Gantt overlay, timeline zoom, or schedule virtualization.

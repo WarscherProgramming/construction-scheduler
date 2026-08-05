@@ -32,6 +32,7 @@ from app.api.routes_schedule_settings import router as schedule_settings_router
 from app.api.routes_schedule_baseline import router as schedule_baseline_router
 from app.api.routes_submittal import router as submittal_router
 from app.api.routes_look_ahead import router as look_ahead_router
+from app.api.routes_resources import router as resources_router
 
 app = FastAPI(
     title="FieldFlow API",
@@ -101,6 +102,7 @@ app.include_router(schedule_settings_router)
 app.include_router(schedule_baseline_router)
 app.include_router(submittal_router)
 app.include_router(look_ahead_router)
+app.include_router(resources_router)
 
 # ----------------------------------------------------
 # Health Check

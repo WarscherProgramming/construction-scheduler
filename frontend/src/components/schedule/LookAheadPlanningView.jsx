@@ -54,7 +54,7 @@ function matchesFilters(item, filters) {
 }
 
 
-function LookAheadItemCard({ item, readOnly, onEdit, onProgress, onPlanning }) {
+function LookAheadItemCard({ item, readOnly, onEdit, onProgress, onPlanning, onResources }) {
   return (
     <article className="look-ahead-item">
       <div className="look-ahead-item__header">
@@ -87,6 +87,12 @@ function LookAheadItemCard({ item, readOnly, onEdit, onProgress, onPlanning }) {
             {item.commitment_missing && <span>Commitment Missing</span>}
             {item.spans_multiple_weeks && <span>Spans Multiple Weeks</span>}
           </div>
+          <div className="look-ahead-item__resources" aria-label="Assigned resources">
+            <strong>Resources:</strong>{" "}
+            {item.resource_assignments?.length
+              ? item.resource_assignments.map((assignment) => `${assignment.name} (${assignment.allocation_amount} ${assignment.allocation_unit})`).join(", ")
+              : "Unassigned"}
+          </div>
         </>
       )}
       {(item.blocking_reason || item.commitment_note || item.override_reason) && (
@@ -101,6 +107,7 @@ function LookAheadItemCard({ item, readOnly, onEdit, onProgress, onPlanning }) {
           <Button size="sm" onClick={() => onEdit(item)}>Edit Item</Button>
           <Button size="sm" onClick={() => onProgress(item.task_id)}>Update Progress</Button>
           <Button size="sm" onClick={() => onPlanning(item.task_id)}>Edit CPM Planning</Button>
+          {!item.is_milestone && <Button size="sm" onClick={() => onResources(item.task_id)}>Assign Resources</Button>}
         </div>
       )}
     </article>
@@ -137,6 +144,7 @@ function LookAheadPlanningView({
   dataDate,
   onOpenProgress,
   onOpenPlanning,
+  onOpenResources,
 }) {
   const [createOpen, setCreateOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
@@ -316,10 +324,10 @@ function LookAheadPlanningView({
           )}
 
           <div className="look-ahead-groups">
-            <LookAheadGroup title="Carryover / Overdue" description="Incomplete work that began or should have finished before the planning anchor." items={filtered(detail.carryover_items, "carryover")} readOnly={readOnly} onEdit={setEditingItem} onProgress={onOpenProgress} onPlanning={onOpenPlanning} />
-            {detail.weeks.map((week) => <LookAheadGroup key={week.week_index} title={`Week ${week.week_index}`} description={`${formatDisplayDate(week.start_date)} to ${formatDisplayDate(week.end_date)}`} items={filtered(week.items, "week", week.week_index)} readOnly={readOnly} onEdit={setEditingItem} onProgress={onOpenProgress} onPlanning={onOpenPlanning} />)}
-            {(detail.manual_items.length > 0 || lookAhead.filters.week === "manual") && <LookAheadGroup title="Manual / Unscheduled" description="Controlled inclusions outside the automatic planning window." items={filtered(detail.manual_items, "manual")} readOnly={readOnly} onEdit={setEditingItem} onProgress={onOpenProgress} onPlanning={onOpenPlanning} />}
-            {(detail.excluded_items.length > 0 || lookAhead.filters.week === "excluded") && <LookAheadGroup title="Excluded Items" description="Tasks explicitly removed from this planning cycle without changing the live schedule." items={filtered(detail.excluded_items, "excluded")} readOnly={readOnly} onEdit={setEditingItem} onProgress={onOpenProgress} onPlanning={onOpenPlanning} />}
+            <LookAheadGroup title="Carryover / Overdue" description="Incomplete work that began or should have finished before the planning anchor." items={filtered(detail.carryover_items, "carryover")} readOnly={readOnly} onEdit={setEditingItem} onProgress={onOpenProgress} onPlanning={onOpenPlanning} onResources={onOpenResources} />
+            {detail.weeks.map((week) => <LookAheadGroup key={week.week_index} title={`Week ${week.week_index}`} description={`${formatDisplayDate(week.start_date)} to ${formatDisplayDate(week.end_date)}`} items={filtered(week.items, "week", week.week_index)} readOnly={readOnly} onEdit={setEditingItem} onProgress={onOpenProgress} onPlanning={onOpenPlanning} onResources={onOpenResources} />)}
+            {(detail.manual_items.length > 0 || lookAhead.filters.week === "manual") && <LookAheadGroup title="Manual / Unscheduled" description="Controlled inclusions outside the automatic planning window." items={filtered(detail.manual_items, "manual")} readOnly={readOnly} onEdit={setEditingItem} onProgress={onOpenProgress} onPlanning={onOpenPlanning} onResources={onOpenResources} />}
+            {(detail.excluded_items.length > 0 || lookAhead.filters.week === "excluded") && <LookAheadGroup title="Excluded Items" description="Tasks explicitly removed from this planning cycle without changing the live schedule." items={filtered(detail.excluded_items, "excluded")} readOnly={readOnly} onEdit={setEditingItem} onProgress={onOpenProgress} onPlanning={onOpenPlanning} onResources={onOpenResources} />}
           </div>
         </>
       )}

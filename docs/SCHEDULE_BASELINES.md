@@ -189,18 +189,19 @@ render profiling at large task counts was not performed.
   An overlay would require safe handling of removed tasks and combined
   timeline bounds, so the semantic table remains the accessible comparison
   source.
-- Progress history, resource loading, configurable calendars, version labels,
-  snapshot purge, and signed comparison exports are not implemented.
+- Progress history, resource baselines, configurable calendars, version labels,
+  snapshot purge, and signed comparison exports are not implemented. M17.6
+  loading remains current-only and does not copy assignments into snapshots.
 - Look-Ahead Plans do not copy baseline rows, add per-item variance requests,
   or alter the selected comparison baseline.
 
 ## Verification
 
-M17.5 passes 536 frontend tests across 78 files and 384 backend tests, with
-393 backend subtests reported separately. Baseline revision `a2c7e9f4b610`
+M17.6 passes 554 frontend tests across 83 files and 396 backend tests, with
+407 backend subtests reported separately. Baseline revision `a2c7e9f4b610`
 remains immutable beneath progress revision `c8d4f1a7b903` and advanced
-scheduling revision `d4e8a1c7f925`; existing projects still receive no
-automatic baseline.
+scheduling revision `d4e8a1c7f925`; the current resource-planning head is
+`f7c5d0b3e826`, and existing projects still receive no automatic baseline.
 
 Deterministic tests cover ownership, mass assignment, immutability, rollback,
 selection and archive policy, malformed and missing dates, classifications,

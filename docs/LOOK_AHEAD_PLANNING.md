@@ -150,8 +150,9 @@ external resources, temporary files, and another server request.
 
 ## Frontend Workflow
 
-The Schedule page retains one route with three modes: Current Schedule,
-Baseline Comparison, and Look-Ahead Planning. `useLookAheadPlans` owns plan
+The Schedule page retains one route with four modes: Current Schedule,
+Baseline Comparison, Look-Ahead Planning, and Resource Loading.
+`useLookAheadPlans` owns plan
 listing, selection, detail loading, creation, archive, item updates, filters,
 retry, AbortController cancellation, project/plan generation checks, and
 mutation deduplication.
@@ -162,9 +163,11 @@ The planning view provides:
 - a summary strip and deterministic text/company/trade/status filters;
 - Carryover / Overdue, weekly, manual, and excluded sections;
 - factual task cards with WBS, dates, progress, schedule facts, readiness,
-  blockers, commitments, and textual attention labels;
+  blockers, commitments, textual attention labels, and batched crew/equipment
+  assignment labels;
 - a focus-managed metadata dialog; and
-- reuse of the existing Progress and CPM Planning dialogs.
+- reuse of the existing Progress, CPM Planning, and Resource Assignment
+  dialogs.
 
 Create and item dialogs validate date-only and bounded fields, trap focus,
 close on Escape, and restore focus. Archived plans remain selectable and
@@ -190,6 +193,10 @@ query per task. These figures are local regression evidence, not PostgreSQL,
 network, print, or browser-render latency. Browser usability at 2,000 tasks is
 not claimed. Print export has no backend query or export-generation time.
 
+M17.6 adds one batched assignment query and bounded crew/equipment resolution
+for assignment labels. It does not fetch one resource per item or calculate
+the Resource Loading matrix inside look-ahead detail.
+
 ## Migration and Security
 
 Alembic revision `e6b4c9a2d715` follows `d4e8a1c7f925`, creates the two tables,
@@ -210,7 +217,11 @@ accepted from clients.
 M17.5 intentionally has no schedule snapshot, historical commitment audit,
 activation/publish state, hard delete, dashboard metric/request, server PDF,
 task fan-out, automatic construction-record links, notifications, resource or
-crew loading, cost or earned-value logic, configurable calendars, or offline
+crew conflict metric, cost or earned-value logic, configurable calendars, or offline
 workflow. Responsive browser checks at 320, 375, 768, and 1024 pixels, wide
 desktop, and 200% zoom remain manual release verification where no browser
 session is available.
+
+M17.6 resource assignments remain live metadata. Look-ahead shows their labels
+and opens the shared assignment workflow, while loading, capacity overrides,
+and conflict calculations stay in the separate Resource Loading mode.

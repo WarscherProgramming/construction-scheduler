@@ -14,6 +14,8 @@ import useRecordForms from "./hooks/useRecordForms";
 import useScheduleActions from "./hooks/useScheduleActions";
 import useScheduleBaselines from "./hooks/useScheduleBaselines";
 import useLookAheadPlans from "./hooks/useLookAheadPlans";
+import useProjectResources from "./hooks/useProjectResources";
+import useResourceLoading from "./hooks/useResourceLoading";
 import AuthPage from "./pages/AuthPage";
 import { seedDemoProject } from "./services/demoSeeder";
 
@@ -105,6 +107,19 @@ function App() {
     projectId: selectedProjectId,
     enabled: isAuthenticated && currentPage === "scheduler",
     showNotice,
+    reportRequestError,
+  });
+
+  const projectResources = useProjectResources({
+    projectId: selectedProjectId,
+    enabled: isAuthenticated && currentPage === "scheduler",
+    showNotice,
+    reportRequestError,
+  });
+
+  const resourceLoading = useResourceLoading({
+    projectId: selectedProjectId,
+    enabled: isAuthenticated && currentPage === "scheduler",
     reportRequestError,
   });
 
@@ -370,6 +385,8 @@ function App() {
               schedule={schedule}
               scheduleBaselines={scheduleBaselines}
               lookAheadPlans={lookAheadPlans}
+              projectResources={projectResources}
+              resourceLoading={resourceLoading}
               forms={forms}
               onboarding={{
                 dismissed: onboardingDismissed,

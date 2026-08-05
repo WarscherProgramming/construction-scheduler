@@ -112,6 +112,7 @@ function SortableTaskRow({
   handleProgress = () => {},
   progressDisabled = false,
   handlePlanning = () => {},
+  handleResources = () => {},
   planningDisabled = false,
   handleToggleCollapse,
   formatDate,
@@ -413,6 +414,20 @@ function SortableTaskRow({
               >
                 <Icon name="pencil" size={17} />
               </button>
+              {!task.is_milestone && (
+                <button
+                  type="button"
+                  className="schedule-icon-button"
+                  aria-label={`Assign resources to ${task.name}`}
+                  title={`Assign resources to ${task.name}`}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    handleResources(task);
+                  }}
+                >
+                  <Icon name="user" size={17} />
+                </button>
+              )}
             </>
           )}
           <button

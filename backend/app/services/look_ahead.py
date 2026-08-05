@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.models.look_ahead import LookAheadItem, LookAheadPlan
 from app.models.project_company import ProjectCompany
+from app.models.resource_planning import Crew, EquipmentResource, TaskResourceAssignment
 from app.models.task import Task
 from app.services.project_schedule_settings import get_project_schedule_settings
 from app.services.task_scheduling import schedule_metadata, task_response_rows
@@ -242,6 +243,7 @@ def _item_response(
     task: dict | None,
     metadata: LookAheadItem | None,
     company: ProjectCompany | None,
+    resource_assignments: list[dict],
     *,
     task_id: int,
     wbs: str | None,
@@ -295,6 +297,7 @@ def _item_response(
             if company
             else None
         ),
+        "resource_assignments": resource_assignments,
         "section": section,
         "week_index": week_index,
         "overdue": overdue,
@@ -353,6 +356,50 @@ def get_look_ahead_plan_detail(
         else []
     )
     company_by_id = {company.id: company for company in companies}
+    assignment_rows = db.query(TaskResourceAssignment).filter(
+        TaskResourceAssignment.project_id == project_id
+    ).order_by(TaskResourceAssignment.id).all()
+    crew_ids = {row.crew_id for row in assignment_rows if row.crew_id is not None}
+    equipment_ids = {
+        row.equipment_resource_id
+        for row in assignment_rows
+        if row.equipment_resource_id is not None
+    }
+    crews = db.query(Crew).filter(Crew.id.in_(crew_ids)).all() if crew_ids else []
+    equipment = (
+        db.query(EquipmentResource)
+        .filter(EquipmentResource.id.in_(equipment_ids))
+        .all()
+        if equipment_ids
+        else []
+    )
+    crew_by_id = {row.id: row for row in crews}
+    equipment_by_id = {row.id: row for row in equipment}
+    assignments_by_task: dict[int, list[dict]] = {}
+    for assignment in assignment_rows:
+        resource = (
+            crew_by_id.get(assignment.crew_id)
+            if assignment.resource_type == "crew"
+            else equipment_by_id.get(assignment.equipment_resource_id)
+        )
+        if resource is None:
+            continue
+        assignments_by_task.setdefault(assignment.task_id, []).append(
+            {
+                "id": assignment.id,
+                "resource_type": assignment.resource_type,
+                "resource_id": resource.id,
+                "name": resource.name,
+                "detail": (
+                    resource.trade
+                    if assignment.resource_type == "crew"
+                    else resource.equipment_type
+                ),
+                "allocation_amount": assignment.allocation_amount,
+                "allocation_unit": assignment.allocation_unit,
+                "status": resource.status,
+            }
+        )
 
     parent_ids = {
         task.parent_task_id for task in tasks if task.parent_task_id is not None
@@ -382,12 +429,14 @@ def get_look_ahead_plan_detail(
         )
         manually_included = bool(metadata and metadata.manually_included)
         manually_excluded = bool(metadata and metadata.manually_excluded)
+        resource_assignments = assignments_by_task.get(task_id, [])
         if manually_excluded:
             excluded.append(
                 _item_response(
                     task,
                     metadata,
                     company,
+                    resource_assignments,
                     task_id=task_id,
                     wbs=wbs.get(task_id),
                     anchor=anchor,
@@ -403,6 +452,7 @@ def get_look_ahead_plan_detail(
                     None,
                     metadata,
                     company,
+                    resource_assignments,
                     task_id=task_id,
                     wbs=None,
                     anchor=anchor,
@@ -432,6 +482,7 @@ def get_look_ahead_plan_detail(
             task,
             metadata,
             company,
+            resource_assignments,
             task_id=task_id,
             wbs=wbs.get(task_id),
             anchor=anchor,

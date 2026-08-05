@@ -11,7 +11,7 @@ and Punch Lists) with their supporting documents.
 ![React 19](https://img.shields.io/badge/React-19-61dafb?logo=react&logoColor=white&labelColor=20232a)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.1x-009688?logo=fastapi&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169e1?logo=postgresql&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-920%20passing-2ea44f)
+![Tests](https://img.shields.io/badge/tests-950%20passing-2ea44f)
 ![Vite](https://img.shields.io/badge/Vite-8-646cff?logo=vite&logoColor=white)
 
 ![FieldFlow executive dashboard](docs/screenshots/dashboard.png)
@@ -41,9 +41,12 @@ and Punch Lists) with their supporting documents.
 3. Capture a named baseline, review textual workday and critical-path changes,
    then open **Look-Ahead Planning** to coordinate three weeks of live work by
    readiness, blocker, commitment, company, and weekly period.
-4. **Change Orders** — create or edit a numbered record, track cost and
+4. Open **Resource Loading** to assign crews and equipment, configure dated
+   capacity, and review demand, utilization, and conflicts without moving
+   task dates.
+5. **Change Orders** — create or edit a numbered record, track cost and
    schedule impact, filter by status, and use the accessible delete flow.
-5. Shrink the window — the persistent rail and record tables adapt down to
+6. Shrink the window — the persistent rail and record tables adapt down to
    phone widths.
 
 ## Why FieldFlow
@@ -80,6 +83,12 @@ question — *"what needs my attention today?"* — has a one-screen answer.
   Data Date anchored 7-42 day windows, three-week grouping, carryover work,
   readiness, blockers, commitments, project-company assignment, controlled
   include/exclude overrides, archived read-only plans, and print output.
+- **Construction resource planning** with project-owned labor crews and
+  equipment, whole-number task allocations, project-company crew association,
+  inclusive dated capacity overrides, live progress-aware workday loading,
+  textual utilization and conflict details, unassigned-task reporting,
+  look-ahead assignment labels, and browser-printable output. Resource
+  conflicts never mutate the canonical schedule.
 - **Dynamic Gantt chart** rendered from the same task data with progress,
   milestone diamonds, constraint markers, labeled dependency connectors, and
   a Data Date marker, plus a progress-aware one-click PDF export.
@@ -144,9 +153,9 @@ question — *"what needs my attention today?"* — has a one-screen answer.
 - **Client-side onboarding**: first-run detection seeds a realistic demo
   project through the public API with visible progress — the app is never
   empty.
-- **Automated testing: 920 tests** — 536 frontend across 78 files (Vitest +
-  React Testing Library, behavior- and accessibility-focused) and 384 backend
-  tests plus 393 separately reported subtests (pytest,
+- **Automated testing: 950 tests** — 554 frontend across 83 files (Vitest +
+  React Testing Library, behavior- and accessibility-focused) and 396 backend
+  tests plus 407 separately reported subtests (pytest,
   covering the scheduling engine, critical path, services, migrations, CORS,
   and TestClient API integration).
 
@@ -203,6 +212,10 @@ frontend workflow, and measured scale behavior are documented in
 The Data Date, progress-state normalization, status-aware scheduling,
 out-of-sequence policy, and progress UI contract are documented in
 [`docs/SCHEDULE_PROGRESS.md`](docs/SCHEDULE_PROGRESS.md).
+Crew and equipment identity, task allocation, availability overrides,
+progress-aware loading, over-allocation, APIs, security, and explicit
+baseline, template, Daily Log, dashboard, and export boundaries are documented
+in [`docs/RESOURCE_PLANNING.md`](docs/RESOURCE_PLANNING.md).
 
 The final authentication architecture, threat model, deployment checklist,
 operational runbooks, manual QA guide, release notes, and deferred security
@@ -520,15 +533,15 @@ job. FieldFlow does not include a built-in worker or scheduler, and
 | Backend | FastAPI, SQLAlchemy, Alembic, Pydantic |
 | Database | PostgreSQL |
 | Auth | Memory-only access JWT + rotating opaque refresh sessions |
-| Testing | Vitest + React Testing Library (536), pytest (384) |
+| Testing | Vitest + React Testing Library (554), pytest (396) |
 | Hosting | Vercel (frontend) · Render (API + migrations + finite extraction cron) |
 
 ## Testing
 
-**920 primary automated tests passed.** Backend subtests are reported
+**950 primary automated tests passed.** Backend subtests are reported
 separately rather than added to that total.
 
-- **Frontend (536 across 78 files)** — Vitest + React Testing Library. Tests
+- **Frontend (554 across 83 files)** — Vitest + React Testing Library. Tests
   target behavior and accessibility: roles and names, keyboard flows
   (Enter/Escape editing,
   grid cursor navigation, focus traps), aggregate dashboard rendering,
@@ -567,8 +580,11 @@ separately rather than added to that total.
   Look-ahead coverage adds API encoding, default selection, mutation
   deduplication, stale project/plan rejection, weekly grouping, carryover,
   metadata editing, manual overrides, print behavior, and archived read-only
-  presentation.
-- **Backend (384, plus 393 subtests)** — pytest. Covers the deterministic
+  presentation. Resource-planning coverage adds crew and equipment CRUD,
+  availability overrides, assignment flows, bounded loading filters,
+  utilization and conflict text, stale-response rejection, and scheduler and
+  look-ahead integration.
+- **Backend (396, plus 407 subtests)** — pytest. Covers the deterministic
   workday scheduling engine (persistent anchors, all four dependency types,
   multiple predecessors, signed lead/lag, milestones, constraints,
   summary predecessors, hierarchy ordering, federal holidays), critical path
@@ -809,6 +825,9 @@ commit production credentials.
   three-week planning, weekly and carryover groups, readiness, blockers,
   commitments, company/trade ownership, manual overrides, archival, and
   print-friendly field coordination
+- ✅ M17.6 project-owned crews and equipment, whole-number task allocations,
+  dated availability, progress-aware loading, textual over-allocation,
+  look-ahead labels, and browser-printable reporting without resource leveling
 - ✅ Branded landing page and first-run demo seeding
 - ✅ Icon system, confirmation dialogs, notifications, loading skeletons
 - ✅ Scheduler showcase: WBS numbering, inline validation, critical path +
@@ -819,7 +838,7 @@ commit production credentials.
   DRY cleanup with TestClient API integration coverage
 
 **Next**
-- Weather-delay integration and resource loading
+- Weather-delay integration
 - Timeline zoom
 
 **Future possibilities (not committed scope)**

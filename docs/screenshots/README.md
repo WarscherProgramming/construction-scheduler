@@ -31,6 +31,18 @@ for both referenced and planned module screenshots.
 | `look-ahead-archived.png` | Selected archived Look-Ahead Plan with preserved metadata, factual task availability, and no edit controls. |
 | `look-ahead-mobile.png` | Populated Look-Ahead Planning view at ~390 px with selector, summary, one weekly task card, long blocker text, and reachable actions without page-level overflow. |
 | `look-ahead-print.png` | Browser print preview of a populated three-week plan with project/plan identity, date window, textual statuses, weekly groups, blockers, and commitments. |
+| `resource-loading-empty.png` | Resource Loading mode before crews or equipment exist, with factual empty guidance and resource-management actions. |
+| `resource-crews.png` | Populated Crews tab with synthetic names, trades, optional company associations, worker capacities, and active/archive actions. |
+| `resource-equipment.png` | Populated Equipment tab with synthetic equipment types, identifiers, unit capacities, and active/archive actions. |
+| `resource-availability.png` | Inclusive dated capacity override dialog with a synthetic zero-capacity unavailable period. |
+| `task-resource-assignment.png` | Task Resource Assignment dialog showing one crew and one equipment allocation for a persisted leaf task. |
+| `resource-loading.png` | Populated Resource Loading view with filters, date range, summary, textual demand/capacity/utilization, and the bounded matrix. |
+| `resource-conflict.png` | Over-allocated resource with a written conflict reason and contributing task names visible. |
+| `resource-unavailable.png` | Equipment demand against a zero-capacity override, labeled unavailable without relying on color. |
+| `resource-unassigned.png` | Unassigned scheduled-work section with synthetic leaf tasks and dates. |
+| `resource-loading-mobile.png` | Resource Loading at ~390 px with filters, one compact resource/conflict record, and reachable management actions. |
+| `resource-loading-print.png` | Browser print preview with project, date range, demand, capacity, utilization, conflicts, and unassigned work in text. |
+| `look-ahead-resources.png` | Populated look-ahead item/card with batched crew and equipment labels plus the accessible Assign Resources action. |
 | `schedule-dnd.gif` | ~5 s: grab a task's drag handle, drag it two rows, drop; dates recalculate. |
 | `login.png` | Logged-out landing page at desktop width: split panel with marketing copy, highlights, app preview, and the auth card. |
 | `gantt.png` | Schedule → Gantt view with textual progress, milestone diamonds, constraint markers, distinguishable FS/SS/FF/SF connectors with signed lead/lag labels, an in-progress bar, one completed task, out-of-sequence context, and the Data Date marker visible. |
@@ -44,6 +56,17 @@ for both referenced and planned module screenshots.
 | `drawing-viewer.png` | Secure Drawing Viewer showing a synthetic multipage sheet, selected thumbnail, current or superseded revision text, metadata panel with Related Records open, page/zoom/search controls, and no confidential drawing content. |
 | `drawing-viewer-mobile.png` | Secure Drawing Viewer at ~390 px with wrapped toolbar, reachable page/zoom controls, internal canvas scrolling, and visible revision identity. |
 | `mobile.png` | Dashboard or a record page at ~390 px width: collapsed horizontal nav and stacked record cards. (Optional composite of two views side by side.) |
+
+## Resource Planning captures
+
+M17.6 does not create or replace image files. Use synthetic crews, equipment,
+companies, task names, and capacities. Capture the empty state before seeding,
+then the populated Loading, Crews, and Equipment states listed in the manifest.
+The portfolio set should show one over-allocation, one unavailable date,
+unassigned work, the task assignment dialog, a look-ahead item with batched
+resource labels, mobile structure, and browser print. Do not imply employee
+tracking, actual Daily Log manpower synchronization, resource leveling, cost
+loading, or automatic task rescheduling.
 
 ## Document Management captures
 
@@ -160,3 +183,9 @@ Use the exact filenames above where defined; do not add placeholders.
   layout, and print preview. Do not imply frozen schedule snapshots,
   historical commitment audit, dashboard look-ahead metrics, notifications,
   server PDF generation, resources, or crews.
+- M17.6 adds project-owned crews and equipment, task assignments, dated
+  capacity, and current-forecast loading. Capture every Resource Planning view
+  listed above and recapture `look-ahead-planning.png` with concise crew and
+  equipment labels. Keep demand and capacity readable as text, and do not
+  imply automatic leveling, individual employees, cost loading, dashboard
+  resource KPIs, or planned-versus-actual manpower analytics.

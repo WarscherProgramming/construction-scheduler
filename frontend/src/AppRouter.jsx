@@ -46,6 +46,8 @@ function AppRouter({
   schedule,
   scheduleBaselines,
   lookAheadPlans,
+  projectResources,
+  resourceLoading,
   forms,
   onboarding,
   onDeleteTask,
@@ -491,6 +493,8 @@ function AppRouter({
       scheduleView={schedule.scheduleView}
       baselines={scheduleBaselines}
       lookAhead={lookAheadPlans}
+      projectResources={projectResources}
+      resourceLoading={resourceLoading}
       projectCompanies={projectCompanies}
       setSelectedTaskId={schedule.setSelectedTaskId}
       setEditValue={schedule.setEditValue}

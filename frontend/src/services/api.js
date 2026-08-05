@@ -233,6 +233,204 @@ export function updateLookAheadItem(
   );
 }
 
+function resourceCollectionQuery(options = {}) {
+  return new URLSearchParams({
+    status: options.status || "all",
+    limit: String(options.limit || 200),
+    offset: String(options.offset || 0),
+  });
+}
+
+export function listCrews(projectId, options = {}) {
+  return authenticatedRequest(
+    `/projects/${encodeURIComponent(String(projectId))}/crews?${resourceCollectionQuery(options)}`,
+    { signal: options.signal }
+  );
+}
+
+export function createCrew(projectId, crew, options = {}) {
+  return jsonRequest(`/projects/${projectId}/crews`, "POST", crew, options);
+}
+
+export function updateCrew(projectId, crewId, crew, options = {}) {
+  return jsonRequest(
+    `/projects/${projectId}/crews/${crewId}`,
+    "PUT",
+    crew,
+    options
+  );
+}
+
+export function archiveCrew(projectId, crewId, options = {}) {
+  return authenticatedRequest(`/projects/${projectId}/crews/${crewId}/archive`, {
+    method: "POST",
+    signal: options.signal,
+  });
+}
+
+export function listEquipmentResources(projectId, options = {}) {
+  return authenticatedRequest(
+    `/projects/${encodeURIComponent(String(projectId))}/equipment-resources?${resourceCollectionQuery(options)}`,
+    { signal: options.signal }
+  );
+}
+
+export function createEquipmentResource(projectId, equipment, options = {}) {
+  return jsonRequest(
+    `/projects/${projectId}/equipment-resources`,
+    "POST",
+    equipment,
+    options
+  );
+}
+
+export function updateEquipmentResource(
+  projectId,
+  equipmentId,
+  equipment,
+  options = {}
+) {
+  return jsonRequest(
+    `/projects/${projectId}/equipment-resources/${equipmentId}`,
+    "PUT",
+    equipment,
+    options
+  );
+}
+
+export function archiveEquipmentResource(projectId, equipmentId, options = {}) {
+  return authenticatedRequest(
+    `/projects/${projectId}/equipment-resources/${equipmentId}/archive`,
+    { method: "POST", signal: options.signal }
+  );
+}
+
+export function listTaskResourceAssignments(projectId, taskId, options = {}) {
+  return authenticatedRequest(
+    `/projects/${projectId}/tasks/${taskId}/resource-assignments`,
+    { signal: options.signal }
+  );
+}
+
+export function createTaskResourceAssignment(
+  projectId,
+  taskId,
+  assignment,
+  options = {}
+) {
+  return jsonRequest(
+    `/projects/${projectId}/tasks/${taskId}/resource-assignments`,
+    "POST",
+    assignment,
+    options
+  );
+}
+
+export function updateTaskResourceAssignment(
+  projectId,
+  taskId,
+  assignmentId,
+  assignment,
+  options = {}
+) {
+  return jsonRequest(
+    `/projects/${projectId}/tasks/${taskId}/resource-assignments/${assignmentId}`,
+    "PUT",
+    assignment,
+    options
+  );
+}
+
+export function deleteTaskResourceAssignment(
+  projectId,
+  taskId,
+  assignmentId,
+  options = {}
+) {
+  return authenticatedRequest(
+    `/projects/${projectId}/tasks/${taskId}/resource-assignments/${assignmentId}`,
+    { method: "DELETE", signal: options.signal }
+  );
+}
+
+export function listResourceAvailability(
+  projectId,
+  resourceType,
+  resourceId,
+  options = {}
+) {
+  const query = new URLSearchParams({
+    limit: String(options.limit || 200),
+    offset: String(options.offset || 0),
+  });
+  return authenticatedRequest(
+    `/projects/${projectId}/resources/${resourceType}/${resourceId}/availability?${query}`,
+    { signal: options.signal }
+  );
+}
+
+export function createResourceAvailability(
+  projectId,
+  resourceType,
+  resourceId,
+  availability,
+  options = {}
+) {
+  return jsonRequest(
+    `/projects/${projectId}/resources/${resourceType}/${resourceId}/availability`,
+    "POST",
+    availability,
+    options
+  );
+}
+
+export function updateResourceAvailability(
+  projectId,
+  resourceType,
+  resourceId,
+  availabilityId,
+  availability,
+  options = {}
+) {
+  return jsonRequest(
+    `/projects/${projectId}/resources/${resourceType}/${resourceId}/availability/${availabilityId}`,
+    "PUT",
+    availability,
+    options
+  );
+}
+
+export function deleteResourceAvailability(
+  projectId,
+  resourceType,
+  resourceId,
+  availabilityId,
+  options = {}
+) {
+  return authenticatedRequest(
+    `/projects/${projectId}/resources/${resourceType}/${resourceId}/availability/${availabilityId}`,
+    { method: "DELETE", signal: options.signal }
+  );
+}
+
+export function fetchResourceLoading(projectId, filters = {}, options = {}) {
+  const query = new URLSearchParams();
+  if (filters.startDate) query.set("start_date", filters.startDate);
+  if (filters.endDate) query.set("end_date", filters.endDate);
+  if (filters.resourceType) query.set("resource_type", filters.resourceType);
+  if (filters.resourceId) query.set("resource_id", String(filters.resourceId));
+  if (filters.companyId) query.set("company_id", String(filters.companyId));
+  if (filters.trade) query.set("trade", filters.trade);
+  query.set("over_allocated_only", String(Boolean(filters.overAllocatedOnly)));
+  query.set("include_unassigned", String(filters.includeUnassigned !== false));
+  query.set("limit", String(filters.limit || 200));
+  query.set("offset", String(filters.offset || 0));
+  return authenticatedRequest(
+    `/projects/${encodeURIComponent(String(projectId))}/resource-loading?${query}`,
+    { signal: options.signal }
+  );
+}
+
 export function fetchTemplates() {
   return authenticatedRequest("/templates");
 }

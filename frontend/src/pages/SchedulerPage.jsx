@@ -12,10 +12,12 @@ import NewTaskInput from "../components/NewTaskInput";
 import ScheduleStartControl from "../components/ScheduleStartControl";
 import ScheduleBaselineControl from "../components/schedule/ScheduleBaselineControl";
 import LookAheadPlanningView from "../components/schedule/LookAheadPlanningView";
+import ResourceLoadingView from "../components/schedule/ResourceLoadingView";
 import ScheduleProgressSummary from "../components/schedule/ScheduleProgressSummary";
 import ScheduleVarianceView from "../components/schedule/ScheduleVarianceView";
 import TaskProgressDialog from "../components/schedule/TaskProgressDialog";
 import TaskPlanningDialog from "../components/schedule/TaskPlanningDialog";
+import TaskResourceDialog from "../components/schedule/TaskResourceDialog";
 import SortableTaskRow from "../components/SortableTaskRow";
 import Button from "../components/ui/Button";
 import Card from "../components/ui/Card";
@@ -48,6 +50,8 @@ function SchedulerPage({
   scheduleView,
   baselines,
   lookAhead,
+  projectResources,
+  resourceLoading,
   projectCompanies = [],
   setSelectedTaskId,
   setEditValue,
@@ -127,8 +131,10 @@ function SchedulerPage({
   // Tab move between editable cells, Enter activates the focused cell.
   const [focusedCell, setFocusedCell] = useState({ row: 0, field: "name" });
   const [scheduleMode, setScheduleMode] = useState("current");
+  const [resourceTaskId, setResourceTaskId] = useState(null);
   const tableRegionRef = useRef(null);
   const previousEditingCellRef = useRef(editingCell);
+  const resourceTask = tasks.find((task) => task.id === resourceTaskId);
 
   const effectiveFocus = visibleTasks.length
     ? {
@@ -405,6 +411,19 @@ function SchedulerPage({
             onCancel={onCloseTaskPlanning}
           />
         )}
+        {resourceTask && !taskHasChildren(resourceTask.id) && !resourceTask.is_milestone && (
+          <TaskResourceDialog
+            key={`${selectedProjectId}:${resourceTask.id}`}
+            task={resourceTask}
+            displayId={wbsMap.get(resourceTask.id)}
+            resources={projectResources}
+            onChanged={async () => {
+              if (resourceLoading.data) await resourceLoading.retry();
+              await lookAhead.retryDetail();
+            }}
+            onCancel={() => setResourceTaskId(null)}
+          />
+        )}
         <PageHeader title="Schedule" />
 
         <div
@@ -442,6 +461,14 @@ function SchedulerPage({
           >
             Look-Ahead Planning
           </Button>
+          <Button
+            className="schedule-mode-button"
+            id="resource-loading-tab"
+            aria-pressed={scheduleMode === "resources"}
+            onClick={() => setScheduleMode("resources")}
+          >
+            Resource Loading
+          </Button>
         </div>
 
         {scheduleMode === "comparison" ? (
@@ -474,6 +501,24 @@ function SchedulerPage({
                 dataDate={scheduleSettings?.data_date}
                 onOpenProgress={onOpenTaskProgress}
                 onOpenPlanning={onOpenTaskPlanning}
+                onOpenResources={setResourceTaskId}
+              />
+            </ErrorBoundary>
+          </div>
+        ) : scheduleMode === "resources" ? (
+          <div
+            id="resource-loading-panel"
+            role="region"
+            aria-labelledby="resource-loading-tab"
+          >
+            <ErrorBoundary
+              title="Resource loading failed to display"
+              description="Your schedule and assignments are safe. Try loading the resource view again."
+            >
+              <ResourceLoadingView
+                resources={projectResources}
+                resourceLoading={resourceLoading}
+                companies={projectCompanies}
               />
             </ErrorBoundary>
           </div>
@@ -633,6 +678,7 @@ function SchedulerPage({
                         handleDelete={onDelete}
                         handleProgress={onOpenTaskProgress}
                         handlePlanning={onOpenTaskPlanning}
+                        handleResources={(taskValue) => setResourceTaskId(taskValue.id)}
                         planningDisabled={isUpdatingTaskPlanning}
                         progressDisabled={
                           !scheduleSettings?.data_date ||

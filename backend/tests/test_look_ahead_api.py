@@ -393,7 +393,7 @@ class LookAheadApiTests(ApiTestCase):
         finally:
             event.remove(self.engine, "before_cursor_execute", record_statement)
         self.assertEqual(response.status_code, 200, response.text)
-        self.assertLessEqual(len(statements), 7)
+        self.assertLessEqual(len(statements), 8)
 
     def test_detail_scales_to_supported_schedule_sizes(self):
         for task_count in (100, 500, 2000):

@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.api.dependencies import PositiveId, get_db, get_owned_project
 from app.models.task import Task, TaskDependency
+from app.models.resource_planning import TaskResourceAssignment
 from app.models.project import Project
 from app.core.security import get_current_user
 from app.domain.scheduling import is_workday
@@ -465,6 +466,10 @@ def delete_task(
             list(dependent.dependencies),
         )
 
+    db.query(TaskResourceAssignment).filter(
+        TaskResourceAssignment.project_id == project_id,
+        TaskResourceAssignment.task_id == task.id,
+    ).delete(synchronize_session=False)
     db.delete(task)
     db.flush()
     tasks = ordered_project_tasks(db, project_id)
