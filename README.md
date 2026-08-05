@@ -11,7 +11,7 @@ and Punch Lists) with their supporting documents.
 ![React 19](https://img.shields.io/badge/React-19-61dafb?logo=react&logoColor=white&labelColor=20232a)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.1x-009688?logo=fastapi&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169e1?logo=postgresql&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-897%20passing-2ea44f)
+![Tests](https://img.shields.io/badge/tests-920%20passing-2ea44f)
 ![Vite](https://img.shields.io/badge/Vite-8-646cff?logo=vite&logoColor=white)
 
 ![FieldFlow executive dashboard](docs/screenshots/dashboard.png)
@@ -38,9 +38,9 @@ and Punch Lists) with their supporting documents.
 2. **Schedule** — set the independent Data Date, update leaf-task progress,
    click any cell to edit inline (Enter saves, Escape cancels), select a row,
    **drag to reorder**, and indent/outdent to build a hierarchy.
-3. Capture a named baseline, open **Baseline Comparison**, and review textual
-   workday and critical-path changes; then toggle **Gantt** and export the
-   current schedule as PDF.
+3. Capture a named baseline, review textual workday and critical-path changes,
+   then open **Look-Ahead Planning** to coordinate three weeks of live work by
+   readiness, blocker, commitment, company, and weekly period.
 4. **Change Orders** — create or edit a numbered record, track cost and
    schedule impact, filter by status, and use the accessible delete flow.
 5. Shrink the window — the persistent rail and record tables adapt down to
@@ -76,6 +76,10 @@ question — *"what needs my attention today?"* — has a one-screen answer.
   persistent comparison selection, active/archive history, stable task-ID
   matching, workday start/finish variance, critical and structural change
   analysis, and a responsive table-first comparison workflow.
+- **Construction look-ahead planning** derived from the live schedule, with
+  Data Date anchored 7-42 day windows, three-week grouping, carryover work,
+  readiness, blockers, commitments, project-company assignment, controlled
+  include/exclude overrides, archived read-only plans, and print output.
 - **Dynamic Gantt chart** rendered from the same task data with progress,
   milestone diamonds, constraint markers, labeled dependency connectors, and
   a Data Date marker, plus a progress-aware one-click PDF export.
@@ -140,9 +144,9 @@ question — *"what needs my attention today?"* — has a one-screen answer.
 - **Client-side onboarding**: first-run detection seeds a realistic demo
   project through the public API with visible progress — the app is never
   empty.
-- **Automated testing: 897 tests** — 525 frontend across 75 files (Vitest +
-  React Testing Library, behavior- and accessibility-focused) and 372 backend
-  tests plus 376 separately reported subtests (pytest,
+- **Automated testing: 920 tests** — 536 frontend across 78 files (Vitest +
+  React Testing Library, behavior- and accessibility-focused) and 384 backend
+  tests plus 393 separately reported subtests (pytest,
   covering the scheduling engine, critical path, services, migrations, CORS,
   and TestClient API integration).
 
@@ -409,6 +413,9 @@ job. FieldFlow does not include a built-in worker or scheduler, and
   changes, and explicit task-structure change indicators
 - Searchable, filterable, paginated Baseline Comparison view with textual
   summary metrics and stacked mobile records
+- Named live Look-Ahead Plans with a Data Date default, 7-42 day windows,
+  weekly groups, carryover, readiness, blockers, commitments, company/trade
+  filters, manual overrides, archival, and print-friendly output
 - Progress-aware Gantt visualization with milestone, constraint, and labeled
   dependency indicators, plus current-schedule PDF export
 - Reusable schedule templates
@@ -513,15 +520,15 @@ job. FieldFlow does not include a built-in worker or scheduler, and
 | Backend | FastAPI, SQLAlchemy, Alembic, Pydantic |
 | Database | PostgreSQL |
 | Auth | Memory-only access JWT + rotating opaque refresh sessions |
-| Testing | Vitest + React Testing Library (525), pytest (372) |
+| Testing | Vitest + React Testing Library (536), pytest (384) |
 | Hosting | Vercel (frontend) · Render (API + migrations + finite extraction cron) |
 
 ## Testing
 
-**897 primary automated tests passed.** Backend subtests are reported
+**920 primary automated tests passed.** Backend subtests are reported
 separately rather than added to that total.
 
-- **Frontend (525 across 75 files)** — Vitest + React Testing Library. Tests
+- **Frontend (536 across 78 files)** — Vitest + React Testing Library. Tests
   target behavior and accessibility: roles and names, keyboard flows
   (Enter/Escape editing,
   grid cursor navigation, focus traps), aggregate dashboard rendering,
@@ -557,7 +564,11 @@ separately rather than added to that total.
   one canonical task request. Advanced planning coverage adds milestones,
   constraints, multiple dependency editing, signed lead/lag, all four
   relationship types, accessible dialog behavior, and Gantt indicators.
-- **Backend (372, plus 376 subtests)** — pytest. Covers the deterministic
+  Look-ahead coverage adds API encoding, default selection, mutation
+  deduplication, stale project/plan rejection, weekly grouping, carryover,
+  metadata editing, manual overrides, print behavior, and archived read-only
+  presentation.
+- **Backend (384, plus 393 subtests)** — pytest. Covers the deterministic
   workday scheduling engine (persistent anchors, all four dependency types,
   multiple predecessors, signed lead/lag, milestones, constraints,
   summary predecessors, hierarchy ordering, federal holidays), critical path
@@ -593,7 +604,11 @@ separately rather than added to that total.
   Extraction and search coverage includes PDF/raster boundaries, deterministic
   OCR-provider tests, checksums, limits, durable claims and retries, migration
   lifecycle, status and reprocess authorization, project isolation, ranking,
-  bounded snippets, and drawing-revision enrichment.
+  bounded snippets, and drawing-revision enrichment. Look-ahead coverage
+  includes ownership, strict schemas, live inclusion, weekly grouping,
+  readiness and blocker metadata, company validation, manual overrides,
+  archive behavior, migration lifecycle, bounded queries, and 100/500/2,000
+  task scale cases.
 
 ```bash
 # frontend
@@ -790,6 +805,10 @@ commit production credentials.
 - ✅ M17.4 milestones, eight standard constraints, multiple normalized
   predecessors, FS/SS/FF/SF relationships, signed lead/lag, advanced CPM and
   variance behavior, and accessible Gantt planning indicators
+- ✅ M17.5 live schedule-derived Look-Ahead Plans with Data Date anchored
+  three-week planning, weekly and carryover groups, readiness, blockers,
+  commitments, company/trade ownership, manual overrides, archival, and
+  print-friendly field coordination
 - ✅ Branded landing page and first-run demo seeding
 - ✅ Icon system, confirmation dialogs, notifications, loading skeletons
 - ✅ Scheduler showcase: WBS numbering, inline validation, critical path +

@@ -13,7 +13,7 @@ from alembic.script import ScriptDirectory
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 PREVIOUS_HEAD = "a2c7e9f4b610"
 M17_3_REVISION = "c8d4f1a7b903"
-CURRENT_REVISION = "d4e8a1c7f925"
+CURRENT_REVISION = "e6b4c9a2d715"
 
 
 class ScheduleProgressMigrationTests(unittest.TestCase):

@@ -20,7 +20,7 @@ from app.models.document_extraction import (
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 PREVIOUS_REVISION = "d9a2f5c8e173"
-CURRENT_REVISION = "d4e8a1c7f925"
+CURRENT_REVISION = "e6b4c9a2d715"
 
 
 class DocumentExtractionMigrationTests(unittest.TestCase):

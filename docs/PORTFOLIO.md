@@ -1,8 +1,8 @@
 # FieldFlow — Portfolio Copy
 
 Ready-to-use descriptions for resumes, portfolio sites, and LinkedIn.
-Keep the metrics in sync with the repo (M17.4 verified **897 primary tests: 525
-frontend across 75 files + 372 backend**, with 376 backend subtests reported
+Keep the metrics in sync with the repo (M17.5 verified **920 primary tests: 536
+frontend across 78 files + 384 backend**, with 393 backend subtests reported
 separately).
 
 ---
@@ -13,14 +13,14 @@ separately).
 
 > FieldFlow — full-stack construction scheduling and field-management SaaS
 > (React 19, FastAPI, PostgreSQL) with a drag-and-drop CPM-style scheduler,
-> persistent Data Date, live progress, milestones, constraints, and advanced
-> dependencies,
+> persistent Data Date, live progress, milestones, constraints, advanced
+> dependencies, and live three-week look-ahead planning,
 > executive dashboard, enhanced project-scoped Change Order, RFI, Submittal,
 > and Punch List workflows, reusable Document Management across six resource
 > types, a project document explorer, construction drawing revision
 > management with a secure PDF viewer, explicit cross-record construction
 > relationships, project-scoped PDF content search, hardened rotating-session
-> authentication, and 897 automated
+> authentication, and 920 automated
 > tests.
 
 ### Resume bullets
@@ -36,6 +36,11 @@ separately).
 >   server-normalized progress, actual dates, remaining-duration forecasts,
 >   out-of-sequence detection, progress-aware Gantt and PDF output, immutable
 >   named baselines, workday variance, and critical/structural change analysis.
+> - Added project-owned Look-Ahead Plans derived from the live schedule, with
+>   Data Date anchored 7-42 day windows, weekly and carryover groups,
+>   readiness, blockers, commitments, company/trade assignment, controlled
+>   overrides, archival, print output, and stale-response protection without a
+>   second task collection or dashboard request.
 > - Designed an accessible design system (15+ reusable components: dialogs
 >   with focus traps, skeleton loading, toasts, icon system) and a
 >   project-owned analytics endpoint that replaces dashboard collection
@@ -85,7 +90,7 @@ separately).
 > - Hardened authentication with memory-only access JWTs, rotating opaque
 >   refresh sessions, replay-family revocation, CSRF and exact-Origin
 >   enforcement, route-wide tenant isolation, and bounded abuse controls;
->   verified the complete platform with 897 automated tests (Vitest/RTL +
+>   verified the complete platform with 920 automated tests (Vitest/RTL +
 >   pytest).
 
 ### Portfolio-site paragraph
@@ -95,7 +100,8 @@ separately).
 > centerpiece is a spreadsheet-fast scheduler — persistent project anchors,
 > an independent Data Date, status-aware progress and actuals,
 > inline cell editing, multiple FS/SS/FF/SF dependencies with signed lead/lag,
-> zero-duration milestones, eight standard constraints,
+> zero-duration milestones, eight standard constraints, live three-week
+> look-ahead planning,
 > deterministic summary rollups, workday and federal holiday calendars,
 > validated task hierarchy, and drag-and-drop reordering that works
 > from the keyboard — rendered as both an editable grid and a Gantt chart with
@@ -109,7 +115,7 @@ separately).
 > attachments across six construction workflows, a responsive project
 > document explorer, construction drawing revision management with secure
 > browser viewing, explicit user-created relationships across construction
-> records and drawing context, secure project PDF content search, and 897
+> records and drawing context, secure project PDF content search, and 920
 > automated tests
 > across the stack.
 
@@ -167,8 +173,8 @@ available while preserving recoverable cleanup work.
   attachment and document APIs, models, storage abstractions, hooks, and UI
 - 25 MiB per-file limit with PDF, image, text, Word, and Excel support
 - Private authenticated delivery with no public object keys or credentials
-- 525 frontend tests across 75 files and 372 backend tests, for 897 primary
-  tests passed; 376 backend subtests are tracked separately
+- 536 frontend tests across 78 files and 384 backend tests, for 920 primary
+  tests passed; 393 backend subtests are tracked separately
 - Lazy per-record panel mounting with no dashboard attachment preloading
 - Ten allowlisted relationship entity types with bounded candidate search and
   no dashboard or table-row relationship preloading
@@ -195,6 +201,8 @@ available while preserving recoverable cleanup work.
 > workday/holiday-aware dates, hierarchy, drag-and-drop reordering,
 > independent Data Date, live progress and actuals, out-of-sequence context,
 > and immutable baseline comparison with workday variance
+> A live three-week look-ahead with carryover, readiness, blockers,
+> commitments, company/trade filtering, controlled overrides, and print output
 > ▦ A Gantt view and one-click PDF export
 > 📊 An executive dashboard that answers "what needs my attention today?"
 > 📝 Daily logs, inspections, delays, and project-scoped Change Order, RFI,
@@ -208,7 +216,7 @@ available while preserving recoverable cleanup work.
 > revision navigation
 >
 > Under the hood: React 19 + Vite, FastAPI + SQLAlchemy + PostgreSQL, hardened
-> rotating-session auth, an accessible component design system, and 897
+> rotating-session auth, an accessible component design system, and 920
 > automated tests.
 >
 > The demo seeds a full sample project in ~10 seconds — no signup friction:
@@ -226,7 +234,8 @@ available while preserving recoverable cleanup work.
 > document explorer, drawing revision management with a secure PDF viewer,
 > explicit construction-record relationships, native PDF content search,
 > immutable schedule baseline comparison, Data Date and progress tracking,
-> milestones, constraints, advanced dependencies, accessible design system, 897
+> milestones, constraints, advanced dependencies, live look-ahead planning,
+> accessible design system, 920
 > automated tests. Live demo
 > seeds a complete sample
 > project in seconds.

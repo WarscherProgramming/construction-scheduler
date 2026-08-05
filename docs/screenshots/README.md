@@ -25,6 +25,12 @@ for both referenced and planned module screenshots.
 | `schedule-baseline-create.png` | Accessible Capture Schedule Baseline dialog showing a synthetic name, optional description, Schedule Start Date, task count, server-generated timestamp note, and immutable-snapshot explanation. |
 | `schedule-baseline-comparison.png` | Baseline Comparison view with a selected named baseline, capture time, project-finish direction, slipped/improved/added/removed/newly-critical metrics, filters, and readable current-versus-baseline task rows. |
 | `schedule-baseline-mobile.png` | Baseline Comparison at ~390 px with the selector, textual summary metrics, filters, and one stacked task comparison record fully reachable without page-level horizontal overflow. |
+| `look-ahead-create.png` | Focus-managed Create Look-Ahead Plan dialog with the project Data Date anchor and 21-day default visible over the factual no-plan state. |
+| `look-ahead-planning.png` | Populated three-week Look-Ahead Planning view with summary metrics, filters, Carryover / Overdue, three weekly groups, and readable blocked and committed task states. |
+| `look-ahead-item.png` | Look-Ahead Item dialog showing readiness, company/trade, blocker category/reason/owner/target, commitment, and manual override controls while schedule dates remain read-only. |
+| `look-ahead-archived.png` | Selected archived Look-Ahead Plan with preserved metadata, factual task availability, and no edit controls. |
+| `look-ahead-mobile.png` | Populated Look-Ahead Planning view at ~390 px with selector, summary, one weekly task card, long blocker text, and reachable actions without page-level overflow. |
+| `look-ahead-print.png` | Browser print preview of a populated three-week plan with project/plan identity, date window, textual statuses, weekly groups, blockers, and commitments. |
 | `schedule-dnd.gif` | ~5 s: grab a task's drag handle, drag it two rows, drop; dates recalculate. |
 | `login.png` | Logged-out landing page at desktop width: split panel with marketing copy, highlights, app preview, and the auth card. |
 | `gantt.png` | Schedule → Gantt view with textual progress, milestone diamonds, constraint markers, distinguishable FS/SS/FF/SF connectors with signed lead/lag labels, an in-progress bar, one completed task, out-of-sequence context, and the Data Date marker visible. |
@@ -148,3 +154,9 @@ Use the exact filenames above where defined; do not add placeholders.
   dialog with synthetic dependencies and a dated constraint. Keep these
   planning features off the dashboard and do not imply resource loading,
   earned value, configurable calendars, or strict workflow transitions.
+- M17.5 adds live schedule-derived Look-Ahead Plans. Capture the no-plan/create
+  flow, a populated three-week view with carryover and filters, one blocked and
+  one committed item, the metadata dialog, an archived read-only plan, mobile
+  layout, and print preview. Do not imply frozen schedule snapshots,
+  historical commitment audit, dashboard look-ahead metrics, notifications,
+  server PDF generation, resources, or crews.

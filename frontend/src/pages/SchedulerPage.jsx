@@ -11,6 +11,7 @@ import LoadingState from "../components/LoadingState";
 import NewTaskInput from "../components/NewTaskInput";
 import ScheduleStartControl from "../components/ScheduleStartControl";
 import ScheduleBaselineControl from "../components/schedule/ScheduleBaselineControl";
+import LookAheadPlanningView from "../components/schedule/LookAheadPlanningView";
 import ScheduleProgressSummary from "../components/schedule/ScheduleProgressSummary";
 import ScheduleVarianceView from "../components/schedule/ScheduleVarianceView";
 import TaskProgressDialog from "../components/schedule/TaskProgressDialog";
@@ -46,6 +47,8 @@ function SchedulerPage({
   selectedTemplateId,
   scheduleView,
   baselines,
+  lookAhead,
+  projectCompanies = [],
   setSelectedTaskId,
   setEditValue,
   setTemplateName,
@@ -428,6 +431,17 @@ function SchedulerPage({
           >
             Baseline Comparison
           </Button>
+          <Button
+            className="schedule-mode-button"
+            id="look-ahead-planning-tab"
+            aria-pressed={scheduleMode === "lookAhead"}
+            onClick={() => {
+              setScheduleMode("lookAhead");
+              void lookAhead.retryDetail();
+            }}
+          >
+            Look-Ahead Planning
+          </Button>
         </div>
 
         {scheduleMode === "comparison" ? (
@@ -441,6 +455,26 @@ function SchedulerPage({
               description="Your schedule and baseline data are safe. Try the comparison again."
             >
               <ScheduleVarianceView baselines={baselines} />
+            </ErrorBoundary>
+          </div>
+        ) : scheduleMode === "lookAhead" ? (
+          <div
+            id="look-ahead-planning-panel"
+            role="region"
+            aria-labelledby="look-ahead-planning-tab"
+          >
+            <ErrorBoundary
+              title="Look-ahead planning failed to display"
+              description="The live schedule and planning metadata are safe. Try loading the plan again."
+            >
+              <LookAheadPlanningView
+                lookAhead={lookAhead}
+                tasks={tasks}
+                companies={projectCompanies}
+                dataDate={scheduleSettings?.data_date}
+                onOpenProgress={onOpenTaskProgress}
+                onOpenPlanning={onOpenTaskPlanning}
+              />
             </ErrorBoundary>
           </div>
         ) : (

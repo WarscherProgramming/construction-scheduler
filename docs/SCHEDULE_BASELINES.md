@@ -4,7 +4,9 @@ M17.2 adds immutable, project-scoped schedule snapshots and workday variance
 analysis to the existing deterministic scheduler. M17.3 adds live progress
 and Data Date context. M17.4 extends immutable planning snapshots with
 milestones, constraints, and complete normalized dependency sets without
-turning variance into earned-value analysis.
+turning variance into earned-value analysis. M17.5 Look-Ahead Plans remain
+live operational views; teams use these baselines when immutable task dates
+or historical variance are required.
 
 ## Architecture
 
@@ -189,11 +191,13 @@ render profiling at large task counts was not performed.
   source.
 - Progress history, resource loading, configurable calendars, version labels,
   snapshot purge, and signed comparison exports are not implemented.
+- Look-Ahead Plans do not copy baseline rows, add per-item variance requests,
+  or alter the selected comparison baseline.
 
 ## Verification
 
-M17.4 passes 525 frontend tests across 75 files and 372 backend tests, with
-376 backend subtests reported separately. Baseline revision `a2c7e9f4b610`
+M17.5 passes 536 frontend tests across 78 files and 384 backend tests, with
+393 backend subtests reported separately. Baseline revision `a2c7e9f4b610`
 remains immutable beneath progress revision `c8d4f1a7b903` and advanced
 scheduling revision `d4e8a1c7f925`; existing projects still receive no
 automatic baseline.

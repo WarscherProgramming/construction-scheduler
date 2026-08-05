@@ -13,6 +13,7 @@ import useProjectResource from "./hooks/useProjectResource";
 import useRecordForms from "./hooks/useRecordForms";
 import useScheduleActions from "./hooks/useScheduleActions";
 import useScheduleBaselines from "./hooks/useScheduleBaselines";
+import useLookAheadPlans from "./hooks/useLookAheadPlans";
 import AuthPage from "./pages/AuthPage";
 import { seedDemoProject } from "./services/demoSeeder";
 
@@ -96,6 +97,13 @@ function App() {
     projectId: selectedProjectId,
     enabled: isAuthenticated && currentPage === "scheduler",
     setScheduleSettings: data.setScheduleSettings,
+    showNotice,
+    reportRequestError,
+  });
+
+  const lookAheadPlans = useLookAheadPlans({
+    projectId: selectedProjectId,
+    enabled: isAuthenticated && currentPage === "scheduler",
     showNotice,
     reportRequestError,
   });
@@ -361,6 +369,7 @@ function App() {
               data={data}
               schedule={schedule}
               scheduleBaselines={scheduleBaselines}
+              lookAheadPlans={lookAheadPlans}
               forms={forms}
               onboarding={{
                 dismissed: onboardingDismissed,

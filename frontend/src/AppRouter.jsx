@@ -45,6 +45,7 @@ function AppRouter({
   data,
   schedule,
   scheduleBaselines,
+  lookAheadPlans,
   forms,
   onboarding,
   onDeleteTask,
@@ -489,6 +490,8 @@ function AppRouter({
       selectedTemplateId={schedule.selectedTemplateId}
       scheduleView={schedule.scheduleView}
       baselines={scheduleBaselines}
+      lookAhead={lookAheadPlans}
+      projectCompanies={projectCompanies}
       setSelectedTaskId={schedule.setSelectedTaskId}
       setEditValue={schedule.setEditValue}
       setTemplateName={schedule.setTemplateName}
@@ -522,14 +525,22 @@ function AppRouter({
       onUpdateDataDate={schedule.handleUpdateDataDate}
       onOpenTaskProgress={schedule.openTaskProgress}
       onCloseTaskProgress={schedule.closeTaskProgress}
-      onUpdateTaskProgress={schedule.handleUpdateTaskProgress}
+      onUpdateTaskProgress={async (...args) => {
+        const result = await schedule.handleUpdateTaskProgress(...args);
+        if (result) await lookAheadPlans.retryDetail();
+        return result;
+      }}
       progressTaskId={schedule.progressTaskId}
       isUpdatingTaskProgress={schedule.isScheduleMutationActive(
         `updateProgress:${schedule.progressTaskId}`
       )}
       onOpenTaskPlanning={schedule.openTaskPlanning}
       onCloseTaskPlanning={schedule.closeTaskPlanning}
-      onUpdateTaskPlanning={schedule.handleUpdateTaskPlanning}
+      onUpdateTaskPlanning={async (...args) => {
+        const result = await schedule.handleUpdateTaskPlanning(...args);
+        if (result) await lookAheadPlans.retryDetail();
+        return result;
+      }}
       planningTaskId={schedule.planningTaskId}
       isUpdatingTaskPlanning={schedule.isScheduleMutationActive(
         `updatePlanning:${schedule.planningTaskId}`

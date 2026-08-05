@@ -169,6 +169,70 @@ export function fetchScheduleVariance(projectId, options = {}) {
   );
 }
 
+export function listLookAheadPlans(projectId, options = {}) {
+  const query = new URLSearchParams({
+    status: options.status || "all",
+    limit: String(options.limit || 100),
+    offset: String(options.offset || 0),
+  });
+  return authenticatedRequest(
+    `/projects/${encodeURIComponent(String(projectId))}/look-ahead-plans?${query}`,
+    { signal: options.signal }
+  );
+}
+
+export function createLookAheadPlan(projectId, plan, options = {}) {
+  return jsonRequest(
+    `/projects/${encodeURIComponent(String(projectId))}/look-ahead-plans`,
+    "POST",
+    plan,
+    options
+  );
+}
+
+export function getLookAheadPlan(projectId, planId, options = {}) {
+  return authenticatedRequest(
+    `/projects/${encodeURIComponent(String(projectId))}/look-ahead-plans/${encodeURIComponent(String(planId))}`,
+    { signal: options.signal }
+  );
+}
+
+export function updateLookAheadPlan(
+  projectId,
+  planId,
+  plan,
+  options = {}
+) {
+  return jsonRequest(
+    `/projects/${encodeURIComponent(String(projectId))}/look-ahead-plans/${encodeURIComponent(String(planId))}`,
+    "PUT",
+    plan,
+    options
+  );
+}
+
+export function archiveLookAheadPlan(projectId, planId, options = {}) {
+  return authenticatedRequest(
+    `/projects/${encodeURIComponent(String(projectId))}/look-ahead-plans/${encodeURIComponent(String(planId))}/archive`,
+    { method: "POST", signal: options.signal }
+  );
+}
+
+export function updateLookAheadItem(
+  projectId,
+  planId,
+  taskId,
+  item,
+  options = {}
+) {
+  return jsonRequest(
+    `/projects/${encodeURIComponent(String(projectId))}/look-ahead-plans/${encodeURIComponent(String(planId))}/items/${encodeURIComponent(String(taskId))}`,
+    "PUT",
+    item,
+    options
+  );
+}
+
 export function fetchTemplates() {
   return authenticatedRequest("/templates");
 }

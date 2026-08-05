@@ -38,6 +38,42 @@ const baseBaselines = {
   clearMutationError: vi.fn(),
 };
 
+const baseLookAhead = {
+  plans: [],
+  selectedPlanId: null,
+  selectedPlan: null,
+  detail: null,
+  filters: {
+    search: "",
+    week: "",
+    readiness: "",
+    progress: "",
+    companyId: "",
+    criticalOnly: false,
+    milestonesOnly: false,
+    blockedOnly: false,
+    overdueOnly: false,
+    outOfSequenceOnly: false,
+  },
+  listError: null,
+  detailError: null,
+  mutationError: null,
+  isLoadingList: false,
+  isLoadingDetail: false,
+  isCreating: false,
+  isArchiving: false,
+  isUpdatingItem: false,
+  retryPlans: vi.fn(),
+  retryDetail: vi.fn(),
+  selectPlan: vi.fn(),
+  createPlan: vi.fn(),
+  archivePlan: vi.fn(),
+  updateItem: vi.fn(),
+  updateFilters: vi.fn(),
+  clearFilters: vi.fn(),
+  clearMutationError: vi.fn(),
+};
+
 
 const baseProps = {
   tasks: [],
@@ -55,6 +91,7 @@ const baseProps = {
   selectedTemplateId: "",
   scheduleView: "table",
   baselines: baseBaselines,
+  lookAhead: baseLookAhead,
   setSelectedTaskId: vi.fn(),
   setEditValue: vi.fn(),
   setTemplateName: vi.fn(),
@@ -91,6 +128,20 @@ const baseProps = {
 
 
 describe("SchedulerPage", () => {
+  it("opens look-ahead planning inside the existing scheduler route", async () => {
+    const user = userEvent.setup();
+    render(<SchedulerPage {...baseProps} />);
+
+    await user.click(
+      screen.getByRole("button", { name: "Look-Ahead Planning" })
+    );
+    expect(
+      screen.getByRole("region", { name: "Look-Ahead Planning" })
+    ).toBeInTheDocument();
+    expect(screen.getByText("No look-ahead plans yet")).toBeInTheDocument();
+    expect(baseLookAhead.retryDetail).toHaveBeenCalledOnce();
+  });
+
   it("shows dependency guidance and an actionable empty state", () => {
     render(<SchedulerPage {...baseProps} />);
 

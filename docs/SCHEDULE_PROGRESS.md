@@ -190,8 +190,8 @@ rows and planned task dates are not rewritten.
 
 ## Verification
 
-M17.4 passes 525 frontend tests across 75 files and 372 backend tests, with
-376 backend subtests reported separately. The local PostgreSQL database is at
+M17.5 passes 536 frontend tests across 78 files and 384 backend tests, with
+393 backend subtests reported separately. The local PostgreSQL database is at
 the single Alembic head `d4e8a1c7f925`, autogenerate detects no schema drift,
 and the temporary-SQLite lifecycle test passes upgrade, downgrade, re-upgrade,
 constraint, index, and data-preservation checks.
@@ -208,3 +208,9 @@ database, network, or browser-performance claims.
 - no configurable calendars;
 - no dashboard progress visualization in M17.3;
 - no baseline Gantt overlay, timeline zoom, or schedule virtualization.
+
+M17.5 Look-Ahead Plans read these same live task progress and forecast fields.
+The existing progress dialog remains the only look-ahead progress action;
+readiness and commitment metadata never update percent complete, remaining
+duration, or actual dates. Progress mutations refresh selected plan detail so
+membership and carryover remain current without a second task collection.

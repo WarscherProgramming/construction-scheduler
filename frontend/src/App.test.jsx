@@ -22,6 +22,12 @@ vi.mock("./services/api", () => ({
   archiveScheduleBaseline: vi.fn(),
   selectScheduleBaseline: vi.fn(),
   fetchScheduleVariance: vi.fn(),
+  listLookAheadPlans: vi.fn(),
+  createLookAheadPlan: vi.fn(),
+  getLookAheadPlan: vi.fn(),
+  updateLookAheadPlan: vi.fn(),
+  archiveLookAheadPlan: vi.fn(),
+  updateLookAheadItem: vi.fn(),
   createTask: vi.fn(),
   deleteTask: vi.fn(),
   updateTask: vi.fn(),
@@ -131,6 +137,7 @@ import {
   listRecentDocuments,
   listAttachments,
   listScheduleBaselines,
+  listLookAheadPlans,
   searchProjectDocuments,
   getDrawingRegister,
   listDrawingIssues,
@@ -279,6 +286,12 @@ describe("App integration (hooks wiring)", () => {
     listScheduleBaselines.mockResolvedValue({
       baselines: [],
       comparison_baseline_id: null,
+      total: 0,
+      limit: 100,
+      offset: 0,
+    });
+    listLookAheadPlans.mockResolvedValue({
+      plans: [],
       total: 0,
       limit: 100,
       offset: 0,
@@ -458,6 +471,7 @@ describe("App integration (hooks wiring)", () => {
     expect(fetchSubmittals).not.toHaveBeenCalled();
     expect(fetchPunchItems).not.toHaveBeenCalled();
     expect(listAttachments).not.toHaveBeenCalled();
+    expect(listLookAheadPlans).not.toHaveBeenCalled();
   });
 
   it("loads project documents only from the selected project settings", async () => {
@@ -2685,6 +2699,7 @@ describe("App integration (hooks wiring)", () => {
     expect(fetchScheduleSettings).toHaveBeenCalledTimes(1);
     expect(listScheduleBaselines).toHaveBeenCalledTimes(1);
     expect(fetchScheduleVariance).toHaveBeenCalledTimes(1);
+    expect(listLookAheadPlans).toHaveBeenCalledTimes(1);
   });
 
   it("clears schedule data and settings while switching projects", async () => {

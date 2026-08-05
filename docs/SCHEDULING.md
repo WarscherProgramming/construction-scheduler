@@ -3,16 +3,16 @@
 This document defines the deterministic scheduling contract established in
 M17.1, immutable baselines and variance from M17.2, progress and Data Date
 semantics from M17.3, and milestones, constraints, and advanced dependencies
-from M17.4. It describes shipped behavior only; look-ahead planning, resource
-loading, and configurable calendars are not implemented.
+from M17.4, plus live Look-Ahead Planning from M17.5. It describes shipped
+behavior only; resource loading and configurable calendars are not implemented.
 
 ## Architecture
 
 ```text
-SchedulerPage / useScheduleActions + useScheduleBaselines
+SchedulerPage / useScheduleActions + useScheduleBaselines + useLookAheadPlans
         |
         v
-project-scoped task, settings, baseline, and variance APIs
+project-scoped task, settings, baseline, variance, and look-ahead APIs
         |
         v
 FastAPI routers -> scheduling/validation services
@@ -34,6 +34,8 @@ and deliberate deferrals are documented in
 [`SCHEDULE_BASELINES.md`](SCHEDULE_BASELINES.md).
 The live progress contract is documented in
 [`SCHEDULE_PROGRESS.md`](SCHEDULE_PROGRESS.md).
+The live short-term planning contract is documented in
+[`LOOK_AHEAD_PLANNING.md`](LOOK_AHEAD_PLANNING.md).
 
 ## Schedule Start Anchor
 
@@ -244,6 +246,11 @@ continue to include summary rows for compatibility. PDF export preserves the
 5,000-task cap, safe text handling, bounded temporary-file lifecycle, and
 project ownership checks.
 
+M17.5 adds no dashboard request or metric. Look-ahead data loads only in the
+lazy Schedule route. Look-ahead output uses a print-specific frontend layout;
+the existing PDF endpoint remains the current-schedule export and no second
+server reporting path is introduced.
+
 ## APIs
 
 ```text
@@ -263,6 +270,13 @@ GET    /projects/{project_id}/schedule-baselines/{baseline_id}
 POST   /projects/{project_id}/schedule-baselines/{baseline_id}/archive
 PUT    /projects/{project_id}/schedule-baseline-comparison
 GET    /projects/{project_id}/schedule-variance
+
+POST   /projects/{project_id}/look-ahead-plans
+GET    /projects/{project_id}/look-ahead-plans
+GET    /projects/{project_id}/look-ahead-plans/{plan_id}
+PUT    /projects/{project_id}/look-ahead-plans/{plan_id}
+POST   /projects/{project_id}/look-ahead-plans/{plan_id}/archive
+PUT    /projects/{project_id}/look-ahead-plans/{plan_id}/items/{task_id}
 ```
 
 The settings request accepts only:
@@ -304,8 +318,15 @@ use explicit direction text, and the semantic desktop table becomes labeled
 stacked records on narrow screens. Project switching aborts and rejects stale
 baseline work and remounts local scheduler state. Automated component and
 integration coverage verifies these behaviors. Browser checks at 320, 375,
-768, and 1024 pixels, wide desktop, and 200% zoom were not performed in M17.4
+768, and 1024 pixels, wide desktop, and 200% zoom were not performed in M17.5
 and remain manual release verification.
+
+Look-Ahead Planning is the third Schedule mode. Its focused hook clears state
+on project and plan changes, aborts supported requests, rejects stale results,
+deduplicates mutations, and reuses the canonical task collection and existing
+progress/planning dialogs. Create and item dialogs trap and restore focus,
+support Escape, and expose textual readiness, blocker, commitment, schedule,
+and attention states. Archived plans are read-only.
 
 ## Scale Budgets
 
@@ -344,6 +365,20 @@ FS/SS/FF/SF, signed lag, periodic milestones, and dated lower constraints:
 | 500 | 20.99 ms |
 | 2,000 | 86.04 ms |
 
+M17.5 local SQLite/TestClient detail probes on August 4, 2026 measured live
+task loading, inclusion, weekly grouping, response serialization, and a
+metadata update followed by detail refresh:
+
+| Tasks | SELECTs | Detail | Response | Metadata update |
+|---:|---:|---:|---:|---:|
+| 100 | 7 | 16.48 ms | 88,110 bytes | 18.63 ms |
+| 500 | 7 | 37.09 ms | 438,526 bytes | 41.44 ms |
+| 2,000 | 10 | 163.52 ms | 1,756,534 bytes | 152.89 ms |
+
+The 2,000-task SELECT count reflects bounded select-in batches, not N+1
+loading. These are local regression figures, not PostgreSQL, network, print,
+or browser-render claims.
+
 - 100 tasks: normal interaction target.
 - 500 tasks: supported backend/API schedule size.
 - 2,000 tasks: backend correctness and reorder-request maximum; browser
@@ -373,6 +408,13 @@ and predecessor lookups. One data-preserving migration backfills every legacy
 live, template, and baseline predecessor while retaining the compatibility
 columns.
 
+M17.5 adds project-owned plan headers and sparse task-metadata rows. Database
+checks bound status, readiness, window duration, and mutually exclusive manual
+flags. Project/name and plan/task uniqueness are enforced. Plans cascade with
+projects, item rows cascade with plans, and optional project-company deletion
+sets the assignment to null. Task IDs intentionally remain non-FK historical
+references so deleted task metadata remains factual and unavailable.
+
 Indexes support the canonical project/order query and project-scoped
 predecessor and parent validation:
 
@@ -388,14 +430,16 @@ and index deterministic order, parent, and predecessor lookups.
 
 ## Verification and Limits
 
-M17.4 verification passes 525 frontend tests across 75 files and 372 backend
-tests, with 376 backend subtests reported separately. PostgreSQL and SQLite
+M17.5 verification passes 536 frontend tests across 78 files and 384 backend
+tests, with 393 backend subtests reported separately. PostgreSQL and SQLite
 migration upgrade/downgrade/re-upgrade paths use Alembic revision
-`d4e8a1c7f925`.
+`e6b4c9a2d715`.
 
 Known limitations and deferred M17 work:
 
-- no look-ahead planning, resources, or crews;
+- look-ahead plans remain live operational views, not immutable snapshots;
+- no look-ahead publish state, commitment audit, dashboard metric, or server PDF;
+- no resources or crews;
 - no progress history, earned value, or strict transition graph;
 - no configurable project calendars or timezones;
 - summary duration remains direct-child count;

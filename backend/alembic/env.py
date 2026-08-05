@@ -31,6 +31,7 @@ from app.models.drawing import (  # noqa: F401
 from app.models.entity_relationship import EntityRelationship  # noqa: F401
 from app.models.folder import Folder  # noqa: F401
 from app.models.inspection import Inspection  # noqa: F401
+from app.models.look_ahead import LookAheadItem, LookAheadPlan  # noqa: F401
 from app.models.note_delay import NoteDelay  # noqa: F401
 from app.models.project import Project  # noqa: F401
 from app.models.project_schedule_settings import (  # noqa: F401

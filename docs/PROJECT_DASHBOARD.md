@@ -231,11 +231,12 @@ collections. It also makes no Document Explorer, drawing, relationship-list,
 or relationship-candidate request. There is no dashboard polling, hover
 prefetch, or background refresh. M16.7 reconfirms that extraction status,
 reprocess, project content search, and every other M16 workflow remain absent
-from dashboard loading.
+from dashboard loading. M17.5 likewise adds no look-ahead plan list, detail,
+candidate, metadata, or print request to dashboard loading.
 
 ## Testing
 
-The frontend suite currently passes 525 tests across 75 files. Dashboard
+The frontend suite currently passes 536 tests across 78 files. Dashboard
 coverage includes:
 
 - API URL and required `as_of` behavior
@@ -251,7 +252,7 @@ coverage includes:
 - Attention Required, Upcoming Schedule, Workflow Analytics, and Recent
   Updates rendering
 
-The backend suite currently passes 372 primary tests, with 376 subtests
+The backend suite currently passes 384 primary tests, with 393 subtests
 reported separately. `test_dashboard_api.py` covers authentication, ownership,
 query validation, aggregate definitions, bounded ordering, aware timestamps,
 legacy statuses, and query behavior.
@@ -259,7 +260,7 @@ legacy statuses, and query behavior.
 ## Performance
 
 Production builds were measured directly at each M14 commit and again through
-M17.4 with the installed Vite toolchain:
+M17.5 with the installed Vite toolchain:
 
 | Phase | Dashboard raw/gzip | Main raw/gzip | CSS raw/gzip |
 |---|---:|---:|---:|
@@ -275,6 +276,7 @@ M17.4 with the installed Vite toolchain:
 | M17.2 | 21.07 / 5.23 kB | 288.19 / 87.65 kB | 80.91 / 14.36 kB |
 | M17.3 | 21.07 / 5.23 kB | 289.84 / 88.09 kB | 85.97 / 15.04 kB |
 | M17.4 | 21.07 / 5.23 kB | 291.27 / 88.49 kB | 88.81 / 15.59 kB |
+| M17.5 | 21.07 / 5.23 kB | 297.51 / 89.63 kB | 94.69 / 16.44 kB |
 
 M14.2 replaced the previous client-derived dashboard and removed obsolete
 dashboard utilities. M14.3 added action lists, M14.4 added workflow analytics
@@ -303,6 +305,11 @@ M17.4 again leaves the dashboard chunk, metrics, and one-request contract
 unchanged. Milestone, constraint, dependency, and Gantt enhancements remain
 inside the lazy Schedule route. That route is 105.53 kB raw / 29.61 kB gzip;
 main grows 1.43 / 0.40 kB and CSS grows 2.84 / 0.55 kB from M17.3.
+M17.5 also leaves the dashboard chunk, metrics, and one-request contract
+unchanged. Look-ahead plans load only on the lazy Schedule route; no plan list,
+detail, task-candidate, or per-item request is made by the dashboard. The lazy
+Scheduler chunk is 129.92 kB raw / 34.56 kB gzip. Main grows 6.24 / 1.14 kB
+and CSS grows 5.88 / 0.85 kB from M17.4.
 
 No chart or date dependency was added, no duplicate shared utility chunk is
 emitted, and the dashboard remains route-level lazy-loaded. M16.5 adds no
@@ -314,9 +321,9 @@ Final automated verification:
 
 | Check | Result |
 |---|---|
-| Frontend tests | Pass: 525 tests across 75 files |
+| Frontend tests | Pass: 536 tests across 78 files |
 | ESLint | Pass: no errors or warnings |
-| Production build | Pass: 147 modules transformed |
+| Production build | Pass: 151 modules transformed |
 | Dashboard bundle budget | Pass: 5.23 kB gzip against a 5.25 kB limit |
 | Aggregate request count | Pass: one dashboard request |
 | Resource, attachment, relationship, extraction, and search requests | Pass: zero on dashboard load |
