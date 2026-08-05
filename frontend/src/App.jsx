@@ -35,6 +35,8 @@ const PAGE_TITLES = {
   projectDrawings: "Drawings",
   drawingViewer: "Drawing Viewer",
   projectDocuments: "Documents",
+  projectDocumentSearch: "Document Search",
+  projectPreconstruction: "Preconstruction",
   projectSettings: "Settings",
 };
 

@@ -98,6 +98,22 @@ vi.mock("./services/api", () => ({
   removeDrawingIssueRevision: vi.fn(),
   issueDrawingIssue: vi.fn(),
   voidDrawingIssue: vi.fn(),
+  listPreconstructionReviewSets: vi.fn(),
+  createPreconstructionReviewSet: vi.fn(),
+  getPreconstructionReviewSet: vi.fn(),
+  updatePreconstructionReviewSet: vi.fn(),
+  archivePreconstructionReviewSet: vi.fn(),
+  listPreconstructionReviewSources: vi.fn(),
+  addPreconstructionReviewSource: vi.fn(),
+  updatePreconstructionReviewSource: vi.fn(),
+  removePreconstructionReviewSource: vi.fn(),
+  listPreconstructionSourceCandidates: vi.fn(),
+  getPreconstructionReadiness: vi.fn(),
+  listPreconstructionRuns: vi.fn(),
+  createPreconstructionRun: vi.fn(),
+  getPreconstructionRun: vi.fn(),
+  cancelPreconstructionRun: vi.fn(),
+  retryPreconstructionRun: vi.fn(),
   reorderTasks: vi.fn(),
   loginUser: vi.fn(),
   registerUser: vi.fn(),
@@ -143,6 +159,7 @@ import {
   listDrawingIssues,
   listDrawingSets,
   listDrawingSetSheets,
+  listPreconstructionReviewSets,
   updateRFI,
   updateScheduleSettings,
   updateTaskProgress,
@@ -351,6 +368,12 @@ describe("App integration (hooks wiring)", () => {
     });
     listDrawingSetSheets.mockResolvedValue({ sheets: [] });
     listDrawingIssues.mockResolvedValue({ issues: [] });
+    listPreconstructionReviewSets.mockResolvedValue({
+      items: [],
+      total: 0,
+      limit: 100,
+      offset: 0,
+    });
     createPunchItem.mockResolvedValue({});
     updatePunchItem.mockResolvedValue({});
     deletePunchItem.mockResolvedValue({ message: "Punch Item deleted" });
@@ -551,6 +574,31 @@ describe("App integration (hooks wiring)", () => {
     expect(searchProjectDocuments).not.toHaveBeenCalled();
     expect(exploreDocuments).not.toHaveBeenCalled();
     expect(listAttachments).not.toHaveBeenCalled();
+  });
+
+  it("lazy-routes to preconstruction without dashboard, binary, or PDF requests", async () => {
+    const user = userEvent.setup();
+    fetchProjects.mockResolvedValue({
+      projects: [{ id: 1, name: "Riverside" }],
+    });
+    renderApp();
+
+    await screen.findByRole("option", { name: "Riverside" });
+    await user.selectOptions(screen.getByLabelText("Project"), "1");
+    await screen.findByRole("heading", { name: "Project Dashboard" });
+    expect(listPreconstructionReviewSets).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "Preconstruction" }));
+
+    expect(window.location.hash).toBe("#/projects/1/preconstruction");
+    expect(
+      await screen.findByRole("heading", { name: "Preconstruction", level: 1 })
+    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(listPreconstructionReviewSets).toHaveBeenCalledTimes(1);
+    });
+    expect(listAttachments).not.toHaveBeenCalled();
+    expect(exploreDocuments).not.toHaveBeenCalled();
+    expect(searchProjectDocuments).not.toHaveBeenCalled();
   });
 
   it("routes to project drawings with one bounded register request", async () => {

@@ -17,6 +17,9 @@ const ProjectDocumentsPage = lazy(
 const ProjectDocumentSearchPage = lazy(
   () => import("./pages/ProjectDocumentSearchPage")
 );
+const ProjectPreconstructionPage = lazy(
+  () => import("./pages/ProjectPreconstructionPage")
+);
 const ProjectDrawingsPage = lazy(
   () => import("./pages/ProjectDrawingsPage")
 );
@@ -434,6 +437,18 @@ function AppRouter({
   if (currentPage === "projectDocumentSearch") {
     return (
       <ProjectDocumentSearchPage
+        key={selectedProjectId}
+        projectId={selectedProjectId}
+        projectName={projectName}
+        {...navProps}
+        onRequestError={onAttachmentError}
+      />
+    );
+  }
+
+  if (currentPage === "projectPreconstruction") {
+    return (
+      <ProjectPreconstructionPage
         key={selectedProjectId}
         projectId={selectedProjectId}
         projectName={projectName}

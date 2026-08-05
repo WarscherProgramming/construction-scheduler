@@ -252,3 +252,10 @@ remains unavailable. Inspection and delay-note resolvers were deferred to
 keep the initial matrix focused. Permanent-purge cleanup, drawing comparison,
 annotations, markups, and relationship analytics are also deferred; none is
 implied by the current explicit-link workflow.
+
+## Preconstruction Independence
+
+M18.1 Review Sources and immutable run manifests are analysis inputs, not
+construction-record relationships. They do not create, infer, or mutate
+`EntityRelationship` rows. Existing human-created links remain authoritative,
+and automatic relationship generation remains deferred.

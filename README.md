@@ -11,7 +11,7 @@ and Punch Lists) with their supporting documents.
 ![React 19](https://img.shields.io/badge/React-19-61dafb?logo=react&logoColor=white&labelColor=20232a)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.1x-009688?logo=fastapi&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169e1?logo=postgresql&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-971%20passing-2ea44f)
+![Tests](https://img.shields.io/badge/tests-1009%20passing-2ea44f)
 ![Vite](https://img.shields.io/badge/Vite-8-646cff?logo=vite&logoColor=white)
 
 ![FieldFlow executive dashboard](docs/screenshots/dashboard.png)
@@ -152,6 +152,12 @@ question — *"what needs my attention today?"* — has a one-screen answer.
   Orders, and Daily Logs; controlled direction and reverse labels, bounded
   candidate search, retained unavailable-record context, and lazy per-record
   panels without table-row or dashboard request fan-out.
+- **Provider-neutral AI preconstruction foundation** with project-owned review
+  sets, controlled document roles, checksum- and extraction-pinned immutable
+  manifests, deterministic readiness, durable leased analysis attempts, and a
+  lazy review workspace. Production defaults to a disabled provider; M18.1
+  performs no scope extraction, omission detection, finding generation, or
+  live AI call.
 - **Accessible design system**: tokens, reusable UI primitives (Button, Card,
   Sidebar, PageHeader, Icon, ConfirmDialog, Skeleton), skip links, focus
   management, `aria-current` navigation, and screen-reader-labeled loading
@@ -161,9 +167,9 @@ question — *"what needs my attention today?"* — has a one-screen answer.
 - **Client-side onboarding**: first-run detection seeds a realistic demo
   project through the public API with visible progress — the app is never
   empty.
-- **Automated testing: 971 tests** — 567 frontend across 86 files (Vitest +
-  React Testing Library, behavior- and accessibility-focused) and 404 backend
-  tests plus 407 separately reported subtests (pytest,
+- **Automated testing: 1,009 tests** — 582 frontend across 89 files (Vitest +
+  React Testing Library, behavior- and accessibility-focused) and 427 backend
+  tests plus 415 separately reported subtests (pytest,
   covering the scheduling engine, critical path, services, migrations, CORS,
   and TestClient API integration).
 
@@ -559,15 +565,15 @@ job. FieldFlow does not include a built-in worker or scheduler, and
 | Backend | FastAPI, SQLAlchemy, Alembic, Pydantic |
 | Database | PostgreSQL |
 | Auth | Memory-only access JWT + rotating opaque refresh sessions |
-| Testing | Vitest + React Testing Library (567), pytest (404) |
+| Testing | Vitest + React Testing Library (582), pytest (427) |
 | Hosting | Vercel (frontend) · Render (API + migrations + finite extraction cron) |
 
 ## Testing
 
-**971 primary automated tests passed.** Backend subtests are reported
+**1,009 primary automated tests passed.** Backend subtests are reported
 separately rather than added to that total.
 
-- **Frontend (567 across 86 files)** — Vitest + React Testing Library. Tests
+- **Frontend (582 across 89 files)** — Vitest + React Testing Library. Tests
   target behavior and accessibility: roles and names, keyboard flows
   (Enter/Escape editing,
   grid cursor navigation, focus traps), aggregate dashboard rendering,
@@ -609,8 +615,11 @@ separately rather than added to that total.
   presentation. Resource-planning coverage adds crew and equipment CRUD,
   availability overrides, assignment flows, bounded loading filters,
   utilization and conflict text, stale-response rejection, and scheduler and
-  look-ahead integration.
-- **Backend (404, plus 407 separately reported subtests)** — pytest. Covers the deterministic
+  look-ahead integration. Preconstruction coverage adds API encoding, lazy
+  routing, review/source/run lifecycle controls, deterministic readiness,
+  stale project and review rejection, keyboard source selection, and explicit
+  no-binary/no-dashboard request assertions.
+- **Backend (427, plus 415 separately reported subtests)** — pytest. Covers the deterministic
   workday scheduling engine (persistent anchors, all four dependency types,
   multiple predecessors, signed lead/lag, milestones, constraints,
   summary predecessors, hierarchy ordering, federal holidays), critical path
@@ -650,7 +659,10 @@ separately rather than added to that total.
   includes ownership, strict schemas, live inclusion, weekly grouping,
   readiness and blocker metadata, company validation, manual overrides,
   archive behavior, migration lifecycle, bounded queries, and 100/500/2,000
-  task scale cases.
+  task scale cases. Preconstruction coverage adds the two-user ownership
+  matrix, source/extraction snapshots, immutable manifests, provider contract
+  validation, leased retries and recovery, migration lifecycle, safe response
+  fields, and 10/100/250-source probes.
 
 ```bash
 # frontend
@@ -857,6 +869,10 @@ commit production credentials.
 - ✅ M17.7 bounded, explainable schedule health, executive summary and PDF,
   single-request dashboard integration, fifth Scheduler summary mode,
   large-response hardening, operations/QA guides, and M17 release closeout
+- ✅ M18.1 provider-neutral AI preconstruction foundation with project-owned
+  review sets, controlled source roles, deterministic readiness, immutable
+  checksum/extraction manifests, durable leased attempts, disabled/fake
+  provider contracts, and a lazy review workspace with no live AI calls
 - ✅ Branded landing page and first-run demo seeding
 - ✅ Icon system, confirmation dialogs, notifications, loading skeletons
 - ✅ Scheduler showcase: WBS numbering, inline validation, critical path +
@@ -881,6 +897,9 @@ commit production credentials.
 - Direct multipart browser uploads and bucket-wide orphan scanning
 - A built-in background worker and cleanup-job administration interface
 - Project and Daily Log parent-deletion workflows
+- M18.2 construction scope taxonomy, evidence identity, and human-reviewed
+  scope assertions; omission findings and provider integrations require later
+  separately reviewed milestones
 
 ## Author
 

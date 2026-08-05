@@ -11,6 +11,7 @@ const PAGE_SEGMENTS = {
   projectDrawings: "drawings",
   projectDocuments: "documents",
   projectDocumentSearch: "search",
+  projectPreconstruction: "preconstruction",
   projectSettings: "settings",
 };
 

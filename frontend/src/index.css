@@ -4014,6 +4014,241 @@ button:disabled {
   }
 }
 
+/* Preconstruction review workspace */
+.preconstruction-workspace {
+  display: grid;
+  grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
+  gap: var(--space-5);
+  align-items: start;
+}
+
+.preconstruction-review-sets,
+.preconstruction-detail,
+.preconstruction-panel {
+  min-width: 0;
+}
+
+.preconstruction-review-sets {
+  position: sticky;
+  top: var(--space-4);
+  padding-right: var(--space-4);
+  border-right: 1px solid var(--border);
+}
+
+.preconstruction-section-heading,
+.preconstruction-detail-header,
+.preconstruction-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.preconstruction-section-heading h2,
+.preconstruction-section-heading h3,
+.preconstruction-detail-header h2,
+.preconstruction-section-heading p,
+.preconstruction-detail-header p {
+  margin: 0;
+}
+
+.preconstruction-section-heading p,
+.preconstruction-detail-header > div > p,
+.preconstruction-review-set-list small,
+.preconstruction-source-main span,
+.preconstruction-run-list span {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.preconstruction-review-set-list,
+.preconstruction-source-list,
+.preconstruction-run-list,
+.preconstruction-candidate-list {
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.preconstruction-review-set-list button,
+.preconstruction-candidate-list button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 48px;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: inherit;
+  text-align: left;
+}
+
+.preconstruction-review-set-list button:hover,
+.preconstruction-review-set-list button.is-selected,
+.preconstruction-candidate-list button:hover:not(:disabled) {
+  border-color: var(--primary);
+  background: var(--surface-muted);
+}
+
+.preconstruction-review-set-list button span,
+.preconstruction-candidate-list button span,
+.preconstruction-source-main,
+.preconstruction-run-list > li > div:first-child {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.preconstruction-review-set-list strong,
+.preconstruction-candidate-list strong,
+.preconstruction-source-main button {
+  overflow-wrap: anywhere;
+}
+
+.preconstruction-detail {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.preconstruction-detail-header {
+  align-items: flex-start;
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+
+.preconstruction-panel {
+  padding-top: var(--space-2);
+}
+
+.preconstruction-source-list > li,
+.preconstruction-run-list > li {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) auto auto auto;
+  gap: var(--space-3);
+  align-items: center;
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.preconstruction-source-main button {
+  width: fit-content;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--primary);
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+}
+
+.preconstruction-readiness {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-muted);
+}
+
+.preconstruction-readiness__status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.preconstruction-readiness dl {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.preconstruction-readiness dl > div {
+  padding: var(--space-2);
+  border-left: 3px solid var(--border-strong);
+}
+
+.preconstruction-readiness dt {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.preconstruction-readiness dd {
+  margin: 2px 0 0;
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.preconstruction-dialog-form {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.preconstruction-source-search {
+  display: grid;
+  grid-template-columns: minmax(130px, 0.45fr) minmax(220px, 1fr) auto;
+  gap: var(--space-3);
+  align-items: end;
+}
+
+.preconstruction-candidate-list {
+  max-height: 280px;
+  overflow-y: auto;
+  margin-bottom: var(--space-4);
+}
+
+.preconstruction-form-error,
+.preconstruction-local-error {
+  color: var(--danger);
+}
+
+.preconstruction-local-error {
+  padding: var(--space-4) 0;
+}
+
+@media (max-width: 900px) {
+  .preconstruction-workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .preconstruction-review-sets {
+    position: static;
+    padding: 0 0 var(--space-4);
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+}
+
+@media (max-width: 600px) {
+  .preconstruction-detail-header,
+  .preconstruction-section-heading,
+  .preconstruction-actions,
+  .preconstruction-readiness__status {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .preconstruction-source-list > li,
+  .preconstruction-run-list > li,
+  .preconstruction-source-search,
+  .preconstruction-readiness dl {
+    grid-template-columns: 1fr;
+  }
+
+  .preconstruction-actions .button,
+  .preconstruction-section-heading > .button {
+    width: 100%;
+  }
+}
+
 .schedule-summary-view {
   display: grid;
   gap: 1.25rem;

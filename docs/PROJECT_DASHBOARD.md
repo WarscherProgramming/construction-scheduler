@@ -399,3 +399,11 @@ The following work is intentionally outside M14:
 - audit history and portfolio-level analytics
 
 These are future possibilities, not committed scope.
+
+## M18.1 Boundary
+
+The Preconstruction workspace is route-level lazy and intentionally absent
+from the dashboard aggregate, health formula, actions, and recent updates.
+Dashboard load makes no review-set, source, readiness, candidate, run,
+provider, binary, or PDF-worker request. Analysis remains a deliberate human
+action inside `#/projects/{project_id}/preconstruction`.

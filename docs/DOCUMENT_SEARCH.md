@@ -324,3 +324,12 @@ and OCR-provider verification remain operational follow-up rather than
 automated claims. Recovery steps are in
 [`DOCUMENT_OPERATIONS.md`](DOCUMENT_OPERATIONS.md), and the unexecuted live
 matrix remains checkable in [`DOCUMENT_QA.md`](DOCUMENT_QA.md).
+
+## Preconstruction Extraction Lineage
+
+M18.1 readiness reuses the current `DocumentExtraction` status, searchable
+flag, extractor version, and source checksum. Run manifests pin that lineage
+without storing page text or `DocumentPageText` row IDs. The provider contract
+receives source descriptors only; no extracted content is retrieved in this
+phase. Lexical search remains authoritative and separate. Semantic search,
+embeddings, scope extraction, and AI findings remain deferred.

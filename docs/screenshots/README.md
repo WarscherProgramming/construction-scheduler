@@ -199,3 +199,26 @@ Use the exact filenames above where defined; do not add placeholders.
   do not imply an opaque score, earned value, cost loading, resource leveling,
   exact-task dashboard deep links, or production verification. No screenshot
   image is created or replaced by M17.7.
+
+## AI preconstruction captures
+
+M18.1 creates no screenshot files. Use synthetic filenames, sheet metadata,
+and review purposes; do not show real document content, storage metadata,
+provider credentials, prompts, or imply that findings or scope analysis ship.
+
+| File | State to capture | Viewport | Required evidence |
+|---|---|---|---|
+| `preconstruction-empty.png` | No active review sets | 1440x900 | Navigation, one H1, and factual empty state |
+| `preconstruction-review-sets.png` | Active and archived review-set list | 1440x900 | Purpose and textual lifecycle status |
+| `preconstruction-create.png` | Create Review Set dialog | 1440x900 | Name, controlled purpose, description, focus-managed dialog |
+| `preconstruction-sources.png` | Selected draft with mixed sources | 1440x900 | Document/drawing names, roles, categories, extraction status |
+| `preconstruction-add-source.png` | Bounded source candidate search | 1440x900 | Type, metadata search, current/superseded state, role selector |
+| `preconstruction-readiness.png` | Not-ready review | 1440x900 | Textual blockers, warnings, counts, provider-disabled state |
+| `preconstruction-pending-run.png` | Pending deterministic test run | 1440x900 | Safe run status and attempt count, no provider payload |
+| `preconstruction-failed-run.png` | Eligible failed run | 1440x900 | Safe failure message and identified retry action |
+| `preconstruction-archived.png` | Archived review set | 1440x900 | Read-only sources and retained run history |
+| `preconstruction-mobile.png` | Selected review at narrow width | 390x844 | Wrapped names, role/status context, reachable actions |
+
+The pending/failed test-provider captures are development evidence only and
+must be labeled as deterministic fake-provider states. Production-disabled
+readiness is the honest release state for M18.1.

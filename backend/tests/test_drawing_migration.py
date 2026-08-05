@@ -13,7 +13,7 @@ from sqlalchemy import create_engine, inspect
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 DOCUMENT_FOUNDATION_REVISION = "a6d3e9f1b742"
 DRAWING_MANAGEMENT_REVISION = "b7e4f2a9c631"
-CURRENT_REVISION = "f7c5d0b3e826"
+CURRENT_REVISION = "a8f4c2d6e190"
 MEMBERSHIP_UNIQUE_NAME = "uq_drawing_issue_revisions_membership"
 
 
@@ -92,7 +92,11 @@ class DrawingMigrationTests(unittest.TestCase):
                 'crews',
                 'equipment_resources',
                 'task_resource_assignments',
-                'resource_availability'
+                'resource_availability',
+                'preconstruction_review_sets',
+                'preconstruction_review_sources',
+                'preconstruction_analysis_runs',
+                'preconstruction_analysis_attempts'
             )
               AND name NOT LIKE 'sqlite_%'
             ORDER BY type, name

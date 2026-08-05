@@ -1142,3 +1142,156 @@ export function listRelationshipCandidates(
     { signal: options.signal }
   );
 }
+
+function preconstructionPath(projectId, suffix = "") {
+  return `/projects/${encodeURIComponent(String(projectId))}/preconstruction${suffix}`;
+}
+
+function preconstructionQuery(values) {
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(values)) {
+    if (value !== undefined && value !== null && value !== "") {
+      query.set(key, String(value));
+    }
+  }
+  return query.size ? `?${query.toString()}` : "";
+}
+
+export function listPreconstructionReviewSets(projectId, options = {}) {
+  return authenticatedRequest(
+    preconstructionPath(
+      projectId,
+      `/review-sets${preconstructionQuery({
+        state: options.state,
+        limit: options.limit,
+        offset: options.offset,
+      })}`
+    ),
+    { signal: options.signal }
+  );
+}
+
+export function createPreconstructionReviewSet(projectId, reviewSet, options = {}) {
+  return authenticatedRequest(preconstructionPath(projectId, "/review-sets"), {
+    method: "POST",
+    body: JSON.stringify(reviewSet),
+    signal: options.signal,
+  });
+}
+
+export function getPreconstructionReviewSet(projectId, reviewSetId, options = {}) {
+  return authenticatedRequest(
+    preconstructionPath(projectId, `/review-sets/${encodeURIComponent(String(reviewSetId))}`),
+    { signal: options.signal }
+  );
+}
+
+export function updatePreconstructionReviewSet(projectId, reviewSetId, reviewSet, options = {}) {
+  return authenticatedRequest(
+    preconstructionPath(projectId, `/review-sets/${encodeURIComponent(String(reviewSetId))}`),
+    { method: "PUT", body: JSON.stringify(reviewSet), signal: options.signal }
+  );
+}
+
+export function archivePreconstructionReviewSet(projectId, reviewSetId, options = {}) {
+  return authenticatedRequest(
+    preconstructionPath(projectId, `/review-sets/${encodeURIComponent(String(reviewSetId))}/archive`),
+    { method: "POST", signal: options.signal }
+  );
+}
+
+export function listPreconstructionReviewSources(projectId, reviewSetId, options = {}) {
+  return authenticatedRequest(
+    preconstructionPath(projectId, `/review-sets/${encodeURIComponent(String(reviewSetId))}/sources`),
+    { signal: options.signal }
+  );
+}
+
+export function addPreconstructionReviewSource(projectId, reviewSetId, source, options = {}) {
+  return authenticatedRequest(
+    preconstructionPath(projectId, `/review-sets/${encodeURIComponent(String(reviewSetId))}/sources`),
+    { method: "POST", body: JSON.stringify(source), signal: options.signal }
+  );
+}
+
+export function updatePreconstructionReviewSource(projectId, reviewSetId, sourceId, source, options = {}) {
+  return authenticatedRequest(
+    preconstructionPath(
+      projectId,
+      `/review-sets/${encodeURIComponent(String(reviewSetId))}/sources/${encodeURIComponent(String(sourceId))}`
+    ),
+    { method: "PUT", body: JSON.stringify(source), signal: options.signal }
+  );
+}
+
+export function removePreconstructionReviewSource(projectId, reviewSetId, sourceId, options = {}) {
+  return authenticatedRequest(
+    preconstructionPath(
+      projectId,
+      `/review-sets/${encodeURIComponent(String(reviewSetId))}/sources/${encodeURIComponent(String(sourceId))}`
+    ),
+    { method: "DELETE", signal: options.signal }
+  );
+}
+
+export function listPreconstructionSourceCandidates(projectId, options = {}) {
+  return authenticatedRequest(
+    preconstructionPath(
+      projectId,
+      `/source-candidates${preconstructionQuery({
+        source_type: options.sourceType,
+        search: options.search,
+        limit: options.limit,
+      })}`
+    ),
+    { signal: options.signal }
+  );
+}
+
+export function getPreconstructionReadiness(projectId, reviewSetId, options = {}) {
+  return authenticatedRequest(
+    preconstructionPath(projectId, `/review-sets/${encodeURIComponent(String(reviewSetId))}/readiness`),
+    { signal: options.signal }
+  );
+}
+
+export function listPreconstructionRuns(projectId, reviewSetId, options = {}) {
+  return authenticatedRequest(
+    preconstructionPath(
+      projectId,
+      `/review-sets/${encodeURIComponent(String(reviewSetId))}/runs${preconstructionQuery({
+        limit: options.limit,
+        offset: options.offset,
+      })}`
+    ),
+    { signal: options.signal }
+  );
+}
+
+export function createPreconstructionRun(projectId, reviewSetId, run, options = {}) {
+  return authenticatedRequest(
+    preconstructionPath(projectId, `/review-sets/${encodeURIComponent(String(reviewSetId))}/runs`),
+    { method: "POST", body: JSON.stringify(run), signal: options.signal }
+  );
+}
+
+export function getPreconstructionRun(projectId, runId, options = {}) {
+  return authenticatedRequest(
+    preconstructionPath(projectId, `/runs/${encodeURIComponent(String(runId))}`),
+    { signal: options.signal }
+  );
+}
+
+export function cancelPreconstructionRun(projectId, runId, options = {}) {
+  return authenticatedRequest(
+    preconstructionPath(projectId, `/runs/${encodeURIComponent(String(runId))}/cancel`),
+    { method: "POST", signal: options.signal }
+  );
+}
+
+export function retryPreconstructionRun(projectId, runId, options = {}) {
+  return authenticatedRequest(
+    preconstructionPath(projectId, `/runs/${encodeURIComponent(String(runId))}/retry`),
+    { method: "POST", signal: options.signal }
+  );
+}

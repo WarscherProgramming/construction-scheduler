@@ -325,3 +325,12 @@ delivery, explorer thumbnails, bulk operations, PDF annotation/comparison,
 a deployable production OCR provider, AI indexing, automatic relationship
 suggestions, relationship graph visualization, permanent relationship purge
 cleanup, and antivirus implementation remain deferred.
+
+## Preconstruction Boundary
+
+M18.1 Review Sources store only Document IDs, Drawing Revision IDs, checksum
+and extraction snapshots, safe display metadata, and controlled roles. They
+never copy binaries, storage providers, buckets, keys, download URLs, or
+credentials. The analysis worker does not open object storage. Future content
+retrieval must continue through authorized services and must not alter the
+immutable source Document or stored run manifest.

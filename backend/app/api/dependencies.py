@@ -7,8 +7,10 @@ from sqlalchemy.orm import Session
 from app.core.config import (
     ATTACHMENT_CONFIG,
     DOCUMENT_EXTRACTION_CONFIG,
+    PRECONSTRUCTION_AI_CONFIG,
     AttachmentConfig,
     DocumentExtractionConfig,
+    PreconstructionAIConfig,
 )
 from app.core.security import get_current_user
 from app.db.database import get_db
@@ -68,6 +70,10 @@ def get_attachment_config() -> AttachmentConfig:
 
 def get_document_extraction_config() -> DocumentExtractionConfig:
     return DOCUMENT_EXTRACTION_CONFIG
+
+
+def get_preconstruction_config() -> PreconstructionAIConfig:
+    return PRECONSTRUCTION_AI_CONFIG
 
 
 def get_attachment_storage(

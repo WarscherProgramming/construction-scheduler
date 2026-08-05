@@ -177,6 +177,15 @@ backend subtests. Manual browser, responsive, large-fixture, and source-PDF
 security checks remain explicitly unverified in the command-only
 environment.
 
+## Preconstruction Review Sources
+
+M18.1 can select current or retained superseded Drawing Revisions as explicit
+Review Sources. Resolution validates the owned revision and its exact backing
+Document, then snapshots sheet number, revision code, display name, checksum,
+and extraction lineage. It does not create revisions, change current status,
+alter issues, inspect PDF bytes, or infer document roles. The Drawing Register
+and revision history remain authoritative.
+
 The M16.6 build keeps the viewer lazy at 450.07 kB raw / 133.87 kB gzip and
 the PDF worker unchanged at 1,262.39 kB raw / 374.85 kB gzip. The separate
 project document-search route is 9.91 kB raw / 2.84 kB gzip. Relative to

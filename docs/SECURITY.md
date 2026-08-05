@@ -793,3 +793,22 @@ production temporary-directory behavior remain Not Verified.
 
 Do not treat these items as implicit scope for the next milestone. Each
 requires a separate product and operational decision.
+
+## M18.1 AI Preconstruction Security Boundary
+
+Preconstruction routes authenticate and resolve `get_owned_project` before
+review sets, sources, candidates, readiness, or runs. Source resolution is an
+exact `document`/`drawing_revision` allowlist and revalidates the backing
+Document's project, active state, checksum, and extraction lineage. Strict
+schemas reject lifecycle, audit, result, and unknown client fields.
+
+Production defaults to a disabled provider and rejects the deterministic fake
+provider. The provider DTO has no database, storage, ownership, binary, page
+text, URL, or credential access. Manifests omit content and storage metadata;
+responses omit manifest JSON, prompts, raw provider output, exceptions, lease
+tokens, and hidden reasoning. Results are treated as untrusted, strictly
+validated, and byte-bounded. No document content reaches a provider in M18.1,
+so malicious-document instructions cannot cross the provider boundary. Future
+retrieval must preserve that content-as-untrusted-data rule and mandatory human
+approval. See `AI_PRECONSTRUCTION.md` and
+`AI_PRECONSTRUCTION_OPERATIONS.md`.

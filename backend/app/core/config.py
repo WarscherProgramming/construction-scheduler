@@ -306,6 +306,24 @@ class DocumentExtractionConfig:
     reprocess_rate_window_seconds: int
 
 
+@dataclass(frozen=True)
+class PreconstructionAIConfig:
+    enabled: bool
+    provider: str
+    model: str
+    max_attempts: int
+    lease_seconds: int
+    batch_size: int
+    max_sources_per_review: int
+    max_manifest_bytes: int
+    max_result_bytes: int
+    retry_base_seconds: int
+    retry_max_seconds: int
+    fake_provider_allowed: bool
+    template_version: str
+    schema_version: str
+
+
 _default_attachment_root = (
     Path(__file__).resolve().parents[2] / ".attachment_storage"
 )
@@ -566,6 +584,69 @@ if (
         "DOCUMENT_EXTRACTION_RETRY_BASE_SECONDS cannot exceed "
         "DOCUMENT_EXTRACTION_RETRY_MAX_SECONDS"
     )
+
+_preconstruction_provider = os.getenv(
+    "PRECONSTRUCTION_AI_PROVIDER",
+    "disabled",
+).strip().lower()
+if _preconstruction_provider not in {"disabled", "fake_test"}:
+    raise RuntimeError(
+        "PRECONSTRUCTION_AI_PROVIDER must be disabled or fake_test"
+    )
+
+PRECONSTRUCTION_AI_CONFIG = PreconstructionAIConfig(
+    enabled=boolean_environment_variable("PRECONSTRUCTION_AI_ENABLED", False),
+    provider=_preconstruction_provider,
+    model=os.getenv("PRECONSTRUCTION_AI_MODEL", "disabled").strip(),
+    max_attempts=positive_integer_environment_variable(
+        "PRECONSTRUCTION_AI_MAX_ATTEMPTS", 3, maximum=10
+    ),
+    lease_seconds=positive_integer_environment_variable(
+        "PRECONSTRUCTION_AI_LEASE_SECONDS", 300, maximum=86_400
+    ),
+    batch_size=positive_integer_environment_variable(
+        "PRECONSTRUCTION_AI_BATCH_SIZE", 5, maximum=100
+    ),
+    max_sources_per_review=positive_integer_environment_variable(
+        "PRECONSTRUCTION_AI_MAX_SOURCES_PER_REVIEW", 250, maximum=1_000
+    ),
+    max_manifest_bytes=positive_integer_environment_variable(
+        "PRECONSTRUCTION_AI_MAX_MANIFEST_BYTES", 262_144, maximum=5_242_880
+    ),
+    max_result_bytes=positive_integer_environment_variable(
+        "PRECONSTRUCTION_AI_MAX_RESULT_BYTES", 32_768, maximum=1_048_576
+    ),
+    retry_base_seconds=positive_integer_environment_variable(
+        "PRECONSTRUCTION_AI_RETRY_BASE_SECONDS", 30, maximum=86_400
+    ),
+    retry_max_seconds=positive_integer_environment_variable(
+        "PRECONSTRUCTION_AI_RETRY_MAX_SECONDS", 3_600, maximum=86_400
+    ),
+    fake_provider_allowed=boolean_environment_variable(
+        "PRECONSTRUCTION_AI_FAKE_PROVIDER_ALLOWED", False
+    ),
+    template_version="preconstruction-foundation-1",
+    schema_version="preconstruction-foundation-1",
+)
+if not PRECONSTRUCTION_AI_CONFIG.model:
+    raise RuntimeError("PRECONSTRUCTION_AI_MODEL cannot be empty")
+if (
+    PRECONSTRUCTION_AI_CONFIG.retry_base_seconds
+    > PRECONSTRUCTION_AI_CONFIG.retry_max_seconds
+):
+    raise RuntimeError(
+        "PRECONSTRUCTION_AI_RETRY_BASE_SECONDS cannot exceed "
+        "PRECONSTRUCTION_AI_RETRY_MAX_SECONDS"
+    )
+if PRECONSTRUCTION_AI_CONFIG.enabled and _preconstruction_provider == "disabled":
+    raise RuntimeError(
+        "PRECONSTRUCTION_AI_ENABLED requires an available configured provider"
+    )
+if APP_ENV == "production" and (
+    _preconstruction_provider == "fake_test"
+    or PRECONSTRUCTION_AI_CONFIG.fake_provider_allowed
+):
+    raise RuntimeError("The fake preconstruction provider is forbidden in production")
 
 MAX_REQUEST_BODY_BYTES = positive_integer_environment_variable(
     "MAX_REQUEST_BODY_BYTES",

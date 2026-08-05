@@ -408,3 +408,18 @@ search remain isolated behind lazy route/component chunks.
 - [M16 Manual QA](DOCUMENT_QA.md)
 - [Security and Production Readiness](SECURITY.md)
 - [Screenshot Checklist](screenshots/README.md)
+- [AI Preconstruction Foundation](AI_PRECONSTRUCTION.md)
+
+## M18.1 Preconstruction Reuse
+
+Preconstruction does not introduce another file or extraction system. Review
+Sources reference owned active Documents or exact Drawing Revisions, snapshot
+their checksum and current extraction lineage, and preserve a bounded
+immutable run manifest. Binary storage, Document versions, drawing history,
+page text, search, and explicit relationships remain authoritative and are not
+mutated. The lazy Preconstruction route adds no explorer-row, relationship,
+search, attachment, PDF-worker, or dashboard request fan-out.
+
+The additive migration chain now ends at `a8f4c2d6e190`, following the M17.6
+resource-planning head `f7c5d0b3e826`. Existing document, drawing, extraction,
+page-text, and relationship tables are unchanged.
