@@ -4,7 +4,7 @@ import {
   parseLocalDateInputValue,
 } from "../utils/date";
 import { getTaskDepthFromList } from "../utils/taskHierarchy";
-import { buildWbsMap } from "../utils/taskReferences";
+import { buildWbsMap, getTaskDependencies } from "../utils/taskReferences";
 import { formatProgressStatus } from "../utils/scheduleProgress";
 
 const MS_PER_DAY = 1000 * 60 * 60 * 24;
@@ -49,6 +49,9 @@ const LEGEND = [
   { swatch: "dependent", label: "Depends on selection" },
   { swatch: "in-progress", label: "In Progress" },
   { swatch: "completed", label: "Completed" },
+  { swatch: "milestone", label: "Milestone" },
+  { swatch: "constraint", label: "Constraint" },
+  { swatch: "dependency", label: "Dependency" },
   { swatch: "data-date", label: "Data Date" },
   { swatch: "today", label: "Today" },
 ];
@@ -110,6 +113,13 @@ function GanttChart({ tasks, selectedTaskId, dataDate }) {
   const endValues = scheduledTasks.map((task) =>
     parseDate(task.end_date).getTime()
   );
+  scheduledTasks.forEach((task) => {
+    const constraintDate = parseDate(task.constraint_date);
+    if (constraintDate) {
+      startValues.push(constraintDate.getTime());
+      endValues.push(constraintDate.getTime());
+    }
+  });
   if (parsedDataDate) {
     startValues.push(parsedDataDate.getTime());
     endValues.push(parsedDataDate.getTime());
@@ -137,23 +147,18 @@ function GanttChart({ tasks, selectedTaskId, dataDate }) {
 
   const isDependent = (task, selectedId) => {
     if (!selectedId) return false;
-
-    let current = task;
+    const pending = [task];
     const visited = new Set();
-
-    while (
-      current.predecessor_task_id &&
-      !visited.has(current.predecessor_task_id)
-    ) {
-      visited.add(current.predecessor_task_id);
-      const predecessorTask = taskMap.get(current.predecessor_task_id);
-
-      if (!predecessorTask) break;
-      if (predecessorTask.id === selectedId) return true;
-
-      current = predecessorTask;
+    while (pending.length) {
+      const current = pending.pop();
+      for (const dependency of getTaskDependencies(current)) {
+        if (dependency.predecessor_task_id === selectedId) return true;
+        if (visited.has(dependency.predecessor_task_id)) continue;
+        visited.add(dependency.predecessor_task_id);
+        const predecessor = taskMap.get(dependency.predecessor_task_id);
+        if (predecessor) pending.push(predecessor);
+      }
     }
-
     return false;
   };
 
@@ -185,6 +190,49 @@ function GanttChart({ tasks, selectedTaskId, dataDate }) {
 
   const timelineBackground = buildTimelineBackground(projectStartDate.getDay());
   const wbsMap = buildWbsMap(tasks);
+  const timelineWidth = totalDays * DAY_WIDTH;
+  const bodyHeight = visibleTasks.length * ROW_HEIGHT;
+  const visibleRowById = new Map(
+    visibleTasks.map((task, index) => [task.id, index])
+  );
+  const dateOffset = (value) =>
+    Math.round((parseDate(value).getTime() - projectStartMs) / MS_PER_DAY);
+  const taskAnchor = (task, point) =>
+    point === "start"
+      ? dateOffset(task.start_date) * DAY_WIDTH + 2
+      : (dateOffset(task.end_date) + 1) * DAY_WIDTH - 2;
+  const dependencyLines = visibleTasks.flatMap((task) => {
+    const successorRow = visibleRowById.get(task.id);
+    return getTaskDependencies(task).flatMap((dependency) => {
+      const predecessor = taskMap.get(dependency.predecessor_task_id);
+      const predecessorRow = visibleRowById.get(dependency.predecessor_task_id);
+      if (!predecessor || predecessorRow == null) return [];
+      const type = dependency.dependency_type || "FS";
+      const x1 = taskAnchor(
+        predecessor,
+        type[0] === "S" ? "start" : "finish"
+      );
+      const x2 = taskAnchor(task, type[1] === "S" ? "start" : "finish");
+      const y1 = predecessorRow * ROW_HEIGHT + ROW_HEIGHT / 2;
+      const y2 = successorRow * ROW_HEIGHT + ROW_HEIGHT / 2;
+      const direction = x2 >= x1 ? 1 : -1;
+      const elbowX = x1 + direction * Math.max(10, Math.abs(x2 - x1) / 2);
+      const lag = Number(dependency.lag_days) || 0;
+      return [
+        {
+          key: `${task.id}:${predecessor.id}`,
+          type,
+          lag,
+          label: `${wbsMap.get(predecessor.id)} ${type}${
+            lag ? ` ${lag > 0 ? "+" : ""}${lag} days` : ""
+          } to ${wbsMap.get(task.id)}`,
+          path: `M ${x1} ${y1} L ${elbowX} ${y1} L ${elbowX} ${y2} L ${x2} ${y2}`,
+          labelX: elbowX + 3,
+          labelY: (y1 + y2) / 2 - 3,
+        },
+      ];
+    });
+  });
 
   return (
     <div className="gantt">
@@ -251,6 +299,15 @@ function GanttChart({ tasks, selectedTaskId, dataDate }) {
                   title={task.name}
                 >
                   {task.name}
+                  {task.is_milestone && (
+                    <>
+                      <span
+                        className="gantt-table__milestone"
+                        aria-hidden="true"
+                      />
+                      <span className="visually-hidden"> Milestone</span>
+                    </>
+                  )}
                 </div>
                 <div className="gantt-table__cell">{task.duration}</div>
                 <div className="gantt-table__cell gantt-table__cell--date">
@@ -317,8 +374,52 @@ function GanttChart({ tasks, selectedTaskId, dataDate }) {
 
             <div
               className="gantt-body"
-              style={{ backgroundImage: timelineBackground }}
+              style={{
+                backgroundImage: timelineBackground,
+                height: bodyHeight,
+              }}
             >
+              {dependencyLines.length > 0 && (
+                <svg
+                  className="gantt-dependencies"
+                  width={timelineWidth}
+                  height={bodyHeight}
+                  viewBox={`0 0 ${timelineWidth} ${bodyHeight}`}
+                  role="img"
+                  aria-label="Schedule dependencies"
+                >
+                  <defs>
+                    <marker
+                      id="gantt-dependency-arrow"
+                      markerWidth="6"
+                      markerHeight="6"
+                      refX="5"
+                      refY="3"
+                      orient="auto"
+                    >
+                      <path d="M0,0 L6,3 L0,6 Z" />
+                    </marker>
+                  </defs>
+                  {dependencyLines.map((line) => (
+                    <g
+                      key={line.key}
+                      className={`gantt-dependency gantt-dependency--${line.type.toLowerCase()}`}
+                    >
+                      <title>{line.label}</title>
+                      <path
+                        d={line.path}
+                        markerEnd="url(#gantt-dependency-arrow)"
+                      />
+                      <text x={line.labelX} y={line.labelY}>
+                        {line.type}
+                        {line.lag
+                          ? `${line.lag > 0 ? "+" : ""}${line.lag}`
+                          : ""}
+                      </text>
+                    </g>
+                  ))}
+                </svg>
+              )}
               {dataDateVisible && (
                 <div
                   className="gantt-data-date-line"
@@ -354,9 +455,17 @@ function GanttChart({ tasks, selectedTaskId, dataDate }) {
                 const isSummary = parentIds.has(task.id);
                 const isCritical = Boolean(task.is_critical);
                 const progressStatus = task.progress_status || "not_started";
+                const isMilestone = Boolean(task.is_milestone);
+                const constraintDate = parseDate(task.constraint_date);
+                const constraintOffset = constraintDate
+                  ? Math.round(
+                      (constraintDate.getTime() - projectStartMs) / MS_PER_DAY
+                    )
+                  : null;
 
                 const barClasses = [
                   "gantt-bar",
+                  isMilestone ? "gantt-bar--milestone" : "",
                   isSummary ? "gantt-bar--summary" : "",
                   isSelected ? "gantt-bar--selected" : "",
                   !isSelected && isCritical ? "gantt-bar--critical" : "",
@@ -380,6 +489,14 @@ function GanttChart({ tasks, selectedTaskId, dataDate }) {
                 )}, ${formatProgressStatus(progressStatus)}, ${
                   task.percent_complete || 0
                 } percent complete${
+                  isMilestone ? ", milestone" : ""
+                }${
+                  task.constraint_type && task.constraint_type !== "ASAP"
+                    ? `, ${task.constraint_type} constraint ${formatDate(
+                        task.constraint_date
+                      )}${task.constraint_violated ? " violated" : ""}`
+                    : ""
+                }${
                   task.out_of_sequence ? ", out of sequence" : ""
                 }${isCritical ? ", on the critical path" : ""}${
                   isSelected
@@ -400,10 +517,36 @@ function GanttChart({ tasks, selectedTaskId, dataDate }) {
                     <div
                       className={barClasses}
                       style={{
-                        left: offsetDays * DAY_WIDTH + 1,
-                        width: durationDays * DAY_WIDTH - 2,
+                        left: isMilestone
+                          ? offsetDays * DAY_WIDTH + DAY_WIDTH / 2 - 7
+                          : offsetDays * DAY_WIDTH + 1,
+                        width: isMilestone
+                          ? 14
+                          : durationDays * DAY_WIDTH - 2,
                       }}
                     />
+                    {constraintOffset != null && (
+                      <div
+                        className={`gantt-constraint-marker${
+                          task.constraint_violated
+                            ? " gantt-constraint-marker--violated"
+                            : ""
+                        }`}
+                        style={{
+                          left:
+                            constraintOffset * DAY_WIDTH + DAY_WIDTH / 2 - 5,
+                        }}
+                        role="img"
+                        aria-label={`${task.constraint_type} constraint for ${
+                          task.name
+                        } on ${formatDate(task.constraint_date)}${
+                          task.constraint_violated ? ", violated" : ""
+                        }`}
+                        title={`${task.constraint_type} ${formatDate(
+                          task.constraint_date
+                        )}`}
+                      />
+                    )}
                   </div>
                 );
               })}

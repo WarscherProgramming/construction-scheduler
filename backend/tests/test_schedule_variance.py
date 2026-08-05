@@ -204,6 +204,51 @@ class ScheduleVarianceApiTests(ApiTestCase):
         self.assertEqual(payload["summary"]["baseline_task_count"], 4)
         self.assertEqual(payload["summary"]["baseline_leaf_task_count"], 3)
 
+    def test_advanced_planning_changes_are_reported(self):
+        predecessor = self.create_task("Predecessor")
+        alternate = self.create_task("Alternate")
+        task = self.create_task(
+            "Planned task",
+            duration=2,
+            dependencies=[
+                {
+                    "predecessor_task_id": predecessor["id"],
+                    "dependency_type": "FS",
+                    "lag_days": 0,
+                }
+            ],
+            constraint_type="SNET",
+            constraint_date="2026-03-09",
+        )
+        baseline = self.capture()
+
+        self.update_task(
+            task["id"],
+            duration=0,
+            is_milestone=True,
+            dependencies=[
+                {
+                    "predecessor_task_id": alternate["id"],
+                    "dependency_type": "FF",
+                    "lag_days": -1,
+                }
+            ],
+            constraint_type="MF",
+            constraint_date="2026-03-10",
+        )
+        payload = self.variance(f"?baseline_id={baseline['id']}&limit=50")
+        row = next(
+            item for item in payload["tasks"] if item["task_id"] == task["id"]
+        )
+
+        self.assertTrue(row["dependency_changed"])
+        self.assertTrue(row["milestone_changed"])
+        self.assertFalse(row["baseline_is_milestone"])
+        self.assertTrue(row["current_is_milestone"])
+        self.assertTrue(row["constraint_changed"])
+        self.assertEqual(row["baseline_constraint_type"], "SNET")
+        self.assertEqual(row["current_constraint_type"], "MF")
+
     def test_critical_path_changes_are_derived_for_matched_leaf_tasks(self):
         chain_start = self.create_task(
             "Chain start",
@@ -425,7 +470,7 @@ class ScheduleVarianceApiTests(ApiTestCase):
             )
 
         self.assertEqual(payload["total"], 25)
-        self.assertLessEqual(len(statements), 4)
+        self.assertLessEqual(len(statements), 6)
 
     def test_capture_and_variance_scale_to_two_thousand_tasks(self):
         for count in (100, 500, 2_000):

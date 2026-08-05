@@ -54,6 +54,8 @@ const tasks = [
     comparison_status: "slipped",
     hierarchy_changed: true,
     dependency_changed: false,
+    milestone_changed: true,
+    constraint_changed: true,
     duration_changed: true,
     manual_start_changed: false,
     order_changed: false,
@@ -173,7 +175,11 @@ describe("ScheduleVarianceView", () => {
     expect(
       screen.getByText("Newly critical", { selector: "td" })
     ).toBeInTheDocument();
-    expect(screen.getByText("Hierarchy changed, Duration changed")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Hierarchy changed, Milestone changed, Constraint changed, Duration changed"
+      )
+    ).toBeInTheDocument();
     expect(screen.getByText("Added commissioning")).toBeInTheDocument();
     expect(screen.getByText("Removed allowance")).toBeInTheDocument();
     expect(screen.getAllByText("Unavailable").length).toBeGreaterThan(0);

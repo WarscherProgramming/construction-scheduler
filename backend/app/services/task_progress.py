@@ -40,6 +40,7 @@ def _normalized_progress_values(
         raise _unprocessable("progress_status cannot be null")
 
     if target_status == "not_started":
+        expected_remaining = 0 if task.is_milestone else task.duration
         if (
             "percent_complete" in supplied
             and supplied["percent_complete"] != 0
@@ -51,20 +52,24 @@ def _normalized_progress_values(
             raise _unprocessable("Not Started tasks cannot have an Actual Finish")
         if (
             "remaining_duration" in supplied
-            and supplied["remaining_duration"] != task.duration
+            and supplied["remaining_duration"] != expected_remaining
         ):
             raise _unprocessable(
-                "Not Started remaining duration must equal planned duration"
+                "Not Started remaining duration must match planned duration"
             )
         return {
             "progress_status": "not_started",
             "percent_complete": 0,
             "actual_start_date": None,
             "actual_finish_date": None,
-            "remaining_duration": task.duration,
+            "remaining_duration": expected_remaining,
         }
 
     if target_status == "in_progress":
+        if task.is_milestone:
+            raise _unprocessable(
+                "Milestones cannot use the In Progress status"
+            )
         actual_start = supplied.get(
             "actual_start_date",
             task.actual_start_date,

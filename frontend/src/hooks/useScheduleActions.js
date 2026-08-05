@@ -44,6 +44,7 @@ function useScheduleActions({
   const [editValue, setEditValue] = useState("");
   const [selectedTaskId, setSelectedTaskId] = useState(null);
   const [progressSelection, setProgressSelection] = useState(null);
+  const [planningSelection, setPlanningSelection] = useState(null);
   const [scheduleView, setScheduleView] = useState("table");
   const [templateName, setTemplateName] = useState("");
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
@@ -75,6 +76,7 @@ function useScheduleActions({
       setEditValue("");
       setSelectedTaskId(null);
       setProgressSelection(null);
+      setPlanningSelection(null);
       setTemplateName("");
       setSelectedTemplateId("");
     }, 0);
@@ -157,9 +159,17 @@ function useScheduleActions({
 
     if (editingCell.field === "duration") {
       value = Number(editValue);
-      if (!Number.isInteger(value) || value < 1 || value > 36_500) {
+      const validMilestoneDuration = task.is_milestone && value === 0;
+      const validTaskDuration = !task.is_milestone && value >= 1;
+      if (
+        !Number.isInteger(value) ||
+        (!validMilestoneDuration && !validTaskDuration) ||
+        value > 36_500
+      ) {
         reportValidationError(
-          "Enter a whole number of workdays from 1 to 36500."
+          task.is_milestone
+            ? "Milestones require zero duration."
+            : "Enter a whole number of workdays from 1 to 36500."
         );
         return;
       }
@@ -510,9 +520,47 @@ function useScheduleActions({
     );
   };
 
+  const openTaskPlanning = useCallback(
+    (task) => {
+      if (selectedProjectId && task?.id) {
+        setPlanningSelection({
+          projectId: selectedProjectId,
+          taskId: task.id,
+        });
+      }
+    },
+    [selectedProjectId]
+  );
+
+  const closeTaskPlanning = useCallback(() => {
+    setPlanningSelection(null);
+  }, []);
+
+  const handleUpdateTaskPlanning = async (taskId, planning) => {
+    return runProjectMutation(
+      `updatePlanning:${taskId}`,
+      (projectId, options) => updateTask(projectId, taskId, planning, options),
+      {
+        onSuccess: (data) => {
+          applyTaskResponse(data);
+          setPlanningSelection(null);
+          showNotice("success", "Task planning updated.");
+        },
+        onError: (error) => {
+          if (error?.status === 404) setPlanningSelection(null);
+          reportRequestError("Unable to update task planning", error);
+        },
+      }
+    );
+  };
+
   const currentProgressTaskId =
     progressSelection?.projectId === selectedProjectId
       ? progressSelection.taskId
+      : null;
+  const currentPlanningTaskId =
+    planningSelection?.projectId === selectedProjectId
+      ? planningSelection.taskId
       : null;
 
   return {
@@ -522,6 +570,7 @@ function useScheduleActions({
     selectedTaskId,
     setSelectedTaskId,
     progressTaskId: currentProgressTaskId,
+    planningTaskId: currentPlanningTaskId,
     scheduleView,
     setScheduleView,
     templateName,
@@ -548,6 +597,9 @@ function useScheduleActions({
     openTaskProgress,
     closeTaskProgress,
     handleUpdateTaskProgress,
+    openTaskPlanning,
+    closeTaskPlanning,
+    handleUpdateTaskPlanning,
     isScheduleMutationActive,
   };
 }

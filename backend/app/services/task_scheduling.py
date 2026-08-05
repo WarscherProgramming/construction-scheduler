@@ -3,6 +3,7 @@ from datetime import date, timedelta
 from sqlalchemy.orm import Session
 
 from app.domain.scheduling import (
+    ScheduleDependency,
     ScheduledTask,
     ScheduleTask,
     annotate_schedule,
@@ -11,6 +12,18 @@ from app.domain.scheduling import (
 )
 from app.models.project import Project
 from app.models.task import Task
+from app.services.task_dependencies import task_dependencies
+
+
+def _domain_dependencies(task: Task) -> tuple[ScheduleDependency, ...]:
+    return tuple(
+        ScheduleDependency(
+            predecessor_task_id=row.predecessor_task_id,
+            dependency_type=row.dependency_type,
+            lag_days=row.lag_days,
+        )
+        for row in task_dependencies(task)
+    )
 
 
 def lock_project_schedule(db: Session, project_id: int) -> None:
@@ -53,6 +66,10 @@ def recalculate_schedule(
                     if task.remaining_duration is not None
                     else task.duration
                 ),
+                dependencies=_domain_dependencies(task),
+                is_milestone=task.is_milestone,
+                constraint_type=task.constraint_type,
+                constraint_date=task.constraint_date,
             )
             for task in tasks
         ],
@@ -112,6 +129,10 @@ def schedule_metadata(tasks: list[Task]) -> list[ScheduledTask]:
                     else task.duration
                 ),
                 calculation_start_date=_calculation_start(task),
+                dependencies=_domain_dependencies(task),
+                is_milestone=task.is_milestone,
+                constraint_type=task.constraint_type,
+                constraint_date=task.constraint_date,
             )
             for task in tasks
         ]
@@ -144,9 +165,27 @@ def task_response_rows(
             "predecessor_task_id": task.predecessor_task_id,
             "dependency_type": task.dependency_type,
             "lag_days": task.lag_days,
+            "dependencies": [
+                {
+                    "id": dependency.id,
+                    "predecessor_task_id": (
+                        dependency.predecessor_task_id
+                    ),
+                    "dependency_type": dependency.dependency_type,
+                    "lag_days": dependency.lag_days,
+                }
+                for dependency in task_dependencies(task)
+            ],
             "start_date": task.start_date,
             "end_date": task.end_date,
             "manual_start_date": task.manual_start_date,
+            "is_milestone": task.is_milestone,
+            "constraint_type": task.constraint_type,
+            "constraint_date": task.constraint_date,
+            "constraint_violated": metadata.constraint_violated,
+            "constraint_violation_reason": (
+                metadata.constraint_violation_reason
+            ),
             "project_id": task.project_id,
             "order_index": task.order_index,
             "parent_task_id": task.parent_task_id,

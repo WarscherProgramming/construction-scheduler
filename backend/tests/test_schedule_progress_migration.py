@@ -13,6 +13,7 @@ from alembic.script import ScriptDirectory
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 PREVIOUS_HEAD = "a2c7e9f4b610"
 M17_3_REVISION = "c8d4f1a7b903"
+CURRENT_REVISION = "d4e8a1c7f925"
 
 
 class ScheduleProgressMigrationTests(unittest.TestCase):
@@ -223,7 +224,7 @@ class ScheduleProgressMigrationTests(unittest.TestCase):
         command.upgrade(self.config, "head")
         command.check(self.config)
         heads = ScriptDirectory.from_config(self.config).get_heads()
-        self.assertEqual(heads, [M17_3_REVISION])
+        self.assertEqual(heads, [CURRENT_REVISION])
 
 
 if __name__ == "__main__":

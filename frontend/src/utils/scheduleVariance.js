@@ -80,6 +80,8 @@ export function getStructuralChanges(task) {
 
   if (task.hierarchy_changed) labels.push("Hierarchy changed");
   if (task.dependency_changed) labels.push("Dependency changed");
+  if (task.milestone_changed) labels.push("Milestone changed");
+  if (task.constraint_changed) labels.push("Constraint changed");
   if (task.duration_changed) labels.push("Duration changed");
   if (task.manual_start_changed) labels.push("Manual start changed");
   if (task.order_changed) labels.push("Order changed");

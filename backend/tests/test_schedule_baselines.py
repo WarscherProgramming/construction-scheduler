@@ -105,6 +105,59 @@ class ScheduleBaselineApiTests(ApiTestCase):
         self.assertIsNotNone(by_name["Framing"]["total_float"])
         self.assertEqual(by_name["Framing"]["task_id"], successor["id"])
 
+    def test_capture_preserves_milestones_constraints_and_dependencies(self):
+        milestone = self.create_task(
+            "Permit issued",
+            duration=0,
+            is_milestone=True,
+        )
+        predecessor = self.create_task("Review", duration=3)
+        successor = self.create_task(
+            "Release",
+            duration=1,
+            dependencies=[
+                {
+                    "predecessor_task_id": milestone["id"],
+                    "dependency_type": "FS",
+                    "lag_days": 0,
+                },
+                {
+                    "predecessor_task_id": predecessor["id"],
+                    "dependency_type": "FF",
+                    "lag_days": -1,
+                },
+            ],
+            constraint_type="SNET",
+            constraint_date="2026-03-09",
+        )
+        baseline = self.capture("Advanced plan")["baseline"]
+
+        detail = self.client.get(
+            f"{self.base_url}/{baseline['id']}?limit=10",
+            headers=self.headers,
+        )
+        self.assertEqual(detail.status_code, 200, detail.text)
+        by_name = {task["name"]: task for task in detail.json()["tasks"]}
+        self.assertTrue(by_name["Permit issued"]["is_milestone"])
+        self.assertEqual(by_name["Permit issued"]["duration"], 0)
+        self.assertEqual(by_name["Release"]["constraint_type"], "SNET")
+        self.assertEqual(by_name["Release"]["constraint_date"], "2026-03-09")
+        self.assertEqual(
+            [
+                (
+                    dependency["predecessor_task_id"],
+                    dependency["dependency_type"],
+                    dependency["lag_days"],
+                )
+                for dependency in by_name["Release"]["dependencies"]
+            ],
+            [
+                (milestone["id"], "FS", 0),
+                (predecessor["id"], "FF", -1),
+            ],
+        )
+        self.assertEqual(by_name["Release"]["task_id"], successor["id"])
+
     def test_snapshot_is_immutable_after_live_edit_and_delete(self):
         first = self.create_task(
             "Original task",

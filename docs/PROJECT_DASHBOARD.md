@@ -235,7 +235,7 @@ from dashboard loading.
 
 ## Testing
 
-The frontend suite currently passes 515 tests across 74 files. Dashboard
+The frontend suite currently passes 525 tests across 75 files. Dashboard
 coverage includes:
 
 - API URL and required `as_of` behavior
@@ -251,7 +251,7 @@ coverage includes:
 - Attention Required, Upcoming Schedule, Workflow Analytics, and Recent
   Updates rendering
 
-The backend suite currently passes 349 primary tests, with 371 subtests
+The backend suite currently passes 372 primary tests, with 376 subtests
 reported separately. `test_dashboard_api.py` covers authentication, ownership,
 query validation, aggregate definitions, bounded ordering, aware timestamps,
 legacy statuses, and query behavior.
@@ -259,7 +259,7 @@ legacy statuses, and query behavior.
 ## Performance
 
 Production builds were measured directly at each M14 commit and again through
-M17.3 with the installed Vite toolchain:
+M17.4 with the installed Vite toolchain:
 
 | Phase | Dashboard raw/gzip | Main raw/gzip | CSS raw/gzip |
 |---|---:|---:|---:|
@@ -274,6 +274,7 @@ M17.3 with the installed Vite toolchain:
 | M17.1 | 21.07 / 5.23 kB | 280.82 / 85.81 kB | 74.79 / 13.55 kB |
 | M17.2 | 21.07 / 5.23 kB | 288.19 / 87.65 kB | 80.91 / 14.36 kB |
 | M17.3 | 21.07 / 5.23 kB | 289.84 / 88.09 kB | 85.97 / 15.04 kB |
+| M17.4 | 21.07 / 5.23 kB | 291.27 / 88.49 kB | 88.81 / 15.59 kB |
 
 M14.2 replaced the previous client-derived dashboard and removed obsolete
 dashboard utilities. M14.3 added action lists, M14.4 added workflow analytics
@@ -298,6 +299,10 @@ Data Date, and status-aware Gantt work remain in the lazy Scheduler route.
 That route is 93.81 kB raw / 26.85 kB gzip, up 14.36 / 2.95 kB from M17.2.
 Main grows 1.65 / 0.44 kB and CSS grows 5.06 / 0.68 kB; the Dashboard chunk
 does not change.
+M17.4 again leaves the dashboard chunk, metrics, and one-request contract
+unchanged. Milestone, constraint, dependency, and Gantt enhancements remain
+inside the lazy Schedule route. That route is 105.53 kB raw / 29.61 kB gzip;
+main grows 1.43 / 0.40 kB and CSS grows 2.84 / 0.55 kB from M17.3.
 
 No chart or date dependency was added, no duplicate shared utility chunk is
 emitted, and the dashboard remains route-level lazy-loaded. M16.5 adds no
@@ -309,9 +314,9 @@ Final automated verification:
 
 | Check | Result |
 |---|---|
-| Frontend tests | Pass: 515 tests across 74 files |
+| Frontend tests | Pass: 525 tests across 75 files |
 | ESLint | Pass: no errors or warnings |
-| Production build | Pass: 146 modules transformed |
+| Production build | Pass: 147 modules transformed |
 | Dashboard bundle budget | Pass: 5.23 kB gzip against a 5.25 kB limit |
 | Aggregate request count | Pass: one dashboard request |
 | Resource, attachment, relationship, extraction, and search requests | Pass: zero on dashboard load |

@@ -14,6 +14,7 @@ import ScheduleBaselineControl from "../components/schedule/ScheduleBaselineCont
 import ScheduleProgressSummary from "../components/schedule/ScheduleProgressSummary";
 import ScheduleVarianceView from "../components/schedule/ScheduleVarianceView";
 import TaskProgressDialog from "../components/schedule/TaskProgressDialog";
+import TaskPlanningDialog from "../components/schedule/TaskPlanningDialog";
 import SortableTaskRow from "../components/SortableTaskRow";
 import Button from "../components/ui/Button";
 import Card from "../components/ui/Card";
@@ -23,7 +24,8 @@ import ProjectLayout from "../components/ui/ProjectLayout";
 import {
   buildWbsMap,
   formatPredecessorForApi,
-  formatPredecessorForSchedule,
+  formatDependenciesForSchedule,
+  getTaskDependencies,
 } from "../utils/taskReferences";
 import { findIndentParent } from "../utils/taskHierarchy";
 
@@ -62,7 +64,9 @@ function SchedulerPage({
   isLoadingTemplates = false,
   taskLoadError = null,
   progressTaskId = null,
+  planningTaskId = null,
   isUpdatingTaskProgress = false,
+  isUpdatingTaskPlanning = false,
   onLogout,
   onDragEnd,
   onCellClick,
@@ -78,6 +82,9 @@ function SchedulerPage({
   onOpenTaskProgress = () => {},
   onCloseTaskProgress = () => {},
   onUpdateTaskProgress = async () => undefined,
+  onOpenTaskPlanning = () => {},
+  onCloseTaskPlanning = () => {},
+  onUpdateTaskPlanning = async () => undefined,
   getEmptyRow,
   formatDate,
   taskHasChildren,
@@ -102,6 +109,10 @@ function SchedulerPage({
   const progressTask = tasks.find((task) => task.id === progressTaskId);
   const progressDisplayId = progressTask
     ? wbsMap.get(progressTask.id)
+    : null;
+  const planningTask = tasks.find((task) => task.id === planningTaskId);
+  const planningDisplayId = planningTask
+    ? wbsMap.get(planningTask.id)
     : null;
   const statusedTaskCount = tasks.filter(
     (task) =>
@@ -176,6 +187,14 @@ function SchedulerPage({
 
   // Clicking a cell moves the cursor there so keyboard flow continues from it.
   const handleGridCellClick = (task, field) => {
+    if (
+      field === "predecessor" &&
+      task.id != null &&
+      getTaskDependencies(task).length > 1
+    ) {
+      onOpenTaskPlanning(task);
+      return;
+    }
     if (EDITABLE_FIELDS.includes(field)) {
       const row = visibleTasks.findIndex(
         (candidate) => candidate.id === task.id
@@ -208,11 +227,15 @@ function SchedulerPage({
   }, [editingCell, focusedCell]);
 
   // Inline cell validation: messages surface next to the cell being edited.
-  const validateCell = (field, value) => {
+  const validateCell = (field, value, task) => {
     if (field === "duration") {
       const days = Number(value);
 
-      if (!Number.isInteger(days) || days < 1) {
+      if (task?.is_milestone && days !== 0) {
+        return "Milestones require zero duration.";
+      }
+
+      if (!task?.is_milestone && (!Number.isInteger(days) || days < 1)) {
         return "Enter a whole number of workdays (1 or more).";
       }
 
@@ -368,6 +391,17 @@ function SchedulerPage({
             onCancel={onCloseTaskProgress}
           />
         )}
+        {planningTask && !taskHasChildren(planningTask.id) && (
+          <TaskPlanningDialog
+            key={`${selectedProjectId}:${planningTask.id}`}
+            task={planningTask}
+            tasks={tasks}
+            displayId={planningDisplayId}
+            isSubmitting={isUpdatingTaskPlanning}
+            onSubmit={onUpdateTaskPlanning}
+            onCancel={onCloseTaskPlanning}
+          />
+        )}
         <PageHeader title="Schedule" />
 
         <div
@@ -461,13 +495,14 @@ function SchedulerPage({
             <summary>Dependency format help</summary>
             <div>
               <p>
-                Enter the predecessor&rsquo;s ID from the first column for
-                Finish-to-Start. Add <code>SS</code> for Start-to-Start and{" "}
-                <code>+days</code> for lag.
+                Enter the predecessor&rsquo;s ID from the first column. Dependency
+                types are <code>FS</code>, <code>SS</code>, <code>FF</code>, and{" "}
+                <code>SF</code>. Positive values add lag; negative values add
+                lead.
               </p>
               <p>
-                Examples: <code>2</code>, <code>2+3</code>,{" "}
-                <code>1.2SS</code>, <code>1.2SS+4</code>.
+                Examples: <code>2</code>, <code>2FS-2</code>,{" "}
+                <code>1.2SS+4</code>, <code>3FF</code>, <code>2SF+1</code>.
               </p>
             </div>
           </details>
@@ -548,8 +583,8 @@ function SchedulerPage({
                         task={task}
                         index={index}
                         displayId={wbsMap.get(task.id)}
-                        displayPredecessor={formatPredecessorForSchedule(
-                          task.predecessor,
+                        displayPredecessor={formatDependenciesForSchedule(
+                          task,
                           tasks,
                           wbsMap
                         )}
@@ -563,6 +598,8 @@ function SchedulerPage({
                         handleCellCancel={onCellCancel}
                         handleDelete={onDelete}
                         handleProgress={onOpenTaskProgress}
+                        handlePlanning={onOpenTaskPlanning}
+                        planningDisabled={isUpdatingTaskPlanning}
                         progressDisabled={
                           !scheduleSettings?.data_date ||
                           isLoadingScheduleSettings

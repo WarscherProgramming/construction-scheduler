@@ -88,15 +88,16 @@ criticality and float continue to roll up from incomplete descendants.
 ## Out-of-Sequence Progress
 
 FieldFlow uses retained logic. Actual progress is accepted when factual even
-if it began before an FS or SS predecessor boundary. Dependency links remain
-unchanged, remaining work still respects the applicable boundary, and the
-response derives:
+if it began before an FS, SS, FF, or SF predecessor boundary. Dependency links
+remain unchanged, remaining work still respects the applicable boundary, and
+the response derives:
 
 - `out_of_sequence`;
 - `out_of_sequence_reason` with the factual task, relationship, and date
   context.
 
-FS, SS, lag, nested summaries, and summary predecessors use the same rule.
+All four relationship types, signed lag, nested summaries, and summary
+predecessors use the same rule.
 The flag is derived and cannot be supplied by a client.
 
 ## API
@@ -124,8 +125,9 @@ failure rolls back progress, metadata, settings, and forecast dates.
 ## Baselines, Variance, and Templates
 
 Baseline snapshot schemas remain planning-only and immutable. Capturing after
-progress records the current forecast as a new planning snapshot without
-copying live progress fields into baseline rows.
+progress records the current forecast, milestone/constraint state, and full
+dependency set as a new planning snapshot without copying live progress
+fields into baseline rows.
 
 Variance responses add current progress, actual dates, remaining duration,
 OOS context, Data Date, and leaf status counts. Completed task comparison
@@ -133,10 +135,12 @@ uses its factual current finish; in-progress comparison uses its current
 forecast finish. Existing slipped, improved, unchanged, added, removed,
 critical, and structural classifications remain unchanged.
 
-Templates remain planning-only. Saving does not copy progress or actuals.
+Templates remain planning-only. They preserve milestones, constraints, and
+complete dependency sets, but saving does not copy progress or actuals.
 Applying initializes every target task as Not Started with zero percent,
-remaining duration equal to planned duration, and null actual dates. The
-target project's Schedule Start Date and Data Date remain authoritative.
+milestones at zero remaining duration, regular tasks at planned remaining
+duration, and null actual dates. The target project's Schedule Start Date and
+Data Date remain authoritative.
 
 ## Frontend
 
@@ -149,6 +153,9 @@ The existing Schedule route adds:
 - progress, remaining duration, actual dates, and visible OOS context in the
   task table;
 - a Data Date marker and textual progress labels in the Gantt;
+- a planning dialog for milestones, constraints, multiple predecessors, all
+  four relationship types, lag, and lead;
+- labeled Gantt milestone diamonds, constraints, and dependency connectors;
 - live progress context in Baseline Comparison.
 
 Mutation keys prevent duplicate submissions. Project generations and abort
@@ -183,9 +190,9 @@ rows and planned task dates are not rewritten.
 
 ## Verification
 
-M17.3 passes 515 frontend tests across 74 files and 349 backend tests, with
-371 backend subtests reported separately. The local PostgreSQL database is at
-the single Alembic head `c8d4f1a7b903`, autogenerate detects no schema drift,
+M17.4 passes 525 frontend tests across 75 files and 372 backend tests, with
+376 backend subtests reported separately. The local PostgreSQL database is at
+the single Alembic head `d4e8a1c7f925`, autogenerate detects no schema drift,
 and the temporary-SQLite lifecycle test passes upgrade, downgrade, re-upgrade,
 constraint, index, and data-preservation checks.
 
@@ -196,10 +203,8 @@ database, network, or browser-performance claims.
 
 ## Limits
 
-- one predecessor per task; FS and SS only;
 - no progress history or strict transition graph;
 - no earned value, cost, resource, crew, or productivity calculations;
-- no milestones, configurable calendars, or multiple predecessors;
+- no configurable calendars;
 - no dashboard progress visualization in M17.3;
-- no baseline Gantt overlay, dependency arrows, timeline zoom, or schedule
-  virtualization.
+- no baseline Gantt overlay, timeline zoom, or schedule virtualization.

@@ -367,6 +367,72 @@ class TaskFoundationApiTests(ApiTestCase):
         self.assertEqual(target_successor["start_date"], "2026-04-07")
         self.assertEqual(successor["duration"], target_successor["duration"])
 
+    def test_template_preserves_advanced_planning_fields(self):
+        milestone = self.create_task(
+            "Contract award",
+            duration=0,
+            is_milestone=True,
+        )
+        predecessor = self.create_task("Procurement", duration=3)
+        successor = self.create_task(
+            "Delivery",
+            duration=2,
+            dependencies=[
+                {
+                    "predecessor_task_id": milestone["id"],
+                    "dependency_type": "FS",
+                    "lag_days": 0,
+                },
+                {
+                    "predecessor_task_id": predecessor["id"],
+                    "dependency_type": "FF",
+                    "lag_days": -1,
+                },
+            ],
+            constraint_type="SNET",
+            constraint_date="2026-08-10",
+        )
+        template = self.client.post(
+            f"/projects/{self.project_id}/templates",
+            json={"name": "Advanced planning"},
+            headers=self.headers,
+        ).json()
+        target_project = self.create_project(self.headers, "Template target")
+
+        applied = self.client.post(
+            f"/projects/{target_project}/templates/{template['id']}/apply",
+            headers=self.headers,
+        )
+        self.assertEqual(applied.status_code, 200, applied.text)
+        tasks = self.client.get(
+            f"/projects/{target_project}/tasks",
+            headers=self.headers,
+        ).json()["tasks"]
+        by_name = {task["name"]: task for task in tasks}
+        target_milestone = by_name["Contract award"]
+        target_predecessor = by_name["Procurement"]
+        target_successor = by_name["Delivery"]
+
+        self.assertTrue(target_milestone["is_milestone"])
+        self.assertEqual(target_milestone["duration"], 0)
+        self.assertEqual(target_successor["constraint_type"], "SNET")
+        self.assertEqual(target_successor["constraint_date"], "2026-08-10")
+        self.assertEqual(
+            [
+                (
+                    dependency["predecessor_task_id"],
+                    dependency["dependency_type"],
+                    dependency["lag_days"],
+                )
+                for dependency in target_successor["dependencies"]
+            ],
+            [
+                (target_milestone["id"], "FS", 0),
+                (target_predecessor["id"], "FF", -1),
+            ],
+        )
+        self.assertEqual(successor["progress_status"], "not_started")
+
     def test_pdf_export_uses_persisted_deterministic_dates(self):
         self.client.put(
             f"/projects/{self.project_id}/schedule-settings",

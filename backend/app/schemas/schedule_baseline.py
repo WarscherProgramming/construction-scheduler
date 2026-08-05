@@ -4,6 +4,7 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, Field, StringConstraints
 
 from app.schemas.common import MutationModel, ORMModel
+from app.schemas.task import ConstraintType, DependencyType
 
 
 BaselineStatus = Literal["active", "archived"]
@@ -69,10 +70,14 @@ class ScheduleBaselineTaskResponse(ORMModel):
     order_index: int | None
     parent_task_id: int | None
     predecessor_task_id: int | None
-    dependency_type: Literal["FS", "SS"]
+    dependency_type: DependencyType
     lag_days: int
+    dependencies: list["ScheduleBaselineTaskDependencyResponse"]
     duration: int
     manual_start_date: str | None
+    is_milestone: bool
+    constraint_type: ConstraintType
+    constraint_date: str | None
     start_date: str | None
     end_date: str | None
     is_summary: bool
@@ -80,6 +85,13 @@ class ScheduleBaselineTaskResponse(ORMModel):
     total_float: int | None
     wbs_path: str
     created_at: datetime
+
+
+class ScheduleBaselineTaskDependencyResponse(ORMModel):
+    id: int
+    predecessor_task_id: int
+    dependency_type: DependencyType
+    lag_days: int
 
 
 class ScheduleBaselineDetailResponse(BaseModel):
@@ -125,6 +137,14 @@ class ScheduleVarianceTaskResponse(BaseModel):
     comparison_status: ComparisonStatus
     hierarchy_changed: bool
     dependency_changed: bool
+    baseline_is_milestone: bool | None
+    current_is_milestone: bool | None
+    milestone_changed: bool
+    baseline_constraint_type: ConstraintType | None
+    current_constraint_type: ConstraintType | None
+    baseline_constraint_date: str | None
+    current_constraint_date: str | None
+    constraint_changed: bool
     duration_changed: bool
     manual_start_changed: bool
     order_changed: bool

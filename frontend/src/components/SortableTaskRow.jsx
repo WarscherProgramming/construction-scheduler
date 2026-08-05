@@ -111,6 +111,8 @@ function SortableTaskRow({
   handleDelete,
   handleProgress = () => {},
   progressDisabled = false,
+  handlePlanning = () => {},
+  planningDisabled = false,
   handleToggleCollapse,
   formatDate,
   hasChildren,
@@ -225,7 +227,22 @@ function SortableTaskRow({
               }}
               navProps={cellNavProps("name")}
             >
-              {task.name}
+              <span>{task.name}</span>
+              {task.is_milestone && (
+                <span className="schedule-planning-label">Milestone</span>
+              )}
+              {task.constraint_type && task.constraint_type !== "ASAP" && (
+                <span
+                  className={`schedule-planning-label${
+                    task.constraint_violated
+                      ? " schedule-planning-label--warning"
+                      : ""
+                  }`}
+                >
+                  {task.constraint_type}
+                  {task.constraint_violated ? " - Violated" : ""}
+                </span>
+              )}
             </EditButton>
 
             {hasChildren && (
@@ -262,7 +279,9 @@ function SortableTaskRow({
             onSave={() => handleCellSave(task)}
             onCancel={handleCellCancel}
             validate={
-              validateCell ? (value) => validateCell("duration", value) : undefined
+              validateCell
+                ? (value) => validateCell("duration", value, task)
+                : undefined
             }
           />
         ) : (
@@ -367,19 +386,34 @@ function SortableTaskRow({
           {hasChildren ? (
             <span className="schedule-derived-progress">Derived</span>
           ) : (
-            <button
-              type="button"
-              className="schedule-icon-button"
-              aria-label={`Update progress for ${task.name}`}
-              title={`Update progress for ${task.name}`}
-              disabled={progressDisabled}
-              onClick={(event) => {
-                event.stopPropagation();
-                handleProgress(task);
-              }}
-            >
-              <Icon name="pencil" size={17} />
-            </button>
+            <>
+              <button
+                type="button"
+                className="schedule-icon-button"
+                aria-label={`Edit planning for ${task.name}`}
+                title={`Edit planning for ${task.name}`}
+                disabled={planningDisabled}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  handlePlanning(task);
+                }}
+              >
+                <Icon name="calendar" size={17} />
+              </button>
+              <button
+                type="button"
+                className="schedule-icon-button"
+                aria-label={`Update progress for ${task.name}`}
+                title={`Update progress for ${task.name}`}
+                disabled={progressDisabled}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  handleProgress(task);
+                }}
+              >
+                <Icon name="pencil" size={17} />
+              </button>
+            </>
           )}
           <button
             type="button"

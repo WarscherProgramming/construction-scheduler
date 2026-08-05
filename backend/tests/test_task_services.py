@@ -11,6 +11,7 @@ from app.api.routes_task import (
 )
 from app.db.database import Base
 from app.models.project import Project
+from app.models.schedule_baseline import ScheduleBaseline  # noqa: F401
 from app.models.task import Task
 from app.models.user import User
 from app.services.task_scheduling import recalculate_schedule

@@ -33,10 +33,18 @@ describe("schedule variance formatting", () => {
       getStructuralChanges({
         hierarchy_changed: true,
         dependency_changed: true,
+        milestone_changed: true,
+        constraint_changed: true,
         duration_changed: false,
         manual_start_changed: false,
         order_changed: true,
       })
-    ).toEqual(["Hierarchy changed", "Dependency changed", "Order changed"]);
+    ).toEqual([
+      "Hierarchy changed",
+      "Dependency changed",
+      "Milestone changed",
+      "Constraint changed",
+      "Order changed",
+    ]);
   });
 });

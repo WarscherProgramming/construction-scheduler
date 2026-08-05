@@ -5,8 +5,25 @@ import heapq
 from typing import Literal
 
 
-DependencyType = Literal["FS", "SS"]
+DependencyType = Literal["FS", "SS", "FF", "SF"]
 ProgressStatus = Literal["not_started", "in_progress", "completed"]
+ConstraintType = Literal[
+    "ASAP",
+    "ALAP",
+    "SNET",
+    "SNLT",
+    "FNET",
+    "FNLT",
+    "MS",
+    "MF",
+]
+
+
+@dataclass(frozen=True)
+class ScheduleDependency:
+    predecessor_task_id: int
+    dependency_type: DependencyType = "FS"
+    lag_days: int = 0
 
 
 @dataclass(frozen=True)
@@ -24,6 +41,10 @@ class ScheduleTask:
     actual_start_date: str | None = None
     actual_finish_date: str | None = None
     remaining_duration: int | None = None
+    dependencies: tuple[ScheduleDependency, ...] = ()
+    is_milestone: bool = False
+    constraint_type: ConstraintType = "ASAP"
+    constraint_date: str | None = None
 
 
 @dataclass(frozen=True)
@@ -43,6 +64,12 @@ class ScheduledTask:
     actual_start_date: str | None = None
     actual_finish_date: str | None = None
     remaining_duration: int | None = None
+    dependencies: tuple[ScheduleDependency, ...] = ()
+    is_milestone: bool = False
+    constraint_type: ConstraintType = "ASAP"
+    constraint_date: str | None = None
+    constraint_violated: bool = False
+    constraint_violation_reason: str | None = None
     out_of_sequence: bool = False
     out_of_sequence_reason: str | None = None
     calculation_start_date: str | None = None
@@ -175,6 +202,40 @@ def workdays_between(start: date, end: date) -> int:
     return count
 
 
+def _finish_from_start(start: date, duration: int) -> date:
+    return next_workday(start) if duration == 0 else add_workdays(start, duration)
+
+
+def _start_from_finish(finish: date, duration: int) -> date:
+    return (
+        previous_workday(finish)
+        if duration == 0
+        else subtract_workdays(finish, duration)
+    )
+
+
+def _signed_workdays_between(start: date, end: date) -> int:
+    if end >= start:
+        return workdays_between(start, end)
+    return -workdays_between(end, start)
+
+
+def _task_dependencies(
+    task: ScheduleTask | ScheduledTask,
+) -> tuple[ScheduleDependency, ...]:
+    if task.dependencies:
+        return task.dependencies
+    if task.predecessor_task_id is None:
+        return ()
+    return (
+        ScheduleDependency(
+            predecessor_task_id=task.predecessor_task_id,
+            dependency_type=task.dependency_type,
+            lag_days=task.lag_days,
+        ),
+    )
+
+
 def calculate_schedule(
     tasks: list[ScheduleTask],
     *,
@@ -203,6 +264,10 @@ def calculate_schedule(
                 if task.remaining_duration is not None
                 else task.duration
             ),
+            dependencies=_task_dependencies(task),
+            is_milestone=task.is_milestone,
+            constraint_type=task.constraint_type,
+            constraint_date=task.constraint_date,
         )
         for task in tasks
     ]
@@ -225,11 +290,15 @@ def calculate_schedule(
     for index, task in enumerate(scheduled):
         child_indices = children_by_parent.get(task.id, [])
         if child_indices:
-            if task.predecessor_task_id is not None:
+            if _task_dependencies(task):
                 raise ValueError("Summary tasks cannot have predecessors")
             prerequisites[index].update(child_indices)
-        elif task.predecessor_task_id in id_to_index:
-            prerequisites[index].add(id_to_index[task.predecessor_task_id])
+        else:
+            for dependency in _task_dependencies(task):
+                if dependency.predecessor_task_id in id_to_index:
+                    prerequisites[index].add(
+                        id_to_index[dependency.predecessor_task_id]
+                    )
 
         for prerequisite in prerequisites[index]:
             dependents.setdefault(prerequisite, []).append(index)
@@ -294,86 +363,136 @@ def _schedule_leaf_task(
             calculation_start_date=None,
         )
 
-    duration = task.remaining_duration or task.duration
+    duration = (
+        task.remaining_duration
+        if task.remaining_duration is not None
+        else task.duration
+    )
     data_boundary = next_workday(data_date)
+    earliest_start = _resolve_earliest_start(
+        task,
+        task_map,
+        project_start=project_start,
+        duration=duration,
+    )
+    if earliest_start is None:
+        return replace(
+            task,
+            start_date=(
+                task.actual_start_date
+                if task.progress_status == "in_progress"
+                else None
+            ),
+            end_date=None,
+            calculation_start_date=None,
+        )
 
     if task.progress_status == "in_progress":
-        dependency_boundary = _resolve_dependency_start(task, task_map)
-        if task.predecessor_task_id is not None and dependency_boundary is None:
-            return replace(
-                task,
-                start_date=task.actual_start_date,
-                end_date=None,
-                calculation_start_date=None,
-            )
-
-        remaining_start = data_boundary
-        if dependency_boundary is not None:
-            remaining_start = max(
-                remaining_start,
-                next_workday(dependency_boundary),
-            )
+        remaining_start = max(data_boundary, earliest_start)
         return replace(
             task,
             start_date=task.actual_start_date,
-            end_date=add_workdays(remaining_start, duration).isoformat(),
+            end_date=_finish_from_start(
+                remaining_start,
+                duration,
+            ).isoformat(),
             calculation_start_date=remaining_start.isoformat(),
         )
 
-    start_date = _resolve_start_date(task, task_map, project_start)
-    if start_date is None:
-        return task
-    start_date = max(next_workday(start_date), data_boundary)
+    normal_start = max(earliest_start, data_boundary)
+    start_date = normal_start
+    if task.constraint_type == "MS" and task.constraint_date:
+        start_date = date.fromisoformat(task.constraint_date)
+    elif task.constraint_type == "MF" and task.constraint_date:
+        start_date = _start_from_finish(
+            date.fromisoformat(task.constraint_date),
+            duration,
+        )
+
+    constraint_violated = start_date < normal_start
+    violation_reason = (
+        "Mandatory constraint conflicts with dependency, manual-date, or "
+        "Data Date logic."
+        if constraint_violated
+        else None
+    )
     return replace(
         task,
         start_date=start_date.isoformat(),
-        end_date=add_workdays(start_date, duration).isoformat(),
+        end_date=_finish_from_start(start_date, duration).isoformat(),
         calculation_start_date=start_date.isoformat(),
+        constraint_violated=constraint_violated,
+        constraint_violation_reason=violation_reason,
     )
 
 
-def _resolve_start_date(
+def _resolve_earliest_start(
     task: ScheduledTask,
     task_map: dict[int | None, ScheduledTask],
+    *,
     project_start: date,
+    duration: int,
 ) -> date | None:
-    if task.predecessor_task_id is None:
-        return (
-            date.fromisoformat(task.manual_start_date)
-            if task.manual_start_date
-            else project_start
-        )
+    boundaries = [project_start]
+    if task.manual_start_date:
+        boundaries.append(date.fromisoformat(task.manual_start_date))
 
-    return _resolve_dependency_start(task, task_map)
-
-
-def _resolve_dependency_start(
-    task: ScheduledTask,
-    task_map: dict[int | None, ScheduledTask],
-) -> date | None:
-    predecessor_task = task_map.get(task.predecessor_task_id)
-    if predecessor_task is None:
-        return None
-
-    if task.dependency_type == "SS":
-        if predecessor_task.start_date is None:
+    for dependency in _task_dependencies(task):
+        predecessor = task_map.get(dependency.predecessor_task_id)
+        if predecessor is None:
             return None
-
-        return date.fromisoformat(predecessor_task.start_date) + timedelta(
-            days=task.lag_days
+        boundary = _dependency_start_boundary(
+            dependency,
+            predecessor,
+            duration=duration,
         )
+        if boundary is None:
+            return None
+        boundaries.append(boundary)
 
-    if predecessor_task.end_date is None:
-        return None
+    if task.constraint_type == "SNET" and task.constraint_date:
+        boundaries.append(date.fromisoformat(task.constraint_date))
+    if task.constraint_type == "FNET" and task.constraint_date:
+        boundaries.append(
+            _start_from_finish(
+                date.fromisoformat(task.constraint_date),
+                duration,
+            )
+        )
+    return max(next_workday(boundary) for boundary in boundaries)
 
-    return date.fromisoformat(predecessor_task.end_date) + timedelta(
-        days=1 + task.lag_days
+
+def _dependency_start_boundary(
+    dependency: ScheduleDependency,
+    predecessor: ScheduledTask,
+    *,
+    duration: int,
+) -> date | None:
+    if dependency.dependency_type in ("SS", "SF"):
+        if predecessor.start_date is None:
+            return None
+        predecessor_anchor = date.fromisoformat(predecessor.start_date)
+    else:
+        if predecessor.end_date is None:
+            return None
+        predecessor_anchor = date.fromisoformat(predecessor.end_date)
+
+    extra_days = (
+        1 + dependency.lag_days
+        if dependency.dependency_type == "FS"
+        else dependency.lag_days
     )
+    boundary = next_workday(predecessor_anchor + timedelta(days=extra_days))
+    if dependency.dependency_type in ("FF", "SF"):
+        return _start_from_finish(boundary, duration)
+    return boundary
 
 
 def annotate_schedule(tasks: list[ScheduledTask]) -> list[ScheduledTask]:
-    progress = _rollup_progress(tasks)
-    sequenced = _apply_out_of_sequence(progress)
+    late_scheduled = _apply_alap(tasks)
+    progress = _rollup_progress(late_scheduled)
+    constrained = _apply_constraint_violations(progress)
+    sequenced = _apply_out_of_sequence(constrained)
     return apply_critical_path(sequenced)
 
 
@@ -410,10 +529,17 @@ def _rollup_progress(tasks: list[ScheduledTask]) -> list[ScheduledTask]:
         weighted_value = sum(
             child.progress_weighted_value for child in children
         )
-        percent_complete = (
-            (weighted_value + weight // 2) // weight if weight else 0
+        all_completed = all(
+            child.progress_status == "completed" for child in children
         )
-        if all(child.progress_status == "completed" for child in children):
+        percent_complete = (
+            (weighted_value + weight // 2) // weight
+            if weight
+            else 100
+            if all_completed
+            else 0
+        )
+        if all_completed:
             progress_status: ProgressStatus = "completed"
         elif any(
             child.progress_status != "not_started" for child in children
@@ -454,21 +580,107 @@ def _rollup_progress(tasks: list[ScheduledTask]) -> list[ScheduledTask]:
     return rolled_up
 
 
+def _apply_alap(tasks: list[ScheduledTask]) -> list[ScheduledTask]:
+    late_starts = _compute_late_starts(tasks)
+    if not late_starts:
+        return tasks
+
+    parent_ids = {
+        task.parent_task_id
+        for task in tasks
+        if task.parent_task_id is not None
+    }
+    adjusted: list[ScheduledTask] = []
+    for task in tasks:
+        late_start = late_starts.get(task.id)
+        if (
+            task.id in parent_ids
+            or task.progress_status != "not_started"
+            or task.constraint_type != "ALAP"
+            or late_start is None
+        ):
+            adjusted.append(task)
+            continue
+        duration = _critical_duration(task)
+        adjusted.append(
+            replace(
+                task,
+                start_date=late_start.isoformat(),
+                end_date=_finish_from_start(
+                    late_start,
+                    duration,
+                ).isoformat(),
+                calculation_start_date=late_start.isoformat(),
+            )
+        )
+    return rollup_parent_tasks(adjusted)
+
+
+def _apply_constraint_violations(
+    tasks: list[ScheduledTask],
+) -> list[ScheduledTask]:
+    annotated: list[ScheduledTask] = []
+    labels = {
+        "SNET": "Start No Earlier Than",
+        "SNLT": "Start No Later Than",
+        "FNET": "Finish No Earlier Than",
+        "FNLT": "Finish No Later Than",
+        "MS": "Mandatory Start",
+        "MF": "Mandatory Finish",
+    }
+    for task in tasks:
+        if (
+            task.constraint_type in ("ASAP", "ALAP")
+            or task.constraint_date is None
+            or task.start_date is None
+            or task.end_date is None
+        ):
+            annotated.append(task)
+            continue
+
+        target = date.fromisoformat(task.constraint_date)
+        start = date.fromisoformat(task.start_date)
+        finish = date.fromisoformat(task.end_date)
+        violated = {
+            "SNET": start < target,
+            "SNLT": start > target,
+            "FNET": finish < target,
+            "FNLT": finish > target,
+            "MS": start != target,
+            "MF": finish != target,
+        }[task.constraint_type]
+        violated = violated or task.constraint_violated
+        reason = task.constraint_violation_reason
+        if violated and reason is None:
+            reason = (
+                f"{labels[task.constraint_type]} "
+                f"{task.constraint_date} is not satisfied."
+            )
+        annotated.append(
+            replace(
+                task,
+                constraint_violated=violated,
+                constraint_violation_reason=reason if violated else None,
+            )
+        )
+    return annotated
+
+
 def _dependency_boundary(
-    task: ScheduledTask,
+    dependency: ScheduleDependency,
     predecessor: ScheduledTask,
 ) -> date | None:
     value = (
         predecessor.start_date
-        if task.dependency_type == "SS"
+        if dependency.dependency_type in ("SS", "SF")
         else predecessor.end_date
     )
     if value is None:
         return None
     extra_days = (
-        task.lag_days
-        if task.dependency_type == "SS"
-        else 1 + task.lag_days
+        1 + dependency.lag_days
+        if dependency.dependency_type == "FS"
+        else dependency.lag_days
     )
     return next_workday(date.fromisoformat(value) + timedelta(days=extra_days))
 
@@ -487,42 +699,52 @@ def _apply_out_of_sequence(
     for index, task in enumerate(annotated):
         if (
             task.id in parent_ids
-            or task.actual_start_date is None
-            or task.predecessor_task_id is None
+            or not _task_dependencies(task)
+            or (
+                task.actual_start_date is None
+                and task.actual_finish_date is None
+            )
         ):
             continue
-        predecessor = task_map.get(task.predecessor_task_id)
-        if predecessor is None:
-            annotated[index] = replace(
-                task,
-                out_of_sequence=True,
-                out_of_sequence_reason=(
-                    "Progress was recorded while the predecessor was "
-                    "unavailable."
-                ),
-            )
-            continue
-        boundary = _dependency_boundary(task, predecessor)
-        if boundary is None:
-            annotated[index] = replace(
-                task,
-                out_of_sequence=True,
-                out_of_sequence_reason=(
-                    f"Progress was recorded while predecessor "
+        reasons: list[str] = []
+        for dependency in _task_dependencies(task):
+            predecessor = task_map.get(dependency.predecessor_task_id)
+            if predecessor is None:
+                reasons.append(
+                    "Progress was recorded while predecessor "
+                    f"{dependency.predecessor_task_id} was unavailable."
+                )
+                continue
+            boundary = _dependency_boundary(dependency, predecessor)
+            if boundary is None:
+                reasons.append(
+                    "Progress was recorded while predecessor "
                     f"{predecessor.id} was unscheduled."
-                ),
+                )
+                continue
+            actual_value = (
+                task.actual_start_date
+                if dependency.dependency_type in ("FS", "SS")
+                else task.actual_finish_date
             )
-            continue
-        actual_start = date.fromisoformat(task.actual_start_date)
-        if actual_start < boundary:
+            if actual_value is None:
+                continue
+            if date.fromisoformat(actual_value) < boundary:
+                event = (
+                    "Actual start"
+                    if dependency.dependency_type in ("FS", "SS")
+                    else "Actual finish"
+                )
+                reasons.append(
+                    f"{event} {actual_value} is before the "
+                    f"{dependency.dependency_type} predecessor boundary "
+                    f"{boundary.isoformat()} from task {predecessor.id}."
+                )
+        if reasons:
             annotated[index] = replace(
                 task,
                 out_of_sequence=True,
-                out_of_sequence_reason=(
-                    f"Actual start {task.actual_start_date} is before the "
-                    f"{task.dependency_type} predecessor boundary "
-                    f"{boundary.isoformat()} from task {predecessor.id}."
-                ),
+                out_of_sequence_reason=" ".join(reasons),
             )
 
     children_by_parent: dict[int | None, list[ScheduledTask]] = {}
@@ -555,41 +777,81 @@ def _apply_out_of_sequence(
     return annotated
 
 
-def compute_critical_path(
+def _remaining_schedule_nodes(
     tasks: list[ScheduledTask],
-) -> dict[int | None, tuple[int | None, bool]]:
-    """CPM backward pass over scheduled leaf tasks.
-
-    Returns {task_id: (total_float_in_workdays, is_critical)}. Mirrors the
-    forward pass exactly: FS/SS with calendar-day lag snapped to the workday
-    calendar, so a computed late start of X guarantees the forward pass would
-    still hit every successor's late start. Summary (parent) tasks are
-    aggregated from their children by apply_critical_path.
-    """
+) -> list[ScheduledTask]:
     parent_ids = {
         task.parent_task_id for task in tasks if task.parent_task_id is not None
     }
-    nodes = [
+    return [
         task
         for task in tasks
         if task.id not in parent_ids
         and task.progress_status != "completed"
         and task.start_date
         and task.end_date
-        and _critical_duration(task) >= 1
+        and _critical_duration(task) >= 0
     ]
 
+
+def _latest_predecessor_start(
+    predecessor: ScheduledTask,
+    successor: ScheduledTask,
+    dependency: ScheduleDependency,
+    successor_late_start: date,
+) -> date:
+    successor_late_finish = _finish_from_start(
+        successor_late_start,
+        _critical_duration(successor),
+    )
+    if dependency.dependency_type == "FS":
+        latest_finish = previous_workday(
+            successor_late_start
+            - timedelta(days=1 + dependency.lag_days)
+        )
+        return _start_from_finish(
+            latest_finish,
+            _critical_duration(predecessor),
+        )
+    if dependency.dependency_type == "SS":
+        return previous_workday(
+            successor_late_start - timedelta(days=dependency.lag_days)
+        )
+    if dependency.dependency_type == "FF":
+        latest_finish = previous_workday(
+            successor_late_finish - timedelta(days=dependency.lag_days)
+        )
+        return _start_from_finish(
+            latest_finish,
+            _critical_duration(predecessor),
+        )
+    return previous_workday(
+        successor_late_finish - timedelta(days=dependency.lag_days)
+    )
+
+
+def _compute_late_starts(
+    tasks: list[ScheduledTask],
+) -> dict[int | None, date]:
+    nodes = _remaining_schedule_nodes(tasks)
     if not nodes:
         return {}
 
     node_map = {task.id: task for task in nodes}
-    successors: dict[int | None, list[ScheduledTask]] = {}
+    successors: dict[
+        int | None,
+        list[tuple[ScheduledTask, ScheduleDependency]],
+    ] = {}
     indegree = {task.id: 0 for task in nodes}
 
     for task in nodes:
-        if task.predecessor_task_id in node_map:
-            successors.setdefault(task.predecessor_task_id, []).append(task)
-            indegree[task.id] += 1
+        for dependency in _task_dependencies(task):
+            if dependency.predecessor_task_id in node_map:
+                successors.setdefault(
+                    dependency.predecessor_task_id,
+                    [],
+                ).append((task, dependency))
+                indegree[task.id] += 1
 
     project_end = max(date.fromisoformat(task.end_date) for task in nodes)
     late_start: dict[int | None, date] = {}
@@ -605,7 +867,7 @@ def compute_critical_path(
     while ready:
         _, task_id = heapq.heappop(ready)
         topological_ids.append(task_id)
-        for successor in successors.get(task_id, []):
+        for successor, _ in successors.get(task_id, []):
             indegree[successor.id] -= 1
             if indegree[successor.id] == 0:
                 heapq.heappush(
@@ -617,32 +879,40 @@ def compute_critical_path(
         task = node_map[task_id]
         following = successors.get(task.id, [])
         candidates = [
-            subtract_workdays(project_end, _critical_duration(task))
+            _start_from_finish(project_end, _critical_duration(task))
         ]
+        if task.constraint_date and task.constraint_type in ("SNLT", "MS"):
+            candidates.append(date.fromisoformat(task.constraint_date))
+        if task.constraint_date and task.constraint_type in ("FNLT", "MF"):
+            candidates.append(
+                _start_from_finish(
+                    date.fromisoformat(task.constraint_date),
+                    _critical_duration(task),
+                )
+            )
 
-        for successor in following:
+        for successor, dependency in following:
             successor_late_start = late_start[successor.id]
-
-            if successor.dependency_type == "SS":
-                candidates.append(
-                    previous_workday(
-                        successor_late_start
-                        - timedelta(days=successor.lag_days)
-                    )
+            candidates.append(
+                _latest_predecessor_start(
+                    task,
+                    successor,
+                    dependency,
+                    successor_late_start,
                 )
-            else:
-                latest_finish = previous_workday(
-                    successor_late_start
-                    - timedelta(days=1 + successor.lag_days)
-                )
-                candidates.append(
-                    subtract_workdays(
-                        latest_finish,
-                        _critical_duration(task),
-                    )
-                )
+            )
 
         late_start[task.id] = min(candidates)
+
+    return late_start
+
+
+def compute_critical_path(
+    tasks: list[ScheduledTask],
+) -> dict[int | None, tuple[int | None, bool]]:
+    """CPM backward pass over remaining scheduled leaf work."""
+    nodes = _remaining_schedule_nodes(tasks)
+    late_start = _compute_late_starts(tasks)
 
     results: dict[int | None, tuple[int | None, bool]] = {}
 
@@ -656,8 +926,11 @@ def compute_critical_path(
         early_start = date.fromisoformat(
             task.calculation_start_date or task.start_date
         )
-        total_float = workdays_between(early_start, resolved_late_start)
-        results[task.id] = (total_float, total_float == 0)
+        total_float = _signed_workdays_between(
+            early_start,
+            resolved_late_start,
+        )
+        results[task.id] = (total_float, total_float <= 0)
 
     return results
 

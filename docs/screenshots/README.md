@@ -20,14 +20,14 @@ for both referenced and planned module screenshots.
 | File | View / state to capture |
 |---|---|
 | `dashboard.png` | Populated Project Dashboard showing Project Summary, Follow-up Indicators, Attention Required, Upcoming Schedule, Workflow Analytics, and Recent Updates. Include readable RFI, Submittal, Punch Item, and Change Order states plus large Change Order values where practical. |
-| `schedule-grid.png` | Schedule table view: visible Schedule Start Date and Data Date, leaf-task status and percent complete, remaining duration, actual dates, one visible out-of-sequence reason, a selected row, and at least one parent task with indented children. |
+| `schedule-grid.png` | Schedule table view: visible Schedule Start Date and Data Date, leaf-task status and percent complete, remaining duration, actual dates, one milestone, one explicit constraint, multiple predecessor labels, one visible out-of-sequence reason, a selected row, and at least one parent task with indented children. |
 | `schedule-settings.png` | Schedule sidebar with independent persisted Schedule Start Date and Data Date controls and the accessible Data Date recalculation confirmation open over synthetic task data. |
 | `schedule-baseline-create.png` | Accessible Capture Schedule Baseline dialog showing a synthetic name, optional description, Schedule Start Date, task count, server-generated timestamp note, and immutable-snapshot explanation. |
 | `schedule-baseline-comparison.png` | Baseline Comparison view with a selected named baseline, capture time, project-finish direction, slipped/improved/added/removed/newly-critical metrics, filters, and readable current-versus-baseline task rows. |
 | `schedule-baseline-mobile.png` | Baseline Comparison at ~390 px with the selector, textual summary metrics, filters, and one stacked task comparison record fully reachable without page-level horizontal overflow. |
 | `schedule-dnd.gif` | ~5 s: grab a task's drag handle, drag it two rows, drop; dates recalculate. |
 | `login.png` | Logged-out landing page at desktop width: split panel with marketing copy, highlights, app preview, and the auth card. |
-| `gantt.png` | Schedule → Gantt view of the demo project with textual task progress, an in-progress bar, one completed task, out-of-sequence context, and the Data Date marker visible. |
+| `gantt.png` | Schedule → Gantt view with textual progress, milestone diamonds, constraint markers, distinguishable FS/SS/FF/SF connectors with signed lead/lag labels, an in-progress bar, one completed task, out-of-sequence context, and the Data Date marker visible. |
 | `first-run.gif` | ~6 s: first-run welcome screen → click "Load Sample Project" → progress bar filling → dashboard appears. Requires a fresh account. |
 | `change-orders.png` | Populated Change Orders page: a generated `CO` number; create or edit workflow; proposed and approved amounts; schedule impact; lifecycle dates; multiple status badges; and, where practical, a readable legacy record. |
 | `punch-lists.png` | Punch Lists page: populated Punch Items table with visible status and priority labels, an overdue indicator, and the create or edit workflow visible. |
@@ -141,4 +141,10 @@ Use the exact filenames above where defined; do not add placeholders.
   `schedule-grid.png`, `schedule-settings.png`, and `gantt.png`; also capture
   the focus-managed progress dialog with its conditional actual-date and
   remaining-duration fields. Keep progress off the dashboard and do not imply
-  earned value, strict transition history, resource loading, or milestones.
+  earned value, strict transition history, or resource loading.
+- M17.4 adds milestones, eight standard constraints, multiple predecessors,
+  signed lead/lag, and FS/SS/FF/SF relationships. Recapture
+  `schedule-grid.png` and `gantt.png`, and capture the focus-managed planning
+  dialog with synthetic dependencies and a dated constraint. Keep these
+  planning features off the dashboard and do not imply resource loading,
+  earned value, configurable calendars, or strict workflow transitions.

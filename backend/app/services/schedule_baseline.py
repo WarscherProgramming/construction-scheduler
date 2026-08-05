@@ -10,6 +10,7 @@ from app.models.project_schedule_settings import ProjectScheduleSettings
 from app.models.schedule_baseline import (
     ScheduleBaseline,
     ScheduleBaselineTask,
+    ScheduleBaselineTaskDependency,
 )
 from app.models.task import Task
 from app.services.project_schedule_settings import (
@@ -22,6 +23,7 @@ from app.services.task_scheduling import (
     schedule_metadata,
 )
 from app.services.task_validation import validate_schedule_structure
+from app.services.task_dependencies import task_dependencies
 
 
 MAX_BASELINE_TASKS = 5_000
@@ -164,6 +166,9 @@ def capture_schedule_baseline(
                 lag_days=task.lag_days,
                 duration=task.duration,
                 manual_start_date=task.manual_start_date,
+                is_milestone=task.is_milestone,
+                constraint_type=task.constraint_type,
+                constraint_date=task.constraint_date,
                 start_date=task.start_date,
                 end_date=task.end_date,
                 is_summary=task.id in parent_ids,
@@ -175,6 +180,24 @@ def capture_schedule_baseline(
             for task in tasks
         ]
         db.add_all(snapshots)
+        db.flush()
+        snapshot_map = {
+            snapshot.task_id: snapshot for snapshot in snapshots
+        }
+        dependency_snapshots = [
+            ScheduleBaselineTaskDependency(
+                baseline_id=baseline.id,
+                project_id=project_id,
+                baseline_task_id=snapshot_map[task.id].id,
+                task_id=task.id,
+                predecessor_task_id=dependency.predecessor_task_id,
+                dependency_type=dependency.dependency_type,
+                lag_days=dependency.lag_days,
+            )
+            for task in tasks
+            for dependency in task_dependencies(task)
+        ]
+        db.add_all(dependency_snapshots)
         settings.comparison_baseline_id = baseline.id
         db.flush()
         db.commit()
@@ -383,6 +406,28 @@ def _comparison_status(
     return "unchanged", 0
 
 
+def _dependency_signature(task) -> tuple[tuple[int, str, int], ...]:
+    rows = list(getattr(task, "dependencies", ()) or ())
+    if not rows and getattr(task, "predecessor_task_id", None) is not None:
+        return (
+            (
+                task.predecessor_task_id,
+                task.dependency_type,
+                task.lag_days,
+            ),
+        )
+    return tuple(
+        sorted(
+            (
+                row.predecessor_task_id,
+                row.dependency_type,
+                row.lag_days,
+            )
+            for row in rows
+        )
+    )
+
+
 def _comparison_row(
     task_id: int,
     baseline_task: ScheduleBaselineTask | None,
@@ -481,12 +526,38 @@ def _comparison_row(
         ),
         "dependency_changed": bool(
             matched
+            and _dependency_signature(baseline_task)
+            != _dependency_signature(current_task)
+        ),
+        "baseline_is_milestone": (
+            baseline_task.is_milestone if baseline_task else None
+        ),
+        "current_is_milestone": (
+            current_task.is_milestone if current_task else None
+        ),
+        "milestone_changed": bool(
+            matched
+            and baseline_task.is_milestone != current_task.is_milestone
+        ),
+        "baseline_constraint_type": (
+            baseline_task.constraint_type if baseline_task else None
+        ),
+        "current_constraint_type": (
+            current_task.constraint_type if current_task else None
+        ),
+        "baseline_constraint_date": (
+            baseline_task.constraint_date if baseline_task else None
+        ),
+        "current_constraint_date": (
+            current_task.constraint_date if current_task else None
+        ),
+        "constraint_changed": bool(
+            matched
             and (
-                baseline_task.predecessor_task_id
-                != current_task.predecessor_task_id
-                or baseline_task.dependency_type
-                != current_task.dependency_type
-                or baseline_task.lag_days != current_task.lag_days
+                baseline_task.constraint_type
+                != current_task.constraint_type
+                or baseline_task.constraint_date
+                != current_task.constraint_date
             )
         ),
         "duration_changed": bool(matched and duration_variance != 0),

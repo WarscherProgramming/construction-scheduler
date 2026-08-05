@@ -2,8 +2,9 @@
 
 M17.2 adds immutable, project-scoped schedule snapshots and workday variance
 analysis to the existing deterministic scheduler. M17.3 adds live progress
-and Data Date context without changing the immutable planning-snapshot
-schema or turning variance into earned-value analysis.
+and Data Date context. M17.4 extends immutable planning snapshots with
+milestones, constraints, and complete normalized dependency sets without
+turning variance into earned-value analysis.
 
 ## Architecture
 
@@ -31,8 +32,9 @@ count, active/archived lifecycle, and archive timestamp.
 comparison:
 
 - original stable task ID and name;
-- order, WBS path, parent ID, predecessor ID, dependency type, and lag;
-- duration, manual start, calculated start, and calculated finish;
+- order, WBS path, parent ID, every predecessor/type/lag relationship;
+- duration, milestone state, constraint type/date, manual start, calculated
+  start, and calculated finish;
 - summary/leaf classification, critical state, and total float.
 
 Snapshot parent, predecessor, and task IDs are raw original IDs rather than
@@ -102,7 +104,8 @@ Finish dates classify matched tasks as `slipped`, `improved`, or `unchanged`.
 The remaining states are `added`, `removed`, `unscheduled`, and
 `incomparable`. Critical comparison reports newly critical, no longer
 critical, remained critical, or remained noncritical. Structural flags report
-hierarchy, dependency, duration, manual-start, and order changes.
+hierarchy, dependency-set, milestone, constraint, duration, manual-start, and
+order changes.
 
 Summary rows preserve hierarchy and may appear in the detail table, but
 project counts use leaf tasks so work is not double counted. The response
@@ -169,8 +172,9 @@ chain and a 200-row variance response page:
 | 2,000 | 282.97 ms | 87.97 ms | 293 B | 145,951 B |
 
 These are local correctness probes, not PostgreSQL production latency or
-browser-usability claims. Service-level instrumentation verifies no more than
-four `SELECT` statements for variance. The UI requests 50 rows by default;
+browser-usability claims. Normalized live and baseline dependency loading adds
+two bounded select-in queries; instrumentation verifies no more than six
+`SELECT` statements for variance. The UI requests 50 rows by default;
 the API caps a variance page at 200 and a baseline detail page at 500. Browser
 render profiling at large task counts was not performed.
 
@@ -183,16 +187,16 @@ render profiling at large task counts was not performed.
   An overlay would require safe handling of removed tasks and combined
   timeline bounds, so the semantic table remains the accessible comparison
   source.
-- Progress history, milestone semantics, resource loading, configurable
-  calendars, version labels, snapshot purge, and signed comparison exports
-  are not implemented.
+- Progress history, resource loading, configurable calendars, version labels,
+  snapshot purge, and signed comparison exports are not implemented.
 
 ## Verification
 
-M17.3 passes 515 frontend tests across 74 files and 349 backend tests, with
-371 backend subtests reported separately. Baseline revision `a2c7e9f4b610`
-remains immutable beneath progress revision `c8d4f1a7b903`; existing projects
-still receive no automatic baseline.
+M17.4 passes 525 frontend tests across 75 files and 372 backend tests, with
+376 backend subtests reported separately. Baseline revision `a2c7e9f4b610`
+remains immutable beneath progress revision `c8d4f1a7b903` and advanced
+scheduling revision `d4e8a1c7f925`; existing projects still receive no
+automatic baseline.
 
 Deterministic tests cover ownership, mass assignment, immutability, rollback,
 selection and archive policy, malformed and missing dates, classifications,

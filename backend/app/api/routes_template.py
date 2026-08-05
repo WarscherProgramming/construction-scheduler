@@ -9,8 +9,12 @@ from app.api.dependencies import (
     get_db,
     get_owned_project,
 )
-from app.models.task import Task
-from app.models.template import ScheduleTemplate, ScheduleTemplateTask
+from app.models.task import Task, TaskDependency
+from app.models.template import (
+    ScheduleTemplate,
+    ScheduleTemplateTask,
+    ScheduleTemplateTaskDependency,
+)
 from app.core.security import get_current_user
 from app.models.project import Project
 from app.schemas.common import MessageResponse
@@ -28,6 +32,7 @@ from app.services.task_validation import (
     validate_hierarchy_order,
     validate_schedule_structure,
 )
+from app.services.task_dependencies import task_dependencies
 
 router = APIRouter()
 
@@ -94,6 +99,9 @@ def save_project_as_template(
             # Templates preserve structure and relative logic, not absolute
             # dates from the source project's calendar position.
             manual_start_date=None,
+            is_milestone=task.is_milestone,
+            constraint_type=task.constraint_type,
+            constraint_date=task.constraint_date,
         )
 
         db.add(template_task)
@@ -112,6 +120,20 @@ def save_project_as_template(
             if task.parent_task_id in template_task_map
             else None
         )
+        for dependency in task_dependencies(task):
+            predecessor = template_task_map.get(
+                dependency.predecessor_task_id
+            )
+            if predecessor is not None:
+                db.add(
+                    ScheduleTemplateTaskDependency(
+                        template_id=new_template.id,
+                        template_task_id=template_task.id,
+                        predecessor_template_task_id=predecessor.id,
+                        dependency_type=dependency.dependency_type,
+                        lag_days=dependency.lag_days,
+                    )
+                )
 
     db.commit()
 
@@ -170,9 +192,14 @@ def apply_template_to_project(
             lag_days=template_task.lag_days,
             order_index=current_max_order + index,
             manual_start_date=None,
+            is_milestone=template_task.is_milestone,
+            constraint_type=template_task.constraint_type,
+            constraint_date=template_task.constraint_date,
             progress_status="not_started",
             percent_complete=0,
-            remaining_duration=template_task.duration,
+            remaining_duration=(
+                0 if template_task.is_milestone else template_task.duration
+            ),
             actual_start_date=None,
             actual_finish_date=None,
         )
@@ -189,6 +216,19 @@ def apply_template_to_project(
         parent = project_task_map.get(template_task.parent_template_task_id)
         new_task.predecessor_task_id = predecessor.id if predecessor else None
         new_task.parent_task_id = parent.id if parent else None
+        for dependency in template_task.dependencies:
+            predecessor = project_task_map.get(
+                dependency.predecessor_template_task_id
+            )
+            if predecessor is not None:
+                new_task.dependencies.append(
+                    TaskDependency(
+                        project_id=project_id,
+                        predecessor_task_id=predecessor.id,
+                        dependency_type=dependency.dependency_type,
+                        lag_days=dependency.lag_days,
+                    )
+                )
 
     tasks = (
         db.query(Task)

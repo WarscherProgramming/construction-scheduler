@@ -313,6 +313,69 @@ describe("useScheduleActions project mutation safety", () => {
     );
   });
 
+  it("updates advanced planning through the canonical task response", async () => {
+    const planning = {
+      duration: 0,
+      is_milestone: true,
+      constraint_type: "SNET",
+      constraint_date: "2026-03-09",
+      dependencies: [
+        {
+          predecessor_task_id: 2,
+          dependency_type: "FF",
+          lag_days: -2,
+        },
+      ],
+    };
+    const updatedTasks = [{ ...tasks[0], ...planning }];
+    updateTask.mockResolvedValue({ tasks: updatedTasks, summary: {} });
+    const { result, spies } = setup();
+
+    act(() => result.current.openTaskPlanning(tasks[0]));
+    expect(result.current.planningTaskId).toBe(1);
+    await act(async () => {
+      await result.current.handleUpdateTaskPlanning(1, planning);
+    });
+
+    expect(updateTask).toHaveBeenCalledWith(
+      1,
+      1,
+      planning,
+      expect.objectContaining({ signal: expect.any(AbortSignal) })
+    );
+    expect(spies.setTasks).toHaveBeenCalledWith(updatedTasks);
+    expect(result.current.planningTaskId).toBeNull();
+    expect(spies.showNotice).toHaveBeenCalledWith(
+      "success",
+      "Task planning updated."
+    );
+  });
+
+  it("clears planning selection and ignores its stale response on switch", async () => {
+    const request = deferred();
+    updateTask.mockReturnValue(request.promise);
+    const { result, spies, switchProject } = setup();
+    act(() => result.current.openTaskPlanning(tasks[0]));
+    let mutation;
+    act(() => {
+      mutation = result.current.handleUpdateTaskPlanning(1, {
+        duration: 1,
+        is_milestone: false,
+        constraint_type: "ASAP",
+        constraint_date: null,
+        dependencies: [],
+      });
+    });
+
+    await switchProject();
+    expect(result.current.planningTaskId).toBeNull();
+    request.resolve({ tasks: [], summary: {} });
+    await act(async () => mutation);
+
+    expect(spies.setTasks).not.toHaveBeenCalled();
+    expect(spies.showNotice).not.toHaveBeenCalled();
+  });
+
   it("deduplicates progress updates and ignores stale success", async () => {
     const request = deferred();
     updateTaskProgress.mockReturnValue(request.promise);

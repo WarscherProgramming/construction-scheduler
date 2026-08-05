@@ -11,7 +11,7 @@ and Punch Lists) with their supporting documents.
 ![React 19](https://img.shields.io/badge/React-19-61dafb?logo=react&logoColor=white&labelColor=20232a)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.1x-009688?logo=fastapi&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169e1?logo=postgresql&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-864%20passing-2ea44f)
+![Tests](https://img.shields.io/badge/tests-897%20passing-2ea44f)
 ![Vite](https://img.shields.io/badge/Vite-8-646cff?logo=vite&logoColor=white)
 
 ![FieldFlow executive dashboard](docs/screenshots/dashboard.png)
@@ -63,8 +63,10 @@ question — *"what needs my attention today?"* — has a one-screen answer.
   refresh sessions, replay-family revocation, CSRF and exact-Origin checks,
   database-backed user validation, single-flight refresh, cross-tab logout,
   and production configuration validation.
-- **Interactive scheduler**: spreadsheet-style inline editing, Finish-to-Start
-  and Start-to-Start dependencies with lag, workday/holiday-aware date math,
+- **Interactive scheduler**: spreadsheet-style inline editing, multiple
+  Finish-to-Start, Start-to-Start, Finish-to-Finish, and Start-to-Finish
+  dependencies with signed lead/lag; milestone tasks; eight standard
+  constraints; workday/holiday-aware date math;
   independent persistent Schedule Start and Data Dates, status-aware
   recalculation, actual dates, remaining duration, percent complete,
   out-of-sequence detection, deterministic summary-predecessor rollups,
@@ -74,8 +76,9 @@ question — *"what needs my attention today?"* — has a one-screen answer.
   persistent comparison selection, active/archive history, stable task-ID
   matching, workday start/finish variance, critical and structural change
   analysis, and a responsive table-first comparison workflow.
-- **Dynamic Gantt chart** rendered from the same task data with progress and a
-  Data Date marker, plus a progress-aware one-click PDF export.
+- **Dynamic Gantt chart** rendered from the same task data with progress,
+  milestone diamonds, constraint markers, labeled dependency connectors, and
+  a Data Date marker, plus a progress-aware one-click PDF export.
 - **Project Dashboard and Analytics** backed by one authenticated,
   project-owned aggregate endpoint: schedule, RFI, Submittal, Punch Item,
   Change Order, Daily Log, and document summaries; bounded Attention
@@ -137,9 +140,9 @@ question — *"what needs my attention today?"* — has a one-screen answer.
 - **Client-side onboarding**: first-run detection seeds a realistic demo
   project through the public API with visible progress — the app is never
   empty.
-- **Automated testing: 864 tests** — 515 frontend across 74 files (Vitest +
-  React Testing Library, behavior- and accessibility-focused) and 349 backend
-  tests plus 371 separately reported subtests (pytest,
+- **Automated testing: 897 tests** — 525 frontend across 75 files (Vitest +
+  React Testing Library, behavior- and accessibility-focused) and 372 backend
+  tests plus 376 separately reported subtests (pytest,
   covering the scheduling engine, critical path, services, migrations, CORS,
   and TestClient API integration).
 
@@ -392,7 +395,10 @@ job. FieldFlow does not include a built-in worker or scheduler, and
   complete, remaining duration, actual dates, and server-recorded update data
 - Progress-derived project summary and visible out-of-sequence context without
   a second task request
-- Finish-to-Start and Start-to-Start dependencies with lag (`12`, `12+3`, `12SS+4`)
+- Multiple Finish-to-Start, Start-to-Start, Finish-to-Finish, and
+  Start-to-Finish dependencies with signed lead/lag
+- Zero-duration milestones and ASAP, ALAP, start/finish no-earlier/no-later,
+  mandatory-start, and mandatory-finish constraints
 - Leaf dependencies on nested summary tasks with deterministic date rollups
 - Workday scheduling that skips weekends and federal holidays
 - Parent/child task hierarchy with indent/outdent, collapse, and validated
@@ -403,7 +409,8 @@ job. FieldFlow does not include a built-in worker or scheduler, and
   changes, and explicit task-structure change indicators
 - Searchable, filterable, paginated Baseline Comparison view with textual
   summary metrics and stacked mobile records
-- Progress-aware Gantt visualization and current-schedule PDF export
+- Progress-aware Gantt visualization with milestone, constraint, and labeled
+  dependency indicators, plus current-schedule PDF export
 - Reusable schedule templates
 
 **Project Dashboard and Analytics**
@@ -506,15 +513,15 @@ job. FieldFlow does not include a built-in worker or scheduler, and
 | Backend | FastAPI, SQLAlchemy, Alembic, Pydantic |
 | Database | PostgreSQL |
 | Auth | Memory-only access JWT + rotating opaque refresh sessions |
-| Testing | Vitest + React Testing Library (515), pytest (349) |
+| Testing | Vitest + React Testing Library (525), pytest (372) |
 | Hosting | Vercel (frontend) · Render (API + migrations + finite extraction cron) |
 
 ## Testing
 
-**864 primary automated tests passed.** Backend subtests are reported
+**897 primary automated tests passed.** Backend subtests are reported
 separately rather than added to that total.
 
-- **Frontend (515 across 74 files)** — Vitest + React Testing Library. Tests
+- **Frontend (525 across 75 files)** — Vitest + React Testing Library. Tests
   target behavior and accessibility: roles and names, keyboard flows
   (Enter/Escape editing,
   grid cursor navigation, focus traps), aggregate dashboard rendering,
@@ -547,9 +554,12 @@ separately rather than added to that total.
   Progress coverage adds independent Data Date controls, conditional progress
   entry, loading and correction flows, actual and forecast dates, textual
   summaries, visible out-of-sequence context, project-switch clearing, and
-  one canonical task request.
-- **Backend (349, plus 371 subtests)** — pytest. Covers the deterministic
-  workday scheduling engine (persistent anchors, FS/SS dependencies, lag,
+  one canonical task request. Advanced planning coverage adds milestones,
+  constraints, multiple dependency editing, signed lead/lag, all four
+  relationship types, accessible dialog behavior, and Gantt indicators.
+- **Backend (372, plus 376 subtests)** — pytest. Covers the deterministic
+  workday scheduling engine (persistent anchors, all four dependency types,
+  multiple predecessors, signed lead/lag, milestones, constraints,
   summary predecessors, hierarchy ordering, federal holidays), critical path
   and total float, immutable baseline capture, rollback and ownership,
   stable-ID variance matching, workday variance, critical and structural
@@ -777,6 +787,9 @@ commit production credentials.
   leaf-task states, actual dates, remaining-duration forecasting,
   out-of-sequence context, progress-aware Gantt, variance, and PDF export,
   and one canonical task collection
+- ✅ M17.4 milestones, eight standard constraints, multiple normalized
+  predecessors, FS/SS/FF/SF relationships, signed lead/lag, advanced CPM and
+  variance behavior, and accessible Gantt planning indicators
 - ✅ Branded landing page and first-run demo seeding
 - ✅ Icon system, confirmation dialogs, notifications, loading skeletons
 - ✅ Scheduler showcase: WBS numbering, inline validation, critical path +
@@ -788,7 +801,7 @@ commit production credentials.
 
 **Next**
 - Weather-delay integration and resource loading
-- Milestone tasks, Gantt dependency arrows, and timeline zoom
+- Timeline zoom
 
 **Future possibilities (not committed scope)**
 - Distributed rate limiting, password reset, email verification, MFA, OAuth,

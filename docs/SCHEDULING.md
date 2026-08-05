@@ -1,10 +1,10 @@
 # Scheduling Architecture
 
 This document defines the deterministic scheduling contract established in
-M17.1, extended with immutable baselines and variance in M17.2, and extended
-with progress and Data Date semantics in M17.3. It describes shipped behavior
-only; look-ahead planning, resource loading, and configurable calendars are
-not implemented.
+M17.1, immutable baselines and variance from M17.2, progress and Data Date
+semantics from M17.3, and milestones, constraints, and advanced dependencies
+from M17.4. It describes shipped behavior only; look-ahead planning, resource
+loading, and configurable calendars are not implemented.
 
 ## Architecture
 
@@ -90,20 +90,51 @@ message responses.
 
 ## Dependencies
 
-Each leaf task supports one stable task-ID predecessor:
+Each leaf task supports up to 50 ordered `TaskDependency` rows with a stable
+task-ID predecessor, relationship type, and signed lag:
 
-- `FS`: start after the predecessor finish.
-- `SS`: start from the predecessor start.
-- `lag_days`: zero through 36,500 calendar days.
+- `FS`: successor start from predecessor finish;
+- `SS`: successor start from predecessor start;
+- `FF`: successor finish from predecessor finish;
+- `SF`: successor finish from predecessor start;
+- `lag_days`: -36,500 through 36,500 workdays; negative values are lead.
 
-FS adds one calendar day after predecessor finish, adds lag, then snaps to the
-next workday. SS adds lag to predecessor start, then snaps to the next
-workday. This preserves the existing API syntax such as `12`, `12+3`, and
-`12SS+4`.
+The most restrictive boundary across every predecessor controls the forward
+pass. The normalized collection is authoritative. The original
+`predecessor_task_id`, `dependency_type`, `lag_days`, and compact
+`predecessor` response remain as a first-dependency compatibility projection.
+Existing syntax such as `12`, `12+3`, and `12SS+4` remains accepted and now
+also supports values such as `12FF-2` and `12SF+1`.
 
-Self references, cross-project references, dependency cycles, parent cycles,
-and combined hierarchy/dependency cycles are rejected with 422. Clearing a
-predecessor is valid and normalizes its relationship to `FS` with zero lag.
+Duplicate predecessors, self links, cross-project references, dependency
+cycles, parent cycles, combined hierarchy/dependency cycles, and dependencies
+on summary rows are rejected with 422. Clearing dependencies normalizes the
+legacy projection to null/`FS`/zero. Deleting a predecessor removes its links
+and promotes the next stable dependency into that projection.
+
+## Milestones and Constraints
+
+Milestones are leaf tasks with `is_milestone = true`, zero duration, zero
+remaining duration, and identical start/finish dates. They participate in
+dependencies, CPM, templates, and baselines. They may be Not Started or
+Completed; In Progress is invalid because there is no remaining duration.
+
+Tasks support `ASAP`, `ALAP`, `SNET`, `SNLT`, `FNET`, `FNLT`, `MS`, and `MF`.
+All dated constraints require an ISO date that is a workday. Precedence is:
+
+1. Completed actual dates and in-progress Actual Start remain factual.
+2. Mandatory Start/Finish place unstarted work on the exact constraint date;
+   conflicts with dependencies, manual dates, or Data Date are reported.
+3. Dependencies, manual/root dates, Data Date, SNET, and FNET determine the
+   earliest normal boundary.
+4. SNLT and FNLT constrain the late pass, producing negative float and a
+   visible violation when the forecast is late.
+5. ALAP moves unstarted work to its late start within the remaining project
+   network. ASAP retains the normal forward-pass result.
+
+Constraint violations and reasons are derived response fields, not client
+controlled state. Progress is never rewritten to satisfy a planning
+constraint.
 
 ## Summary Predecessors
 
@@ -113,7 +144,7 @@ supports leaf tasks depending on summaries under this contract:
 - A summary's effective start and finish come from all direct children.
 - Nested summaries resolve from the deepest descendants outward.
 - A successor waits until the summary rollup is resolved.
-- FS, SS, and lag use summary start/finish dates, never summary duration.
+- FS, SS, FF, SF, and signed lag use summary dates, never summary duration.
 - If any required descendant is unresolved, the summary and its successor
   remain unresolved.
 - A summary cannot have its own predecessor because shifting descendants from
@@ -157,9 +188,11 @@ project calendars, work weeks, shutdown periods, or custom holidays.
 ## Critical Path and Float
 
 Critical-path metadata is derived on response and is not persisted. The
-backward pass mirrors FS/SS and lag behavior over scheduled leaf-to-leaf
-dependencies. Summary rows aggregate the most constrained child float and
-whether any child is critical.
+backward pass mirrors FS/SS/FF/SF and signed-lag behavior over scheduled
+leaf-to-leaf dependencies. Upper-bound and mandatory constraints participate
+in late-start bounds, so missed deadlines can produce negative float. Summary
+rows aggregate the most constrained child float and whether any child is
+critical.
 
 Completed tasks are excluded from the remaining CPM network, report zero
 float, and are not critical. In-progress CPM uses remaining duration and its
@@ -186,11 +219,12 @@ values.
 
 ## Templates
 
-Templates preserve names, order, duration, lag, dependencies, and parent
-relationships. They are structural patterns, not source-project calendar
-snapshots. Saving and applying a template does not carry absolute manual start
-dates. Applied root work uses the target project's Schedule Start Date, and
-the complete target schedule recalculates atomically.
+Templates preserve names, order, duration, milestone state, constraints,
+every normalized dependency, and parent relationships. They are structural
+patterns, not source-project calendar snapshots. Saving and applying a
+template does not carry absolute manual start dates. Applied root work uses
+the target project's Schedule Start Date, and the complete target schedule
+recalculates atomically.
 
 Templates also remain progress-free: apply initializes Not Started, zero
 percent, remaining duration equal to planned duration, and null actual dates.
@@ -248,24 +282,29 @@ safe 422 responses.
 
 Schedule mutations capture project identity and an operation generation at
 dispatch. Project switching aborts supported requests and clears editing,
-selection, template selection, and pending state. Late successes, failures,
-and optimistic reorder rollbacks are ignored. Duplicate in-flight mutations
-with the same key are suppressed.
+progress/planning selection, template selection, and pending state. Late
+successes, failures, and optimistic reorder rollbacks are ignored. Duplicate
+in-flight mutations with the same key are suppressed.
 
 Schedule Start Date and Data Date have visible labels, distinct help text,
 field-specific validation, pending state, and focused confirmation where the
 change affects existing work. Leaf progress uses a task-specific dialog with
 conditional fields, correction confirmation, focus trapping, Escape, value
 preservation after failure, and focus restoration. Summary progress remains
-derived. Task-load failure retains the global feedback banner and adds one
-local keyboard-accessible retry that issues one fresh request.
+derived. A separate focus-managed planning dialog edits milestone state,
+duration, constraints, and ordered predecessor rows without introducing a
+second task collection. The table names milestone and constraint states, and
+the Gantt uses labeled milestone diamonds, constraint markers, and an SVG
+overlay with visible dependency type/lead/lag labels. Task-load failure
+retains the global feedback banner and adds one local keyboard-accessible
+retry that issues one fresh request.
 
 Baseline capture and archive use focus-managed dialogs. Comparison metrics
 use explicit direction text, and the semantic desktop table becomes labeled
 stacked records on narrow screens. Project switching aborts and rejects stale
 baseline work and remounts local scheduler state. Automated component and
 integration coverage verifies these behaviors. Browser checks at 320, 375,
-768, and 1024 pixels, wide desktop, and 200% zoom were not performed in M17.3
+768, and 1024 pixels, wide desktop, and 200% zoom were not performed in M17.4
 and remain manual release verification.
 
 ## Scale Budgets
@@ -296,6 +335,15 @@ analysis, and critical-path annotation:
 These bounded measurements are local calculation evidence only. They do not
 claim PostgreSQL, network, PDF, or browser-render latency.
 
+M17.4 repeated three mixed-network runs on August 4, 2026. Each case cycles
+FS/SS/FF/SF, signed lag, periodic milestones, and dated lower constraints:
+
+| Tasks | Median |
+|---:|---:|
+| 100 | 4.36 ms |
+| 500 | 20.99 ms |
+| 2,000 | 86.04 ms |
+
 - 100 tasks: normal interaction target.
 - 500 tasks: supported backend/API schedule size.
 - 2,000 tasks: backend correctness and reorder-request maximum; browser
@@ -308,16 +356,22 @@ template-apply timing at the upper limits remain follow-up performance work.
 
 ## Database Safeguards
 
-Tasks enforce duration and lag bounds, FS/SS relationship values,
-nonnegative nullable order, 0/1 collapse state, and no direct self-parent or
-self-predecessor. Duration and collapse are non-null. The migration converted
-legacy null/nonpositive duration values to one workday; the audited local
-database contained one zero-duration row whose stored one-day span was
-preserved.
+Tasks enforce milestone-aware duration, signed lag bounds, all four
+relationship values, valid constraint/date pairs, nonnegative nullable order,
+0/1 collapse state, and no direct self-parent or self-predecessor. Duration
+and collapse are non-null. M17.1 converted legacy null/nonpositive duration
+values to one workday; M17.4 introduces zero only for explicit milestones.
 
 M17.3 additionally enforces progress status, percent and remaining-duration
 ranges, actual-date ordering, complete state consistency, updater ownership,
 and a project/status lookup index.
+
+M17.4 adds project-owned normalized dependency tables for live tasks,
+templates, and baseline snapshots. Each prevents duplicate and self links,
+checks relationship and lag values, cascades with its owner, and indexes task
+and predecessor lookups. One data-preserving migration backfills every legacy
+live, template, and baseline predecessor while retaining the compatibility
+columns.
 
 Indexes support the canonical project/order query and project-scoped
 predecessor and parent validation:
@@ -334,19 +388,18 @@ and index deterministic order, parent, and predecessor lookups.
 
 ## Verification and Limits
 
-M17.3 verification passes 515 frontend tests across 74 files and 349 backend
-tests, with 371 backend subtests reported separately. PostgreSQL and SQLite
+M17.4 verification passes 525 frontend tests across 75 files and 372 backend
+tests, with 376 backend subtests reported separately. PostgreSQL and SQLite
 migration upgrade/downgrade/re-upgrade paths use Alembic revision
-`c8d4f1a7b903`.
+`d4e8a1c7f925`.
 
 Known limitations and deferred M17 work:
 
-- one predecessor per task; FS and SS only;
-- no milestones, constraints, look-ahead planning, resources, or crews;
+- no look-ahead planning, resources, or crews;
 - no progress history, earned value, or strict transition graph;
 - no configurable project calendars or timezones;
 - summary duration remains direct-child count;
 - summary-predecessor CPM propagation remains limited as described above;
 - no baseline Gantt overlay, baseline dashboard metric, or variance export;
-- no Gantt dependency arrows, timeline zoom, or schedule virtualization;
+- no timeline zoom or schedule virtualization;
 - no dashboard schedule-progress visualization in M17.3.

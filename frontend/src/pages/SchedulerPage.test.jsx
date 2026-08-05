@@ -79,6 +79,9 @@ const baseProps = {
   onOpenTaskProgress: vi.fn(),
   onCloseTaskProgress: vi.fn(),
   onUpdateTaskProgress: vi.fn(),
+  onOpenTaskPlanning: vi.fn(),
+  onCloseTaskPlanning: vi.fn(),
+  onUpdateTaskPlanning: vi.fn(),
   getEmptyRow: () => ({ id: null, name: "" }),
   formatDate: (value) => value,
   taskHasChildren: () => false,
@@ -269,6 +272,53 @@ describe("SchedulerPage", () => {
     expect(
       screen.getByRole("dialog", { name: "Update Progress: Mobilization" })
     ).toBeInTheDocument();
+  });
+
+  it("opens planning for a leaf and displays all predecessors", async () => {
+    const user = userEvent.setup();
+    const onOpenTaskPlanning = vi.fn();
+    const tasks = [
+      { id: 1, name: "First", duration: 2, dependencies: [] },
+      { id: 2, name: "Second", duration: 2, dependencies: [] },
+      {
+        id: 3,
+        name: "Release",
+        duration: 1,
+        is_milestone: false,
+        constraint_type: "SNET",
+        constraint_date: "2026-06-23",
+        dependencies: [
+          {
+            predecessor_task_id: 1,
+            dependency_type: "FF",
+            lag_days: -2,
+          },
+          {
+            predecessor_task_id: 2,
+            dependency_type: "SF",
+            lag_days: 3,
+          },
+        ],
+      },
+    ];
+
+    render(
+      <SchedulerPage
+        {...baseProps}
+        tasks={tasks}
+        planningTaskId={3}
+        onOpenTaskPlanning={onOpenTaskPlanning}
+      />
+    );
+
+    expect(screen.getByText("1FF-2, 2SF+3")).toBeInTheDocument();
+    expect(
+      screen.getByRole("dialog", { name: "Plan Task: Release" })
+    ).toBeInTheDocument();
+    await user.click(
+      screen.getByRole("button", { name: "Edit planning for First" })
+    );
+    expect(onOpenTaskPlanning).toHaveBeenCalledWith(tasks[0]);
   });
 
   it("keeps summary progress derived and rejects direct dialog mounting", () => {

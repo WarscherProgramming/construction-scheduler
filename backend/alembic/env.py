@@ -42,11 +42,16 @@ from app.models.rfi import RFI, RFINumberSequence  # noqa: F401
 from app.models.schedule_baseline import (  # noqa: F401
     ScheduleBaseline,
     ScheduleBaselineTask,
+    ScheduleBaselineTaskDependency,
 )
 from app.models.refresh_session import RefreshSession  # noqa: F401
 from app.models.submittal import Submittal, SubmittalNumberSequence  # noqa: F401
-from app.models.task import Task  # noqa: F401
-from app.models.template import ScheduleTemplate, ScheduleTemplateTask  # noqa: F401
+from app.models.task import Task, TaskDependency  # noqa: F401
+from app.models.template import (  # noqa: F401
+    ScheduleTemplate,
+    ScheduleTemplateTask,
+    ScheduleTemplateTaskDependency,
+)
 from app.models.user import User  # noqa: F401
 
 load_dotenv()

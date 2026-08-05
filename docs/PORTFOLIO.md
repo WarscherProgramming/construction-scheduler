@@ -1,8 +1,8 @@
 # FieldFlow — Portfolio Copy
 
 Ready-to-use descriptions for resumes, portfolio sites, and LinkedIn.
-Keep the metrics in sync with the repo (M17.3 verified **864 primary tests: 515
-frontend across 74 files + 349 backend**, with 371 backend subtests reported
+Keep the metrics in sync with the repo (M17.4 verified **897 primary tests: 525
+frontend across 75 files + 372 backend**, with 376 backend subtests reported
 separately).
 
 ---
@@ -13,13 +13,14 @@ separately).
 
 > FieldFlow — full-stack construction scheduling and field-management SaaS
 > (React 19, FastAPI, PostgreSQL) with a drag-and-drop CPM-style scheduler,
-> persistent Data Date and live progress,
+> persistent Data Date, live progress, milestones, constraints, and advanced
+> dependencies,
 > executive dashboard, enhanced project-scoped Change Order, RFI, Submittal,
 > and Punch List workflows, reusable Document Management across six resource
 > types, a project document explorer, construction drawing revision
 > management with a secure PDF viewer, explicit cross-record construction
 > relationships, project-scoped PDF content search, hardened rotating-session
-> authentication, and 864 automated
+> authentication, and 897 automated
 > tests.
 
 ### Resume bullets
@@ -28,7 +29,8 @@ separately).
 > FastAPI, PostgreSQL, SQLAlchemy, Vite · [live demo](https://construction-scheduler-eight.vercel.app)
 >
 > - Built a deterministic spreadsheet-style scheduling engine with persistent
->   project start and Data Date anchors, FS/SS dependencies, lag,
+>   project start and Data Date anchors, multiple FS/SS/FF/SF dependencies,
+>   signed lead/lag, zero-duration milestones, eight standard constraints,
 >   summary-predecessor rollups, workday/holiday-aware date math, validated
 >   task hierarchy, and keyboard-accessible drag-and-drop reordering; added
 >   server-normalized progress, actual dates, remaining-duration forecasts,
@@ -83,7 +85,7 @@ separately).
 > - Hardened authentication with memory-only access JWTs, rotating opaque
 >   refresh sessions, replay-family revocation, CSRF and exact-Origin
 >   enforcement, route-wide tenant isolation, and bounded abuse controls;
->   verified the complete platform with 864 automated tests (Vitest/RTL +
+>   verified the complete platform with 897 automated tests (Vitest/RTL +
 >   pytest).
 
 ### Portfolio-site paragraph
@@ -92,7 +94,8 @@ separately).
 > built end-to-end: a React 19 SPA over a FastAPI/PostgreSQL backend. The
 > centerpiece is a spreadsheet-fast scheduler — persistent project anchors,
 > an independent Data Date, status-aware progress and actuals,
-> inline cell editing, Finish-to-Start/Start-to-Start dependencies with lag,
+> inline cell editing, multiple FS/SS/FF/SF dependencies with signed lead/lag,
+> zero-duration milestones, eight standard constraints,
 > deterministic summary rollups, workday and federal holiday calendars,
 > validated task hierarchy, and drag-and-drop reordering that works
 > from the keyboard — rendered as both an editable grid and a Gantt chart with
@@ -106,7 +109,7 @@ separately).
 > attachments across six construction workflows, a responsive project
 > document explorer, construction drawing revision management with secure
 > browser viewing, explicit user-created relationships across construction
-> records and drawing context, secure project PDF content search, and 864
+> records and drawing context, secure project PDF content search, and 897
 > automated tests
 > across the stack.
 
@@ -164,8 +167,8 @@ available while preserving recoverable cleanup work.
   attachment and document APIs, models, storage abstractions, hooks, and UI
 - 25 MiB per-file limit with PDF, image, text, Word, and Excel support
 - Private authenticated delivery with no public object keys or credentials
-- 515 frontend tests across 74 files and 349 backend tests, for 864 primary
-  tests passed; 371 backend subtests are tracked separately
+- 525 frontend tests across 75 files and 372 backend tests, for 897 primary
+  tests passed; 376 backend subtests are tracked separately
 - Lazy per-record panel mounting with no dashboard attachment preloading
 - Ten allowlisted relationship entity types with bounded candidate search and
   no dashboard or table-row relationship preloading
@@ -187,7 +190,8 @@ available while preserving recoverable cleanup work.
 > change orders over email. FieldFlow puts them behind one login:
 >
 > 📅 A deterministic spreadsheet-fast scheduler — persistent project anchor,
-> inline editing, FS/SS dependencies with lag, summary rollups,
+> inline editing, multiple FS/SS/FF/SF dependencies with signed lead/lag,
+> milestones, standard constraints, summary rollups,
 > workday/holiday-aware dates, hierarchy, drag-and-drop reordering,
 > independent Data Date, live progress and actuals, out-of-sequence context,
 > and immutable baseline comparison with workday variance
@@ -204,7 +208,7 @@ available while preserving recoverable cleanup work.
 > revision navigation
 >
 > Under the hood: React 19 + Vite, FastAPI + SQLAlchemy + PostgreSQL, hardened
-> rotating-session auth, an accessible component design system, and 864
+> rotating-session auth, an accessible component design system, and 897
 > automated tests.
 >
 > The demo seeds a full sample project in ~10 seconds — no signup friction:
@@ -222,7 +226,7 @@ available while preserving recoverable cleanup work.
 > document explorer, drawing revision management with a secure PDF viewer,
 > explicit construction-record relationships, native PDF content search,
 > immutable schedule baseline comparison, Data Date and progress tracking,
-> accessible design system, 864
+> milestones, constraints, advanced dependencies, accessible design system, 897
 > automated tests. Live demo
 > seeds a complete sample
 > project in seconds.
@@ -233,8 +237,9 @@ available while preserving recoverable cleanup work.
 
 1. **Deterministic, timezone-safe scheduling.** Each project persists separate
    local `YYYY-MM-DD` Schedule Start and Data Dates, so recalculation is
-   independent of the day a request runs. A graph-based pass handles FS/SS
-   dependencies and summary rollups, while workday math skips weekends and
+   independent of the day a request runs. A graph-based pass handles multiple
+   FS/SS/FF/SF dependencies, signed lead/lag, milestones, constraints, and
+   summary rollups, while workday math skips weekends and
    federal holidays. Live leaf progress preserves actual dates, forecasts
    remaining work, and surfaces retained-dependency out-of-sequence context.
    Immutable snapshots preserve stable task identity, historical hierarchy,

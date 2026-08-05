@@ -35,6 +35,7 @@ function renderRow(overrides = {}) {
     handleCellCancel: vi.fn(),
     handleDelete: vi.fn(),
     handleProgress: vi.fn(),
+    handlePlanning: vi.fn(),
     handleToggleCollapse: vi.fn(),
     formatDate: (value) => value,
     hasChildren: true,
@@ -116,6 +117,25 @@ describe("SortableTaskRow", () => {
       })
     );
     expect(props.handleProgress).toHaveBeenCalledWith(progressTask);
+  });
+
+  it("opens advanced planning for leaf tasks", async () => {
+    const user = userEvent.setup();
+    const planningTask = {
+      ...task,
+      constraint_type: "FNLT",
+      constraint_violated: true,
+    };
+    const props = renderRow({ task: planningTask, hasChildren: false });
+
+    await user.click(
+      screen.getByRole("button", {
+        name: `Edit planning for ${planningTask.name}`,
+      })
+    );
+
+    expect(props.handlePlanning).toHaveBeenCalledWith(planningTask);
+    expect(screen.getByText("FNLT - Violated")).toBeInTheDocument();
   });
 
   it("marks summary progress as derived without an edit action", () => {

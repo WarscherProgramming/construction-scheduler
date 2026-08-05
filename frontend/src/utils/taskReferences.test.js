@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildWbsMap,
+  formatDependenciesForSchedule,
   formatPredecessorForApi,
   formatPredecessorForSchedule,
   getScheduleTaskNumber,
@@ -48,6 +49,7 @@ describe("task reference formatting", () => {
   it("formats stored predecessor IDs as WBS schedule IDs", () => {
     expect(formatPredecessorForSchedule("318SS+4", flatTasks)).toBe("2SS+4");
     expect(formatPredecessorForSchedule("12+3", hierarchyTasks)).toBe("1.2+3");
+    expect(formatPredecessorForSchedule("318FF-2", flatTasks)).toBe("2FF-2");
   });
 
   it("translates WBS schedule IDs back to stored task IDs", () => {
@@ -59,11 +61,15 @@ describe("task reference formatting", () => {
       value: "13+2",
       error: null,
     });
+    expect(formatPredecessorForApi("3sf-2", flatTasks)).toEqual({
+      value: "451SF-2",
+      error: null,
+    });
   });
 
   it("rejects malformed references with format guidance", () => {
     expect(formatPredecessorForApi("abc", flatTasks).error).toBe(
-      "Use a schedule ID such as 2, 1.2, 2+3, or 1.2SS+4."
+      "Use a schedule ID such as 2, 1.2FS-2, 2SS+3, 1.2FF, or 3SF+1."
     );
   });
 
@@ -75,5 +81,27 @@ describe("task reference formatting", () => {
     expect(formatPredecessorForApi("1.7", hierarchyTasks).error).toBe(
       "No task has schedule ID 1.7. Use the ID shown in the first column."
     );
+  });
+
+  it("formats every normalized dependency in stable order", () => {
+    expect(
+      formatDependenciesForSchedule(
+        {
+          dependencies: [
+            {
+              predecessor_task_id: 318,
+              dependency_type: "FF",
+              lag_days: -2,
+            },
+            {
+              predecessor_task_id: 451,
+              dependency_type: "SF",
+              lag_days: 3,
+            },
+          ],
+        },
+        flatTasks
+      )
+    ).toBe("2FF-2, 3SF+3");
   });
 });

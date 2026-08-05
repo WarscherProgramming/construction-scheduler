@@ -527,6 +527,13 @@ function AppRouter({
       isUpdatingTaskProgress={schedule.isScheduleMutationActive(
         `updateProgress:${schedule.progressTaskId}`
       )}
+      onOpenTaskPlanning={schedule.openTaskPlanning}
+      onCloseTaskPlanning={schedule.closeTaskPlanning}
+      onUpdateTaskPlanning={schedule.handleUpdateTaskPlanning}
+      planningTaskId={schedule.planningTaskId}
+      isUpdatingTaskPlanning={schedule.isScheduleMutationActive(
+        `updatePlanning:${schedule.planningTaskId}`
+      )}
       getEmptyRow={schedule.getEmptyRow}
       formatDate={formatDate}
       taskHasChildren={schedule.taskHasChildren}

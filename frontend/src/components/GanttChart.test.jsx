@@ -234,4 +234,75 @@ describe("GanttChart", () => {
     expect(container.querySelector(".gantt-day--today")).toBeInTheDocument();
     expect(screen.getByText("Today")).toBeInTheDocument();
   });
+
+  it("renders milestones, constraints, and every advanced dependency", () => {
+    const { container } = render(
+      <GanttChart
+        selectedTaskId={1}
+        tasks={[
+          {
+            id: 1,
+            name: "Permit issued",
+            duration: 0,
+            start_date: "2026-03-02",
+            end_date: "2026-03-02",
+            parent_task_id: null,
+            is_milestone: true,
+            dependencies: [],
+          },
+          {
+            id: 2,
+            name: "Review",
+            duration: 3,
+            start_date: "2026-03-02",
+            end_date: "2026-03-04",
+            parent_task_id: null,
+            dependencies: [],
+          },
+          {
+            id: 3,
+            name: "Release",
+            duration: 2,
+            start_date: "2026-03-03",
+            end_date: "2026-03-04",
+            parent_task_id: null,
+            constraint_type: "FNLT",
+            constraint_date: "2026-03-03",
+            constraint_violated: true,
+            dependencies: [
+              {
+                predecessor_task_id: 1,
+                dependency_type: "FS",
+                lag_days: -1,
+              },
+              {
+                predecessor_task_id: 2,
+                dependency_type: "FF",
+                lag_days: 0,
+              },
+            ],
+          },
+        ]}
+      />
+    );
+
+    expect(container.querySelector(".gantt-bar--milestone"))
+      .toBeInTheDocument();
+    expect(
+      screen.getByRole("img", { name: /Permit issued.*milestone.*selected/ })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("img", { name: "Schedule dependencies" })
+    ).toBeInTheDocument();
+    expect(container.querySelectorAll(".gantt-dependency")).toHaveLength(2);
+    expect(container.querySelector(".gantt-dependency--fs text"))
+      .toHaveTextContent("FS-1");
+    expect(container.querySelector(".gantt-dependency--ff text"))
+      .toHaveTextContent("FF");
+    expect(
+      screen.getByRole("img", {
+        name: "FNLT constraint for Release on 03/03/2026, violated",
+      })
+    ).toBeInTheDocument();
+  });
 });
