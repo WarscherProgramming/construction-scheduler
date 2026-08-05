@@ -7,11 +7,12 @@ project teams a bounded summary of schedule dates, construction workflows,
 daily logs, documents, items requiring attention, upcoming work, and recent
 record updates without loading each resource collection in the browser.
 
-The dashboard is informational. It does not calculate percent complete,
-critical path, total float, or a synthetic project-health score because the
-aggregate contract does not provide enough data to make those claims.
-M17.2 schedule baselines and variance remain Schedule-route concerns: the
-dashboard adds no baseline request, comparison metric, or collection fan-out.
+The dashboard is informational. Although M17.3 tasks now have progress, the
+aggregate contract does not expose schedule percent complete, critical path,
+or total float and does not calculate a synthetic project-health score.
+Baselines, variance, Data Date, and progress remain Schedule-route concerns:
+the dashboard adds no task or baseline request, comparison metric, or
+collection fan-out.
 
 ## Architecture
 
@@ -234,7 +235,7 @@ from dashboard loading.
 
 ## Testing
 
-The frontend suite currently passes 483 tests across 71 files. Dashboard
+The frontend suite currently passes 515 tests across 74 files. Dashboard
 coverage includes:
 
 - API URL and required `as_of` behavior
@@ -250,15 +251,15 @@ coverage includes:
 - Attention Required, Upcoming Schedule, Workflow Analytics, and Recent
   Updates rendering
 
-The backend suite currently passes 327 primary tests, with 354 separately
-reported subtests. `test_dashboard_api.py` covers authentication, ownership,
+The backend suite currently passes 349 primary tests, with 371 subtests
+reported separately. `test_dashboard_api.py` covers authentication, ownership,
 query validation, aggregate definitions, bounded ordering, aware timestamps,
 legacy statuses, and query behavior.
 
 ## Performance
 
 Production builds were measured directly at each M14 commit and again through
-M17.2 with the installed Vite toolchain:
+M17.3 with the installed Vite toolchain:
 
 | Phase | Dashboard raw/gzip | Main raw/gzip | CSS raw/gzip |
 |---|---:|---:|---:|
@@ -272,6 +273,7 @@ M17.2 with the installed Vite toolchain:
 | M16.7 | 21.07 / 5.23 kB | 278.29 / 85.15 kB | 74.45 / 13.53 kB |
 | M17.1 | 21.07 / 5.23 kB | 280.82 / 85.81 kB | 74.79 / 13.55 kB |
 | M17.2 | 21.07 / 5.23 kB | 288.19 / 87.65 kB | 80.91 / 14.36 kB |
+| M17.3 | 21.07 / 5.23 kB | 289.84 / 88.09 kB | 85.97 / 15.04 kB |
 
 M14.2 replaced the previous client-derived dashboard and removed obsolete
 dashboard utilities. M14.3 added action lists, M14.4 added workflow analytics
@@ -291,6 +293,11 @@ Scheduler route is 62.66 kB raw / 20.07 kB gzip.
 M17.2 also leaves the dashboard chunk and one-request contract unchanged.
 Focused baseline state loads only on the Schedule route; the table-first
 comparison raises the lazy Scheduler chunk to 79.45 kB raw / 23.90 kB gzip.
+M17.3 also leaves the dashboard request and presentation unchanged. Progress,
+Data Date, and status-aware Gantt work remain in the lazy Scheduler route.
+That route is 93.81 kB raw / 26.85 kB gzip, up 14.36 / 2.95 kB from M17.2.
+Main grows 1.65 / 0.44 kB and CSS grows 5.06 / 0.68 kB; the Dashboard chunk
+does not change.
 
 No chart or date dependency was added, no duplicate shared utility chunk is
 emitted, and the dashboard remains route-level lazy-loaded. M16.5 adds no
@@ -302,9 +309,9 @@ Final automated verification:
 
 | Check | Result |
 |---|---|
-| Frontend tests | Pass: 483 tests across 71 files |
+| Frontend tests | Pass: 515 tests across 74 files |
 | ESLint | Pass: no errors or warnings |
-| Production build | Pass: 143 modules transformed |
+| Production build | Pass: 146 modules transformed |
 | Dashboard bundle budget | Pass: 5.23 kB gzip against a 5.25 kB limit |
 | Aggregate request count | Pass: one dashboard request |
 | Resource, attachment, relationship, extraction, and search requests | Pass: zero on dashboard load |

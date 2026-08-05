@@ -465,13 +465,22 @@ function AppRouter({
     );
   }
 
+  const hasCurrentTaskCollection = data.taskProjectId === selectedProjectId;
+  const currentScheduleSettings =
+    scheduleSettings?.project_id === selectedProjectId
+      ? scheduleSettings
+      : null;
+
   return (
     <SchedulerPage
       key={selectedProjectId}
       projectName={projectName}
-      tasks={tasks}
+      tasks={hasCurrentTaskCollection ? tasks : []}
+      scheduleSummary={
+        hasCurrentTaskCollection ? data.scheduleSummary : null
+      }
       templates={templates}
-      scheduleSettings={scheduleSettings}
+      scheduleSettings={currentScheduleSettings}
       selectedProjectId={selectedProjectId}
       selectedTaskId={schedule.selectedTaskId}
       editingCell={schedule.editingCell}
@@ -492,7 +501,7 @@ function AppRouter({
       isSavingTemplate={isOperationActive("saveTemplate")}
       isApplyingTemplate={schedule.isScheduleMutationActive("applyTemplate")}
       isExporting={isOperationActive("exportPdf")}
-      isLoadingTasks={loading("tasks")}
+      isLoadingTasks={loading("tasks") || !hasCurrentTaskCollection}
       isLoadingScheduleSettings={loading("scheduleSettings")}
       isUpdatingScheduleSettings={schedule.isScheduleMutationActive(
         "updateScheduleSettings"
@@ -510,6 +519,14 @@ function AppRouter({
       onToggleCollapse={schedule.handleToggleCollapse}
       onRetryTasks={data.loadTasks}
       onUpdateScheduleStart={schedule.handleUpdateScheduleStart}
+      onUpdateDataDate={schedule.handleUpdateDataDate}
+      onOpenTaskProgress={schedule.openTaskProgress}
+      onCloseTaskProgress={schedule.closeTaskProgress}
+      onUpdateTaskProgress={schedule.handleUpdateTaskProgress}
+      progressTaskId={schedule.progressTaskId}
+      isUpdatingTaskProgress={schedule.isScheduleMutationActive(
+        `updateProgress:${schedule.progressTaskId}`
+      )}
       getEmptyRow={schedule.getEmptyRow}
       formatDate={formatDate}
       taskHasChildren={schedule.taskHasChildren}

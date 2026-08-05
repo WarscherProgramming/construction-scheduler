@@ -14,6 +14,7 @@ def create_project_schedule_settings(
     settings = ProjectScheduleSettings(
         project_id=project_id,
         schedule_start_date=schedule_start_date.isoformat(),
+        data_date=schedule_start_date.isoformat(),
     )
     db.add(settings)
     db.flush()
@@ -38,3 +39,14 @@ def get_project_schedule_settings(
 def get_project_schedule_start(db: Session, project_id: int) -> date:
     settings = get_project_schedule_settings(db, project_id)
     return date.fromisoformat(settings.schedule_start_date)
+
+
+def get_project_schedule_dates(
+    db: Session,
+    project_id: int,
+) -> tuple[date, date]:
+    settings = get_project_schedule_settings(db, project_id)
+    return (
+        date.fromisoformat(settings.schedule_start_date),
+        date.fromisoformat(settings.data_date),
+    )

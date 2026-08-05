@@ -28,6 +28,11 @@ const summary = {
   added_count: 1,
   removed_count: 1,
   newly_critical_count: 1,
+  current_data_date: "2026-07-15",
+  not_started_count: 4,
+  in_progress_count: 3,
+  completed_count: 2,
+  out_of_sequence_count: 1,
 };
 
 const tasks = [
@@ -52,6 +57,11 @@ const tasks = [
     duration_changed: true,
     manual_start_changed: false,
     order_changed: false,
+    progress_status: "in_progress",
+    percent_complete: 40,
+    remaining_duration: 3,
+    out_of_sequence: true,
+    out_of_sequence_reason: "Actual start preceded the FS boundary.",
   },
   {
     task_id: 11,
@@ -151,6 +161,15 @@ describe("ScheduleVarianceView", () => {
       screen.getByText("Newly critical", { selector: "dt" }).nextElementSibling
     ).toHaveTextContent("1");
     expect(screen.getByText("Foundation")).toBeInTheDocument();
+    expect(
+      screen.getByText(/2 completed, 3 in progress, 4 not started/)
+    ).toHaveTextContent("1 out of sequence through 07/15/2026");
+    expect(screen.getByText("Live progress:").parentElement).toHaveTextContent(
+      "In Progress, 40%, 3 workdays remaining"
+    );
+    expect(
+      screen.getByText("Actual start preceded the FS boundary.")
+    ).toBeInTheDocument();
     expect(
       screen.getByText("Newly critical", { selector: "td" })
     ).toBeInTheDocument();

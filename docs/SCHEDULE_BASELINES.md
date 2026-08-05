@@ -1,8 +1,9 @@
 # Schedule Baselines and Variance
 
 M17.2 adds immutable, project-scoped schedule snapshots and workday variance
-analysis to the existing deterministic scheduler. It does not add progress,
-actual dates, a data date, or an actual-versus-planned claim.
+analysis to the existing deterministic scheduler. M17.3 adds live progress
+and Data Date context without changing the immutable planning-snapshot
+schema or turning variance into earned-value analysis.
 
 ## Architecture
 
@@ -54,7 +55,8 @@ Capture is one transaction:
 2. Lock the project row with `SELECT FOR UPDATE` on PostgreSQL.
 3. Validate the bounded, trimmed name and optional description.
 4. Load settings and tasks in deterministic order.
-5. Validate and recalculate against the persisted Schedule Start Date.
+5. Validate and recalculate against the persisted Schedule Start Date and
+   Data Date.
 6. Derive critical path and float.
 7. Insert one header and all snapshot rows.
 8. Select the new baseline as the comparison default.
@@ -107,6 +109,12 @@ project counts use leaf tasks so work is not double counted. The response
 includes baseline/current task and leaf counts, classification totals,
 project finishes and finish variance, critical totals, and critical changes.
 
+M17.3 variance rows add live status, percent, actual dates, remaining
+duration, and out-of-sequence context. The summary adds current Data Date and
+leaf counts for Not Started, In Progress, Completed, and Out of Sequence.
+Completed rows compare factual finish; in-progress rows compare forecast
+finish. Baseline rows remain unchanged and progress-free.
+
 ## API
 
 ```text
@@ -140,6 +148,8 @@ later/earlier wording, search, allowlisted filters and sorting, summary-row
 control, bounded pagination, and a semantic table. At narrow widths each row
 becomes a labeled comparison record. Added, removed, unavailable, critical,
 and structural states remain visible text and do not rely on color.
+Live progress and factual out-of-sequence reasons appear as additive text in
+the same comparison rows.
 
 `useScheduleBaselines` owns list, comparison, capture, archive, filters,
 variance, abort controllers, retries, mutation deduplication, and global
@@ -168,20 +178,21 @@ render profiling at large task counts was not performed.
 
 - The dashboard receives no baseline request or metric; baseline analytics
   remain a later M17 analytics decision.
-- Existing PDF export remains current-schedule only.
-- The Gantt is unchanged. A baseline overlay would require safe handling of
-  removed tasks and combined timeline bounds, so M17.2 keeps the semantic
-  table as the accessible comparison source.
-- Progress, percent complete, actual dates, a data date, milestone semantics,
-  resource loading, configurable calendars, version labels, snapshot purge,
-  and signed comparison exports are not implemented.
+- PDF export remains current-schedule only; it does not export variance.
+- The Gantt has live progress and a Data Date marker, but no baseline overlay.
+  An overlay would require safe handling of removed tasks and combined
+  timeline bounds, so the semantic table remains the accessible comparison
+  source.
+- Progress history, milestone semantics, resource loading, configurable
+  calendars, version labels, snapshot purge, and signed comparison exports
+  are not implemented.
 
 ## Verification
 
-M17.2 passes 483 frontend tests across 71 files and 327 backend tests, with
-354 backend subtests reported separately. Migration revision
-`a2c7e9f4b610` upgrades from M17.1, downgrades, re-upgrades, produces one
-Alembic head, and leaves existing projects without an automatic baseline.
+M17.3 passes 515 frontend tests across 74 files and 349 backend tests, with
+371 backend subtests reported separately. Baseline revision `a2c7e9f4b610`
+remains immutable beneath progress revision `c8d4f1a7b903`; existing projects
+still receive no automatic baseline.
 
 Deterministic tests cover ownership, mass assignment, immutability, rollback,
 selection and archive policy, malformed and missing dates, classifications,

@@ -82,6 +82,7 @@ function App() {
     selectedProjectIdRef,
     tasks: data.tasks,
     setTasks: data.setTasks,
+    setScheduleSummary: data.setScheduleSummary,
     setScheduleSettings: data.setScheduleSettings,
     setTemplates: data.setTemplates,
     loadTasks: data.loadTasks,

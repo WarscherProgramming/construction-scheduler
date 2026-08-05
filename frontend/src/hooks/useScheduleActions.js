@@ -9,6 +9,7 @@ import {
   saveTemplate,
   updateScheduleSettings,
   updateTask,
+  updateTaskProgress,
 } from "../services/api";
 import { moveArrayItem } from "../utils/array";
 import {
@@ -30,6 +31,7 @@ function useScheduleActions({
   selectedProjectIdRef,
   tasks,
   setTasks,
+  setScheduleSummary = () => {},
   setScheduleSettings,
   setTemplates,
   loadTasks,
@@ -41,6 +43,7 @@ function useScheduleActions({
   const [editingCell, setEditingCell] = useState(null);
   const [editValue, setEditValue] = useState("");
   const [selectedTaskId, setSelectedTaskId] = useState(null);
+  const [progressSelection, setProgressSelection] = useState(null);
   const [scheduleView, setScheduleView] = useState("table");
   const [templateName, setTemplateName] = useState("");
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
@@ -71,6 +74,7 @@ function useScheduleActions({
       setEditingCell(null);
       setEditValue("");
       setSelectedTaskId(null);
+      setProgressSelection(null);
       setTemplateName("");
       setSelectedTemplateId("");
     }, 0);
@@ -124,6 +128,14 @@ function useScheduleActions({
   const isScheduleMutationActive = useCallback(
     (key) => pendingActions.includes(key),
     [pendingActions]
+  );
+
+  const applyTaskResponse = useCallback(
+    (data) => {
+      setTasks(data.tasks);
+      setScheduleSummary(data.summary || null);
+    },
+    [setScheduleSummary, setTasks]
   );
 
   const handleCellClick = (task, field) => {
@@ -197,7 +209,7 @@ function useScheduleActions({
             ),
       {
         onSuccess: (data) => {
-          setTasks(data.tasks);
+          applyTaskResponse(data);
           setEditingCell(null);
         },
         onError: (error) =>
@@ -218,7 +230,7 @@ function useScheduleActions({
       (projectId, options) => deleteTask(projectId, id, options),
       {
         onSuccess: (data) => {
-          setTasks(data.tasks);
+          applyTaskResponse(data);
           showNotice("success", "Task deleted.");
         },
         onError: (error) =>
@@ -339,7 +351,7 @@ function useScheduleActions({
           options
         ),
       {
-        onSuccess: (data) => setTasks(data.tasks),
+        onSuccess: applyTaskResponse,
         onError: (error) =>
           reportRequestError("Unable to update task visibility", error),
       }
@@ -396,7 +408,7 @@ function useScheduleActions({
           options
         ),
       {
-        onSuccess: (data) => setTasks(data.tasks),
+        onSuccess: applyTaskResponse,
         onError: (error) =>
           reportRequestError("Unable to indent task", error),
       }
@@ -418,7 +430,7 @@ function useScheduleActions({
           options
         ),
       {
-        onSuccess: (data) => setTasks(data.tasks),
+        onSuccess: applyTaskResponse,
         onError: (error) =>
           reportRequestError("Unable to outdent task", error),
       }
@@ -446,12 +458,70 @@ function useScheduleActions({
     );
   };
 
+  const handleUpdateDataDate = async (dataDate) => {
+    return runProjectMutation(
+      "updateScheduleSettings",
+      (projectId, options) =>
+        updateScheduleSettings(projectId, { data_date: dataDate }, options),
+      {
+        onSuccess: async (settings) => {
+          setScheduleSettings(settings);
+          await loadTasks();
+          showNotice("success", "Data Date updated.");
+        },
+        onError: (error) =>
+          reportRequestError("Unable to update Data Date", error),
+      }
+    );
+  };
+
+  const openTaskProgress = useCallback(
+    (task) => {
+      if (selectedProjectId && task?.id) {
+        setProgressSelection({
+          projectId: selectedProjectId,
+          taskId: task.id,
+        });
+      }
+    },
+    [selectedProjectId]
+  );
+
+  const closeTaskProgress = useCallback(() => {
+    setProgressSelection(null);
+  }, []);
+
+  const handleUpdateTaskProgress = async (taskId, progress) => {
+    return runProjectMutation(
+      `updateProgress:${taskId}`,
+      (projectId, options) =>
+        updateTaskProgress(projectId, taskId, progress, options),
+      {
+        onSuccess: (data) => {
+          applyTaskResponse(data);
+          setProgressSelection(null);
+          showNotice("success", "Task progress updated.");
+        },
+        onError: (error) => {
+          if (error?.status === 404) setProgressSelection(null);
+          reportRequestError("Unable to update task progress", error);
+        },
+      }
+    );
+  };
+
+  const currentProgressTaskId =
+    progressSelection?.projectId === selectedProjectId
+      ? progressSelection.taskId
+      : null;
+
   return {
     editingCell,
     editValue,
     setEditValue,
     selectedTaskId,
     setSelectedTaskId,
+    progressTaskId: currentProgressTaskId,
     scheduleView,
     setScheduleView,
     templateName,
@@ -474,6 +544,10 @@ function useScheduleActions({
     handleIndentTask,
     handleOutdentTask,
     handleUpdateScheduleStart,
+    handleUpdateDataDate,
+    openTaskProgress,
+    closeTaskProgress,
+    handleUpdateTaskProgress,
     isScheduleMutationActive,
   };
 }

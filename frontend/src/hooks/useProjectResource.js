@@ -37,6 +37,8 @@ function useProjectResource({
   const [hasLoadedProjects, setHasLoadedProjects] = useState(false);
   const [templates, setTemplates] = useState([]);
   const [tasks, setTasks] = useState([]);
+  const [taskProjectId, setTaskProjectId] = useState(null);
+  const [scheduleSummary, setScheduleSummary] = useState(null);
   const [scheduleSettings, setScheduleSettings] = useState(null);
   const [taskLoadError, setTaskLoadError] = useState(null);
   const [dailyLogs, setDailyLogs] = useState([]);
@@ -180,12 +182,18 @@ function useProjectResource({
       fetchTasks,
       (data) => {
         setTasks(data.tasks);
+        setTaskProjectId(selectedProjectIdRef.current);
+        setScheduleSummary(data.summary || null);
         setTaskLoadError(null);
       },
       "Unable to load tasks",
-      () => setTaskLoadError("Unable to load the project schedule.")
+      () => {
+        setTaskProjectId(selectedProjectIdRef.current);
+        setScheduleSummary(null);
+        setTaskLoadError("Unable to load the project schedule.");
+      }
     );
-  }, [loadProjectResource]);
+  }, [loadProjectResource, selectedProjectIdRef]);
 
   const loadScheduleSettings = useCallback(
     () =>
@@ -292,6 +300,8 @@ function useProjectResource({
     setProjects([]);
     setHasLoadedProjects(false);
     setTasks([]);
+    setTaskProjectId(null);
+    setScheduleSummary(null);
     setScheduleSettings(null);
     setTaskLoadError(null);
     setTemplates([]);
@@ -322,6 +332,8 @@ function useProjectResource({
 
     const timeoutId = window.setTimeout(() => {
       setTasks([]);
+      setTaskProjectId(null);
+      setScheduleSummary(null);
       setScheduleSettings(null);
       setTaskLoadError(null);
       setDailyLogs([]);
@@ -390,6 +402,9 @@ function useProjectResource({
     setTemplates,
     tasks,
     setTasks,
+    taskProjectId,
+    scheduleSummary,
+    setScheduleSummary,
     scheduleSettings,
     setScheduleSettings,
     taskLoadError,

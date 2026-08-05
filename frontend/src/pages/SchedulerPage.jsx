@@ -11,7 +11,9 @@ import LoadingState from "../components/LoadingState";
 import NewTaskInput from "../components/NewTaskInput";
 import ScheduleStartControl from "../components/ScheduleStartControl";
 import ScheduleBaselineControl from "../components/schedule/ScheduleBaselineControl";
+import ScheduleProgressSummary from "../components/schedule/ScheduleProgressSummary";
 import ScheduleVarianceView from "../components/schedule/ScheduleVarianceView";
+import TaskProgressDialog from "../components/schedule/TaskProgressDialog";
 import SortableTaskRow from "../components/SortableTaskRow";
 import Button from "../components/ui/Button";
 import Card from "../components/ui/Card";
@@ -33,6 +35,7 @@ function SchedulerPage({
   tasks,
   templates,
   scheduleSettings,
+  scheduleSummary = null,
   selectedProjectId,
   selectedTaskId,
   editingCell,
@@ -58,6 +61,8 @@ function SchedulerPage({
   isUpdatingScheduleSettings = false,
   isLoadingTemplates = false,
   taskLoadError = null,
+  progressTaskId = null,
+  isUpdatingTaskProgress = false,
   onLogout,
   onDragEnd,
   onCellClick,
@@ -69,6 +74,10 @@ function SchedulerPage({
   onToggleCollapse,
   onRetryTasks,
   onUpdateScheduleStart,
+  onUpdateDataDate = async () => undefined,
+  onOpenTaskProgress = () => {},
+  onCloseTaskProgress = () => {},
+  onUpdateTaskProgress = async () => undefined,
   getEmptyRow,
   formatDate,
   taskHasChildren,
@@ -90,6 +99,15 @@ function SchedulerPage({
     selectedTask && findIndentParent(tasks, selectedTask.id)
   );
   const canOutdentSelectedTask = Boolean(selectedTask?.parent_task_id);
+  const progressTask = tasks.find((task) => task.id === progressTaskId);
+  const progressDisplayId = progressTask
+    ? wbsMap.get(progressTask.id)
+    : null;
+  const statusedTaskCount = tasks.filter(
+    (task) =>
+      !taskHasChildren(task.id) &&
+      (task.progress_status || "not_started") !== "not_started"
+  ).length;
 
   // Roving cell cursor (Excel-style): one tab stop for the grid, arrows and
   // Tab move between editable cells, Enter activates the focused cell.
@@ -229,12 +247,14 @@ function SchedulerPage({
       <ScheduleStartControl
         key={`${selectedProjectId}:${
           scheduleSettings?.schedule_start_date || "loading"
-        }`}
+        }:${scheduleSettings?.data_date || "loading"}`}
         settings={scheduleSettings}
         taskCount={tasks.length}
+        statusedTaskCount={statusedTaskCount}
         isLoading={isLoadingScheduleSettings}
         isUpdating={isUpdatingScheduleSettings}
         onUpdate={onUpdateScheduleStart}
+        onUpdateDataDate={onUpdateDataDate}
       />
 
       <ScheduleBaselineControl
@@ -335,6 +355,19 @@ function SchedulerPage({
       sidebarExtras={schedulerControls}
       mainClassName="scheduler-main"
     >
+        {progressTask &&
+          scheduleSettings?.data_date &&
+          !taskHasChildren(progressTask.id) && (
+          <TaskProgressDialog
+            key={`${selectedProjectId}:${progressTask.id}`}
+            task={progressTask}
+            displayId={progressDisplayId}
+            dataDate={scheduleSettings?.data_date}
+            isSubmitting={isUpdatingTaskProgress}
+            onSubmit={onUpdateTaskProgress}
+            onCancel={onCloseTaskProgress}
+          />
+        )}
         <PageHeader title="Schedule" />
 
         <div
@@ -382,6 +415,13 @@ function SchedulerPage({
             role="region"
             aria-labelledby="current-schedule-tab"
           >
+
+        <ScheduleProgressSummary
+          summary={scheduleSummary}
+          tasks={tasks}
+          dataDate={scheduleSettings?.data_date}
+          isLoading={isLoadingTasks}
+        />
 
         <div className="schedule-toolbar">
           <div className="schedule-toolbar-selection">
@@ -467,14 +507,16 @@ function SchedulerPage({
                     { label: "ID", width: "80px", align: "center" },
                     { label: "Task", width: "470px", align: "left" },
                     { label: "Duration", width: "90px", align: "center" },
-                    { label: "Start", width: "120px", align: "center" },
-                    { label: "End", width: "120px", align: "center" },
+                    { label: "Current Start", width: "120px", align: "center" },
+                    { label: "Current Finish", width: "120px", align: "center" },
+                    { label: "Progress", width: "180px", align: "left" },
+                    { label: "Actuals", width: "180px", align: "left" },
                     {
                       label: "Predecessor",
                       width: "130px",
                       align: "center",
                     },
-                    { label: "Actions", width: "90px", align: "center" },
+                    { label: "Actions", width: "120px", align: "center" },
                   ].map((column, columnIndex) => (
                     <th
                       key={column.label}
@@ -520,6 +562,11 @@ function SchedulerPage({
                         handleCellSave={onCellSave}
                         handleCellCancel={onCellCancel}
                         handleDelete={onDelete}
+                        handleProgress={onOpenTaskProgress}
+                        progressDisabled={
+                          !scheduleSettings?.data_date ||
+                          isLoadingScheduleSettings
+                        }
                         handleToggleCollapse={onToggleCollapse}
                         formatDate={formatDate}
                         hasChildren={taskHasChildren(task.id)}
@@ -560,6 +607,8 @@ function SchedulerPage({
                     <td></td>
                     <td></td>
                     <td></td>
+                    <td></td>
+                    <td></td>
                   </tr>
                 </tbody>
               </SortableContext>
@@ -577,7 +626,11 @@ function SchedulerPage({
               title="The Gantt chart failed to display"
               description="Your schedule data is safe. Try again or switch back to the table view."
             >
-              <GanttChart tasks={tasks} selectedTaskId={selectedTaskId} />
+              <GanttChart
+                tasks={tasks}
+                selectedTaskId={selectedTaskId}
+                dataDate={scheduleSettings?.data_date}
+              />
             </ErrorBoundary>
           </div>
         )}

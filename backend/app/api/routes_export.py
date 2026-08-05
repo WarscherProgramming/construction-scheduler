@@ -9,6 +9,9 @@ from starlette.background import BackgroundTask
 from app.api.dependencies import get_db, get_owned_project
 from app.models.task import Task
 from app.models.project import Project
+from app.services.project_schedule_settings import (
+    get_project_schedule_settings,
+)
 from app.services.pdf_export import (
     build_project_schedule_pdf,
     remove_export_file,
@@ -40,7 +43,12 @@ def export_project_pdf(
         )
 
     try:
-        file_path = build_project_schedule_pdf(project, tasks)
+        settings = get_project_schedule_settings(db, project_id)
+        file_path = build_project_schedule_pdf(
+            project,
+            tasks,
+            data_date=settings.data_date,
+        )
     except Exception as error:
         logger.exception("Project schedule PDF generation failed")
         raise HTTPException(

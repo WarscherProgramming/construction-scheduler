@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 import re
 from typing import Annotated, Literal
 
@@ -28,6 +28,7 @@ TaskName = Annotated[
     str,
     StringConstraints(strip_whitespace=True, min_length=1, max_length=500),
 ]
+ProgressStatus = Literal["not_started", "in_progress", "completed"]
 
 
 def normalize_predecessor(value: object) -> str:
@@ -84,6 +85,18 @@ class TaskUpdate(UpdateMutationModel):
         return value
 
 
+class TaskProgressUpdate(UpdateMutationModel):
+    progress_status: ProgressStatus | None = None
+    percent_complete: int | None = Field(default=None, ge=0, le=100)
+    actual_start_date: DateString | None = None
+    actual_finish_date: DateString | None = None
+    remaining_duration: int | None = Field(
+        default=None,
+        ge=0,
+        le=36_500,
+    )
+
+
 class TaskReorderRequest(MutationModel):
     task_ids: list[PositiveTaskId] = Field(min_length=1, max_length=2_000)
 
@@ -103,13 +116,36 @@ class TaskResponse(ORMModel):
     order_index: int | None
     parent_task_id: int | None
     is_collapsed: int | None
+    progress_status: ProgressStatus
+    percent_complete: int
+    actual_start_date: str | None
+    actual_finish_date: str | None
+    remaining_duration: int | None
+    status_updated_at: datetime | None
+    out_of_sequence: bool = False
+    out_of_sequence_reason: str | None = None
     # Derived critical-path metadata, computed per response (not persisted).
     is_critical: bool = False
     total_float: int | None = None
 
 
+class ScheduleProgressSummary(BaseModel):
+    total_leaf_tasks: int
+    not_started_count: int
+    in_progress_count: int
+    completed_count: int
+    out_of_sequence_count: int
+    percent_complete_weighted: float
+    data_date: str
+    forecast_project_finish: str | None
+    completed_through_data_date: int
+    tasks_started_last_7_days: int
+    tasks_completed_last_7_days: int
+
+
 class TaskListResponse(BaseModel):
     tasks: list[TaskResponse]
+    summary: ScheduleProgressSummary
 
 
 def parse_predecessor_reference(

@@ -25,10 +25,15 @@ class ScheduleSettingsApiTests(ApiTestCase):
         self.assertEqual(payload["project_id"], self.project_id)
         date.fromisoformat(payload["schedule_start_date"])
         self.assertEqual(
+            payload["data_date"],
+            payload["schedule_start_date"],
+        )
+        self.assertEqual(
             set(payload),
             {
                 "project_id",
                 "schedule_start_date",
+                "data_date",
                 "comparison_baseline_id",
                 "created_at",
                 "updated_at",
@@ -69,7 +74,10 @@ class ScheduleSettingsApiTests(ApiTestCase):
 
         updated = self.client.put(
             self.url,
-            json={"schedule_start_date": "2026-03-02"},
+            json={
+                "schedule_start_date": "2026-03-02",
+                "data_date": "2026-03-02",
+            },
             headers=self.headers,
         )
 
@@ -88,6 +96,8 @@ class ScheduleSettingsApiTests(ApiTestCase):
     def test_invalid_date_unknown_field_and_cross_project_input_are_rejected(self):
         payloads = [
             {"schedule_start_date": "2026-02-30"},
+            {"data_date": "2026-02-30"},
+            {"data_date": None},
             {
                 "schedule_start_date": "2026-03-02",
                 "project_id": self.project_id,
@@ -131,7 +141,7 @@ class ScheduleSettingsApiTests(ApiTestCase):
             with self.assertRaises(RuntimeError):
                 self.client.put(
                     self.url,
-                    json={"schedule_start_date": "2026-03-02"},
+                    json={"data_date": "2026-03-09"},
                     headers=self.headers,
                 )
 
@@ -140,6 +150,7 @@ class ScheduleSettingsApiTests(ApiTestCase):
             after["schedule_start_date"],
             before["schedule_start_date"],
         )
+        self.assertEqual(after["data_date"], before["data_date"])
 
     def test_project_deletion_cascades_schedule_settings(self):
         with self.TestingSession() as db:
@@ -326,7 +337,10 @@ class TaskFoundationApiTests(ApiTestCase):
         target_project = self.create_project(self.headers, "Target")
         self.client.put(
             f"/projects/{target_project}/schedule-settings",
-            json={"schedule_start_date": "2026-04-06"},
+            json={
+                "schedule_start_date": "2026-04-06",
+                "data_date": "2026-04-06",
+            },
             headers=self.headers,
         )
         applied = self.client.post(
@@ -356,7 +370,10 @@ class TaskFoundationApiTests(ApiTestCase):
     def test_pdf_export_uses_persisted_deterministic_dates(self):
         self.client.put(
             f"/projects/{self.project_id}/schedule-settings",
-            json={"schedule_start_date": "2026-04-06"},
+            json={
+                "schedule_start_date": "2026-04-06",
+                "data_date": "2026-04-06",
+            },
             headers=self.headers,
         )
         task = self.create_task("Exported")

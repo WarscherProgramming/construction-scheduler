@@ -13,7 +13,7 @@ from sqlalchemy import create_engine, inspect
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 DOCUMENT_FOUNDATION_REVISION = "a6d3e9f1b742"
 DRAWING_MANAGEMENT_REVISION = "b7e4f2a9c631"
-CURRENT_REVISION = "a2c7e9f4b610"
+CURRENT_REVISION = "c8d4f1a7b903"
 MEMBERSHIP_UNIQUE_NAME = "uq_drawing_issue_revisions_membership"
 
 

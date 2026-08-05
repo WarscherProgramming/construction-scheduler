@@ -2,6 +2,8 @@ import { useId, useRef, useState } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
+import { formatProgressStatus } from "../utils/scheduleProgress";
+import StatusBadge from "./StatusBadge";
 import Icon from "./ui/Icon";
 
 
@@ -107,6 +109,8 @@ function SortableTaskRow({
   handleCellSave,
   handleCellCancel,
   handleDelete,
+  handleProgress = () => {},
+  progressDisabled = false,
   handleToggleCollapse,
   formatDate,
   hasChildren,
@@ -158,7 +162,10 @@ function SortableTaskRow({
       }
       onClick={() => setSelectedTaskId(task.id)}
     >
-      <td className="schedule-sticky-column schedule-sticky-0">
+      <td
+        className="schedule-sticky-column schedule-sticky-0"
+        data-label="WBS"
+      >
         <button
           type="button"
           className="schedule-icon-button schedule-drag-handle"
@@ -177,7 +184,10 @@ function SortableTaskRow({
         </button>
       </td>
 
-      <td className="schedule-sticky-column schedule-sticky-1">
+      <td
+        className="schedule-sticky-column schedule-sticky-1"
+        data-label="Task"
+      >
         {isEditing("name") ? (
           <CellEditor
             label={`Task ${displayId} name`}
@@ -242,7 +252,7 @@ function SortableTaskRow({
         )}
       </td>
 
-      <td>
+      <td data-label="Duration">
         {isEditing("duration") ? (
           <CellEditor
             label={`Task ${displayId} duration`}
@@ -266,7 +276,7 @@ function SortableTaskRow({
         )}
       </td>
 
-      <td>
+      <td data-label="Current Start">
         {isEditing("manual_start_date") ? (
           <CellEditor
             label={`Task ${displayId} start date`}
@@ -287,11 +297,46 @@ function SortableTaskRow({
         )}
       </td>
 
-      <td>
+      <td data-label="Current Finish">
         {formatDate(task.end_date)}
       </td>
 
-      <td>
+      <td data-label="Progress">
+        <div className="schedule-progress-cell">
+          <StatusBadge value={formatProgressStatus(task.progress_status)} />
+          <span>{task.percent_complete || 0}% complete</span>
+          <span>
+            {hasChildren || task.remaining_duration == null
+              ? "Remaining derived from child tasks"
+              : `${task.remaining_duration} workday${
+                  task.remaining_duration === 1 ? "" : "s"
+                } remaining`}
+          </span>
+          {task.out_of_sequence && (
+            <span
+              className="schedule-sequence-warning"
+              title={task.out_of_sequence_reason || undefined}
+            >
+              <Icon name="alert-triangle" size={15} />
+              Out of sequence
+              {task.out_of_sequence_reason && (
+                <span className="schedule-sequence-warning__reason">
+                  {task.out_of_sequence_reason}
+                </span>
+              )}
+            </span>
+          )}
+        </div>
+      </td>
+
+      <td data-label="Actual Dates">
+        <span className="schedule-actual-dates">
+          <span>Start: {formatDate(task.actual_start_date)}</span>
+          <span>Finish: {formatDate(task.actual_finish_date)}</span>
+        </span>
+      </td>
+
+      <td data-label="Predecessor">
         {isEditing("predecessor") ? (
           <CellEditor
             label={`Task ${displayId} predecessor`}
@@ -317,19 +362,38 @@ function SortableTaskRow({
         )}
       </td>
 
-      <td>
-        <button
-          type="button"
-          className="schedule-icon-button schedule-icon-button--danger"
-          aria-label="Delete"
-          title={`Delete ${task.name}`}
-          onClick={(event) => {
-            event.stopPropagation();
-            handleDelete(task.id);
-          }}
-        >
-          <Icon name="trash" size={17} />
-        </button>
+      <td data-label="Actions">
+        <div className="schedule-row-actions">
+          {hasChildren ? (
+            <span className="schedule-derived-progress">Derived</span>
+          ) : (
+            <button
+              type="button"
+              className="schedule-icon-button"
+              aria-label={`Update progress for ${task.name}`}
+              title={`Update progress for ${task.name}`}
+              disabled={progressDisabled}
+              onClick={(event) => {
+                event.stopPropagation();
+                handleProgress(task);
+              }}
+            >
+              <Icon name="pencil" size={17} />
+            </button>
+          )}
+          <button
+            type="button"
+            className="schedule-icon-button schedule-icon-button--danger"
+            aria-label="Delete"
+            title={`Delete ${task.name}`}
+            onClick={(event) => {
+              event.stopPropagation();
+              handleDelete(task.id);
+            }}
+          >
+            <Icon name="trash" size={17} />
+          </button>
+        </div>
       </td>
     </tr>
   );

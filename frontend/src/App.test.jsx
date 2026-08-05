@@ -25,6 +25,7 @@ vi.mock("./services/api", () => ({
   createTask: vi.fn(),
   deleteTask: vi.fn(),
   updateTask: vi.fn(),
+  updateTaskProgress: vi.fn(),
   fetchTemplates: vi.fn(),
   saveTemplate: vi.fn(),
   applyTemplate: vi.fn(),
@@ -137,6 +138,7 @@ import {
   listDrawingSetSheets,
   updateRFI,
   updateScheduleSettings,
+  updateTaskProgress,
   updateChangeOrder,
   updatePunchItem,
   updateSubmittal,
@@ -261,6 +263,7 @@ describe("App integration (hooks wiring)", () => {
     fetchScheduleSettings.mockResolvedValue({
       project_id: 1,
       schedule_start_date: "2026-06-22",
+      data_date: "2026-06-22",
       comparison_baseline_id: null,
       created_at: "2026-06-22T00:00:00Z",
       updated_at: "2026-06-22T00:00:00Z",
@@ -268,6 +271,7 @@ describe("App integration (hooks wiring)", () => {
     updateScheduleSettings.mockResolvedValue({
       project_id: 1,
       schedule_start_date: "2026-06-22",
+      data_date: "2026-06-22",
       comparison_baseline_id: null,
       created_at: "2026-06-22T00:00:00Z",
       updated_at: "2026-06-22T00:00:00Z",
@@ -2453,12 +2457,14 @@ describe("App integration (hooks wiring)", () => {
     fetchScheduleSettings.mockResolvedValue({
       project_id: 1,
       schedule_start_date: "2026-03-02",
+      data_date: "2026-03-02",
       created_at: "2026-03-02T00:00:00Z",
       updated_at: "2026-03-02T00:00:00Z",
     });
     updateScheduleSettings.mockResolvedValue({
       project_id: 1,
       schedule_start_date: "2026-04-06",
+      data_date: "2026-03-02",
       created_at: "2026-03-02T00:00:00Z",
       updated_at: "2026-04-01T00:00:00Z",
     });
@@ -2492,6 +2498,145 @@ describe("App integration (hooks wiring)", () => {
     );
     expect(fetchScheduleSettings).toHaveBeenCalledTimes(1);
     expect(fetchTasks).toHaveBeenCalledTimes(2);
+  });
+
+  it("updates the Data Date and reloads the canonical task collection once", async () => {
+    const user = userEvent.setup();
+    fetchProjects.mockResolvedValue({
+      projects: [{ id: 1, name: "Riverside" }],
+    });
+    fetchScheduleSettings.mockResolvedValue({
+      project_id: 1,
+      schedule_start_date: "2026-03-02",
+      data_date: "2026-03-02",
+      comparison_baseline_id: null,
+    });
+    updateScheduleSettings.mockResolvedValue({
+      project_id: 1,
+      schedule_start_date: "2026-03-02",
+      data_date: "2026-03-09",
+      comparison_baseline_id: null,
+    });
+    window.location.hash = "#/projects/1/schedule";
+
+    renderApp();
+
+    const input = await screen.findByLabelText("Data Date");
+    await user.clear(input);
+    await user.type(input, "2026-03-09");
+    await user.click(screen.getByRole("button", { name: "Update Data Date" }));
+
+    await waitFor(() => {
+      expect(updateScheduleSettings).toHaveBeenCalledWith(
+        1,
+        { data_date: "2026-03-09" },
+        expect.objectContaining({ signal: expect.any(AbortSignal) })
+      );
+    });
+    expect(await screen.findByText("Data Date updated.")).toBeInTheDocument();
+    expect(screen.getByLabelText("Data Date")).toHaveValue("2026-03-09");
+    expect(fetchTasks).toHaveBeenCalledTimes(2);
+    expect(fetchScheduleSettings).toHaveBeenCalledTimes(1);
+  });
+
+  it("updates task progress without fetching a second task collection", async () => {
+    const user = userEvent.setup();
+    const task = {
+      id: 1,
+      name: "Mobilization",
+      duration: 4,
+      predecessor: null,
+      predecessor_task_id: null,
+      dependency_type: "FS",
+      lag_days: 0,
+      start_date: "2026-03-02",
+      end_date: "2026-03-05",
+      manual_start_date: null,
+      project_id: 1,
+      order_index: 1,
+      parent_task_id: null,
+      is_collapsed: 0,
+      progress_status: "not_started",
+      percent_complete: 0,
+      remaining_duration: 4,
+      actual_start_date: null,
+      actual_finish_date: null,
+      out_of_sequence: false,
+    };
+    const summary = {
+      total_leaf_tasks: 1,
+      not_started_count: 1,
+      in_progress_count: 0,
+      completed_count: 0,
+      out_of_sequence_count: 0,
+      percent_complete_weighted: 0,
+      data_date: "2026-03-09",
+      forecast_project_finish: "2026-03-12",
+    };
+    fetchProjects.mockResolvedValue({
+      projects: [{ id: 1, name: "Riverside" }],
+    });
+    fetchTasks.mockResolvedValue({ tasks: [task], summary });
+    fetchScheduleSettings.mockResolvedValue({
+      project_id: 1,
+      schedule_start_date: "2026-03-02",
+      data_date: "2026-03-09",
+      comparison_baseline_id: null,
+    });
+    updateTaskProgress.mockResolvedValue({
+      tasks: [
+        {
+          ...task,
+          progress_status: "in_progress",
+          percent_complete: 40,
+          remaining_duration: 3,
+          actual_start_date: "2026-03-05",
+          end_date: "2026-03-11",
+        },
+      ],
+      summary: {
+        ...summary,
+        not_started_count: 0,
+        in_progress_count: 1,
+        percent_complete_weighted: 40,
+      },
+    });
+    window.location.hash = "#/projects/1/schedule";
+
+    renderApp();
+
+    await user.click(
+      await screen.findByRole("button", {
+        name: "Update progress for Mobilization",
+      })
+    );
+    await user.selectOptions(
+      screen.getByLabelText("Progress Status"),
+      "in_progress"
+    );
+    await user.type(screen.getByLabelText("Actual Start"), "2026-03-05");
+    await user.type(screen.getByLabelText("Percent Complete"), "40");
+    await user.clear(screen.getByLabelText("Remaining Duration"));
+    await user.type(screen.getByLabelText("Remaining Duration"), "3");
+    await user.click(screen.getByRole("button", { name: "Update Progress" }));
+
+    await waitFor(() => {
+      expect(updateTaskProgress).toHaveBeenCalledWith(
+        1,
+        1,
+        {
+          progress_status: "in_progress",
+          actual_start_date: "2026-03-05",
+          percent_complete: 40,
+          remaining_duration: 3,
+        },
+        expect.objectContaining({ signal: expect.any(AbortSignal) })
+      );
+    });
+    expect(await screen.findByText("Task progress updated."))
+      .toBeInTheDocument();
+    expect(screen.getByText("40% complete")).toBeInTheDocument();
+    expect(fetchTasks).toHaveBeenCalledTimes(1);
   });
 
   it("shows a local schedule load error and retries exactly once", async () => {
@@ -2565,6 +2710,16 @@ describe("App integration (hooks wiring)", () => {
               is_collapsed: 0,
             },
           ],
+          summary: {
+            total_leaf_tasks: 1,
+            not_started_count: 0,
+            in_progress_count: 1,
+            completed_count: 0,
+            out_of_sequence_count: 0,
+            percent_complete_weighted: 75,
+            data_date: "2026-03-09",
+            forecast_project_finish: "2026-03-10",
+          },
         });
       }
       return new Promise((resolve) => {
@@ -2576,6 +2731,7 @@ describe("App integration (hooks wiring)", () => {
         return Promise.resolve({
           project_id: 1,
           schedule_start_date: "2026-03-02",
+          data_date: "2026-03-09",
         });
       }
       return new Promise((resolve) => {
@@ -2590,6 +2746,7 @@ describe("App integration (hooks wiring)", () => {
     expect(screen.getByLabelText("Schedule Start Date")).toHaveValue(
       "2026-03-02"
     );
+    expect(screen.getByText("75%", { selector: "dd" })).toBeInTheDocument();
     await act(async () => {
       window.history.pushState({}, "", "#/projects/2/schedule");
       window.dispatchEvent(new HashChangeEvent("hashchange"));
@@ -2598,13 +2755,28 @@ describe("App integration (hooks wiring)", () => {
     await waitFor(() => {
       expect(screen.queryByText("Riverside task")).not.toBeInTheDocument();
     });
+    expect(screen.queryByText("75%", { selector: "dd" }))
+      .not.toBeInTheDocument();
     expect(screen.queryByLabelText("Schedule Start Date")).not.toBeInTheDocument();
 
     await act(async () => {
-      resolveTasks({ tasks: [] });
+      resolveTasks({
+        tasks: [],
+        summary: {
+          total_leaf_tasks: 0,
+          not_started_count: 0,
+          in_progress_count: 0,
+          completed_count: 0,
+          out_of_sequence_count: 0,
+          percent_complete_weighted: 0,
+          data_date: "2026-05-04",
+          forecast_project_finish: null,
+        },
+      });
       resolveSettings({
         project_id: 2,
         schedule_start_date: "2026-05-04",
+        data_date: "2026-05-04",
       });
     });
     expect(await screen.findByLabelText("Schedule Start Date")).toHaveValue(
@@ -2643,6 +2815,7 @@ describe("App integration (hooks wiring)", () => {
         : Promise.resolve({
             project_id: 2,
             schedule_start_date: "2026-05-04",
+            data_date: "2026-05-04",
           })
     );
     window.location.hash = "#/projects/1/schedule";
@@ -2664,6 +2837,7 @@ describe("App integration (hooks wiring)", () => {
       resolveOldSettings({
         project_id: 1,
         schedule_start_date: "2026-03-02",
+        data_date: "2026-03-02",
       });
     });
 

@@ -3828,6 +3828,110 @@ button:disabled {
   overflow-wrap: anywhere;
 }
 
+.schedule-settings-forms {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.schedule-data-date-form {
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+}
+
+.schedule-progress-summary {
+  margin-bottom: var(--space-4);
+  border-block: 1px solid var(--border);
+}
+
+.schedule-progress-summary__heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+}
+
+.schedule-progress-summary__heading h2 {
+  margin-bottom: var(--space-1);
+  font-size: 1.05rem;
+}
+
+.schedule-progress-summary__heading p,
+.schedule-progress-summary__heading > span {
+  color: var(--text);
+  font-size: 0.82rem;
+}
+
+.schedule-progress-summary dl {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  margin: 0;
+  border-top: 1px solid var(--border);
+}
+
+.schedule-progress-summary dl div {
+  min-width: 0;
+  padding: var(--space-3);
+  border-right: 1px solid var(--border);
+}
+
+.schedule-progress-summary dl div:last-child {
+  border-right: 0;
+}
+
+.schedule-progress-summary dt {
+  color: var(--text);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.schedule-progress-summary dd {
+  margin: var(--space-1) 0 0;
+  color: var(--text-h);
+  font-size: 1rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.schedule-progress-dialog {
+  width: min(560px, 100%);
+  max-height: calc(100svh - 32px);
+  overflow-y: auto;
+}
+
+.schedule-progress-dialog .form-stack {
+  max-width: none;
+}
+
+.schedule-progress-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.schedule-progress-reversal {
+  display: grid;
+  gap: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border);
+}
+
+.schedule-progress-reversal h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.schedule-variance-progress-summary {
+  margin-top: var(--space-1);
+  font-size: 0.82rem;
+}
+
+.schedule-variance-live-progress,
+.schedule-variance-change-list {
+  display: block;
+  margin-top: var(--space-2);
+}
+
 .schedule-baseline-context dd {
   margin-top: var(--space-1);
   color: var(--text-h);
@@ -4095,7 +4199,7 @@ button:disabled {
 
 .schedule-table {
   width: 100%;
-  min-width: 1400px;
+  min-width: 1590px;
   border-collapse: separate;
   border-spacing: 0;
   table-layout: fixed;
@@ -4213,6 +4317,22 @@ button:disabled {
 
 .gantt-legend__swatch--dependent {
   background: var(--success);
+}
+
+.gantt-legend__swatch--in-progress {
+  border: 2px dashed var(--brand);
+  background: var(--surface);
+}
+
+.gantt-legend__swatch--completed {
+  border: 2px solid #166534;
+  background: var(--success-bg);
+}
+
+.gantt-legend__swatch--data-date {
+  width: 3px;
+  border-radius: 0;
+  background: #7c3aed;
 }
 
 .gantt-legend__swatch--today {
@@ -4360,6 +4480,28 @@ button:disabled {
   pointer-events: none;
 }
 
+.gantt-data-date-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 4;
+  width: 0;
+  border-left: 2px dashed #7c3aed;
+  pointer-events: none;
+}
+
+.gantt-data-date-line span {
+  position: absolute;
+  top: 2px;
+  left: 4px;
+  padding: 1px 4px;
+  color: #5b21b6;
+  background: var(--surface);
+  font-size: 0.68rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
 .gantt-row {
   position: relative;
   border-bottom: 1px solid var(--surface-muted);
@@ -4418,6 +4560,26 @@ button:disabled {
 
 .gantt-bar--dependent {
   background: var(--success);
+}
+
+.gantt-bar--in-progress {
+  border: 2px dashed #1d4ed8;
+  background: #dbeafe;
+  box-shadow: none;
+}
+
+.gantt-bar--completed {
+  border: 2px solid #166534;
+  background: var(--success-bg);
+  box-shadow: none;
+}
+
+.gantt-bar--critical {
+  background: #dc2626;
+}
+
+.gantt-bar--selected {
+  background: var(--amber);
 }
 
 .form-stack {
@@ -4970,6 +5132,56 @@ code {
   }
 }
 
+.gantt-day--data-date {
+  border-top: 2px solid #7c3aed;
+  color: #5b21b6;
+  font-weight: 700;
+}
+
+.schedule-progress-cell,
+.schedule-actual-dates {
+  display: grid;
+  gap: 3px;
+  color: var(--text);
+  font-size: 0.78rem;
+  line-height: 1.3;
+}
+
+.schedule-progress-cell .status-badge {
+  justify-self: start;
+}
+
+.schedule-sequence-warning {
+  display: inline-flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: var(--space-1);
+  color: #92400e;
+  font-size: 0.78rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.schedule-sequence-warning__reason {
+  display: block;
+  flex-basis: 100%;
+  padding-left: 20px;
+  font-weight: 400;
+}
+
+.schedule-row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+}
+
+.schedule-derived-progress {
+  color: var(--text);
+  font-size: 0.75rem;
+}
+
 @media (max-width: 520px) {
   .home-page,
   .project-page,
@@ -5330,5 +5542,126 @@ code {
   .attachment-upload-result {
     flex-direction: column;
     gap: 2px;
+  }
+}
+
+@media (max-width: 768px) {
+  .schedule-progress-summary dl {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .schedule-progress-summary dl div:nth-child(3n) {
+    border-right: 0;
+  }
+
+  .schedule-progress-summary dl div:nth-child(-n + 3) {
+    border-bottom: 1px solid var(--border);
+  }
+
+  .schedule-table-region {
+    max-height: none;
+    overflow: visible;
+    border: 0;
+  }
+
+  .schedule-table {
+    display: block;
+    min-width: 0;
+  }
+
+  .schedule-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .schedule-table tbody {
+    display: grid;
+    gap: var(--space-3);
+  }
+
+  .schedule-table tbody tr:not(.schedule-new-row) {
+    display: block;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--surface);
+  }
+
+  .schedule-table tbody tr:not(.schedule-new-row) td {
+    position: static;
+    display: grid;
+    grid-template-columns: minmax(105px, 32%) minmax(0, 1fr);
+    gap: var(--space-3);
+    width: 100%;
+    min-height: 42px;
+    padding: var(--space-3);
+    border: 0;
+    border-bottom: 1px solid var(--border);
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .schedule-table tbody tr:not(.schedule-new-row) td:last-child {
+    border-bottom: 0;
+  }
+
+  .schedule-table tbody tr:not(.schedule-new-row) td::before {
+    content: attr(data-label);
+    color: var(--text-h);
+    font-size: 0.78rem;
+    font-weight: 700;
+  }
+
+  .schedule-row-actions {
+    justify-content: flex-start;
+  }
+
+  .schedule-new-row {
+    display: block;
+    border: 1px dashed var(--border);
+    border-radius: var(--radius-md);
+  }
+
+  .schedule-new-row td {
+    display: none;
+  }
+
+  .schedule-new-row td:nth-child(2) {
+    position: static;
+    display: block;
+    width: 100%;
+    padding: var(--space-3);
+    border: 0;
+    background: var(--surface);
+    box-shadow: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .schedule-progress-summary__heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .schedule-progress-summary dl,
+  .schedule-progress-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .schedule-progress-summary dl div,
+  .schedule-progress-summary dl div:nth-child(3n) {
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .schedule-progress-summary dl div:last-child {
+    border-bottom: 0;
   }
 }

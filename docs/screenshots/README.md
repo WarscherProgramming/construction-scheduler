@@ -20,14 +20,14 @@ for both referenced and planned module screenshots.
 | File | View / state to capture |
 |---|---|
 | `dashboard.png` | Populated Project Dashboard showing Project Summary, Follow-up Indicators, Attention Required, Upcoming Schedule, Workflow Analytics, and Recent Updates. Include readable RFI, Submittal, Punch Item, and Change Order states plus large Change Order values where practical. |
-| `schedule-grid.png` | Schedule table view: visible Schedule Start Date, a selected row, one cell in inline-edit mode, and at least one parent task with indented children. |
-| `schedule-settings.png` | Schedule sidebar with the persisted Schedule Start Date and the accessible recalculation confirmation open over synthetic task data. |
+| `schedule-grid.png` | Schedule table view: visible Schedule Start Date and Data Date, leaf-task status and percent complete, remaining duration, actual dates, one visible out-of-sequence reason, a selected row, and at least one parent task with indented children. |
+| `schedule-settings.png` | Schedule sidebar with independent persisted Schedule Start Date and Data Date controls and the accessible Data Date recalculation confirmation open over synthetic task data. |
 | `schedule-baseline-create.png` | Accessible Capture Schedule Baseline dialog showing a synthetic name, optional description, Schedule Start Date, task count, server-generated timestamp note, and immutable-snapshot explanation. |
 | `schedule-baseline-comparison.png` | Baseline Comparison view with a selected named baseline, capture time, project-finish direction, slipped/improved/added/removed/newly-critical metrics, filters, and readable current-versus-baseline task rows. |
 | `schedule-baseline-mobile.png` | Baseline Comparison at ~390 px with the selector, textual summary metrics, filters, and one stacked task comparison record fully reachable without page-level horizontal overflow. |
 | `schedule-dnd.gif` | ~5 s: grab a task's drag handle, drag it two rows, drop; dates recalculate. |
 | `login.png` | Logged-out landing page at desktop width: split panel with marketing copy, highlights, app preview, and the auth card. |
-| `gantt.png` | Schedule → Gantt view of the demo project. |
+| `gantt.png` | Schedule → Gantt view of the demo project with textual task progress, an in-progress bar, one completed task, out-of-sequence context, and the Data Date marker visible. |
 | `first-run.gif` | ~6 s: first-run welcome screen → click "Load Sample Project" → progress bar filling → dashboard appears. Requires a fresh account. |
 | `change-orders.png` | Populated Change Orders page: a generated `CO` number; create or edit workflow; proposed and approved amounts; schedule impact; lifecycle dates; multiple status badges; and, where practical, a readable legacy record. |
 | `punch-lists.png` | Punch Lists page: populated Punch Items table with visible status and priority labels, an overdue indicator, and the create or edit workflow visible. |
@@ -135,5 +135,10 @@ Use the exact filenames above where defined; do not add placeholders.
 - M17.2 adds immutable schedule baselines and table-first variance analysis.
   Capture the create dialog, a populated desktop comparison with slipped,
   improved, added, removed, and critical-change context, and the stacked
-  mobile comparison. Do not imply progress, actual dates, a dashboard
-  baseline KPI, export comparison, or a Gantt overlay.
+  mobile comparison. Do not imply a dashboard baseline KPI, export comparison,
+  or a Gantt baseline overlay.
+- M17.3 adds live schedule progress and an independent Data Date. Recapture
+  `schedule-grid.png`, `schedule-settings.png`, and `gantt.png`; also capture
+  the focus-managed progress dialog with its conditional actual-date and
+  remaining-duration fields. Keep progress off the dashboard and do not imply
+  earned value, strict transition history, resource loading, or milestones.

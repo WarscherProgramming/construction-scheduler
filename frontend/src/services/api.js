@@ -49,8 +49,11 @@ export function createProject(project) {
   return jsonRequest("/projects", "POST", project);
 }
 
-export function fetchTasks(projectId) {
-  return authenticatedRequest(`/projects/${projectId}/tasks`);
+export function fetchTasks(projectId, options = {}) {
+  const path = `/projects/${projectId}/tasks`;
+  return options.signal
+    ? authenticatedRequest(path, { signal: options.signal })
+    : authenticatedRequest(path);
 }
 
 export function createTask(projectId, task, options = {}) {
@@ -69,6 +72,15 @@ export function updateTask(projectId, id, task, options = {}) {
     `/projects/${projectId}/tasks/${id}`,
     "PUT",
     task,
+    options
+  );
+}
+
+export function updateTaskProgress(projectId, id, progress, options = {}) {
+  return jsonRequest(
+    `/projects/${projectId}/tasks/${id}/progress`,
+    "PUT",
+    progress,
     options
   );
 }

@@ -34,6 +34,7 @@ function renderRow(overrides = {}) {
     handleCellSave: vi.fn(),
     handleCellCancel: vi.fn(),
     handleDelete: vi.fn(),
+    handleProgress: vi.fn(),
     handleToggleCollapse: vi.fn(),
     formatDate: (value) => value,
     hasChildren: true,
@@ -84,6 +85,54 @@ describe("SortableTaskRow", () => {
     await user.click(screen.getByRole("button", { name: "Delete" }));
 
     expect(props.handleDelete).toHaveBeenCalledWith(42);
+  });
+
+  it("shows live progress and opens progress editing for leaf tasks", async () => {
+    const user = userEvent.setup();
+    const progressTask = {
+      ...task,
+      progress_status: "in_progress",
+      percent_complete: 40,
+      remaining_duration: 3,
+      actual_start_date: "2026-06-20",
+      actual_finish_date: null,
+      out_of_sequence: true,
+      out_of_sequence_reason: "Actual start preceded the FS boundary.",
+    };
+    const props = renderRow({ task: progressTask, hasChildren: false });
+
+    expect(screen.getByText("In Progress")).toBeInTheDocument();
+    expect(screen.getByText("40% complete")).toBeInTheDocument();
+    expect(screen.getByText("3 workdays remaining")).toBeInTheDocument();
+    expect(screen.getByText("Start: 2026-06-20")).toBeInTheDocument();
+    expect(screen.getByText("Out of sequence")).toBeInTheDocument();
+    expect(
+      screen.getByText("Actual start preceded the FS boundary.")
+    ).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "Update progress for Footings",
+      })
+    );
+    expect(props.handleProgress).toHaveBeenCalledWith(progressTask);
+  });
+
+  it("marks summary progress as derived without an edit action", () => {
+    renderRow({
+      task: {
+        ...task,
+        progress_status: "completed",
+        percent_complete: 100,
+        remaining_duration: null,
+      },
+      hasChildren: true,
+    });
+
+    expect(screen.getByText("Derived")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Update progress/ })
+    ).not.toBeInTheDocument();
   });
 
   it("opens the predecessor editor and saves on blur", async () => {

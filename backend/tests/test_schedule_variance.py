@@ -17,6 +17,15 @@ class ScheduleVarianceApiTests(ApiTestCase):
             f"/projects/{self.project_id}/schedule-baselines"
         )
         self.variance_url = f"/projects/{self.project_id}/schedule-variance"
+        response = self.client.put(
+            f"/projects/{self.project_id}/schedule-settings",
+            json={
+                "schedule_start_date": "2026-03-02",
+                "data_date": "2026-03-02",
+            },
+            headers=self.headers,
+        )
+        self.assertEqual(response.status_code, 200)
 
     def create_task(self, name, **values):
         response = self.client.post(

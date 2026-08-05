@@ -2,7 +2,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   fetchScheduleSettings,
+  fetchTasks,
   updateScheduleSettings,
+  updateTaskProgress,
 } from "./api";
 
 
@@ -38,6 +40,44 @@ describe("schedule settings API client", () => {
 
     expect(httpMocks.jsonRequest).toHaveBeenCalledWith(
       "/projects/7/schedule-settings",
+      "PUT",
+      payload,
+      { signal }
+    );
+  });
+
+  it("loads the canonical task collection with cancellation support", async () => {
+    const signal = new AbortController().signal;
+
+    await fetchTasks(7, { signal });
+
+    expect(httpMocks.authenticatedRequest).toHaveBeenCalledWith(
+      "/projects/7/tasks",
+      { signal }
+    );
+  });
+
+  it("preserves the task request shape when no signal is supplied", async () => {
+    await fetchTasks(7);
+
+    expect(httpMocks.authenticatedRequest).toHaveBeenCalledWith(
+      "/projects/7/tasks"
+    );
+  });
+
+  it("updates progress through the focused project task route", async () => {
+    const signal = new AbortController().signal;
+    const payload = {
+      progress_status: "in_progress",
+      actual_start_date: "2026-03-05",
+      percent_complete: 40,
+      remaining_duration: 3,
+    };
+
+    await updateTaskProgress(7, 11, payload, { signal });
+
+    expect(httpMocks.jsonRequest).toHaveBeenCalledWith(
+      "/projects/7/tasks/11/progress",
       "PUT",
       payload,
       { signal }

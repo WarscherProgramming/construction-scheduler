@@ -9,6 +9,7 @@ import {
   formatWorkdayVariance,
   getStructuralChanges,
 } from "../../utils/scheduleVariance";
+import { formatProgressStatus } from "../../utils/scheduleProgress";
 import LoadingState from "../LoadingState";
 import StatusBadge from "../StatusBadge";
 import Button from "../ui/Button";
@@ -212,10 +213,20 @@ function ScheduleVarianceView({ baselines }) {
     <div className="schedule-variance-view">
       <VarianceSummary summary={summary} />
       <div className="schedule-variance-actions">
-        <p>
-          {summary.current_leaf_task_count} current leaf tasks and{" "}
-          {summary.baseline_leaf_task_count} baseline leaf tasks.
-        </p>
+        <div>
+          <p>
+            {summary.current_leaf_task_count} current leaf tasks and{" "}
+            {summary.baseline_leaf_task_count} baseline leaf tasks.
+          </p>
+          {Number.isInteger(summary.completed_count) && (
+            <p className="schedule-variance-progress-summary">
+              {summary.completed_count} completed, {summary.in_progress_count}{" "}
+              in progress, {summary.not_started_count} not started, and{" "}
+              {summary.out_of_sequence_count} out of sequence through{" "}
+              {formatScheduleDate(summary.current_data_date)}.
+            </p>
+          )}
+        </div>
         <Button
           size="sm"
           disabled={baselines.isLoadingVariance}
@@ -303,6 +314,24 @@ function ScheduleVarianceView({ baselines }) {
                     </td>
                     <td data-label="Status / Changes">
                       <StatusBadge value={formatComparisonStatus(task.comparison_status)} />
+                      {task.progress_status && (
+                        <span className="schedule-variance-live-progress">
+                          <strong>Live progress:</strong>{" "}
+                          {formatProgressStatus(task.progress_status)}, {task.percent_complete}%
+                          {task.remaining_duration == null
+                            ? ""
+                            : `, ${task.remaining_duration} workdays remaining`}
+                        </span>
+                      )}
+                      {task.out_of_sequence && (
+                        <span className="schedule-sequence-warning">
+                          <Icon name="alert-triangle" size={15} />
+                          Out of sequence
+                          {task.out_of_sequence_reason && (
+                            <span>{task.out_of_sequence_reason}</span>
+                          )}
+                        </span>
+                      )}
                       <span className="schedule-variance-change-list">
                         {changes.length ? changes.join(", ") : "No structural changes"}
                       </span>

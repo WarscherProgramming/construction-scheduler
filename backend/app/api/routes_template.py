@@ -23,7 +23,7 @@ from app.services.task_scheduling import (
     lock_project_schedule,
     recalculate_schedule,
 )
-from app.services.project_schedule_settings import get_project_schedule_start
+from app.services.project_schedule_settings import get_project_schedule_dates
 from app.services.task_validation import (
     validate_hierarchy_order,
     validate_schedule_structure,
@@ -170,6 +170,11 @@ def apply_template_to_project(
             lag_days=template_task.lag_days,
             order_index=current_max_order + index,
             manual_start_date=None,
+            progress_status="not_started",
+            percent_complete=0,
+            remaining_duration=template_task.duration,
+            actual_start_date=None,
+            actual_finish_date=None,
         )
 
         db.add(new_task)
@@ -194,9 +199,11 @@ def apply_template_to_project(
     try:
         validate_hierarchy_order(tasks, [task.id for task in tasks])
         validate_schedule_structure(tasks)
+        project_start, data_date = get_project_schedule_dates(db, project_id)
         recalculate_schedule(
             tasks,
-            project_start=get_project_schedule_start(db, project_id),
+            project_start=project_start,
+            data_date=data_date,
         )
         db.commit()
     except Exception:

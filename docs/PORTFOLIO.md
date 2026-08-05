@@ -1,8 +1,8 @@
 # FieldFlow — Portfolio Copy
 
 Ready-to-use descriptions for resumes, portfolio sites, and LinkedIn.
-Keep the metrics in sync with the repo (M17.2 verified **810 primary tests: 483
-frontend across 71 files + 327 backend**, with 354 backend subtests reported
+Keep the metrics in sync with the repo (M17.3 verified **864 primary tests: 515
+frontend across 74 files + 349 backend**, with 371 backend subtests reported
 separately).
 
 ---
@@ -13,12 +13,13 @@ separately).
 
 > FieldFlow — full-stack construction scheduling and field-management SaaS
 > (React 19, FastAPI, PostgreSQL) with a drag-and-drop CPM-style scheduler,
+> persistent Data Date and live progress,
 > executive dashboard, enhanced project-scoped Change Order, RFI, Submittal,
 > and Punch List workflows, reusable Document Management across six resource
 > types, a project document explorer, construction drawing revision
 > management with a secure PDF viewer, explicit cross-record construction
 > relationships, project-scoped PDF content search, hardened rotating-session
-> authentication, and 810 automated
+> authentication, and 864 automated
 > tests.
 
 ### Resume bullets
@@ -27,12 +28,12 @@ separately).
 > FastAPI, PostgreSQL, SQLAlchemy, Vite · [live demo](https://construction-scheduler-eight.vercel.app)
 >
 > - Built a deterministic spreadsheet-style scheduling engine with persistent
->   project start anchors, FS/SS dependencies, lag, summary-predecessor
->   rollups, workday/holiday-aware date math, validated task hierarchy, and
->   keyboard-accessible drag-and-drop reordering, plus Gantt visualization and
->   PDF export; added immutable named baselines, persistent comparison
->   selection, archive history, workday variance, and critical/structural
->   change analysis through a responsive table-first workflow.
+>   project start and Data Date anchors, FS/SS dependencies, lag,
+>   summary-predecessor rollups, workday/holiday-aware date math, validated
+>   task hierarchy, and keyboard-accessible drag-and-drop reordering; added
+>   server-normalized progress, actual dates, remaining-duration forecasts,
+>   out-of-sequence detection, progress-aware Gantt and PDF output, immutable
+>   named baselines, workday variance, and critical/structural change analysis.
 > - Designed an accessible design system (15+ reusable components: dialogs
 >   with focus traps, skeleton loading, toasts, icon system) and a
 >   project-owned analytics endpoint that replaces dashboard collection
@@ -82,7 +83,7 @@ separately).
 > - Hardened authentication with memory-only access JWTs, rotating opaque
 >   refresh sessions, replay-family revocation, CSRF and exact-Origin
 >   enforcement, route-wide tenant isolation, and bounded abuse controls;
->   verified the complete platform with 810 automated tests (Vitest/RTL +
+>   verified the complete platform with 864 automated tests (Vitest/RTL +
 >   pytest).
 
 ### Portfolio-site paragraph
@@ -90,6 +91,7 @@ separately).
 > FieldFlow is a full-stack construction planning platform I designed and
 > built end-to-end: a React 19 SPA over a FastAPI/PostgreSQL backend. The
 > centerpiece is a spreadsheet-fast scheduler — persistent project anchors,
+> an independent Data Date, status-aware progress and actuals,
 > inline cell editing, Finish-to-Start/Start-to-Start dependencies with lag,
 > deterministic summary rollups, workday and federal holiday calendars,
 > validated task hierarchy, and drag-and-drop reordering that works
@@ -104,7 +106,7 @@ separately).
 > attachments across six construction workflows, a responsive project
 > document explorer, construction drawing revision management with secure
 > browser viewing, explicit user-created relationships across construction
-> records and drawing context, secure project PDF content search, and 810
+> records and drawing context, secure project PDF content search, and 864
 > automated tests
 > across the stack.
 
@@ -162,8 +164,8 @@ available while preserving recoverable cleanup work.
   attachment and document APIs, models, storage abstractions, hooks, and UI
 - 25 MiB per-file limit with PDF, image, text, Word, and Excel support
 - Private authenticated delivery with no public object keys or credentials
-- 483 frontend tests across 71 files and 327 backend tests, for 810 primary
-  tests passed; 354 backend subtests are tracked separately
+- 515 frontend tests across 74 files and 349 backend tests, for 864 primary
+  tests passed; 371 backend subtests are tracked separately
 - Lazy per-record panel mounting with no dashboard attachment preloading
 - Ten allowlisted relationship entity types with bounded candidate search and
   no dashboard or table-row relationship preloading
@@ -186,8 +188,9 @@ available while preserving recoverable cleanup work.
 >
 > 📅 A deterministic spreadsheet-fast scheduler — persistent project anchor,
 > inline editing, FS/SS dependencies with lag, summary rollups,
-> workday/holiday-aware dates, hierarchy, drag-and-drop reordering, and
-> immutable baseline comparison with workday variance
+> workday/holiday-aware dates, hierarchy, drag-and-drop reordering,
+> independent Data Date, live progress and actuals, out-of-sequence context,
+> and immutable baseline comparison with workday variance
 > ▦ A Gantt view and one-click PDF export
 > 📊 An executive dashboard that answers "what needs my attention today?"
 > 📝 Daily logs, inspections, delays, and project-scoped Change Order, RFI,
@@ -201,7 +204,7 @@ available while preserving recoverable cleanup work.
 > revision navigation
 >
 > Under the hood: React 19 + Vite, FastAPI + SQLAlchemy + PostgreSQL, hardened
-> rotating-session auth, an accessible component design system, and 810
+> rotating-session auth, an accessible component design system, and 864
 > automated tests.
 >
 > The demo seeds a full sample project in ~10 seconds — no signup friction:
@@ -218,7 +221,8 @@ available while preserving recoverable cleanup work.
 > workflows, secure Document Management across six resource types, a project
 > document explorer, drawing revision management with a secure PDF viewer,
 > explicit construction-record relationships, native PDF content search,
-> immutable schedule baseline comparison, accessible design system, 810
+> immutable schedule baseline comparison, Data Date and progress tracking,
+> accessible design system, 864
 > automated tests. Live demo
 > seeds a complete sample
 > project in seconds.
@@ -227,18 +231,21 @@ available while preserving recoverable cleanup work.
 
 ## Interview talking points
 
-1. **Deterministic, timezone-safe scheduling.** Each project persists one
-   local `YYYY-MM-DD` schedule anchor, so recalculation is independent of the
-   day a request runs. A graph-based pass handles FS/SS dependencies and
-   summary rollups, while workday math skips weekends and federal holidays.
+1. **Deterministic, timezone-safe scheduling.** Each project persists separate
+   local `YYYY-MM-DD` Schedule Start and Data Dates, so recalculation is
+   independent of the day a request runs. A graph-based pass handles FS/SS
+   dependencies and summary rollups, while workday math skips weekends and
+   federal holidays. Live leaf progress preserves actual dates, forecasts
+   remaining work, and surfaces retained-dependency out-of-sequence context.
    Immutable snapshots preserve stable task identity, historical hierarchy,
    dates, float, and critical state; comparison joins in memory and reports
    factual workday and structural variance without mutating the live plan.
-2. **Honest aggregate metrics.** Tasks have no completion field, so the
-   dashboard reports planned-finish attention and upcoming starts instead of
-   pretending to know percent complete. One authenticated aggregate endpoint
-   computes bounded project summaries and lists, while the frontend focuses
-   on accessible presentation, cancellation, and stale-response protection.
+2. **Honest aggregate metrics.** Tasks now have schedule-route progress, but
+   the aggregate API does not yet return a complete status-aware schedule.
+   The dashboard therefore keeps its planned-finish attention and upcoming
+   starts rather than calculating a misleading progress KPI. One authenticated
+   aggregate endpoint computes bounded project summaries and lists, while the
+   frontend focuses on accessible presentation and stale-response protection.
 3. **Client-side demo seeding.** First-run onboarding builds a realistic
    15-activity project through the same public REST endpoints users hit —
    zero backend special-casing, sequenced for a live progress bar, fully

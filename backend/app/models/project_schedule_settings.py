@@ -32,6 +32,7 @@ class ProjectScheduleSettings(Base):
         primary_key=True,
     )
     schedule_start_date = Column(String, nullable=False)
+    data_date = Column(String, nullable=False)
     comparison_baseline_id = Column(
         Integer,
         ForeignKey("schedule_baselines.id", ondelete="SET NULL"),

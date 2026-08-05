@@ -25,7 +25,7 @@ describe("GanttChart", () => {
 
     expect(
       screen.getByRole("img", {
-        name: "Foundations, 06/20/2026 through 06/21/2026, selected",
+        name: "Foundations, 06/20/2026 through 06/21/2026, Not Started, 0 percent complete, selected",
       })
     ).toBeInTheDocument();
     expect(screen.getByText("Selected task.")).toHaveClass("visually-hidden");
@@ -60,12 +60,12 @@ describe("GanttChart", () => {
 
     expect(
       screen.getByRole("img", {
-        name: "Foundations summary, 06/20/2026 through 06/23/2026",
+        name: "Foundations summary, 06/20/2026 through 06/23/2026, Not Started, 0 percent complete",
       })
     ).toBeInTheDocument();
     expect(
       screen.getByRole("img", {
-        name: "Footings, 06/20/2026 through 06/21/2026",
+        name: "Footings, 06/20/2026 through 06/21/2026, Not Started, 0 percent complete",
       })
     ).toBeInTheDocument();
   });
@@ -138,15 +138,68 @@ describe("GanttChart", () => {
 
     expect(
       screen.getByRole("img", {
-        name: "Structural Steel, 06/22/2026 through 06/23/2026, on the critical path",
+        name: "Structural Steel, 06/22/2026 through 06/23/2026, Not Started, 0 percent complete, on the critical path",
       })
     ).toBeInTheDocument();
     expect(
       screen.getByRole("img", {
-        name: "Landscaping, 06/22/2026 through 06/22/2026",
+        name: "Landscaping, 06/22/2026 through 06/22/2026, Not Started, 0 percent complete",
       })
     ).toBeInTheDocument();
     expect(screen.getByText("Critical path")).toBeInTheDocument();
+  });
+
+  it("marks the Data Date and describes progress without relying on color", () => {
+    const { container } = render(
+      <GanttChart
+        selectedTaskId={null}
+        dataDate="2026-06-23"
+        tasks={[
+          {
+            id: 1,
+            name: "Electrical rough-in",
+            duration: 5,
+            start_date: "2026-06-20",
+            end_date: "2026-06-25",
+            parent_task_id: null,
+            predecessor_task_id: null,
+            progress_status: "in_progress",
+            percent_complete: 40,
+            out_of_sequence: true,
+          },
+          {
+            id: 2,
+            name: "Excavation",
+            duration: 2,
+            start_date: "2026-06-18",
+            end_date: "2026-06-19",
+            parent_task_id: null,
+            predecessor_task_id: null,
+            progress_status: "completed",
+            percent_complete: 100,
+          },
+        ]}
+      />
+    );
+
+    expect(
+      screen.getByRole("img", {
+        name: /Electrical rough-in.*In Progress, 40 percent complete, out of sequence/,
+      })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("img", {
+        name: /Excavation.*Completed, 100 percent complete/,
+      })
+    ).toBeInTheDocument();
+    expect(container.querySelector(".gantt-bar--in-progress"))
+      .toBeInTheDocument();
+    expect(container.querySelector(".gantt-bar--completed"))
+      .toBeInTheDocument();
+    expect(screen.getByLabelText("Data Date 06/23/2026"))
+      .toBeInTheDocument();
+    expect(container.querySelector(".gantt-day--data-date"))
+      .toBeInTheDocument();
   });
 
   it("marks today on the timeline when it falls inside the project range", () => {

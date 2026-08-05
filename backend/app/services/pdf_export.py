@@ -15,6 +15,8 @@ from reportlab.platypus import (
     TableStyle,
 )
 
+from app.services.task_scheduling import schedule_metadata
+
 
 _UNSAFE_FILENAME_CHARACTER = re.compile(r"[^A-Za-z0-9._-]+")
 
@@ -37,7 +39,12 @@ def remove_export_file(file_path: str | Path) -> None:
     Path(file_path).unlink(missing_ok=True)
 
 
-def build_project_schedule_pdf(project, tasks) -> Path:
+def build_project_schedule_pdf(
+    project,
+    tasks,
+    *,
+    data_date: str | None = None,
+) -> Path:
     handle = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
     file_path = Path(handle.name)
     handle.close()
@@ -60,6 +67,10 @@ def build_project_schedule_pdf(project, tasks) -> Path:
                 f"Schedule: {escape_reportlab_text(project.name)}",
                 styles["Title"],
             ),
+            Paragraph(
+                f"Data Date: {escape_reportlab_text(data_date or '-')}",
+                styles["BodyText"],
+            ),
             Spacer(1, 12),
         ]
 
@@ -68,14 +79,20 @@ def build_project_schedule_pdf(project, tasks) -> Path:
                 "Task ID",
                 "Task",
                 "Duration",
-                "Start",
-                "End",
+                "Status",
+                "%",
+                "Remaining",
+                "Forecast Start",
+                "Forecast Finish",
+                "Actual Start",
+                "Actual Finish",
                 "Predecessor",
             ]
         ]
         task_map = {task.id: task for task in tasks}
+        task_metadata = schedule_metadata(tasks)
 
-        for task in tasks:
+        for task, progress in zip(tasks, task_metadata, strict=True):
             depth = 0
             parent_id = task.parent_task_id
             visited = set()
@@ -97,15 +114,24 @@ def build_project_schedule_pdf(project, tasks) -> Path:
                         body_style,
                     ),
                     task.duration,
+                    progress.progress_status.replace("_", " ").title(),
+                    f"{progress.percent_complete}%",
+                    (
+                        progress.remaining_duration
+                        if progress.remaining_duration is not None
+                        else "-"
+                    ),
                     escape_reportlab_text(task.start_date or "-"),
                     escape_reportlab_text(task.end_date or "-"),
+                    escape_reportlab_text(progress.actual_start_date or "-"),
+                    escape_reportlab_text(progress.actual_finish_date or "-"),
                     escape_reportlab_text(task.predecessor or "-"),
                 ]
             )
 
         table = Table(
             data,
-            colWidths=[48, 280, 60, 82, 82, 100],
+            colWidths=[36, 148, 42, 66, 32, 46, 62, 62, 62, 62, 72],
             repeatRows=1,
         )
         table.setStyle(

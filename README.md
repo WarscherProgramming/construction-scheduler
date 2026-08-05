@@ -11,7 +11,7 @@ and Punch Lists) with their supporting documents.
 ![React 19](https://img.shields.io/badge/React-19-61dafb?logo=react&logoColor=white&labelColor=20232a)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.1x-009688?logo=fastapi&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169e1?logo=postgresql&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-810%20passing-2ea44f)
+![Tests](https://img.shields.io/badge/tests-864%20passing-2ea44f)
 ![Vite](https://img.shields.io/badge/Vite-8-646cff?logo=vite&logoColor=white)
 
 ![FieldFlow executive dashboard](docs/screenshots/dashboard.png)
@@ -35,8 +35,9 @@ and Punch Lists) with their supporting documents.
 
 1. **Dashboard** — scan project KPIs, items requiring attention, upcoming
    tasks, workflow status, and recent updates.
-2. **Schedule** — click any cell to edit inline (Enter saves, Escape cancels),
-   select a row, **drag to reorder**, indent/outdent to build a hierarchy.
+2. **Schedule** — set the independent Data Date, update leaf-task progress,
+   click any cell to edit inline (Enter saves, Escape cancels), select a row,
+   **drag to reorder**, and indent/outdent to build a hierarchy.
 3. Capture a named baseline, open **Baseline Comparison**, and review textual
    workday and critical-path changes; then toggle **Gantt** and export the
    current schedule as PDF.
@@ -64,15 +65,17 @@ question — *"what needs my attention today?"* — has a one-screen answer.
   and production configuration validation.
 - **Interactive scheduler**: spreadsheet-style inline editing, Finish-to-Start
   and Start-to-Start dependencies with lag, workday/holiday-aware date math,
-  persistent project Schedule Start Dates, deterministic summary-predecessor
-  rollups, parent/child hierarchy, validated subtree ordering, and
-  keyboard-accessible drag-and-drop reordering (dnd-kit).
+  independent persistent Schedule Start and Data Dates, status-aware
+  recalculation, actual dates, remaining duration, percent complete,
+  out-of-sequence detection, deterministic summary-predecessor rollups,
+  parent/child hierarchy, validated subtree ordering, and keyboard-accessible
+  drag-and-drop reordering (dnd-kit).
 - **Immutable schedule baselines and variance**: coherent project snapshots,
   persistent comparison selection, active/archive history, stable task-ID
   matching, workday start/finish variance, critical and structural change
   analysis, and a responsive table-first comparison workflow.
-- **Dynamic Gantt chart** rendered from the same task data, plus one-click PDF
-  export.
+- **Dynamic Gantt chart** rendered from the same task data with progress and a
+  Data Date marker, plus a progress-aware one-click PDF export.
 - **Project Dashboard and Analytics** backed by one authenticated,
   project-owned aggregate endpoint: schedule, RFI, Submittal, Punch Item,
   Change Order, Daily Log, and document summaries; bounded Attention
@@ -134,9 +137,9 @@ question — *"what needs my attention today?"* — has a one-screen answer.
 - **Client-side onboarding**: first-run detection seeds a realistic demo
   project through the public API with visible progress — the app is never
   empty.
-- **Automated testing: 810 tests** — 483 frontend across 71 files (Vitest +
-  React Testing Library, behavior- and accessibility-focused) and 327 backend
-  tests plus 354 separately reported subtests (pytest,
+- **Automated testing: 864 tests** — 515 frontend across 74 files (Vitest +
+  React Testing Library, behavior- and accessibility-focused) and 349 backend
+  tests plus 371 separately reported subtests (pytest,
   covering the scheduling engine, critical path, services, migrations, CORS,
   and TestClient API integration).
 
@@ -190,6 +193,9 @@ are documented in [`docs/SCHEDULING.md`](docs/SCHEDULING.md).
 The immutable snapshot lifecycle, comparison policy, variance formulas,
 frontend workflow, and measured scale behavior are documented in
 [`docs/SCHEDULE_BASELINES.md`](docs/SCHEDULE_BASELINES.md).
+The Data Date, progress-state normalization, status-aware scheduling,
+out-of-sequence policy, and progress UI contract are documented in
+[`docs/SCHEDULE_PROGRESS.md`](docs/SCHEDULE_PROGRESS.md).
 
 The final authentication architecture, threat model, deployment checklist,
 operational runbooks, manual QA guide, release notes, and deferred security
@@ -380,7 +386,12 @@ job. FieldFlow does not include a built-in worker or scheduler, and
 
 **Scheduling**
 - Spreadsheet-style schedule editing with full keyboard support
-- Persistent project Schedule Start Date with deterministic recalculation
+- Independent persistent Schedule Start Date and Data Date with deterministic,
+  status-aware recalculation
+- Not Started, In Progress, and Completed leaf-task progress with percent
+  complete, remaining duration, actual dates, and server-recorded update data
+- Progress-derived project summary and visible out-of-sequence context without
+  a second task request
 - Finish-to-Start and Start-to-Start dependencies with lag (`12`, `12+3`, `12SS+4`)
 - Leaf dependencies on nested summary tasks with deterministic date rollups
 - Workday scheduling that skips weekends and federal holidays
@@ -392,7 +403,7 @@ job. FieldFlow does not include a built-in worker or scheduler, and
   changes, and explicit task-structure change indicators
 - Searchable, filterable, paginated Baseline Comparison view with textual
   summary metrics and stacked mobile records
-- Gantt visualization and PDF schedule export
+- Progress-aware Gantt visualization and current-schedule PDF export
 - Reusable schedule templates
 
 **Project Dashboard and Analytics**
@@ -495,15 +506,15 @@ job. FieldFlow does not include a built-in worker or scheduler, and
 | Backend | FastAPI, SQLAlchemy, Alembic, Pydantic |
 | Database | PostgreSQL |
 | Auth | Memory-only access JWT + rotating opaque refresh sessions |
-| Testing | Vitest + React Testing Library (483), pytest (327) |
+| Testing | Vitest + React Testing Library (515), pytest (349) |
 | Hosting | Vercel (frontend) · Render (API + migrations + finite extraction cron) |
 
 ## Testing
 
-**810 primary automated tests passed.** Backend subtests are reported
+**864 primary automated tests passed.** Backend subtests are reported
 separately rather than added to that total.
 
-- **Frontend (483 across 71 files)** — Vitest + React Testing Library. Tests
+- **Frontend (515 across 74 files)** — Vitest + React Testing Library. Tests
   target behavior and accessibility: roles and names, keyboard flows
   (Enter/Escape editing,
   grid cursor navigation, focus traps), aggregate dashboard rendering,
@@ -533,12 +544,19 @@ separately rather than added to that total.
   Baseline coverage adds capture validation, selection and archive lifecycle,
   focus-managed dialogs, textual variance summaries, task classifications,
   filtering, sorting, pagination, local retries, and responsive table labels.
-- **Backend (327, plus 354 subtests)** — pytest. Covers the deterministic
+  Progress coverage adds independent Data Date controls, conditional progress
+  entry, loading and correction flows, actual and forecast dates, textual
+  summaries, visible out-of-sequence context, project-switch clearing, and
+  one canonical task request.
+- **Backend (349, plus 371 subtests)** — pytest. Covers the deterministic
   workday scheduling engine (persistent anchors, FS/SS dependencies, lag,
   summary predecessors, hierarchy ordering, federal holidays), critical path
   and total float, immutable baseline capture, rollback and ownership,
   stable-ID variance matching, workday variance, critical and structural
   changes, bounded queries, scale probes, and migration lifecycle,
+  Data Date persistence, progress lifecycle and correction rules,
+  status-aware forecasting, out-of-sequence detection, progress summaries,
+  transactional rollback, and progress-aware baseline variance and export,
   task services, relationship migrations, CORS configuration, and
   TestClient API integration (auth, ownership enforcement, task lifecycle,
   Change Orders, RFIs, Submittals, Punch Lists, and field records over HTTP).
@@ -755,6 +773,10 @@ commit production credentials.
 - ✅ M17.2 immutable schedule baselines and variance analysis with coherent
   capture transactions, persistent comparison selection, archive history,
   workday and critical-path comparison, and a responsive table-first workflow
+- ✅ M17.3 schedule progress and Data Date semantics with server-normalized
+  leaf-task states, actual dates, remaining-duration forecasting,
+  out-of-sequence context, progress-aware Gantt, variance, and PDF export,
+  and one canonical task collection
 - ✅ Branded landing page and first-run demo seeding
 - ✅ Icon system, confirmation dialogs, notifications, loading skeletons
 - ✅ Scheduler showcase: WBS numbering, inline validation, critical path +
@@ -765,7 +787,6 @@ commit production credentials.
   DRY cleanup with TestClient API integration coverage
 
 **Next**
-- Schedule progress, actual dates, and data-date semantics
 - Weather-delay integration and resource loading
 - Milestone tasks, Gantt dependency arrows, and timeline zoom
 

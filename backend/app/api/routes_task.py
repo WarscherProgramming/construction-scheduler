@@ -1,22 +1,27 @@
+from datetime import date
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import PositiveId, get_db, get_owned_project
 from app.models.task import Task
 from app.models.project import Project
+from app.core.security import get_current_user
 from app.schemas.common import MessageResponse
 from app.schemas.task import (
     TaskCreate,
     TaskListResponse,
+    TaskProgressUpdate,
     TaskReorderRequest,
     TaskUpdate,
     parse_predecessor_reference,
 )
 from app.services.task_scheduling import (
-    annotate_critical_path,
     lock_project_schedule,
     recalculate_schedule,
+    task_list_payload,
 )
+from app.services.task_progress import update_task_progress
 from app.services.task_validation import (
     validate_dependency_assignment,
     validate_hierarchy_order,
@@ -24,7 +29,7 @@ from app.services.task_validation import (
     validate_schedule_structure,
     validate_task_reference,
 )
-from app.services.project_schedule_settings import get_project_schedule_start
+from app.services.project_schedule_settings import get_project_schedule_dates
 
 __all__ = [
     "router",
@@ -48,10 +53,8 @@ def ordered_project_tasks(db: Session, project_id: int) -> list[Task]:
     )
 
 
-def task_list_response(tasks: list[Task]) -> dict:
-    """Annotate derived critical-path metadata and shape the response."""
-    annotate_critical_path(tasks)
-    return {"tasks": tasks}
+def task_list_response(tasks: list[Task], *, data_date) -> dict:
+    return task_list_payload(tasks, data_date=data_date)
 
 
 def dependency_values(payload: TaskCreate | TaskUpdate) -> dict:
@@ -95,14 +98,17 @@ def recalculate_and_commit(
     db: Session,
     project_id: int,
     tasks: list[Task],
-) -> None:
+) -> date:
     try:
+        project_start, data_date = get_project_schedule_dates(db, project_id)
         validate_schedule_structure(tasks)
         recalculate_schedule(
             tasks,
-            project_start=get_project_schedule_start(db, project_id),
+            project_start=project_start,
+            data_date=data_date,
         )
         db.commit()
+        return data_date
     except Exception:
         db.rollback()
         raise
@@ -114,7 +120,11 @@ def get_tasks(
     db: Session = Depends(get_db),
     project: Project = Depends(get_owned_project),
 ):
-    return task_list_response(ordered_project_tasks(db, project_id))
+    _, data_date = get_project_schedule_dates(db, project_id)
+    return task_list_response(
+        ordered_project_tasks(db, project_id),
+        data_date=data_date,
+    )
 
 
 @router.post(
@@ -152,7 +162,11 @@ def create_task(
         field_name="parent_task_id",
     )
 
-    new_task = Task(project_id=project_id, **values)
+    new_task = Task(
+        project_id=project_id,
+        remaining_duration=values["duration"],
+        **values,
+    )
     if new_task.parent_task_id is not None:
         validate_parent_assignment(
             new_task,
@@ -164,9 +178,9 @@ def create_task(
     db.add(new_task)
     db.flush()
     tasks = ordered_project_tasks(db, project_id)
-    recalculate_and_commit(db, project_id, tasks)
+    data_date = recalculate_and_commit(db, project_id, tasks)
 
-    return task_list_response(tasks)
+    return task_list_response(tasks, data_date=data_date)
 
 @router.put(
     "/projects/{project_id}/tasks/reorder",
@@ -259,13 +273,36 @@ def update_task(
 
     for field, value in values.items():
         setattr(task, field, value)
+    if "duration" in values and task.progress_status == "not_started":
+        task.remaining_duration = task.duration
 
     tasks = ordered_project_tasks(db, project_id)
     if "parent_task_id" in values:
         validate_hierarchy_order(tasks, [item.id for item in tasks])
-    recalculate_and_commit(db, project_id, tasks)
+    data_date = recalculate_and_commit(db, project_id, tasks)
 
-    return task_list_response(tasks)
+    return task_list_response(tasks, data_date=data_date)
+
+
+@router.put(
+    "/projects/{project_id}/tasks/{task_id}/progress",
+    response_model=TaskListResponse,
+)
+def update_project_task_progress(
+    project_id: int,
+    task_id: PositiveId,
+    payload: TaskProgressUpdate,
+    db: Session = Depends(get_db),
+    project: Project = Depends(get_owned_project),
+    current_user: dict = Depends(get_current_user),
+):
+    return update_task_progress(
+        db,
+        project_id=project_id,
+        task_id=task_id,
+        payload=payload,
+        updated_by=current_user["id"],
+    )
 
 
 @router.delete(
@@ -294,7 +331,7 @@ def delete_task(
     db.delete(task)
     db.flush()
     tasks = ordered_project_tasks(db, project_id)
-    recalculate_and_commit(db, project_id, tasks)
+    data_date = recalculate_and_commit(db, project_id, tasks)
 
-    return task_list_response(tasks)
+    return task_list_response(tasks, data_date=data_date)
 

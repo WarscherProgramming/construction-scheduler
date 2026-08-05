@@ -128,6 +128,17 @@ class ScheduleVarianceTaskResponse(BaseModel):
     duration_changed: bool
     manual_start_changed: bool
     order_changed: bool
+    progress_status: Literal[
+        "not_started",
+        "in_progress",
+        "completed",
+    ] | None
+    percent_complete: int | None
+    actual_start_date: str | None
+    actual_finish_date: str | None
+    remaining_duration: int | None
+    out_of_sequence: bool
+    out_of_sequence_reason: str | None
 
 
 class ScheduleVarianceSummaryResponse(BaseModel):
@@ -136,6 +147,7 @@ class ScheduleVarianceSummaryResponse(BaseModel):
     captured_at: datetime
     baseline_schedule_start_date: str
     current_schedule_start_date: str
+    current_data_date: str
     baseline_task_count: int
     current_task_count: int
     baseline_leaf_task_count: int
@@ -154,6 +166,10 @@ class ScheduleVarianceSummaryResponse(BaseModel):
     current_critical_count: int
     newly_critical_count: int
     no_longer_critical_count: int
+    not_started_count: int
+    in_progress_count: int
+    completed_count: int
+    out_of_sequence_count: int
 
 
 class ScheduleVarianceResponse(BaseModel):

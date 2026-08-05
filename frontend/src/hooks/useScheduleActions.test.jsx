@@ -10,6 +10,7 @@ vi.mock("../services/api", () => ({
   saveTemplate: vi.fn(),
   updateScheduleSettings: vi.fn(),
   updateTask: vi.fn(),
+  updateTaskProgress: vi.fn(),
 }));
 
 import useScheduleActions from "./useScheduleActions";
@@ -20,6 +21,7 @@ import {
   reorderTasks,
   updateScheduleSettings,
   updateTask,
+  updateTaskProgress,
 } from "../services/api";
 
 
@@ -56,6 +58,7 @@ function setup(overrides = {}) {
   const projectRef = { current: 1 };
   const spies = {
     setTasks: vi.fn(),
+    setScheduleSummary: vi.fn(),
     setTemplates: vi.fn(),
     setScheduleSettings: vi.fn(),
     loadTasks: vi.fn().mockResolvedValue(undefined),
@@ -227,16 +230,15 @@ describe("useScheduleActions project mutation safety", () => {
     let settingsMutation;
     act(() => {
       templateMutation = result.current.handleApplyTemplate();
-      settingsMutation = result.current.handleUpdateScheduleStart(
-        "2026-04-06"
-      );
+      settingsMutation = result.current.handleUpdateDataDate("2026-03-09");
     });
 
     await switchProject();
     templateRequest.resolve({ message: "Template applied" });
     settingsRequest.resolve({
       project_id: 1,
-      schedule_start_date: "2026-04-06",
+      schedule_start_date: "2026-03-02",
+      data_date: "2026-03-09",
     });
     await act(async () => Promise.all([templateMutation, settingsMutation]));
 
@@ -265,6 +267,127 @@ describe("useScheduleActions project mutation safety", () => {
     expect(result.current.selectedTaskId).toBeNull();
     expect(result.current.editingCell).toBeNull();
     expect(spies.reportRequestError).not.toHaveBeenCalled();
+  });
+
+  it("updates progress through the canonical task response", async () => {
+    const summary = { completed_count: 1 };
+    const completedTasks = [
+      {
+        ...tasks[0],
+        progress_status: "completed",
+        percent_complete: 100,
+      },
+    ];
+    updateTaskProgress.mockResolvedValue({
+      tasks: completedTasks,
+      summary,
+    });
+    const { result, spies } = setup();
+
+    act(() => result.current.openTaskProgress(tasks[0]));
+    expect(result.current.progressTaskId).toBe(1);
+    await act(async () => {
+      await result.current.handleUpdateTaskProgress(1, {
+        progress_status: "completed",
+        actual_start_date: "2026-03-02",
+        actual_finish_date: "2026-03-05",
+      });
+    });
+
+    expect(updateTaskProgress).toHaveBeenCalledWith(
+      1,
+      1,
+      {
+        progress_status: "completed",
+        actual_start_date: "2026-03-02",
+        actual_finish_date: "2026-03-05",
+      },
+      expect.objectContaining({ signal: expect.any(AbortSignal) })
+    );
+    expect(spies.setTasks).toHaveBeenCalledWith(completedTasks);
+    expect(spies.setScheduleSummary).toHaveBeenCalledWith(summary);
+    expect(result.current.progressTaskId).toBeNull();
+    expect(spies.showNotice).toHaveBeenCalledWith(
+      "success",
+      "Task progress updated."
+    );
+  });
+
+  it("deduplicates progress updates and ignores stale success", async () => {
+    const request = deferred();
+    updateTaskProgress.mockReturnValue(request.promise);
+    const { result, spies, switchProject } = setup();
+    act(() => result.current.openTaskProgress(tasks[0]));
+    let first;
+    act(() => {
+      first = result.current.handleUpdateTaskProgress(1, {
+        progress_status: "not_started",
+      });
+      void result.current.handleUpdateTaskProgress(1, {
+        progress_status: "not_started",
+      });
+    });
+
+    expect(updateTaskProgress).toHaveBeenCalledTimes(1);
+    await switchProject();
+    expect(result.current.progressTaskId).toBeNull();
+    request.resolve({ tasks: [], summary: { completed_count: 0 } });
+    await act(async () => first);
+
+    expect(spies.setTasks).not.toHaveBeenCalled();
+    expect(spies.setScheduleSummary).not.toHaveBeenCalled();
+    expect(spies.showNotice).not.toHaveBeenCalled();
+  });
+
+  it("ignores stale progress and Data Date failures", async () => {
+    const progressRequest = deferred();
+    const settingsRequest = deferred();
+    updateTaskProgress.mockReturnValue(progressRequest.promise);
+    updateScheduleSettings.mockReturnValue(settingsRequest.promise);
+    const { result, spies, switchProject } = setup();
+    let progressMutation;
+    let settingsMutation;
+    act(() => {
+      progressMutation = result.current.handleUpdateTaskProgress(1, {
+        progress_status: "not_started",
+      });
+      settingsMutation = result.current.handleUpdateDataDate("2026-03-09");
+    });
+
+    await switchProject();
+    progressRequest.reject(new Error("stale progress failure"));
+    settingsRequest.reject(new Error("stale settings failure"));
+    await act(async () => Promise.all([progressMutation, settingsMutation]));
+
+    expect(spies.reportRequestError).not.toHaveBeenCalled();
+    expect(spies.setScheduleSettings).not.toHaveBeenCalled();
+    expect(spies.loadTasks).not.toHaveBeenCalled();
+  });
+
+  it("updates the Data Date, reloads tasks once, and keeps global feedback", async () => {
+    const updatedSettings = {
+      project_id: 1,
+      schedule_start_date: "2026-03-02",
+      data_date: "2026-03-09",
+    };
+    updateScheduleSettings.mockResolvedValue(updatedSettings);
+    const { result, spies } = setup();
+
+    await act(async () => {
+      await result.current.handleUpdateDataDate("2026-03-09");
+    });
+
+    expect(updateScheduleSettings).toHaveBeenCalledWith(
+      1,
+      { data_date: "2026-03-09" },
+      expect.objectContaining({ signal: expect.any(AbortSignal) })
+    );
+    expect(spies.setScheduleSettings).toHaveBeenCalledWith(updatedSettings);
+    expect(spies.loadTasks).toHaveBeenCalledOnce();
+    expect(spies.showNotice).toHaveBeenCalledWith(
+      "success",
+      "Data Date updated."
+    );
   });
 
   it("deduplicates an in-flight mutation and clears pending on switch", async () => {
@@ -299,6 +422,23 @@ describe("useScheduleActions project mutation safety", () => {
     expect(spies.reportRequestError).toHaveBeenCalledWith(
       "Unable to delete task",
       expect.objectContaining({ message: "Session expired" })
+    );
+  });
+
+  it("routes a current progress session failure through global handling", async () => {
+    const error = Object.assign(new Error("Session expired"), { status: 401 });
+    updateTaskProgress.mockRejectedValue(error);
+    const { result, spies } = setup();
+
+    await act(async () => {
+      await result.current.handleUpdateTaskProgress(1, {
+        progress_status: "not_started",
+      });
+    });
+
+    expect(spies.reportRequestError).toHaveBeenCalledWith(
+      "Unable to update task progress",
+      error
     );
   });
 });

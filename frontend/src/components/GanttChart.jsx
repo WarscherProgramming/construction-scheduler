@@ -1,22 +1,18 @@
 import EmptyState from "./EmptyState";
-import { formatDisplayDate as formatDate } from "../utils/date";
+import {
+  formatDisplayDate as formatDate,
+  parseLocalDateInputValue,
+} from "../utils/date";
 import { getTaskDepthFromList } from "../utils/taskHierarchy";
 import { buildWbsMap } from "../utils/taskReferences";
+import { formatProgressStatus } from "../utils/scheduleProgress";
 
 const MS_PER_DAY = 1000 * 60 * 60 * 24;
 const DAY_WIDTH = 34;
 const ROW_HEIGHT = 38;
 
 function parseDate(value) {
-  if (!value) return null;
-
-  if (value.includes("/")) {
-    const [m, d, y] = value.split("/").map(Number);
-    return new Date(y, m - 1, d);
-  }
-
-  const [y, m, d] = value.split("-").map(Number);
-  return new Date(y, m - 1, d);
+  return parseLocalDateInputValue(value);
 }
 
 /**
@@ -51,10 +47,13 @@ const LEGEND = [
   { swatch: "critical", label: "Critical path" },
   { swatch: "selected", label: "Selected" },
   { swatch: "dependent", label: "Depends on selection" },
+  { swatch: "in-progress", label: "In Progress" },
+  { swatch: "completed", label: "Completed" },
+  { swatch: "data-date", label: "Data Date" },
   { swatch: "today", label: "Today" },
 ];
 
-function GanttChart({ tasks, selectedTaskId }) {
+function GanttChart({ tasks, selectedTaskId, dataDate }) {
   if (!tasks.length) {
     return (
       <EmptyState
@@ -104,12 +103,19 @@ function GanttChart({ tasks, selectedTaskId }) {
 
   // Time range covers every scheduled task (collapsing rows never rescales
   // the timeline).
-  const projectStartMs = Math.min(
-    ...scheduledTasks.map((task) => parseDate(task.start_date).getTime())
+  const parsedDataDate = parseDate(dataDate);
+  const startValues = scheduledTasks.map((task) =>
+    parseDate(task.start_date).getTime()
   );
-  const projectEndMs = Math.max(
-    ...scheduledTasks.map((task) => parseDate(task.end_date).getTime())
+  const endValues = scheduledTasks.map((task) =>
+    parseDate(task.end_date).getTime()
   );
+  if (parsedDataDate) {
+    startValues.push(parsedDataDate.getTime());
+    endValues.push(parsedDataDate.getTime());
+  }
+  const projectStartMs = Math.min(...startValues);
+  const projectEndMs = Math.max(...endValues);
 
   const projectStartDate = new Date(projectStartMs);
   projectStartDate.setHours(0, 0, 0, 0);
@@ -122,6 +128,12 @@ function GanttChart({ tasks, selectedTaskId }) {
     (today.getTime() - projectStartDate.getTime()) / MS_PER_DAY
   );
   const todayVisible = todayIndex >= 0 && todayIndex < totalDays;
+  const dataDateIndex = parsedDataDate
+    ? Math.round(
+        (parsedDataDate.getTime() - projectStartDate.getTime()) / MS_PER_DAY
+      )
+    : -1;
+  const dataDateVisible = dataDateIndex >= 0 && dataDateIndex < totalDays;
 
   const isDependent = (task, selectedId) => {
     if (!selectedId) return false;
@@ -274,11 +286,13 @@ function GanttChart({ tasks, selectedTaskId }) {
 
                 const isWeekend = date.getDay() === 0 || date.getDay() === 6;
                 const isToday = todayVisible && index === todayIndex;
+                const isDataDate = dataDateVisible && index === dataDateIndex;
 
                 const classes = [
                   "gantt-day",
                   isWeekend ? "gantt-day--weekend" : "",
                   isToday ? "gantt-day--today" : "",
+                  isDataDate ? "gantt-day--data-date" : "",
                 ]
                   .filter(Boolean)
                   .join(" ");
@@ -288,7 +302,9 @@ function GanttChart({ tasks, selectedTaskId }) {
                     key={index}
                     className={classes}
                     style={{ width: DAY_WIDTH }}
-                    title={isToday ? "Today" : undefined}
+                    title={
+                      isDataDate ? "Data Date" : isToday ? "Today" : undefined
+                    }
                   >
                     <div>
                       {date.toLocaleDateString("en-US", { weekday: "narrow" })}
@@ -303,6 +319,15 @@ function GanttChart({ tasks, selectedTaskId }) {
               className="gantt-body"
               style={{ backgroundImage: timelineBackground }}
             >
+              {dataDateVisible && (
+                <div
+                  className="gantt-data-date-line"
+                  style={{ left: dataDateIndex * DAY_WIDTH + DAY_WIDTH / 2 }}
+                  aria-label={`Data Date ${formatDate(dataDate)}`}
+                >
+                  <span>Data Date</span>
+                </div>
+              )}
               {todayVisible && (
                 <div
                   className="gantt-today-column"
@@ -328,6 +353,7 @@ function GanttChart({ tasks, selectedTaskId }) {
                 const dependent = isDependent(task, selectedTaskId);
                 const isSummary = parentIds.has(task.id);
                 const isCritical = Boolean(task.is_critical);
+                const progressStatus = task.progress_status || "not_started";
 
                 const barClasses = [
                   "gantt-bar",
@@ -337,6 +363,12 @@ function GanttChart({ tasks, selectedTaskId }) {
                   !isSelected && !isCritical && dependent
                     ? "gantt-bar--dependent"
                     : "",
+                  !isSummary && progressStatus === "in_progress"
+                    ? "gantt-bar--in-progress"
+                    : "",
+                  !isSummary && progressStatus === "completed"
+                    ? "gantt-bar--completed"
+                    : "",
                 ]
                   .filter(Boolean)
                   .join(" ");
@@ -345,7 +377,11 @@ function GanttChart({ tasks, selectedTaskId }) {
                   isSummary ? " summary" : ""
                 }, ${formatDate(task.start_date)} through ${formatDate(
                   task.end_date
-                )}${isCritical ? ", on the critical path" : ""}${
+                )}, ${formatProgressStatus(progressStatus)}, ${
+                  task.percent_complete || 0
+                } percent complete${
+                  task.out_of_sequence ? ", out of sequence" : ""
+                }${isCritical ? ", on the critical path" : ""}${
                   isSelected
                     ? ", selected"
                     : dependent

@@ -6,6 +6,7 @@ from typing import Literal
 
 
 DependencyType = Literal["FS", "SS"]
+ProgressStatus = Literal["not_started", "in_progress", "completed"]
 
 
 @dataclass(frozen=True)
@@ -18,6 +19,11 @@ class ScheduleTask:
     lag_days: int = 0
     parent_task_id: int | None = None
     manual_start_date: str | None = None
+    progress_status: ProgressStatus = "not_started"
+    percent_complete: int = 0
+    actual_start_date: str | None = None
+    actual_finish_date: str | None = None
+    remaining_duration: int | None = None
 
 
 @dataclass(frozen=True)
@@ -32,6 +38,16 @@ class ScheduledTask:
     manual_start_date: str | None
     start_date: str | None
     end_date: str | None
+    progress_status: ProgressStatus = "not_started"
+    percent_complete: int = 0
+    actual_start_date: str | None = None
+    actual_finish_date: str | None = None
+    remaining_duration: int | None = None
+    out_of_sequence: bool = False
+    out_of_sequence_reason: str | None = None
+    calculation_start_date: str | None = None
+    progress_weight: int = 0
+    progress_weighted_value: int = 0
     total_float: int | None = None
     is_critical: bool = False
 
@@ -163,7 +179,9 @@ def calculate_schedule(
     tasks: list[ScheduleTask],
     *,
     project_start: date,
+    data_date: date | None = None,
 ) -> list[ScheduledTask]:
+    status_date = data_date or project_start
     scheduled = [
         ScheduledTask(
             id=task.id,
@@ -176,6 +194,15 @@ def calculate_schedule(
             manual_start_date=task.manual_start_date,
             start_date=None,
             end_date=None,
+            progress_status=task.progress_status,
+            percent_complete=task.percent_complete,
+            actual_start_date=task.actual_start_date,
+            actual_finish_date=task.actual_finish_date,
+            remaining_duration=(
+                task.remaining_duration
+                if task.remaining_duration is not None
+                else task.duration
+            ),
         )
         for task in tasks
     ]
@@ -233,18 +260,13 @@ def calculate_schedule(
                 )
                 scheduled[index] = task
         else:
-            start_date = _resolve_start_date(task, task_map, project_start)
-            if start_date is not None:
-                start_date = next_workday(start_date)
-                task = replace(
-                    task,
-                    start_date=start_date.isoformat(),
-                    end_date=add_workdays(
-                        start_date,
-                        task.duration,
-                    ).isoformat(),
-                )
-                scheduled[index] = task
+            task = _schedule_leaf_task(
+                task,
+                task_map,
+                project_start=project_start,
+                data_date=status_date,
+            )
+            scheduled[index] = task
 
         if task.id is not None:
             task_map[task.id] = task
@@ -254,7 +276,60 @@ def calculate_schedule(
             if indegree[dependent] == 0:
                 heapq.heappush(ready, dependent)
 
-    return apply_critical_path(scheduled)
+    return annotate_schedule(scheduled)
+
+
+def _schedule_leaf_task(
+    task: ScheduledTask,
+    task_map: dict[int | None, ScheduledTask],
+    *,
+    project_start: date,
+    data_date: date,
+) -> ScheduledTask:
+    if task.progress_status == "completed":
+        return replace(
+            task,
+            start_date=task.actual_start_date,
+            end_date=task.actual_finish_date,
+            calculation_start_date=None,
+        )
+
+    duration = task.remaining_duration or task.duration
+    data_boundary = next_workday(data_date)
+
+    if task.progress_status == "in_progress":
+        dependency_boundary = _resolve_dependency_start(task, task_map)
+        if task.predecessor_task_id is not None and dependency_boundary is None:
+            return replace(
+                task,
+                start_date=task.actual_start_date,
+                end_date=None,
+                calculation_start_date=None,
+            )
+
+        remaining_start = data_boundary
+        if dependency_boundary is not None:
+            remaining_start = max(
+                remaining_start,
+                next_workday(dependency_boundary),
+            )
+        return replace(
+            task,
+            start_date=task.actual_start_date,
+            end_date=add_workdays(remaining_start, duration).isoformat(),
+            calculation_start_date=remaining_start.isoformat(),
+        )
+
+    start_date = _resolve_start_date(task, task_map, project_start)
+    if start_date is None:
+        return task
+    start_date = max(next_workday(start_date), data_boundary)
+    return replace(
+        task,
+        start_date=start_date.isoformat(),
+        end_date=add_workdays(start_date, duration).isoformat(),
+        calculation_start_date=start_date.isoformat(),
+    )
 
 
 def _resolve_start_date(
@@ -269,6 +344,13 @@ def _resolve_start_date(
             else project_start
         )
 
+    return _resolve_dependency_start(task, task_map)
+
+
+def _resolve_dependency_start(
+    task: ScheduledTask,
+    task_map: dict[int | None, ScheduledTask],
+) -> date | None:
     predecessor_task = task_map.get(task.predecessor_task_id)
     if predecessor_task is None:
         return None
@@ -289,6 +371,190 @@ def _resolve_start_date(
     )
 
 
+def annotate_schedule(tasks: list[ScheduledTask]) -> list[ScheduledTask]:
+    progress = _rollup_progress(tasks)
+    sequenced = _apply_out_of_sequence(progress)
+    return apply_critical_path(sequenced)
+
+
+def _rollup_progress(tasks: list[ScheduledTask]) -> list[ScheduledTask]:
+    rolled_up = [
+        replace(
+            task,
+            remaining_duration=(
+                task.remaining_duration
+                if task.remaining_duration is not None
+                else task.duration
+            ),
+            progress_weight=task.duration,
+            progress_weighted_value=task.duration * task.percent_complete,
+        )
+        for task in tasks
+    ]
+    children_by_parent: dict[int | None, list[ScheduledTask]] = {}
+    for task in rolled_up:
+        children_by_parent.setdefault(task.parent_task_id, []).append(task)
+    depths = _hierarchy_depths(rolled_up)
+
+    for index in sorted(
+        range(len(rolled_up)),
+        key=lambda item: depths[rolled_up[item].id],
+        reverse=True,
+    ):
+        task = rolled_up[index]
+        children = children_by_parent.get(task.id, [])
+        if not children:
+            continue
+
+        weight = sum(child.progress_weight for child in children)
+        weighted_value = sum(
+            child.progress_weighted_value for child in children
+        )
+        percent_complete = (
+            (weighted_value + weight // 2) // weight if weight else 0
+        )
+        if all(child.progress_status == "completed" for child in children):
+            progress_status: ProgressStatus = "completed"
+        elif any(
+            child.progress_status != "not_started" for child in children
+        ):
+            progress_status = "in_progress"
+        else:
+            progress_status = "not_started"
+
+        actual_starts = [
+            child.actual_start_date
+            for child in children
+            if child.actual_start_date is not None
+        ]
+        actual_finishes = [
+            child.actual_finish_date
+            for child in children
+            if child.actual_finish_date is not None
+        ]
+        rolled_up[index] = replace(
+            task,
+            progress_status=progress_status,
+            percent_complete=percent_complete,
+            actual_start_date=min(actual_starts) if actual_starts else None,
+            actual_finish_date=(
+                max(actual_finishes)
+                if progress_status == "completed" and actual_finishes
+                else None
+            ),
+            remaining_duration=None,
+            progress_weight=weight,
+            progress_weighted_value=weighted_value,
+        )
+        children_by_parent[task.parent_task_id] = [
+            rolled_up[index] if child.id == task.id else child
+            for child in children_by_parent.get(task.parent_task_id, [])
+        ]
+
+    return rolled_up
+
+
+def _dependency_boundary(
+    task: ScheduledTask,
+    predecessor: ScheduledTask,
+) -> date | None:
+    value = (
+        predecessor.start_date
+        if task.dependency_type == "SS"
+        else predecessor.end_date
+    )
+    if value is None:
+        return None
+    extra_days = (
+        task.lag_days
+        if task.dependency_type == "SS"
+        else 1 + task.lag_days
+    )
+    return next_workday(date.fromisoformat(value) + timedelta(days=extra_days))
+
+
+def _apply_out_of_sequence(
+    tasks: list[ScheduledTask],
+) -> list[ScheduledTask]:
+    annotated = list(tasks)
+    task_map = {task.id: task for task in annotated}
+    parent_ids = {
+        task.parent_task_id
+        for task in annotated
+        if task.parent_task_id is not None
+    }
+
+    for index, task in enumerate(annotated):
+        if (
+            task.id in parent_ids
+            or task.actual_start_date is None
+            or task.predecessor_task_id is None
+        ):
+            continue
+        predecessor = task_map.get(task.predecessor_task_id)
+        if predecessor is None:
+            annotated[index] = replace(
+                task,
+                out_of_sequence=True,
+                out_of_sequence_reason=(
+                    "Progress was recorded while the predecessor was "
+                    "unavailable."
+                ),
+            )
+            continue
+        boundary = _dependency_boundary(task, predecessor)
+        if boundary is None:
+            annotated[index] = replace(
+                task,
+                out_of_sequence=True,
+                out_of_sequence_reason=(
+                    f"Progress was recorded while predecessor "
+                    f"{predecessor.id} was unscheduled."
+                ),
+            )
+            continue
+        actual_start = date.fromisoformat(task.actual_start_date)
+        if actual_start < boundary:
+            annotated[index] = replace(
+                task,
+                out_of_sequence=True,
+                out_of_sequence_reason=(
+                    f"Actual start {task.actual_start_date} is before the "
+                    f"{task.dependency_type} predecessor boundary "
+                    f"{boundary.isoformat()} from task {predecessor.id}."
+                ),
+            )
+
+    children_by_parent: dict[int | None, list[ScheduledTask]] = {}
+    for task in annotated:
+        children_by_parent.setdefault(task.parent_task_id, []).append(task)
+    depths = _hierarchy_depths(annotated)
+    for index in sorted(
+        range(len(annotated)),
+        key=lambda item: depths[annotated[item].id],
+        reverse=True,
+    ):
+        task = annotated[index]
+        children = children_by_parent.get(task.id, [])
+        flagged = [child for child in children if child.out_of_sequence]
+        if not flagged:
+            continue
+        annotated[index] = replace(
+            task,
+            out_of_sequence=True,
+            out_of_sequence_reason=(
+                f"{len(flagged)} direct descendant task"
+                f"{'s are' if len(flagged) != 1 else ' is'} out of sequence."
+            ),
+        )
+        children_by_parent[task.parent_task_id] = [
+            annotated[index] if child.id == task.id else child
+            for child in children_by_parent.get(task.parent_task_id, [])
+        ]
+
+    return annotated
+
+
 def compute_critical_path(
     tasks: list[ScheduledTask],
 ) -> dict[int | None, tuple[int | None, bool]]:
@@ -307,9 +573,10 @@ def compute_critical_path(
         task
         for task in tasks
         if task.id not in parent_ids
+        and task.progress_status != "completed"
         and task.start_date
         and task.end_date
-        and task.duration >= 1
+        and _critical_duration(task) >= 1
     ]
 
     if not nodes:
@@ -349,7 +616,9 @@ def compute_critical_path(
     for task_id in reversed(topological_ids):
         task = node_map[task_id]
         following = successors.get(task.id, [])
-        candidates = [subtract_workdays(project_end, task.duration)]
+        candidates = [
+            subtract_workdays(project_end, _critical_duration(task))
+        ]
 
         for successor in following:
             successor_late_start = late_start[successor.id]
@@ -367,7 +636,10 @@ def compute_critical_path(
                     - timedelta(days=1 + successor.lag_days)
                 )
                 candidates.append(
-                    subtract_workdays(latest_finish, task.duration)
+                    subtract_workdays(
+                        latest_finish,
+                        _critical_duration(task),
+                    )
                 )
 
         late_start[task.id] = min(candidates)
@@ -381,7 +653,9 @@ def compute_critical_path(
             results[task.id] = (None, False)
             continue
 
-        early_start = date.fromisoformat(task.start_date)
+        early_start = date.fromisoformat(
+            task.calculation_start_date or task.start_date
+        )
         total_float = workdays_between(early_start, resolved_late_start)
         results[task.id] = (total_float, total_float == 0)
 
@@ -394,7 +668,13 @@ def apply_critical_path(tasks: list[ScheduledTask]) -> list[ScheduledTask]:
     annotated = [
         replace(
             task,
-            total_float=results.get(task.id, (None, False))[0],
+            total_float=results.get(
+                task.id,
+                (
+                    0 if task.progress_status == "completed" else None,
+                    False,
+                ),
+            )[0],
             is_critical=results.get(task.id, (None, False))[1],
         )
         for task in tasks
@@ -422,12 +702,22 @@ def apply_critical_path(tasks: list[ScheduledTask]) -> list[ScheduledTask]:
         child_floats = [
             child.total_float
             for child in children
-            if child.total_float is not None
+            if child.progress_status != "completed"
+            and child.total_float is not None
         ]
         annotated[index] = replace(
             task,
-            is_critical=any(child.is_critical for child in children),
-            total_float=min(child_floats) if child_floats else None,
+            is_critical=any(
+                child.progress_status != "completed" and child.is_critical
+                for child in children
+            ),
+            total_float=(
+                min(child_floats)
+                if child_floats
+                else 0
+                if task.progress_status == "completed"
+                else None
+            ),
         )
         children_by_parent[task.parent_task_id] = [
             annotated[index] if child.id == task.id else child
@@ -435,6 +725,10 @@ def apply_critical_path(tasks: list[ScheduledTask]) -> list[ScheduledTask]:
         ]
 
     return annotated
+
+
+def _critical_duration(task: ScheduledTask) -> int:
+    return task.remaining_duration or task.duration
 
 
 def rollup_parent_tasks(tasks: list[ScheduledTask]) -> list[ScheduledTask]:

@@ -19,6 +19,7 @@ from app.services.task_scheduling import (
     annotate_critical_path,
     lock_project_schedule,
     recalculate_schedule,
+    schedule_metadata,
 )
 from app.services.task_validation import validate_schedule_structure
 
@@ -124,6 +125,7 @@ def capture_schedule_baseline(
         recalculate_schedule(
             tasks,
             project_start=date.fromisoformat(settings.schedule_start_date),
+            data_date=date.fromisoformat(settings.data_date),
         )
         annotate_critical_path(tasks)
 
@@ -335,6 +337,7 @@ def _critical_change(
     current_task: Task | None,
     *,
     current_is_summary: bool,
+    current_is_critical: bool,
 ) -> str | None:
     if (
         baseline_task is None
@@ -344,7 +347,7 @@ def _critical_change(
     ):
         return None
     before = bool(baseline_task.was_critical)
-    after = bool(current_task.is_critical)
+    after = current_is_critical
     if before and after:
         return "remained_critical"
     if before:
@@ -384,6 +387,7 @@ def _comparison_row(
     task_id: int,
     baseline_task: ScheduleBaselineTask | None,
     current_task: Task | None,
+    current_metadata,
     *,
     baseline_wbs: dict[int, str],
     current_wbs: dict[int, str],
@@ -408,7 +412,7 @@ def _comparison_row(
             start_variance = None
 
     baseline_float = baseline_task.total_float if baseline_task else None
-    current_float = current_task.total_float if current_task else None
+    current_float = current_metadata.total_float if current_metadata else None
     float_variance = (
         current_float - baseline_float
         if current_float is not None and baseline_float is not None
@@ -457,7 +461,7 @@ def _comparison_row(
         "baseline_total_float": baseline_float,
         "float_variance_workdays": float_variance,
         "current_critical": (
-            bool(current_task.is_critical) if current_task else None
+            bool(current_metadata.is_critical) if current_metadata else None
         ),
         "baseline_critical": (
             bool(baseline_task.was_critical) if baseline_task else None
@@ -466,6 +470,9 @@ def _comparison_row(
             baseline_task,
             current_task,
             current_is_summary=current_is_summary,
+            current_is_critical=bool(
+                current_metadata and current_metadata.is_critical
+            ),
         ),
         "comparison_status": comparison_status,
         "hierarchy_changed": bool(
@@ -495,6 +502,29 @@ def _comparison_row(
                 or baseline_code != current_code
             )
         ),
+        "progress_status": (
+            current_metadata.progress_status if current_metadata else None
+        ),
+        "percent_complete": (
+            current_metadata.percent_complete if current_metadata else None
+        ),
+        "actual_start_date": (
+            current_metadata.actual_start_date if current_metadata else None
+        ),
+        "actual_finish_date": (
+            current_metadata.actual_finish_date if current_metadata else None
+        ),
+        "remaining_duration": (
+            current_metadata.remaining_duration if current_metadata else None
+        ),
+        "out_of_sequence": bool(
+            current_metadata and current_metadata.out_of_sequence
+        ),
+        "out_of_sequence_reason": (
+            current_metadata.out_of_sequence_reason
+            if current_metadata
+            else None
+        ),
     }
 
 
@@ -517,6 +547,7 @@ def _variance_summary(
     baseline_tasks: list[ScheduleBaselineTask],
     current_tasks: list[Task],
     current_summary_ids: set[int],
+    current_metadata_map: dict,
 ) -> dict:
     leaf_rows = [row for row in rows if not row["is_summary"]]
     baseline_leaves = [task for task in baseline_tasks if not task.is_summary]
@@ -553,6 +584,7 @@ def _variance_summary(
         "captured_at": baseline.captured_at,
         "baseline_schedule_start_date": baseline.schedule_start_date,
         "current_schedule_start_date": settings.schedule_start_date,
+        "current_data_date": settings.data_date,
         "baseline_task_count": baseline.task_count,
         "current_task_count": len(current_tasks),
         "baseline_leaf_task_count": len(baseline_leaves),
@@ -571,7 +603,9 @@ def _variance_summary(
             bool(task.was_critical) for task in baseline_leaves
         ),
         "current_critical_count": sum(
-            bool(task.is_critical) for task in current_leaves
+            bool(current_metadata_map.get(task.id).is_critical)
+            for task in current_leaves
+            if current_metadata_map.get(task.id) is not None
         ),
         "newly_critical_count": sum(
             row["critical_change"] == "newly_critical" for row in leaf_rows
@@ -579,6 +613,26 @@ def _variance_summary(
         "no_longer_critical_count": sum(
             row["critical_change"] == "no_longer_critical"
             for row in leaf_rows
+        ),
+        "not_started_count": sum(
+            current_metadata_map.get(task.id) is not None
+            and current_metadata_map[task.id].progress_status == "not_started"
+            for task in current_leaves
+        ),
+        "in_progress_count": sum(
+            current_metadata_map.get(task.id) is not None
+            and current_metadata_map[task.id].progress_status == "in_progress"
+            for task in current_leaves
+        ),
+        "completed_count": sum(
+            current_metadata_map.get(task.id) is not None
+            and current_metadata_map[task.id].progress_status == "completed"
+            for task in current_leaves
+        ),
+        "out_of_sequence_count": sum(
+            current_metadata_map.get(task.id) is not None
+            and current_metadata_map[task.id].out_of_sequence
+            for task in current_leaves
         ),
     }
 
@@ -682,12 +736,29 @@ def get_schedule_variance(
         try:
             _parse_date(task.start_date)
             _parse_date(task.end_date)
+            _parse_date(task.actual_start_date)
+            _parse_date(task.actual_finish_date)
         except ValueError:
             task.is_critical = False
             task.total_float = None
         else:
             valid_critical_tasks.append(task)
-    annotate_critical_path(valid_critical_tasks)
+    current_metadata = schedule_metadata(valid_critical_tasks)
+    current_metadata_map = {
+        task.id: metadata
+        for task, metadata in zip(
+            valid_critical_tasks,
+            current_metadata,
+            strict=True,
+        )
+    }
+    for task, metadata in zip(
+        valid_critical_tasks,
+        current_metadata,
+        strict=True,
+    ):
+        task.is_critical = metadata.is_critical
+        task.total_float = metadata.total_float
     baseline_tasks = (
         db.query(ScheduleBaselineTask)
         .filter(
@@ -723,6 +794,7 @@ def get_schedule_variance(
             task_id,
             baseline_map.get(task_id),
             current_map.get(task_id),
+            current_metadata_map.get(task_id),
             baseline_wbs=baseline_wbs,
             current_wbs=current_wbs,
             current_summary_ids=current_summary_ids,
@@ -736,6 +808,7 @@ def get_schedule_variance(
         baseline_tasks,
         current_tasks,
         current_summary_ids,
+        current_metadata_map,
     )
 
     rows = all_rows

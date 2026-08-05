@@ -45,6 +45,7 @@ const baseProps = {
   scheduleSettings: {
     project_id: 1,
     schedule_start_date: "2026-06-22",
+    data_date: "2026-06-22",
   },
   selectedProjectId: 1,
   selectedTaskId: null,
@@ -74,6 +75,10 @@ const baseProps = {
   onToggleCollapse: vi.fn(),
   onRetryTasks: vi.fn(),
   onUpdateScheduleStart: vi.fn(),
+  onUpdateDataDate: vi.fn(),
+  onOpenTaskProgress: vi.fn(),
+  onCloseTaskProgress: vi.fn(),
+  onUpdateTaskProgress: vi.fn(),
   getEmptyRow: () => ({ id: null, name: "" }),
   formatDate: (value) => value,
   taskHasChildren: () => false,
@@ -226,6 +231,92 @@ describe("SchedulerPage", () => {
 
     await user.click(screen.getByRole("button", { name: "Outdent" }));
     expect(onOutdent).toHaveBeenCalledWith(task);
+  });
+
+  it("renders project progress metrics and a leaf-task progress dialog", () => {
+    const progressTask = {
+      id: 212,
+      name: "Mobilization",
+      duration: 2,
+      predecessor: null,
+      parent_task_id: null,
+      progress_status: "in_progress",
+      percent_complete: 50,
+      remaining_duration: 1,
+      actual_start_date: "2026-06-20",
+      actual_finish_date: null,
+    };
+
+    render(
+      <SchedulerPage
+        {...baseProps}
+        tasks={[progressTask]}
+        progressTaskId={progressTask.id}
+        scheduleSummary={{
+          total_leaf_tasks: 1,
+          not_started_count: 0,
+          in_progress_count: 1,
+          completed_count: 0,
+          out_of_sequence_count: 0,
+          percent_complete_weighted: 50,
+          data_date: "2026-06-22",
+          forecast_project_finish: "2026-06-23",
+        }}
+      />
+    );
+
+    expect(screen.getByText("50%", { selector: "dd" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("dialog", { name: "Update Progress: Mobilization" })
+    ).toBeInTheDocument();
+  });
+
+  it("keeps summary progress derived and rejects direct dialog mounting", () => {
+    const parent = {
+      id: 1,
+      name: "Site Work",
+      duration: 1,
+      parent_task_id: null,
+      progress_status: "in_progress",
+      percent_complete: 50,
+      remaining_duration: null,
+    };
+    const child = {
+      id: 2,
+      name: "Grading",
+      duration: 2,
+      parent_task_id: 1,
+      progress_status: "in_progress",
+      percent_complete: 50,
+      remaining_duration: 1,
+    };
+
+    render(
+      <SchedulerPage
+        {...baseProps}
+        tasks={[parent, child]}
+        progressTaskId={parent.id}
+        taskHasChildren={(id) => id === parent.id}
+      />
+    );
+
+    expect(screen.getByText("Derived")).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("shows only the progress loading state while tasks load", () => {
+    render(
+      <SchedulerPage
+        {...baseProps}
+        isLoadingTasks
+        scheduleSummary={{ percent_complete_weighted: 99 }}
+      />
+    );
+
+    expect(screen.getByText("Loading schedule progress...")).toBeInTheDocument();
+    expect(screen.queryByText("99%", { selector: "dd" }))
+      .not.toBeInTheDocument();
+    expect(screen.getByText("Loading project schedule…")).toBeInTheDocument();
   });
 
   it("switches between the current schedule and baseline comparison", async () => {

@@ -543,11 +543,13 @@ class PdfExportSecurityTests(ApiTestCase):
         )
 
         generated_paths: list[Path] = []
+        generated_options: list[dict] = []
         actual_builder = build_project_schedule_pdf
 
-        def capture_path(project, tasks):
-            path = actual_builder(project, tasks)
+        def capture_path(project, tasks, **options):
+            path = actual_builder(project, tasks, **options)
             generated_paths.append(path)
+            generated_options.append(options)
             return path
 
         with (
@@ -568,6 +570,7 @@ class PdfExportSecurityTests(ApiTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.headers["content-type"], "application/pdf")
         self.assertFalse(image_reader.called)
+        self.assertRegex(generated_options[0]["data_date"], r"^\d{4}-\d{2}-\d{2}$")
         self.assertTrue(generated_paths)
         self.assertTrue(all(not path.exists() for path in generated_paths))
         disposition = response.headers["content-disposition"]
