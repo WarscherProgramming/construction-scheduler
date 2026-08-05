@@ -3,16 +3,15 @@
 ## Overview
 
 The Project Dashboard is the first project-scoped view in FieldFlow. It gives
-project teams a bounded summary of schedule dates, construction workflows,
+project teams a bounded summary of schedule dates and explainable health, construction workflows,
 daily logs, documents, items requiring attention, upcoming work, and recent
 record updates without loading each resource collection in the browser.
 
-The dashboard is informational. Although M17.3 tasks now have progress, the
-aggregate contract does not expose schedule percent complete, critical path,
-or total float and does not calculate a synthetic project-health score.
-Baselines, variance, Data Date, and progress remain Schedule-route concerns:
-the dashboard adds no task or baseline request, comparison metric, or
-collection fan-out.
+The dashboard is informational. M17.7 adds named schedule-health metrics and
+an explainable stable/attention/critical category, but no synthetic score,
+hidden weight, task collection, percent-complete KPI, or full critical-path
+list. Baseline and Data Date context come from the same aggregate; detailed
+variance and progress remain Schedule-route concerns.
 
 ## Architecture
 
@@ -21,6 +20,7 @@ The dashboard route remains lazy-loaded through `AppRouter`.
 ```text
 ProjectDashboardPage
 |-- DashboardHeader
+|-- ScheduleHealthCard
 |-- DashboardSummaryGrid
 |-- DashboardActionGrid
 |   |-- AttentionRequired
@@ -95,6 +95,7 @@ Top-level fields:
 | `generated_at` | aware datetime | UTC-aware generation timestamp |
 | `project` | object | `id`, `name` |
 | `schedule` | object | Schedule date and task counts |
+| `schedule_health` | object | Explainable category, reasons, metrics, baseline/Data Date, executive summary, and bounded attention |
 | `rfis` | object | RFI workflow counts |
 | `submittals` | object | Submittal workflow counts |
 | `punch_items` | object | Punch Item workflow counts |
@@ -116,6 +117,7 @@ Summary fields:
 | `change_orders` | `total`, `active`, `approved`, `rejected`, `unknown_status`, `active_value`, `approved_value` |
 | `daily_logs` | `total`, `latest_log_date`, `today_count`, `today_manpower`, `last_7_days_count` |
 | `documents` | `total`, `uploaded_last_7_days`, `recent` |
+| `schedule_health` | `category`, `summary`, `reasons`, `metrics`, `thresholds`, `baseline`, `data_date`, `schedule_start_date`, `executive_summary`, `top_attention_items` |
 
 `change_orders.active_value` and `change_orders.approved_value` are
 fixed-precision decimal strings. The frontend formats them as USD without
@@ -150,6 +152,9 @@ by the service.
 - Daily Logs: today and trailing-seven-day counts use the requested date.
 - Documents: trailing-seven-day counts use UTC boundaries derived from
   `as_of`.
+- Schedule Health: uses the persisted project Data Date and selected active
+  baseline; critical/attention rules and caps are documented in
+  [`ADVANCED_SCHEDULING.md`](ADVANCED_SCHEDULING.md).
 - Attention Required combines overdue RFIs, Submittals, and Punch Items with
   schedule tasks past planned finish.
 - Recent Updates combines RFIs, Submittals, Punch Items, Change Orders, and
@@ -236,10 +241,14 @@ candidate, metadata, or print request to dashboard loading.
 M17.6 adds no crew, equipment, assignment, availability, or resource-loading
 request or metric. Resource planning remains isolated to the lazy Schedule
 route, preserving the single aggregate dashboard request.
+M17.7 computes `schedule_health` inside that aggregate. It returns only
+bounded metrics, reasons, baseline/Data Date context, executive summary, and
+attention items; it does not call the health HTTP route or load underlying
+collections. Query count is exactly 23 for empty, mixed, and large fixtures.
 
 ## Testing
 
-The frontend suite currently passes 554 tests across 83 files. Dashboard
+The frontend suite currently passes 567 tests across 86 files. Dashboard
 coverage includes:
 
 - API URL and required `as_of` behavior
@@ -254,8 +263,9 @@ coverage includes:
 - headings, semantic roles, contextual link names, keyboard focus, and routes
 - Attention Required, Upcoming Schedule, Workflow Analytics, and Recent
   Updates rendering
+- explainable Schedule Health rendering, textual state, and Scheduler link
 
-The backend suite currently passes 396 primary tests, with 407 subtests
+The backend suite currently passes 404 primary tests, with 407 subtests
 reported separately. `test_dashboard_api.py` covers authentication, ownership,
 query validation, aggregate definitions, bounded ordering, aware timestamps,
 legacy statuses, and query behavior.
@@ -281,6 +291,7 @@ M17.6 with the installed Vite toolchain:
 | M17.4 | 21.07 / 5.23 kB | 291.27 / 88.49 kB | 88.81 / 15.59 kB |
 | M17.5 | 21.07 / 5.23 kB | 297.51 / 89.63 kB | 94.69 / 16.44 kB |
 | M17.6 | 21.07 / 5.23 kB | 305.88 / 91.26 kB | 98.96 / 17.14 kB |
+| M17.7 | 22.54 / 5.58 kB | 306.85 / 91.41 kB | 100.95 / 17.48 kB |
 
 M14.2 replaced the previous client-derived dashboard and removed obsolete
 dashboard utilities. M14.3 added action lists, M14.4 added workflow analytics
@@ -321,6 +332,11 @@ project health formula and aggregate contract remain unchanged. The lazy
 Scheduler chunk is 153.73 kB raw / 39.35 kB gzip; main grows 8.37 / 1.63 kB
 and CSS grows 4.27 / 0.70 kB from M17.5, while Dashboard is unchanged.
 
+M17.7 adds the bounded Schedule Health card to the existing aggregate and a
+fifth summary mode to the lazy Scheduler route. Dashboard grows 1.47 / 0.35
+kB, main grows 0.97 / 0.15 kB, CSS grows 1.99 / 0.34 kB, and Scheduler is
+159.65 / 40.97 kB. No dashboard request fan-out is introduced.
+
 No chart or date dependency was added, no duplicate shared utility chunk is
 emitted, and the dashboard remains route-level lazy-loaded. M16.5 adds no
 relationship request to dashboard loading.
@@ -331,10 +347,10 @@ Final automated verification:
 
 | Check | Result |
 |---|---|
-| Frontend tests | Pass: 554 tests across 83 files |
+| Frontend tests | Pass: 567 tests across 86 files |
 | ESLint | Pass: no errors or warnings |
-| Production build | Pass: 156 modules transformed |
-| Dashboard bundle budget | Pass: 5.23 kB gzip against a 5.25 kB limit |
+| Production build | Pass: 159 modules transformed |
+| Dashboard bundle | 22.54 kB raw / 5.58 kB gzip; the intentional health card exceeds the historical 5.25 kB gzip budget by 0.33 kB |
 | Aggregate request count | Pass: one dashboard request |
 | Resource, attachment, relationship, extraction, and search requests | Pass: zero on dashboard load |
 | Semantic DOM and keyboard tests | Pass |

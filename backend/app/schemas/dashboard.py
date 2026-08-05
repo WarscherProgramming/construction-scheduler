@@ -3,6 +3,8 @@ from typing import Literal
 
 from pydantic import AwareDatetime, BaseModel
 
+from app.schemas.schedule_health import ScheduleHealthResponse
+
 
 class DashboardProjectSummary(BaseModel):
     id: int
@@ -110,6 +112,7 @@ class DashboardResponse(BaseModel):
     generated_at: AwareDatetime
     project: DashboardProjectSummary
     schedule: DashboardScheduleSummary
+    schedule_health: ScheduleHealthResponse
     rfis: DashboardRFISummary
     submittals: DashboardSubmittalSummary
     punch_items: DashboardPunchItemSummary

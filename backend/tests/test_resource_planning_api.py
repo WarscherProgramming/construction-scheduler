@@ -1,4 +1,5 @@
 import unittest
+from unittest.mock import patch
 
 from sqlalchemy import event
 
@@ -362,6 +363,32 @@ class ResourcePlanningApiTests(ApiTestCase):
         self.assertEqual((equipment_conflict["date"], equipment_conflict["status"]), ("2026-08-11", "unavailable"))
         self.assertEqual(body["summary"]["peak_labor_demand"], 5)
         self.assertGreaterEqual(body["summary"]["over_allocated_resource_days"], 4)
+        self.assertNotIn("contributing_tasks", monday)
+
+        with (
+            patch("app.services.resource_planning.MAX_LOADING_CONFLICTS", 1),
+            patch(
+                "app.services.resource_planning.MAX_CONTRIBUTING_TASKS_PER_CONFLICT",
+                1,
+            ),
+        ):
+            bounded = self.client.get(
+                f"/projects/{self.project_id}/resource-loading?start_date=2026-08-10&end_date=2026-08-16",
+                headers=self.headers,
+            )
+        self.assertEqual(bounded.status_code, 200, bounded.text)
+        bounded_body = bounded.json()
+        self.assertGreater(bounded_body["total_conflicts"], 1)
+        self.assertEqual(len(bounded_body["conflicts"]), 1)
+        self.assertTrue(bounded_body["conflicts_truncated"])
+        self.assertEqual(bounded_body["conflict_limit"], 1)
+        self.assertEqual(
+            len(bounded_body["conflicts"][0]["contributing_tasks"]),
+            1,
+        )
+        self.assertTrue(
+            bounded_body["conflicts"][0]["contributing_tasks_truncated"]
+        )
 
         filtered = self.client.get(
             f"/projects/{self.project_id}/resource-loading?resource_type=equipment&resource_id={equipment['id']}&over_allocated_only=true",

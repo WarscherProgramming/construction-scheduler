@@ -4014,6 +4014,136 @@ button:disabled {
   }
 }
 
+.schedule-summary-view {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.schedule-health-panel {
+  align-items: start;
+  background: var(--surface-muted);
+  border-left: 4px solid var(--accent);
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  padding: 1rem;
+}
+
+.schedule-health-category,
+.dashboard-schedule-health-category {
+  font-size: 0.78rem;
+  font-weight: 700;
+  margin: 0 0 0.25rem;
+  text-transform: uppercase;
+}
+
+.schedule-report-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.schedule-summary-metrics,
+.dashboard-schedule-health dl {
+  display: grid;
+  gap: 0;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0;
+}
+
+.schedule-summary-metrics > div,
+.dashboard-schedule-health dl > div {
+  border-bottom: 1px solid var(--border);
+  min-width: 0;
+  padding: 0.75rem;
+}
+
+.schedule-summary-metrics dt,
+.dashboard-schedule-health dt {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.schedule-summary-metrics dd,
+.dashboard-schedule-health dd {
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0.25rem 0 0;
+  overflow-wrap: anywhere;
+}
+
+.schedule-summary-columns {
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.schedule-health-list,
+.schedule-attention-list {
+  display: grid;
+  gap: 0.5rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.schedule-health-list li,
+.schedule-attention-list li {
+  border-bottom: 1px solid var(--border);
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.65rem 0;
+}
+
+.schedule-attention-list span,
+.schedule-attention-list small {
+  color: var(--text-muted);
+}
+
+.dashboard-schedule-health {
+  align-items: start;
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(12rem, 1fr) minmax(18rem, 1.25fr) auto;
+  margin-bottom: 1rem;
+}
+
+.schedule-summary-error {
+  max-width: 38rem;
+}
+
+@media (max-width: 900px) {
+  .dashboard-schedule-health,
+  .schedule-summary-columns {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-schedule-health dl {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .schedule-health-panel {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .schedule-report-actions {
+    justify-content: stretch;
+  }
+
+  .schedule-report-actions .button {
+    width: 100%;
+  }
+
+  .schedule-summary-metrics,
+  .dashboard-schedule-health dl {
+    grid-template-columns: 1fr;
+  }
+}
+
 .schedule-mode-tabs {
   display: inline-flex;
   gap: var(--space-2);

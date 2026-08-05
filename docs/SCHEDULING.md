@@ -3,8 +3,9 @@
 This document defines the deterministic scheduling contract established in
 M17.1, immutable baselines and variance from M17.2, progress and Data Date
 semantics from M17.3, and milestones, constraints, and advanced dependencies
-from M17.4, live Look-Ahead Planning from M17.5, and crew and equipment loading
-from M17.6. It describes shipped behavior only; automatic resource leveling
+from M17.4, live Look-Ahead Planning from M17.5, crew and equipment loading
+from M17.6, and explainable health and reporting from M17.7. It describes
+shipped behavior only; automatic resource leveling
 and configurable calendars are not implemented.
 
 ## Architecture
@@ -256,6 +257,13 @@ M17.6 likewise adds no dashboard request or metric. Resource Loading consumes
 the live forecast only on the lazy Schedule route and uses browser print. It
 does not change CPM inputs, task dates, baselines, or the server PDF contract.
 
+M17.7 adds a read-only health service shared by the existing dashboard
+aggregate, a focused Schedule Summary request, and one bounded executive PDF.
+The dashboard still performs one request and receives no schedule collections.
+Health uses the project Data Date, explicit or selected active baseline, named
+metrics, visible thresholds, and no hidden weighting. Look-Ahead and Resource
+Loading remain browser-printable.
+
 ## APIs
 
 ```text
@@ -282,6 +290,9 @@ GET    /projects/{project_id}/look-ahead-plans/{plan_id}
 PUT    /projects/{project_id}/look-ahead-plans/{plan_id}
 POST   /projects/{project_id}/look-ahead-plans/{plan_id}/archive
 PUT    /projects/{project_id}/look-ahead-plans/{plan_id}/items/{task_id}
+
+GET    /projects/{project_id}/schedule-health
+GET    /projects/{project_id}/reports/schedule-executive.pdf
 ```
 
 The settings request accepts only:
@@ -338,6 +349,13 @@ crews and equipment, lazy-load the bounded loading matrix, reject stale
 project/range responses, and keep assignment and availability metadata outside
 the canonical task collection. Its full contract is documented in
 [`RESOURCE_PLANNING.md`](RESOURCE_PLANNING.md).
+
+Schedule Summary is the fifth mode. `useScheduleHealth` deduplicates requests,
+aborts and rejects stale project responses, and isolates loading/retry from the
+canonical task view. Health category, reasons, baseline, Data Date, variance,
+blockers, and resource conflicts are textual. Report controls have explicit
+names and pending states. Full browser, viewport, zoom, print, and
+cross-browser checks remain Not Verified; see [`SCHEDULE_QA.md`](SCHEDULE_QA.md).
 
 ## Scale Budgets
 
@@ -447,7 +465,7 @@ and index deterministic order, parent, and predecessor lookups.
 
 ## Verification and Limits
 
-M17.6 verification passes 554 frontend tests across 83 files and 396 backend
+M17.7 verification passes 567 frontend tests across 86 files and 404 backend
 tests, with 407 backend subtests reported separately. PostgreSQL and SQLite
 migration upgrade/downgrade/re-upgrade paths use Alembic revision
 `f7c5d0b3e826`.
@@ -455,7 +473,7 @@ migration upgrade/downgrade/re-upgrade paths use Alembic revision
 Known limitations and deferred M17 work:
 
 - look-ahead plans remain live operational views, not immutable snapshots;
-- no look-ahead publish state, commitment audit, dashboard metric, or server PDF;
+- no look-ahead publish state, commitment audit, or server PDF;
 - no automatic resource leveling, resource-driven rescheduling, cost loading,
   workforce management, or planned-versus-actual manpower analytics;
 - no progress history, earned value, or strict transition graph;
@@ -464,4 +482,7 @@ Known limitations and deferred M17 work:
 - summary-predecessor CPM propagation remains limited as described above;
 - no baseline Gantt overlay, baseline dashboard metric, or variance export;
 - no timeline zoom or schedule virtualization;
-- no dashboard schedule-progress visualization in M17.3.
+- no dashboard task collection, schedule percent-complete KPI, or exact-task
+  health deep links;
+- look-ahead detail remains 1.40 MB at 2,000 tasks and the unvirtualized task
+  table/Gantt remain browser-scale debt.

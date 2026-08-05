@@ -495,6 +495,7 @@ function AppRouter({
       lookAhead={lookAheadPlans}
       projectResources={projectResources}
       resourceLoading={resourceLoading}
+      onRequestError={onDashboardError}
       projectCompanies={projectCompanies}
       setSelectedTaskId={schedule.setSelectedTaskId}
       setEditValue={schedule.setEditValue}
@@ -505,9 +506,11 @@ function AppRouter({
       onSaveTemplate={schedule.handleSaveTemplate}
       onApplyTemplate={schedule.handleApplyTemplate}
       onExport={schedule.handleExportProjectPdf}
+      onExportExecutive={schedule.handleExportScheduleExecutivePdf}
       isSavingTemplate={isOperationActive("saveTemplate")}
       isApplyingTemplate={schedule.isScheduleMutationActive("applyTemplate")}
       isExporting={isOperationActive("exportPdf")}
+      isExportingExecutive={isOperationActive("exportExecutivePdf")}
       isLoadingTasks={loading("tasks") || !hasCurrentTaskCollection}
       isLoadingScheduleSettings={loading("scheduleSettings")}
       isUpdatingScheduleSettings={schedule.isScheduleMutationActive(

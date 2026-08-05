@@ -197,7 +197,7 @@ render profiling at large task counts was not performed.
 
 ## Verification
 
-M17.6 passes 554 frontend tests across 83 files and 396 backend tests, with
+M17.7 passes 567 frontend tests across 86 files and 404 backend tests, with
 407 backend subtests reported separately. Baseline revision `a2c7e9f4b610`
 remains immutable beneath progress revision `c8d4f1a7b903` and advanced
 scheduling revision `d4e8a1c7f925`; the current resource-planning head is

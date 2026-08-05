@@ -19,7 +19,7 @@ for both referenced and planned module screenshots.
 
 | File | View / state to capture |
 |---|---|
-| `dashboard.png` | Populated Project Dashboard showing Project Summary, Follow-up Indicators, Attention Required, Upcoming Schedule, Workflow Analytics, and Recent Updates. Include readable RFI, Submittal, Punch Item, and Change Order states plus large Change Order values where practical. |
+| `dashboard.png` | Populated Project Dashboard showing textual Schedule Health with baseline/Data Date context, Project Summary, Follow-up Indicators, Attention Required, Upcoming Schedule, Workflow Analytics, and Recent Updates. Include readable RFI, Submittal, Punch Item, and Change Order states plus large Change Order values where practical. |
 | `schedule-grid.png` | Schedule table view: visible Schedule Start Date and Data Date, leaf-task status and percent complete, remaining duration, actual dates, one milestone, one explicit constraint, multiple predecessor labels, one visible out-of-sequence reason, a selected row, and at least one parent task with indented children. |
 | `schedule-settings.png` | Schedule sidebar with independent persisted Schedule Start Date and Data Date controls and the accessible Data Date recalculation confirmation open over synthetic task data. |
 | `schedule-baseline-create.png` | Accessible Capture Schedule Baseline dialog showing a synthetic name, optional description, Schedule Start Date, task count, server-generated timestamp note, and immutable-snapshot explanation. |
@@ -43,6 +43,10 @@ for both referenced and planned module screenshots.
 | `resource-loading-mobile.png` | Resource Loading at ~390 px with filters, one compact resource/conflict record, and reachable management actions. |
 | `resource-loading-print.png` | Browser print preview with project, date range, demand, capacity, utilization, conflicts, and unassigned work in text. |
 | `look-ahead-resources.png` | Populated look-ahead item/card with batched crew and equipment labels plus the accessible Assign Resources action. |
+| `schedule-summary.png` | Fifth Scheduler mode with category text, baseline and Data Date context, executive metrics, at least two factual health reasons, top attention items, and both named PDF controls. |
+| `schedule-summary-mobile.png` | Schedule Summary at ~390 px with wrapped mode controls, readable metrics/reasons, and reachable report actions without page-level overflow. |
+| `schedule-executive-report.png` | Open synthetic executive schedule PDF showing project/schedule dates, health, baseline variance, progress, field-planning/resource summaries, and bounded attention without confidential data. |
+| `dashboard-schedule-health.png` | Dashboard Schedule Health card showing textual category, reason context, finish variance, blockers, resource conflicts, and the Schedule link. |
 | `schedule-dnd.gif` | ~5 s: grab a task's drag handle, drag it two rows, drop; dates recalculate. |
 | `login.png` | Logged-out landing page at desktop width: split panel with marketing copy, highlights, app preview, and the auth card. |
 | `gantt.png` | Schedule → Gantt view with textual progress, milestone diamonds, constraint markers, distinguishable FS/SS/FF/SF connectors with signed lead/lag labels, an in-progress bar, one completed task, out-of-sequence context, and the Data Date marker visible. |
@@ -189,3 +193,9 @@ Use the exact filenames above where defined; do not add placeholders.
   equipment labels. Keep demand and capacity readable as text, and do not
   imply automatic leveling, individual employees, cost loading, dashboard
   resource KPIs, or planned-versus-actual manpower analytics.
+- M17.7 adds explainable Schedule Health and executive reporting. Recapture
+  `dashboard.png`, add the summary/dashboard-health/executive-report captures,
+  and capture the summary at mobile width. Keep category and reasons textual;
+  do not imply an opaque score, earned value, cost loading, resource leveling,
+  exact-task dashboard deep links, or production verification. No screenshot
+  image is created or replaced by M17.7.

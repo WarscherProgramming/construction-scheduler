@@ -3,7 +3,7 @@ from datetime import date, datetime, timedelta, timezone
 
 from fastapi import HTTPException, status
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.domain.scheduling import is_workday
 from app.models.project_company import ProjectCompany
@@ -27,6 +27,8 @@ from app.services.task_scheduling import schedule_metadata, task_response_rows
 
 MAX_RESOURCE_LIST = 200
 MAX_LOADING_DAYS = 90
+MAX_LOADING_CONFLICTS = 100
+MAX_CONTRIBUTING_TASKS_PER_CONFLICT = 5
 
 
 def utc_now() -> datetime:
@@ -666,6 +668,7 @@ def get_resource_loading(
     include_unassigned: bool,
     limit: int,
     offset: int,
+    summary_only: bool = False,
 ) -> dict:
     settings = get_project_schedule_settings(db, project_id)
     data_date = date.fromisoformat(settings.data_date)
@@ -703,9 +706,9 @@ def get_resource_loading(
             if resource_id is None or row.id == resource_id
         )
 
-    tasks = db.query(Task).filter(Task.project_id == project_id).order_by(
-        Task.order_index, Task.id
-    ).all()
+    tasks = db.query(Task).options(joinedload(Task.dependencies)).filter(
+        Task.project_id == project_id
+    ).order_by(Task.order_index, Task.id).all()
     annotated = schedule_metadata(tasks)
     task_rows = task_response_rows(tasks, annotated=annotated)
     task_map = {row["id"]: row for row in task_rows}
@@ -741,6 +744,9 @@ def get_resource_loading(
     all_dates = list(_dates(start, end))
     loading_rows = []
     conflicts = []
+    matching_resource_count = 0
+    labor_overallocated_days = 0
+    equipment_overallocated_days = 0
     labor_by_date: dict[str, int] = defaultdict(int)
     equipment_by_type_date: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
     look_ahead_end = data_date + timedelta(days=20)
@@ -801,7 +807,6 @@ def get_resource_loading(
                 else "over_allocated" if overage > 0
                 else "within_capacity"
             )
-            task_summaries = list(tasks_by_date[value].values())
             day = {
                 "date": value,
                 "demand": demand,
@@ -810,9 +815,9 @@ def get_resource_loading(
                 "utilization_percent": round(demand / capacity * 100, 1) if capacity else None,
                 "overage": overage,
                 "status": day_status,
-                "contributing_tasks": task_summaries,
             }
-            days.append(day)
+            if not summary_only:
+                days.append(day)
             if current_type == "crew":
                 labor_by_date[value] += demand
             else:
@@ -820,6 +825,11 @@ def get_resource_loading(
             if day_status != "within_capacity":
                 resource_conflicts += 1
                 unavailable_days += int(day_status == "unavailable")
+                if current_type == "crew":
+                    labor_overallocated_days += 1
+                else:
+                    equipment_overallocated_days += 1
+                task_summaries = list(tasks_by_date[value].values())
                 conflicts.append(
                     {
                         "date": value,
@@ -833,7 +843,14 @@ def get_resource_loading(
                             if day_status == "unavailable"
                             else f"Demand exceeds capacity by {overage} {resource.capacity_unit}."
                         ),
-                        "contributing_tasks": task_summaries,
+                        "contributing_tasks": task_summaries[
+                            :MAX_CONTRIBUTING_TASKS_PER_CONFLICT
+                        ],
+                        "contributing_task_count": len(task_summaries),
+                        "contributing_tasks_truncated": (
+                            len(task_summaries)
+                            > MAX_CONTRIBUTING_TASKS_PER_CONFLICT
+                        ),
                     }
                 )
         row = {
@@ -851,6 +868,8 @@ def get_resource_loading(
             "unavailable_days": unavailable_days,
         }
         if not over_allocated_only or resource_conflicts:
+            matching_resource_count += 1
+        if not summary_only and (not over_allocated_only or resource_conflicts):
             loading_rows.append(row)
 
     executable = [
@@ -879,9 +898,18 @@ def get_resource_loading(
                 "unscheduled": unscheduled,
             }
         )
-    total_resources = len(loading_rows)
+    total_resources = matching_resource_count
     loading_rows = loading_rows[offset:offset + limit]
     conflicts.sort(key=lambda row: (row["date"], row["resource"]["resource_type"], row["resource"]["name"]))
+    total_conflicts = len(conflicts)
+    unavailable_resource_conflicts = sum(
+        row["status"] == "unavailable" for row in conflicts
+    )
+    look_ahead_over_allocation_count = sum(
+        data_date <= date.fromisoformat(row["date"]) <= look_ahead_end
+        for row in conflicts
+    )
+    conflicts = conflicts[:MAX_LOADING_CONFLICTS]
     workday_values = [day.isoformat() for day in all_dates if is_workday(day)]
     return {
         "project_id": project_id,
@@ -894,12 +922,11 @@ def get_resource_loading(
             "assigned_tasks": len(assigned_task_ids),
             "unassigned_executable_tasks": len(all_unassigned),
             "unscheduled_tasks": unscheduled_count,
-            "over_allocated_resource_days": len(conflicts),
-            "unavailable_resource_conflicts": sum(row["status"] == "unavailable" for row in conflicts),
-            "look_ahead_over_allocation_count": sum(
-                data_date <= date.fromisoformat(row["date"]) <= look_ahead_end
-                for row in conflicts
-            ),
+            "over_allocated_resource_days": total_conflicts,
+            "labor_overallocated_days": labor_overallocated_days,
+            "equipment_overallocated_days": equipment_overallocated_days,
+            "unavailable_resource_conflicts": unavailable_resource_conflicts,
+            "look_ahead_over_allocation_count": look_ahead_over_allocation_count,
             "peak_labor_demand": max(labor_by_date.values(), default=0),
             "average_labor_demand": round(
                 sum(labor_by_date[value] for value in workday_values) / max(1, len(workday_values)),
@@ -916,7 +943,32 @@ def get_resource_loading(
         "resources": loading_rows,
         "conflicts": conflicts,
         "unassigned_tasks": all_unassigned[:MAX_RESOURCE_LIST] if include_unassigned else [],
+        "total_conflicts": total_conflicts,
+        "conflict_limit": MAX_LOADING_CONFLICTS,
+        "conflicts_truncated": total_conflicts > MAX_LOADING_CONFLICTS,
         "total_resources": total_resources,
         "limit": limit,
         "offset": offset,
+    }
+
+
+def get_resource_health_metrics(db: Session, *, project_id: int) -> dict:
+    data = get_resource_loading(
+        db,
+        project_id=project_id,
+        start_date=None,
+        end_date=None,
+        resource_type=None,
+        resource_id=None,
+        company_id=None,
+        trade=None,
+        over_allocated_only=False,
+        include_unassigned=False,
+        limit=1,
+        offset=0,
+        summary_only=True,
+    )
+    return {
+        "summary": data["summary"],
+        "conflicts": data["conflicts"],
     }

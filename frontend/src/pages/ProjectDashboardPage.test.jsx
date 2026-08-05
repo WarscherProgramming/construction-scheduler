@@ -116,6 +116,48 @@ describe("ProjectDashboardPage", () => {
     expect(screen.queryByText(/critical activities/i)).not.toBeInTheDocument();
   });
 
+  it("renders aggregate schedule health without a second page request", async () => {
+    const user = userEvent.setup();
+    const onNavigate = vi.fn();
+    hookMocks.useProjectDashboard.mockReturnValue({
+      dashboard: {
+        ...DASHBOARD,
+        schedule_health: {
+          category: "attention",
+          summary: "Schedule needs attention for 2 current conditions.",
+          baseline: { id: 3, name: "Contract Baseline" },
+          data_date: "2026-07-27",
+          metrics: {
+            project_finish_variance_workdays: 3,
+            blocked_look_ahead_items: 1,
+            resource_overallocated_days: 2,
+          },
+          reasons: [
+            { code: "finish_slip", label: "Finish variance", severity: "attention", value: 3 },
+            { code: "blocked", label: "Blocked work", severity: "attention", value: 1 },
+          ],
+        },
+      },
+      isLoading: false,
+      error: null,
+      retry: vi.fn(),
+      asOf: "2026-07-27",
+    });
+
+    render(
+      <ProjectDashboardPage
+        {...BASE_PROPS}
+        onNavigate={onNavigate}
+      />
+    );
+
+    expect(screen.getByRole("heading", { name: "Schedule Health" })).toBeInTheDocument();
+    expect(screen.getByText("3 workdays")).toBeInTheDocument();
+    expect(hookMocks.useProjectDashboard).toHaveBeenCalledOnce();
+    await user.click(screen.getByRole("link", { name: "View Schedule Summary" }));
+    expect(onNavigate).toHaveBeenCalledWith("scheduler");
+  });
+
   it("uses explicit page-level links for supported resources", async () => {
     const user = userEvent.setup();
     const onNavigate = vi.fn();

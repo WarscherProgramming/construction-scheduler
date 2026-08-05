@@ -150,8 +150,8 @@ external resources, temporary files, and another server request.
 
 ## Frontend Workflow
 
-The Schedule page retains one route with four modes: Current Schedule,
-Baseline Comparison, Look-Ahead Planning, and Resource Loading.
+The Schedule page retains one route with five modes: Current Schedule,
+Baseline Comparison, Look-Ahead Planning, Resource Loading, and Schedule Summary.
 `useLookAheadPlans` owns plan
 listing, selection, detail loading, creation, archive, item updates, filters,
 retry, AbortController cancellation, project/plan generation checks, and
@@ -188,6 +188,13 @@ August 4, 2026 measured:
 | 500 | 7 | 37.09 ms | 438,526 bytes | 41.44 ms |
 | 2,000 | 10 | 163.52 ms | 1,756,534 bytes | 152.89 ms |
 
+M17.7 narrows the approved item response to fields used by the UI while
+preserving each task exactly once across deterministic groups. A repeat
+2,000-task probe measured 7 SELECTs, 144.97 ms, and 1,403,629 bytes. This is
+about 20% smaller but remains above the aspirational 1 MB target; adding
+server pagination would require coordinated client-side filtering/grouping
+changes and is deferred rather than silently changing this live contract.
+
 The 2,000-task query increase comes from bounded select-in batches, not one
 query per task. These figures are local regression evidence, not PostgreSQL,
 network, print, or browser-render latency. Browser usability at 2,000 tasks is
@@ -215,7 +222,7 @@ accepted from clients.
 ## Boundaries
 
 M17.5 intentionally has no schedule snapshot, historical commitment audit,
-activation/publish state, hard delete, dashboard metric/request, server PDF,
+activation/publish state, hard delete, dashboard collection request, server PDF,
 task fan-out, automatic construction-record links, notifications, resource or
 crew conflict metric, cost or earned-value logic, configurable calendars, or offline
 workflow. Responsive browser checks at 320, 375, 768, and 1024 pixels, wide

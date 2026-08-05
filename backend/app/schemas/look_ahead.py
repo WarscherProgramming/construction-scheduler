@@ -146,7 +146,6 @@ class LookAheadItemResponse(BaseModel):
     task_available: bool
     name: str | None
     wbs: str | None
-    order_index: int | None
     start_date: str | None
     end_date: str | None
     progress_status: ProgressStatus | None
@@ -154,9 +153,7 @@ class LookAheadItemResponse(BaseModel):
     is_milestone: bool
     is_critical: bool
     out_of_sequence: bool
-    out_of_sequence_reason: str | None
     constraint_type: ConstraintType | None
-    constraint_date: str | None
     predecessor_count: int
     readiness_status: ReadinessStatus
     blocking_reason: str | None
@@ -169,13 +166,7 @@ class LookAheadItemResponse(BaseModel):
     manually_included: bool
     manually_excluded: bool
     override_reason: str | None
-    updated_by: int | None
-    updated_at: datetime | None
-    section: Literal["carryover", "week", "manual", "excluded"]
-    week_index: int | None
     overdue: bool
-    starts_this_week: bool
-    continues_from_prior_week: bool
     spans_multiple_weeks: bool
     blocked: bool
     constraint_due: bool

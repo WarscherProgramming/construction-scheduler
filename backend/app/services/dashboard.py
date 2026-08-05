@@ -12,6 +12,7 @@ from app.models.punch_item import PunchItem
 from app.models.rfi import RFI
 from app.models.submittal import Submittal
 from app.models.task import Task
+from app.services.schedule_health import get_schedule_health
 
 
 RFI_OPEN_STATUSES = ("Open", "Pending")
@@ -586,6 +587,10 @@ def get_project_dashboard(
             project.id,
             as_of_text,
             upcoming_end_text,
+        ),
+        "schedule_health": get_schedule_health(
+            db,
+            project_id=project.id,
         ),
         "rfis": _rfi_summary(
             db,

@@ -4,7 +4,7 @@ from typing import Literal
 
 from fastapi import HTTPException, status
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.models.look_ahead import LookAheadItem, LookAheadPlan
 from app.models.project_company import ProjectCompany
@@ -326,7 +326,7 @@ def get_look_ahead_plan_detail(
     plan = _get_plan(db, project_id, plan_id)
     settings = get_project_schedule_settings(db, project_id)
     tasks = (
-        db.query(Task)
+        db.query(Task).options(joinedload(Task.dependencies))
         .filter(Task.project_id == project_id)
         .order_by(Task.order_index, Task.id)
         .all()

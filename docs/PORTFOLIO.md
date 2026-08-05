@@ -1,8 +1,8 @@
 # FieldFlow — Portfolio Copy
 
 Ready-to-use descriptions for resumes, portfolio sites, and LinkedIn.
-Keep the metrics in sync with the repo (M17.6 verified **950 primary tests: 554
-frontend across 83 files + 396 backend**, with 407 backend subtests reported
+Keep the metrics in sync with the repo (M17.7 verified **971 primary tests: 567
+frontend across 86 files + 404 backend**, with 407 backend subtests reported
 separately).
 
 ---
@@ -15,13 +15,13 @@ separately).
 > (React 19, FastAPI, PostgreSQL) with a drag-and-drop CPM-style scheduler,
 > persistent Data Date, live progress, milestones, constraints, advanced
 > dependencies, live three-week look-ahead planning, and bounded crew and
-> equipment resource loading,
+> equipment resource loading, explainable schedule health and executive PDF,
 > executive dashboard, enhanced project-scoped Change Order, RFI, Submittal,
 > and Punch List workflows, reusable Document Management across six resource
 > types, a project document explorer, construction drawing revision
 > management with a secure PDF viewer, explicit cross-record construction
 > relationships, project-scoped PDF content search, hardened rotating-session
-> authentication, and 950 automated
+> authentication, and 971 automated
 > tests.
 
 ### Resume bullets
@@ -47,6 +47,10 @@ separately).
 >   progress-aware workday demand, textual utilization and over-allocation,
 >   unassigned-work reporting, look-ahead labels, and browser print without
 >   automatic leveling or schedule mutation.
+> - Added deterministic schedule health with visible category thresholds,
+>   bounded reasons and attention items, baseline/Data Date context, a fifth
+>   Scheduler summary mode, one-request dashboard integration, and a safely
+>   escaped authenticated executive PDF without a second analytics system.
 > - Designed an accessible design system (15+ reusable components: dialogs
 >   with focus traps, skeleton loading, toasts, icon system) and a
 >   project-owned analytics endpoint that replaces dashboard collection
@@ -96,7 +100,7 @@ separately).
 > - Hardened authentication with memory-only access JWTs, rotating opaque
 >   refresh sessions, replay-family revocation, CSRF and exact-Origin
 >   enforcement, route-wide tenant isolation, and bounded abuse controls;
->   verified the complete platform with 950 automated tests (Vitest/RTL +
+>   verified the complete platform with 971 automated tests (Vitest/RTL +
 >   pytest).
 
 ### Portfolio-site paragraph
@@ -122,7 +126,7 @@ separately).
 > attachments across six construction workflows, a responsive project
 > document explorer, construction drawing revision management with secure
 > browser viewing, explicit user-created relationships across construction
-> records and drawing context, secure project PDF content search, and 950
+> records and drawing context, secure project PDF content search, and 971
 > automated tests
 > across the stack.
 
@@ -180,7 +184,7 @@ available while preserving recoverable cleanup work.
   attachment and document APIs, models, storage abstractions, hooks, and UI
 - 25 MiB per-file limit with PDF, image, text, Word, and Excel support
 - Private authenticated delivery with no public object keys or credentials
-- 554 frontend tests across 83 files and 396 backend tests, for 950 primary
+- 567 frontend tests across 86 files and 404 backend tests, for 971 primary
   tests passed; 407 backend subtests are tracked separately
 - Lazy per-record panel mounting with no dashboard attachment preloading
 - Ten allowlisted relationship entity types with bounded candidate search and
@@ -225,7 +229,7 @@ available while preserving recoverable cleanup work.
 > revision navigation
 >
 > Under the hood: React 19 + Vite, FastAPI + SQLAlchemy + PostgreSQL, hardened
-> rotating-session auth, an accessible component design system, and 950
+> rotating-session auth, an accessible component design system, and 971
 > automated tests.
 >
 > The demo seeds a full sample project in ~10 seconds — no signup friction:
@@ -244,7 +248,8 @@ available while preserving recoverable cleanup work.
 > explicit construction-record relationships, native PDF content search,
 > immutable schedule baseline comparison, Data Date and progress tracking,
 > milestones, constraints, advanced dependencies, live look-ahead planning,
-> crew and equipment resource loading, accessible design system, 950
+> crew and equipment resource loading, explainable schedule health and
+> executive reporting, accessible design system, 971
 > automated tests. Live demo
 > seeds a complete sample
 > project in seconds.
@@ -263,12 +268,12 @@ available while preserving recoverable cleanup work.
    Immutable snapshots preserve stable task identity, historical hierarchy,
    dates, float, and critical state; comparison joins in memory and reports
    factual workday and structural variance without mutating the live plan.
-2. **Honest aggregate metrics.** Tasks now have schedule-route progress, but
-   the aggregate API does not yet return a complete status-aware schedule.
-   The dashboard therefore keeps its planned-finish attention and upcoming
-   starts rather than calculating a misleading progress KPI. One authenticated
-   aggregate endpoint computes bounded project summaries and lists, while the
-   frontend focuses on accessible presentation and stale-response protection.
+2. **Honest aggregate metrics.** The dashboard returns factual schedule health
+   from named thresholds and metrics, never an opaque score. Missing baseline
+   is explicit attention, underlying schedule collections stay off the
+   dashboard, and one authenticated aggregate computes bounded summaries,
+   reasons, and lists while the frontend handles accessible presentation and
+   stale-response protection.
 3. **Client-side demo seeding.** First-run onboarding builds a realistic
    15-activity project through the same public REST endpoints users hit —
    zero backend special-casing, sequenced for a live progress bar, fully

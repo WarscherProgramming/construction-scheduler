@@ -251,7 +251,6 @@ class LoadingDayResponse(BaseModel):
     utilization_percent: float | None
     overage: int
     status: Literal["within_capacity", "over_allocated", "unavailable"]
-    contributing_tasks: list[LoadingTaskSummary]
 
 
 class LoadingResourceResponse(BaseModel):
@@ -274,6 +273,8 @@ class LoadingConflictResponse(BaseModel):
     status: Literal["over_allocated", "unavailable"]
     message: str
     contributing_tasks: list[LoadingTaskSummary]
+    contributing_task_count: int
+    contributing_tasks_truncated: bool
 
 
 class UnassignedTaskResponse(LoadingTaskSummary):
@@ -293,6 +294,8 @@ class ResourceLoadingSummary(BaseModel):
     unassigned_executable_tasks: int
     unscheduled_tasks: int
     over_allocated_resource_days: int
+    labor_overallocated_days: int
+    equipment_overallocated_days: int
     unavailable_resource_conflicts: int
     look_ahead_over_allocation_count: int
     peak_labor_demand: int
@@ -309,6 +312,9 @@ class ResourceLoadingResponse(BaseModel):
     resources: list[LoadingResourceResponse]
     conflicts: list[LoadingConflictResponse]
     unassigned_tasks: list[UnassignedTaskResponse]
+    total_conflicts: int
+    conflict_limit: int
+    conflicts_truncated: bool
     total_resources: int
     limit: int
     offset: int

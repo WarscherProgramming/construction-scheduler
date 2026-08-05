@@ -756,6 +756,25 @@ Use isolated test settings to reproduce expiration, malformed cookies,
 database failure, storage failure, rate limits, request limits, and concurrent
 refresh. Do not weaken committed production defaults for a test.
 
+## M17 Scheduling and Report Security
+
+All schedule settings, task, baseline, look-ahead, resource, health,
+dashboard, and report routes require authentication and resolve the project
+through `get_owned_project`. Nested task, dependency, baseline, plan, company,
+crew, equipment, assignment, and availability IDs are resolved within that
+project; strict schemas reject ownership, audit, derived, and unknown fields.
+
+Health accepts only a bounded positive baseline ID and returns approved,
+bounded fields with no raw ORM objects or task notes. Resource Loading uses
+typed resource resolution, a 90-day date cap, 200-row pagination, 100-conflict
+cap, and five-task contribution cap. Look-ahead fields and notes are bounded.
+The executive PDF escapes user-controlled text, loads no external resource,
+uses an ASCII-safe server filename, exposes no storage URL, and removes its
+temporary file on success and failure. M15 session, CSRF, CORS, request-size,
+header, rate-limit, safe-error, rollback, and log-redaction controls remain
+unchanged. Live proxy limits, PostgreSQL plans, cross-browser download, and
+production temporary-directory behavior remain Not Verified.
+
 ## Future Security Roadmap
 
 | Item | Why deferred |

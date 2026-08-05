@@ -56,6 +56,18 @@ export function fetchTasks(projectId, options = {}) {
     : authenticatedRequest(path);
 }
 
+export function fetchScheduleHealth(projectId, options = {}) {
+  const query = new URLSearchParams();
+  if (options.baselineId) {
+    query.set("baseline_id", String(options.baselineId));
+  }
+  const suffix = query.size ? `?${query}` : "";
+  return authenticatedRequest(
+    `/projects/${encodeURIComponent(String(projectId))}/schedule-health${suffix}`,
+    { signal: options.signal }
+  );
+}
+
 export function createTask(projectId, task, options = {}) {
   return jsonRequest(`/projects/${projectId}/tasks`, "POST", task, options);
 }
@@ -583,6 +595,20 @@ export function reorderTasks(projectId, taskIds, options = {}) {
   return jsonRequest(`/projects/${projectId}/tasks/reorder`, "PUT", {
     task_ids: taskIds,
   }, options);
+}
+
+export async function exportScheduleExecutivePdf(projectId, options = {}) {
+  const query = new URLSearchParams();
+  if (options.baselineId) {
+    query.set("baseline_id", String(options.baselineId));
+  }
+  const suffix = query.size ? `?${query}` : "";
+  const blob = await downloadAuthenticatedFile(
+    `/projects/${encodeURIComponent(String(projectId))}/reports/schedule-executive.pdf${suffix}`
+  );
+  const url = window.URL.createObjectURL(blob);
+  window.open(url, "_blank");
+  window.setTimeout(() => window.URL.revokeObjectURL(url), 60_000);
 }
 
 export function listAttachments(

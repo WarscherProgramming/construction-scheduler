@@ -129,6 +129,7 @@ class DashboardApiTests(ApiTestCase):
                 "generated_at",
                 "project",
                 "schedule",
+                "schedule_health",
                 "rfis",
                 "submittals",
                 "punch_items",
@@ -166,6 +167,11 @@ class DashboardApiTests(ApiTestCase):
         self.assertEqual(payload["upcoming_tasks"], [])
         self.assertEqual(payload["recent_updates"], [])
         self.assertEqual(payload["documents"]["recent"], [])
+        self.assertEqual(payload["schedule_health"]["category"], "attention")
+        self.assertEqual(
+            payload["schedule_health"]["reasons"][0]["code"],
+            "baseline_missing",
+        )
 
     def test_workflow_groups_boundaries_and_decimal_precision(self):
         headers = self.register_and_login()
@@ -810,7 +816,11 @@ class DashboardApiTests(ApiTestCase):
 
         self.assertEqual(
             (empty_count, mixed_count, large_count),
-            (13, 13, 13),
+            (23, 23, 23),
+        )
+        self.assertLessEqual(
+            len(large_response.json()["schedule_health"]["reasons"]),
+            10,
         )
         self.assertEqual(
             len(large_response.json()["attention_items"]),

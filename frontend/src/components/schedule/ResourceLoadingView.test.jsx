@@ -62,8 +62,13 @@ const data = {
     overage: 1,
     status: "over_allocated",
     message: "Demand exceeds capacity by 1 workers.",
+    contributing_task_count: 1,
+    contributing_tasks_truncated: false,
     contributing_tasks: [{ id: 9, wbs: "1.1", name: "Rough-in" }],
   }],
+  total_conflicts: 1,
+  conflict_limit: 100,
+  conflicts_truncated: false,
   unassigned_tasks: [{ id: 10, wbs: "1.2", name: "Inspection prep", start_date: "2026-08-11", end_date: "2026-08-11", unscheduled: false }],
 };
 
@@ -135,6 +140,29 @@ describe("ResourceLoadingView", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("could not be displayed");
     await userEvent.click(screen.getByRole("button", { name: "Retry" }));
     expect(loading.retry).toHaveBeenCalledOnce();
+  });
+
+  it("explains when the bounded conflict response omits additional conflicts", () => {
+    const boundedData = {
+      ...data,
+      total_conflicts: 103,
+      conflicts_truncated: true,
+      conflicts: [{
+        ...data.conflicts[0],
+        contributing_task_count: 7,
+        contributing_tasks_truncated: true,
+      }],
+    };
+
+    render(
+      <ResourceLoadingView
+        resources={resourceState()}
+        resourceLoading={loadingState({ data: boundedData })}
+      />
+    );
+
+    expect(screen.getByText(/Showing 1 of 103 conflict days/)).toBeInTheDocument();
+    expect(screen.getByText(/and 6 more/)).toBeInTheDocument();
   });
 
   it("creates crews and opens availability from focused management", async () => {

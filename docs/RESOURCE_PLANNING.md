@@ -148,7 +148,8 @@ feedback remains available for mutations and session behavior.
   actual usage or progress from planned resource demand.
 - Dependencies and constraints determine task forecasts before loading; a
   resource conflict never becomes a CPM constraint.
-- The dashboard adds no resource request or metric and preserves its single
+- The dashboard adds no resource-loading request. M17.7 derives bounded
+  conflict counts inside the shared health service and preserves its single
   aggregate request.
 - Reporting uses the browser's print flow. No backend resource PDF endpoint is
   added.
@@ -188,25 +189,27 @@ it does not query per task, assignment, company, resource, or day. The 90-day
 cap and pagination bound response growth. Look-Ahead adds only batched
 assignment/resource enrichment, not item-level fan-out.
 
-An in-memory SQLite regression probe on August 4, 2026 used a 19-calendar-day
-window with one assignment per task:
+M17.7 removes repeated task-contribution arrays from every daily cell, caps
+serialized conflicts at 100 and contributing tasks per conflict at 5, and
+returns exact total/count/truncation metadata. Summary counts are calculated
+before caps. A local SQLite/TestClient probe on August 5, 2026 used a 21-day
+window with 2,000 tasks and 200 crews:
 
-| Tasks / resources | SELECTs | Calculation | Response | Assignment update | Conflict days |
-|---:|---:|---:|---:|---:|---:|
-| 100 / 20 | 8 | 22.41 ms | 589,971 bytes | 6.58 ms | 300 |
-| 500 / 75 | 8 | 75.28 ms | 2,769,561 bytes | 10.28 ms | 1,125 |
-| 2,000 / 200 | 11 | 274.01 ms | 10,343,686 bytes | 23.45 ms | 3,000 |
+| Tasks / resources | SELECTs | Response | Serialized conflicts | Exact conflict days |
+|---:|---:|---:|---:|---:|
+| 2,000 / 200 | 9 | 277.74 ms / 749,881 bytes | 100 | 3,000 |
 
-The larger query count is bounded ORM select-in batching, not task or resource
-fan-out. These are calculation and serialization regression measurements, not
+The prior M17.6 response was 10,343,686 bytes. The query count remains bounded
+ORM loading, not task or resource fan-out. These are local measurements, not
 PostgreSQL, network, production latency, print, or browser-usability claims.
 
 M17.6 intentionally excludes automatic leveling or rescheduling, cost and
 earned-value loading, workforce management, individual employees, timecards,
 dispatching, equipment telemetry, configurable calendars, shift scheduling,
-resource baselines, planned-versus-actual manpower analytics, dashboard
-resource KPIs, server PDF export, and offline resource workflows.
+resource baselines, planned-versus-actual manpower analytics, automatic
+dashboard resource collections, server PDF export, and offline resource
+workflows. M17.7 health exposes only aggregate conflict metrics.
 
-The verified production build emits Resource Loading in the lazy Scheduler
-chunk at 153.73 kB raw / 39.35 kB gzip. The main bundle is 305.88 / 91.26 kB,
-CSS is 98.96 / 17.14 kB, and the Dashboard chunk remains 21.07 / 5.23 kB.
+The M17.7 production build emits the combined lazy Scheduler chunk at 159.65
+kB raw / 40.97 kB gzip. Main is 306.85 / 91.41 kB, CSS is 100.95 / 17.48 kB,
+and Dashboard is 22.54 / 5.58 kB.

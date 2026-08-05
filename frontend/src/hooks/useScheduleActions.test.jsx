@@ -6,6 +6,7 @@ vi.mock("../services/api", () => ({
   createTask: vi.fn(),
   deleteTask: vi.fn(),
   exportProjectPdf: vi.fn(),
+  exportScheduleExecutivePdf: vi.fn(),
   reorderTasks: vi.fn(),
   saveTemplate: vi.fn(),
   updateScheduleSettings: vi.fn(),
@@ -18,6 +19,7 @@ import {
   applyTemplate,
   createTask,
   deleteTask,
+  exportScheduleExecutivePdf,
   reorderTasks,
   updateScheduleSettings,
   updateTask,
@@ -485,6 +487,21 @@ describe("useScheduleActions project mutation safety", () => {
     expect(spies.reportRequestError).toHaveBeenCalledWith(
       "Unable to delete task",
       expect.objectContaining({ message: "Session expired" })
+    );
+  });
+
+  it("downloads the executive report through the existing operation feedback", async () => {
+    exportScheduleExecutivePdf.mockResolvedValue(undefined);
+    const { result, spies } = setup();
+
+    await act(async () => {
+      await result.current.handleExportScheduleExecutivePdf();
+    });
+
+    expect(exportScheduleExecutivePdf).toHaveBeenCalledWith(1);
+    expect(spies.showNotice).toHaveBeenCalledWith(
+      "success",
+      "Executive schedule report downloaded."
     );
   });
 

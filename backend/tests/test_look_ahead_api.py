@@ -188,6 +188,19 @@ class LookAheadApiTests(ApiTestCase):
         self.assertEqual(detail["summary"]["total_items"], 5)
         self.assertEqual(detail["summary"]["week_counts"], [1, 2, 1])
         self.assertEqual(detail["summary"]["milestones_count"], 1)
+        serialized_item = detail["weeks"][0]["items"][0]
+        for omitted_field in (
+            "order_index",
+            "out_of_sequence_reason",
+            "constraint_date",
+            "updated_by",
+            "updated_at",
+            "section",
+            "week_index",
+            "starts_this_week",
+            "continues_from_prior_week",
+        ):
+            self.assertNotIn(omitted_field, serialized_item)
         visible_ids = {
             item["task_id"]
             for week in detail["weeks"]

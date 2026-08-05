@@ -5,6 +5,7 @@ import DashboardHeader from "../components/dashboard/DashboardHeader";
 import DashboardInsightsGrid from "../components/dashboard/DashboardInsightsGrid";
 import DashboardSkeleton from "../components/dashboard/DashboardSkeleton";
 import DashboardSummaryGrid from "../components/dashboard/DashboardSummaryGrid";
+import ScheduleHealthCard from "../components/dashboard/ScheduleHealthCard";
 import ProjectLayout from "../components/ui/ProjectLayout";
 import useProjectDashboard from "../hooks/useProjectDashboard";
 
@@ -50,6 +51,13 @@ function ProjectDashboardPage({
         <DashboardErrorState onRetry={retry} />
       ) : dashboard ? (
         <>
+          {dashboard.schedule_health && (
+            <ScheduleHealthCard
+              health={dashboard.schedule_health}
+              projectId={projectId}
+              onNavigate={onNavigate}
+            />
+          )}
           <DashboardSummaryGrid
             dashboard={dashboard}
             projectId={projectId}

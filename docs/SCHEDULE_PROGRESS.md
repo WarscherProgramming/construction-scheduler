@@ -198,7 +198,7 @@ task status. Daily Log manpower remains separate historical actual reporting.
 
 ## Verification
 
-M17.6 passes 554 frontend tests across 83 files and 396 backend tests, with
+M17.7 passes 567 frontend tests across 86 files and 404 backend tests, with
 407 backend subtests reported separately. The local PostgreSQL database is at
 the single Alembic head `f7c5d0b3e826`, autogenerate detects no schema drift,
 and the temporary-SQLite lifecycle test passes upgrade, downgrade, re-upgrade,

@@ -5,6 +5,16 @@ import { describe, expect, it, vi } from "vitest";
 import SchedulerPage from "./SchedulerPage";
 
 
+vi.mock("../components/schedule/ScheduleSummaryView", () => ({
+  default: ({ onDownloadExecutive }) => (
+    <section aria-label="Schedule Summary Content">
+      <h2>Schedule health summary</h2>
+      <button type="button" onClick={onDownloadExecutive}>Download Executive Schedule Report</button>
+    </section>
+  ),
+}));
+
+
 const baseBaselines = {
   baselines: [],
   selectedBaseline: null,
@@ -127,6 +137,8 @@ const baseProps = {
   onSaveTemplate: vi.fn(),
   onApplyTemplate: vi.fn(),
   onExport: vi.fn(),
+  onExportExecutive: vi.fn(),
+  onRequestError: vi.fn(),
   onLogout: vi.fn(),
   onDragEnd: vi.fn(),
   onCellClick: vi.fn(),
@@ -154,6 +166,23 @@ const baseProps = {
 
 
 describe("SchedulerPage", () => {
+  it("opens schedule summary as the fifth mode and exposes executive reporting", async () => {
+    const user = userEvent.setup();
+    const onExportExecutive = vi.fn();
+    render(
+      <SchedulerPage
+        {...baseProps}
+        onExportExecutive={onExportExecutive}
+      />
+    );
+
+    await user.click(screen.getByRole("button", { name: "Schedule Summary" }));
+    expect(screen.getByRole("region", { name: "Schedule Summary" })).toBeInTheDocument();
+    expect(screen.getByText("Schedule health summary")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Download Executive Schedule Report" }));
+    expect(onExportExecutive).toHaveBeenCalledOnce();
+  });
+
   it("opens resource loading as the fourth schedule mode", async () => {
     const user = userEvent.setup();
     render(<SchedulerPage {...baseProps} />);

@@ -14,6 +14,7 @@ import ScheduleBaselineControl from "../components/schedule/ScheduleBaselineCont
 import LookAheadPlanningView from "../components/schedule/LookAheadPlanningView";
 import ResourceLoadingView from "../components/schedule/ResourceLoadingView";
 import ScheduleProgressSummary from "../components/schedule/ScheduleProgressSummary";
+import ScheduleSummaryView from "../components/schedule/ScheduleSummaryView";
 import ScheduleVarianceView from "../components/schedule/ScheduleVarianceView";
 import TaskProgressDialog from "../components/schedule/TaskProgressDialog";
 import TaskPlanningDialog from "../components/schedule/TaskPlanningDialog";
@@ -62,9 +63,12 @@ function SchedulerPage({
   onSaveTemplate,
   onApplyTemplate,
   onExport,
+  onExportExecutive,
+  onRequestError,
   isSavingTemplate = false,
   isApplyingTemplate = false,
   isExporting = false,
+  isExportingExecutive = false,
   isLoadingTasks = false,
   isLoadingScheduleSettings = false,
   isUpdatingScheduleSettings = false,
@@ -373,7 +377,7 @@ function SchedulerPage({
         disabled={!selectedProjectId || isExporting}
         aria-busy={isExporting}
       >
-        {isExporting ? "Exporting PDF…" : "Export Schedule as PDF"}
+        {isExporting ? "Downloading…" : "Download Current Schedule PDF"}
       </Button>
     </>
   );
@@ -469,9 +473,37 @@ function SchedulerPage({
           >
             Resource Loading
           </Button>
+          <Button
+            className="schedule-mode-button"
+            id="schedule-summary-tab"
+            aria-pressed={scheduleMode === "summary"}
+            onClick={() => setScheduleMode("summary")}
+          >
+            Schedule Summary
+          </Button>
         </div>
 
-        {scheduleMode === "comparison" ? (
+        {scheduleMode === "summary" ? (
+          <div
+            id="schedule-summary-panel"
+            role="region"
+            aria-labelledby="schedule-summary-tab"
+          >
+            <ErrorBoundary
+              title="The schedule summary failed to display"
+              description="Your schedule remains available. Try opening the summary again."
+            >
+              <ScheduleSummaryView
+                projectId={selectedProjectId}
+                onRequestError={onRequestError}
+                onDownloadCurrent={onExport}
+                onDownloadExecutive={onExportExecutive}
+                isDownloadingCurrent={isExporting}
+                isDownloadingExecutive={isExportingExecutive}
+              />
+            </ErrorBoundary>
+          </div>
+        ) : scheduleMode === "comparison" ? (
           <div
             id="baseline-comparison-panel"
             role="region"

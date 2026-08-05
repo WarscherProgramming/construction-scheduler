@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  fetchScheduleHealth,
   fetchScheduleSettings,
   fetchTasks,
   updateScheduleSettings,
@@ -29,6 +30,17 @@ describe("schedule settings API client", () => {
 
     expect(httpMocks.authenticatedRequest).toHaveBeenCalledWith(
       "/projects/7/schedule-settings"
+    );
+  });
+
+  it("loads schedule health with an optional baseline and cancellation", async () => {
+    const signal = new AbortController().signal;
+
+    await fetchScheduleHealth(7, { baselineId: 12, signal });
+
+    expect(httpMocks.authenticatedRequest).toHaveBeenCalledWith(
+      "/projects/7/schedule-health?baseline_id=12",
+      { signal }
     );
   });
 

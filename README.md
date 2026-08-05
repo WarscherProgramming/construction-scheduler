@@ -11,7 +11,7 @@ and Punch Lists) with their supporting documents.
 ![React 19](https://img.shields.io/badge/React-19-61dafb?logo=react&logoColor=white&labelColor=20232a)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.1x-009688?logo=fastapi&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169e1?logo=postgresql&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-950%20passing-2ea44f)
+![Tests](https://img.shields.io/badge/tests-971%20passing-2ea44f)
 ![Vite](https://img.shields.io/badge/Vite-8-646cff?logo=vite&logoColor=white)
 
 ![FieldFlow executive dashboard](docs/screenshots/dashboard.png)
@@ -44,9 +44,12 @@ and Punch Lists) with their supporting documents.
 4. Open **Resource Loading** to assign crews and equipment, configure dated
    capacity, and review demand, utilization, and conflicts without moving
    task dates.
-5. **Change Orders** — create or edit a numbered record, track cost and
+5. Open **Schedule Summary** to review explainable health reasons, baseline
+   finish variance, progress exceptions, field blockers, resource conflicts,
+   and the bounded executive schedule report.
+6. **Change Orders** — create or edit a numbered record, track cost and
    schedule impact, filter by status, and use the accessible delete flow.
-6. Shrink the window — the persistent rail and record tables adapt down to
+7. Shrink the window — the persistent rail and record tables adapt down to
    phone widths.
 
 ## Why FieldFlow
@@ -89,13 +92,18 @@ question — *"what needs my attention today?"* — has a one-screen answer.
   textual utilization and conflict details, unassigned-task reporting,
   look-ahead assignment labels, and browser-printable output. Resource
   conflicts never mutate the canonical schedule.
+- **Explainable schedule health and executive reporting** with explicit
+  stable/attention/critical rules, baseline and Data Date context, bounded
+  factual reasons and attention items, a fifth Scheduler summary mode, one
+  dashboard aggregate request, and an authenticated executive PDF.
 - **Dynamic Gantt chart** rendered from the same task data with progress,
   milestone diamonds, constraint markers, labeled dependency connectors, and
   a Data Date marker, plus a progress-aware one-click PDF export.
 - **Project Dashboard and Analytics** backed by one authenticated,
   project-owned aggregate endpoint: schedule, RFI, Submittal, Punch Item,
   Change Order, Daily Log, and document summaries; bounded Attention
-  Required, Upcoming Schedule, Workflow Analytics, and Recent Updates;
+  Required, Upcoming Schedule, Workflow Analytics, Recent Updates, and
+  bounded explainable Schedule Health;
   stale-response protection; and no dashboard collection fan-out.
 - **Project-scoped RFI workflow** with server-assigned sequential numbering,
   Open/Pending/Closed states, responsible-company assignment, due-date and
@@ -153,8 +161,8 @@ question — *"what needs my attention today?"* — has a one-screen answer.
 - **Client-side onboarding**: first-run detection seeds a realistic demo
   project through the public API with visible progress — the app is never
   empty.
-- **Automated testing: 950 tests** — 554 frontend across 83 files (Vitest +
-  React Testing Library, behavior- and accessibility-focused) and 396 backend
+- **Automated testing: 971 tests** — 567 frontend across 86 files (Vitest +
+  React Testing Library, behavior- and accessibility-focused) and 404 backend
   tests plus 407 separately reported subtests (pytest,
   covering the scheduling engine, critical path, services, migrations, CORS,
   and TestClient API integration).
@@ -193,6 +201,10 @@ uses one authenticated aggregate endpoint instead of loading each resource
 collection. Backend queries calculate bounded summary metrics, attention
 items, upcoming tasks, and recent updates; the frontend handles formatting,
 navigation, loading, retry, cancellation, and stale-response protection.
+The same aggregate includes bounded schedule health from the focused backend
+service without loading schedule, baseline, look-ahead, or resource
+collections. The lazy Schedule route loads the full executive summary on
+demand and supports a separate authenticated executive PDF.
 Document uploads also queue checksum-bound extraction work in their existing
 transaction. A finite externally scheduled command opens the same private
 object through the storage provider, persists bounded page text, and updates
@@ -206,6 +218,12 @@ coverage, bundle history, and deferred work are documented in
 The deterministic scheduling anchor, dependency and hierarchy contracts,
 transaction boundaries, migration behavior, scale budgets, and known limits
 are documented in [`docs/SCHEDULING.md`](docs/SCHEDULING.md).
+The complete M17 capability, architecture, route/model inventory, health
+policy, reporting boundary, and release limits are documented in
+[`docs/ADVANCED_SCHEDULING.md`](docs/ADVANCED_SCHEDULING.md), with focused
+recovery and verification guides in
+[`docs/SCHEDULE_OPERATIONS.md`](docs/SCHEDULE_OPERATIONS.md) and
+[`docs/SCHEDULE_QA.md`](docs/SCHEDULE_QA.md).
 The immutable snapshot lifecycle, comparison policy, variance formulas,
 frontend workflow, and measured scale behavior are documented in
 [`docs/SCHEDULE_BASELINES.md`](docs/SCHEDULE_BASELINES.md).
@@ -429,6 +447,12 @@ job. FieldFlow does not include a built-in worker or scheduler, and
 - Named live Look-Ahead Plans with a Data Date default, 7-42 day windows,
   weekly groups, carryover, readiness, blockers, commitments, company/trade
   filters, manual overrides, archival, and print-friendly output
+- Project-owned crews and equipment, task allocations, dated availability,
+  progress-aware Resource Loading, explicit over-allocation/unavailability,
+  unassigned-work reporting, bounded conflicts, and print-friendly output
+- Explainable stable/attention/critical Schedule Health with visible
+  thresholds, baseline and Data Date context, executive metrics, bounded top
+  attention items, and an authenticated executive schedule PDF
 - Progress-aware Gantt visualization with milestone, constraint, and labeled
   dependency indicators, plus current-schedule PDF export
 - Reusable schedule templates
@@ -436,6 +460,8 @@ job. FieldFlow does not include a built-in worker or scheduler, and
 **Project Dashboard and Analytics**
 - Aggregate project summary for schedule, RFIs, Submittals, Punch Items,
   Change Orders, Daily Logs, and documents
+- Bounded Schedule Health with factual reasons, finish variance, blockers,
+  and resource conflicts from the same aggregate request
 - Bounded Attention Required and Upcoming Schedule lists with direct
   project-workflow navigation
 - Workflow Analytics for RFI, Submittal, Punch Item, and Change Order status
@@ -533,15 +559,15 @@ job. FieldFlow does not include a built-in worker or scheduler, and
 | Backend | FastAPI, SQLAlchemy, Alembic, Pydantic |
 | Database | PostgreSQL |
 | Auth | Memory-only access JWT + rotating opaque refresh sessions |
-| Testing | Vitest + React Testing Library (554), pytest (396) |
+| Testing | Vitest + React Testing Library (567), pytest (404) |
 | Hosting | Vercel (frontend) · Render (API + migrations + finite extraction cron) |
 
 ## Testing
 
-**950 primary automated tests passed.** Backend subtests are reported
+**971 primary automated tests passed.** Backend subtests are reported
 separately rather than added to that total.
 
-- **Frontend (554 across 83 files)** — Vitest + React Testing Library. Tests
+- **Frontend (567 across 86 files)** — Vitest + React Testing Library. Tests
   target behavior and accessibility: roles and names, keyboard flows
   (Enter/Escape editing,
   grid cursor navigation, focus traps), aggregate dashboard rendering,
@@ -584,7 +610,7 @@ separately rather than added to that total.
   availability overrides, assignment flows, bounded loading filters,
   utilization and conflict text, stale-response rejection, and scheduler and
   look-ahead integration.
-- **Backend (396, plus 407 subtests)** — pytest. Covers the deterministic
+- **Backend (404, plus 407 separately reported subtests)** — pytest. Covers the deterministic
   workday scheduling engine (persistent anchors, all four dependency types,
   multiple predecessors, signed lead/lag, milestones, constraints,
   summary predecessors, hierarchy ordering, federal holidays), critical path
@@ -828,6 +854,9 @@ commit production credentials.
 - ✅ M17.6 project-owned crews and equipment, whole-number task allocations,
   dated availability, progress-aware loading, textual over-allocation,
   look-ahead labels, and browser-printable reporting without resource leveling
+- ✅ M17.7 bounded, explainable schedule health, executive summary and PDF,
+  single-request dashboard integration, fifth Scheduler summary mode,
+  large-response hardening, operations/QA guides, and M17 release closeout
 - ✅ Branded landing page and first-run demo seeding
 - ✅ Icon system, confirmation dialogs, notifications, loading skeletons
 - ✅ Scheduler showcase: WBS numbering, inline validation, critical path +

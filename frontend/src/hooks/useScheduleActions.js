@@ -5,6 +5,7 @@ import {
   createTask,
   deleteTask,
   exportProjectPdf,
+  exportScheduleExecutivePdf,
   reorderTasks,
   saveTemplate,
   updateScheduleSettings,
@@ -350,6 +351,22 @@ function useScheduleActions({
     );
   };
 
+  const handleExportScheduleExecutivePdf = async () => {
+    if (!selectedProjectId) {
+      reportValidationError("Select a project before downloading a report.");
+      return;
+    }
+
+    return runOperation("exportExecutivePdf", async () => {
+      try {
+        await exportScheduleExecutivePdf(selectedProjectId);
+        showNotice("success", "Executive schedule report downloaded.");
+      } catch (error) {
+        reportRequestError("Unable to download executive schedule report", error);
+      }
+    });
+  };
+
   const handleToggleCollapse = async (task) => {
     await runProjectMutation(
       `toggleTask:${task.id}`,
@@ -585,6 +602,7 @@ function useScheduleActions({
     handleSaveTemplate,
     handleApplyTemplate,
     handleExportProjectPdf,
+    handleExportScheduleExecutivePdf,
     handleDragEnd,
     handleToggleCollapse,
     getTaskDepth,
