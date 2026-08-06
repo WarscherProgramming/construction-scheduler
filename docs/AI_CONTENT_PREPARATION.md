@@ -205,8 +205,9 @@ because M18.1 recorded no baseline figures.
 
 ## Deferred
 
-M18.3 may add controlled construction scope assertions and evidence-backed
-human review. Scope taxonomy, findings, comparisons, embeddings, semantic
-search, live providers, AI-generated RFIs, automatic relationships, Office or
-CAD extraction, production OCR, and visual/layout interpretation are not part
-of M18.2.
+M18.3 adds controlled construction scope assertions and evidence-backed human
+review on top of these snapshots; see
+[`AI_SCOPE_ASSERTIONS.md`](AI_SCOPE_ASSERTIONS.md). Findings, comparisons,
+embeddings, semantic search, live providers, AI-generated RFIs, automatic
+relationships, Office or CAD extraction, production OCR, and visual/layout
+interpretation are not part of M18.2 or M18.3.

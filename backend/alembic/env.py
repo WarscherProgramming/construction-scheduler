@@ -48,6 +48,12 @@ from app.models.preconstruction import (  # noqa: F401
     PreconstructionReviewSet,
     PreconstructionReviewSource,
 )
+from app.models.scope_assertion import (  # noqa: F401
+    PreconstructionAssertionEvidence,
+    PreconstructionAssertionReview,
+    PreconstructionScopeAssertion,
+    PreconstructionScopeAssertionSet,
+)
 from app.models.note_delay import NoteDelay  # noqa: F401
 from app.models.project import Project  # noqa: F401
 from app.models.project_schedule_settings import (  # noqa: F401

@@ -10,22 +10,45 @@ const apiMocks = vi.hoisted(() => ({
   archivePreconstructionReviewSet: vi.fn(),
   cancelPreconstructionPreparationRun: vi.fn(),
   cancelPreconstructionRun: vi.fn(),
+  createPreconstructionManualAssertion: vi.fn(),
   createPreconstructionReviewSet: vi.fn(),
   createPreconstructionRun: vi.fn(),
   getPreconstructionReadiness: vi.fn(),
+  getPreconstructionScopeTaxonomy: vi.fn(),
   getPreconstructionSourceContent: vi.fn(),
   getPreconstructionReviewSet: vi.fn(),
+  listPreconstructionAssertionSets: vi.fn(),
+  listPreconstructionAssertions: vi.fn(),
   listPreconstructionReviewSets: vi.fn(),
   listPreconstructionReviewSources: vi.fn(),
   listPreconstructionRuns: vi.fn(),
   listPreconstructionSourceCandidates: vi.fn(),
   removePreconstructionReviewSource: vi.fn(),
   preparePreconstructionSource: vi.fn(),
+  reviewPreconstructionAssertion: vi.fn(),
   retryPreconstructionPreparationRun: vi.fn(),
   retryPreconstructionRun: vi.fn(),
   updatePreconstructionReviewSet: vi.fn(),
   updatePreconstructionReviewSource: vi.fn(),
 }));
+
+const EMPTY_ASSERTION_PAGE = {
+  items: [],
+  total: 0,
+  limit: 25,
+  offset: 0,
+  summary: {
+    total: 0,
+    proposed: 0,
+    accepted: 0,
+    rejected: 0,
+    needs_review: 0,
+    superseded: 0,
+    manual: 0,
+  },
+  latest_assertion_set_id: null,
+  taxonomy_version: "construction-scope-1",
+};
 vi.mock("../services/api", () => apiMocks);
 
 
@@ -56,6 +79,8 @@ function deferred() {
 describe("usePreconstruction", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    apiMocks.listPreconstructionAssertions.mockResolvedValue(EMPTY_ASSERTION_PAGE);
+    apiMocks.listPreconstructionAssertionSets.mockResolvedValue({ items: [], total: 0 });
     apiMocks.listPreconstructionReviewSets.mockResolvedValue({ items: [REVIEW], total: 1 });
     apiMocks.getPreconstructionReviewSet.mockResolvedValue(REVIEW);
     apiMocks.listPreconstructionReviewSources.mockResolvedValue({ items: [], roles: [] });

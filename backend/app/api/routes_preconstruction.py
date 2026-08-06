@@ -1,6 +1,6 @@
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, Query, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import (
@@ -11,13 +11,23 @@ from app.api.dependencies import (
     get_owned_project,
     get_preconstruction_config,
     get_preconstruction_preparation_config,
+    get_preconstruction_scope_config,
 )
-from app.core.config import PreconstructionAIConfig, PreconstructionPreparationConfig
+from app.core.config import (
+    PreconstructionAIConfig,
+    PreconstructionPreparationConfig,
+    PreconstructionScopeConfig,
+)
 from app.core.security import get_current_user
 from app.models.project import Project
 from app.preconstruction.factory import build_preconstruction_provider
 from app.preconstruction.provider import PreconstructionAIProvider
-from app.preconstruction.roles import DOCUMENT_ROLES
+from app.preconstruction.roles import DOCUMENT_ROLES, DOCUMENT_ROLE_BY_VALUE
+from app.preconstruction.taxonomy import (
+    SCOPE_CATEGORIES,
+    SCOPE_KINDS,
+    TAXONOMY_VERSION,
+)
 from app.schemas.common import MessageResponse
 from app.schemas.preconstruction import (
     AnalysisRunCreate,
@@ -59,6 +69,20 @@ from app.services.preconstruction import (
     update_review_set,
     update_review_source,
 )
+from app.schemas.preconstruction_scope import (
+    AssertionOriginValue,
+    AssertionReviewCreate,
+    AssertionSetListResponse,
+    AssertionSetResponse,
+    AssertionStatusValue,
+    AssertionSupersedeRequest,
+    AssertionTypeValue,
+    InclusionStateValue,
+    ManualAssertionCreate,
+    ScopeAssertionDetailResponse,
+    ScopeAssertionListResponse,
+    ScopeTaxonomyResponse,
+)
 from app.services.preconstruction_content import (
     cancel_preparation_run,
     get_preparation_run,
@@ -68,6 +92,21 @@ from app.services.preconstruction_content import (
     request_source_preparation,
     retry_preparation_run,
     source_preparation_states,
+)
+from app.services.preconstruction_scope import (
+    assertion_payloads,
+    assertion_set_response,
+    assertion_summary_counts,
+    create_manual_assertion,
+    get_assertion,
+    get_assertion_set,
+    latest_assertion_set_id,
+    list_assertion_reviews,
+    list_assertion_sets,
+    list_assertions,
+    review_assertion,
+    supersede_assertion,
+    taxonomy_payload,
 )
 
 
@@ -420,6 +459,243 @@ def inspect_source_content_route(
         segment_limit=segment_limit or config.content_page_size,
         search=search,
     )
+
+
+@router.get("/scope-taxonomy", response_model=ScopeTaxonomyResponse)
+def scope_taxonomy_route(
+    project_id: int,
+    category: Annotated[str | None, Query(max_length=60)] = None,
+    scope_kind: Annotated[str | None, Query(max_length=60)] = None,
+    search: Annotated[str, Query(max_length=120)] = "",
+    include_deprecated: bool = False,
+    project: Project = Depends(get_owned_project),
+    config: PreconstructionScopeConfig = Depends(get_preconstruction_scope_config),
+):
+    if category is not None and category not in SCOPE_CATEGORIES:
+        raise HTTPException(status_code=422, detail="Unknown scope category")
+    if scope_kind is not None and scope_kind not in SCOPE_KINDS:
+        raise HTTPException(status_code=422, detail="Unknown scope kind")
+    return taxonomy_payload(
+        config,
+        category=category,
+        scope_kind=scope_kind,
+        search=search.strip(),
+        include_deprecated=include_deprecated,
+    )
+
+
+@router.get(
+    "/review-sets/{review_set_id}/assertion-sets",
+    response_model=AssertionSetListResponse,
+)
+def list_assertion_sets_route(
+    project_id: int,
+    review_set_id: PositiveId,
+    db: Session = Depends(get_db),
+    project: Project = Depends(get_owned_project),
+    page: CollectionPage = Depends(get_collection_page),
+):
+    get_review_set(db, project_id, review_set_id)
+    items, total = list_assertion_sets(
+        db, project_id, review_set_id, limit=page.limit, offset=page.offset
+    )
+    return {
+        "items": [assertion_set_response(item) for item in items],
+        "total": total,
+        "limit": page.limit,
+        "offset": page.offset,
+        "latest_assertion_set_id": latest_assertion_set_id(
+            db, project_id, review_set_id
+        ),
+    }
+
+
+@router.get(
+    "/assertion-sets/{assertion_set_id}",
+    response_model=AssertionSetResponse,
+)
+def get_assertion_set_route(
+    project_id: int,
+    assertion_set_id: PositiveId,
+    db: Session = Depends(get_db),
+    project: Project = Depends(get_owned_project),
+):
+    return assertion_set_response(get_assertion_set(db, project_id, assertion_set_id))
+
+
+@router.get(
+    "/review-sets/{review_set_id}/assertions",
+    response_model=ScopeAssertionListResponse,
+)
+def list_assertions_route(
+    project_id: int,
+    review_set_id: PositiveId,
+    review_status: AssertionStatusValue | None = None,
+    concept_code: Annotated[str | None, Query(max_length=100)] = None,
+    category: Annotated[str | None, Query(max_length=60)] = None,
+    assertion_type: AssertionTypeValue | None = None,
+    source_id: Annotated[int | None, Query(ge=1, le=2_147_483_647)] = None,
+    document_role: Annotated[str | None, Query(max_length=40)] = None,
+    discipline: Annotated[str | None, Query(max_length=120)] = None,
+    trade: Annotated[str | None, Query(max_length=120)] = None,
+    inclusion_state: InclusionStateValue | None = None,
+    origin: AssertionOriginValue | None = None,
+    confidence_min: Annotated[float | None, Query(ge=0, le=1)] = None,
+    confidence_max: Annotated[float | None, Query(ge=0, le=1)] = None,
+    search: Annotated[str, Query(max_length=200)] = "",
+    assertion_set_id: Annotated[int | None, Query(ge=1, le=2_147_483_647)] = None,
+    current_assertion_set_only: bool = False,
+    limit: Annotated[int | None, Query(ge=1, le=200)] = None,
+    offset: Annotated[int, Query(ge=0, le=2_147_483_647)] = 0,
+    db: Session = Depends(get_db),
+    project: Project = Depends(get_owned_project),
+    config: PreconstructionScopeConfig = Depends(get_preconstruction_scope_config),
+):
+    get_review_set(db, project_id, review_set_id)
+    if category is not None and category not in SCOPE_CATEGORIES:
+        raise HTTPException(status_code=422, detail="Unknown scope category")
+    if document_role is not None and document_role not in DOCUMENT_ROLE_BY_VALUE:
+        raise HTTPException(status_code=422, detail="Unknown document role")
+    page_size = min(limit or config.assertion_page_size, config.assertion_max_page_size)
+    items, total = list_assertions(
+        db,
+        project_id,
+        review_set_id,
+        limit=page_size,
+        offset=offset,
+        review_status=review_status,
+        concept_code=concept_code,
+        category=category,
+        assertion_type=assertion_type,
+        source_id=source_id,
+        document_role=document_role,
+        discipline=discipline,
+        trade=trade,
+        inclusion_state=inclusion_state,
+        origin=origin,
+        confidence_min=confidence_min,
+        confidence_max=confidence_max,
+        search=search,
+        assertion_set_id=assertion_set_id,
+        current_assertion_set_only=current_assertion_set_only,
+    )
+    return {
+        "items": assertion_payloads(db, project_id, items),
+        "total": total,
+        "limit": page_size,
+        "offset": offset,
+        "summary": assertion_summary_counts(db, project_id, review_set_id),
+        "latest_assertion_set_id": latest_assertion_set_id(
+            db, project_id, review_set_id
+        ),
+        "taxonomy_version": TAXONOMY_VERSION,
+    }
+
+
+@router.get(
+    "/assertions/{assertion_id}",
+    response_model=ScopeAssertionDetailResponse,
+)
+def get_assertion_route(
+    project_id: int,
+    assertion_id: PositiveId,
+    db: Session = Depends(get_db),
+    project: Project = Depends(get_owned_project),
+):
+    assertion = get_assertion(db, project_id, assertion_id)
+    payloads = assertion_payloads(db, project_id, [assertion])
+    return {
+        "assertion": payloads[0],
+        "reviews": list_assertion_reviews(db, project_id, assertion.id),
+    }
+
+
+@router.post(
+    "/review-sets/{review_set_id}/assertions/manual",
+    response_model=ScopeAssertionDetailResponse,
+    status_code=201,
+)
+def create_manual_assertion_route(
+    project_id: int,
+    review_set_id: PositiveId,
+    payload: ManualAssertionCreate,
+    db: Session = Depends(get_db),
+    project: Project = Depends(get_owned_project),
+    current_user: dict = Depends(get_current_user),
+    config: PreconstructionScopeConfig = Depends(get_preconstruction_scope_config),
+):
+    review_set = get_review_set(db, project_id, review_set_id)
+    source = get_preparation_source(db, project_id, review_set_id, payload.source_id)
+    assertion = create_manual_assertion(
+        db, review_set, source, current_user["id"], payload, config
+    )
+    return {
+        "assertion": assertion_payloads(db, project_id, [assertion])[0],
+        "reviews": list_assertion_reviews(db, project_id, assertion.id),
+    }
+
+
+@router.post(
+    "/assertions/{assertion_id}/reviews",
+    response_model=ScopeAssertionDetailResponse,
+    status_code=201,
+)
+def review_assertion_route(
+    project_id: int,
+    assertion_id: PositiveId,
+    payload: AssertionReviewCreate,
+    db: Session = Depends(get_db),
+    project: Project = Depends(get_owned_project),
+    current_user: dict = Depends(get_current_user),
+    config: PreconstructionScopeConfig = Depends(get_preconstruction_scope_config),
+):
+    assertion = get_assertion(db, project_id, assertion_id)
+    review_set = get_review_set(db, project_id, assertion.review_set_id)
+    review_assertion(
+        db,
+        review_set,
+        assertion,
+        current_user["id"],
+        decision=payload.decision,
+        reason_code=payload.reason_code,
+        reviewer_note=payload.reviewer_note,
+        config=config,
+    )
+    return {
+        "assertion": assertion_payloads(db, project_id, [assertion])[0],
+        "reviews": list_assertion_reviews(db, project_id, assertion.id),
+    }
+
+
+@router.post(
+    "/assertions/{assertion_id}/supersede",
+    response_model=ScopeAssertionDetailResponse,
+)
+def supersede_assertion_route(
+    project_id: int,
+    assertion_id: PositiveId,
+    payload: AssertionSupersedeRequest,
+    db: Session = Depends(get_db),
+    project: Project = Depends(get_owned_project),
+    current_user: dict = Depends(get_current_user),
+    config: PreconstructionScopeConfig = Depends(get_preconstruction_scope_config),
+):
+    assertion = get_assertion(db, project_id, assertion_id)
+    replacement = get_assertion(db, project_id, payload.replacement_assertion_id)
+    review_set = get_review_set(db, project_id, assertion.review_set_id)
+    supersede_assertion(
+        db,
+        review_set,
+        assertion,
+        replacement,
+        current_user["id"],
+        reviewer_note=payload.reviewer_note,
+        config=config,
+    )
+    return {
+        "assertion": assertion_payloads(db, project_id, [assertion])[0],
+        "reviews": list_assertion_reviews(db, project_id, assertion.id),
+    }
 
 
 @router.get(

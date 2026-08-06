@@ -189,9 +189,12 @@ dashboard resources, findings, prompts, or provider/model controls.
   outside the provider contract. This reduces risk without claiming prompt
   injection is solved.
 
-M18.3 is deferred. It may introduce a controlled construction scope taxonomy
-and evidence-backed human review, but must preserve immutable sources, provider
-independence, mandatory human review, and authoritative existing systems.
+M18.3 adds the controlled construction scope taxonomy and evidence-backed
+human-reviewed scope assertions. It preserves immutable sources, provider
+independence, mandatory human review, and every authoritative existing system.
+See [`AI_SCOPE_ASSERTIONS.md`](AI_SCOPE_ASSERTIONS.md). Omission findings and
+cross-document comparison remain deferred to later separately reviewed
+milestones.
 
 ## Migration
 

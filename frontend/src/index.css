@@ -4330,6 +4330,264 @@ button:disabled {
   padding: var(--space-4) 0;
 }
 
+/* ---------------------------------------------------------------------------
+   M18.3 scope assertion workspace
+   Review status, origin, and confidence are always conveyed as text; colour
+   is never the only signal.
+   --------------------------------------------------------------------------- */
+
+.assertion-workspace {
+  margin-top: var(--space-5);
+}
+
+.assertion-workspace-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+  justify-content: space-between;
+}
+
+.assertion-workspace-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.preconstruction-hint {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  margin: var(--space-2) 0;
+}
+
+.preconstruction-empty {
+  color: var(--text-muted);
+  padding: var(--space-4) 0;
+}
+
+.preconstruction-error {
+  color: var(--danger);
+  padding: var(--space-4) 0;
+}
+
+.assertion-summary {
+  display: grid;
+  gap: var(--space-3);
+  margin: var(--space-4) 0;
+}
+
+.assertion-summary-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.assertion-summary-metrics dt {
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+}
+
+.assertion-summary-metrics dd {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.assertion-filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.assertion-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-3);
+}
+
+.assertion-item {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.assertion-item.is-selected {
+  border-color: var(--accent);
+}
+
+.assertion-item-main {
+  flex: 1 1 320px;
+  min-width: 0;
+}
+
+.assertion-item-concept {
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+  margin: 0;
+}
+
+.assertion-item-subject {
+  margin: var(--space-1) 0;
+  font-size: 1rem;
+}
+
+.assertion-item-requirement,
+.assertion-item-meta {
+  margin: var(--space-1) 0;
+  font-size: 0.875rem;
+  overflow-wrap: anywhere;
+}
+
+.assertion-item-meta {
+  color: var(--text-muted);
+}
+
+.assertion-item-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.assertion-detail {
+  margin: var(--space-2) 0 var(--space-4);
+}
+
+.assertion-detail-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-3);
+  margin: var(--space-3) 0;
+}
+
+.assertion-detail-fields dt {
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+}
+
+.assertion-detail-fields dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.assertion-evidence-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-3);
+}
+
+.assertion-evidence-meta {
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+  margin: 0 0 var(--space-1);
+}
+
+.assertion-evidence-excerpt,
+.assertion-evidence-preview {
+  margin: 0;
+  padding: var(--space-2);
+  border-left: 3px solid var(--border);
+  background: var(--surface-muted, transparent);
+  font-family: var(--font-mono, monospace);
+  font-size: 0.8125rem;
+  /* Prepared source text is untrusted plain text: preserve wrapping without
+     interpreting any markup. */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.assertion-evidence-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.assertion-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+  justify-content: space-between;
+  margin-top: var(--space-4);
+}
+
+.assertion-pagination div {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.assertion-review-identity {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-4);
+}
+
+.assertion-review-identity dt {
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+}
+
+.assertion-review-identity dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.assertion-review-option {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  padding: var(--space-1) 0;
+}
+
+.assertion-taxonomy-filters,
+.assertion-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-3);
+}
+
+.assertion-evidence-picker {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-3);
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.assertion-evidence-picker label {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+@media (max-width: 640px) {
+  .assertion-item {
+    flex-direction: column;
+  }
+
+  .assertion-item-actions {
+    width: 100%;
+  }
+
+  .assertion-summary-metrics {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
 @media (max-width: 900px) {
   .preconstruction-workspace {
     grid-template-columns: 1fr;

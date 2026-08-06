@@ -25,6 +25,88 @@ class ProviderResult(BaseModel):
     output_units: int | None = Field(default=None, ge=0)
 
 
+class ProviderScopeEvidenceRef(BaseModel):
+    """A provider citation into one immutable prepared content segment.
+
+    The provider may only reference coordinates that were supplied in the
+    request. Every field is revalidated server-side against the pinned
+    snapshot before anything is persisted.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    source_id: int = Field(ge=1, le=2_147_483_647)
+    snapshot_id: int = Field(ge=1, le=2_147_483_647)
+    page_number: int = Field(ge=1, le=2_000)
+    segment_index: int = Field(ge=0, le=100_000)
+    text_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+    character_start: int | None = Field(default=None, ge=0)
+    character_end: int | None = Field(default=None, ge=0)
+    evidence_role: Literal[
+        "primary", "supporting", "contextual", "contradictory"
+    ] = "primary"
+
+
+class ProviderScopeAssertion(BaseModel):
+    """One structured advisory assertion proposed by a provider.
+
+    There is deliberately no field for review state, project identity,
+    database identity, or free-form model reasoning.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    provider_assertion_key: str = Field(min_length=1, max_length=100)
+    source_id: int = Field(ge=1, le=2_147_483_647)
+    concept_code: str = Field(min_length=1, max_length=100)
+    assertion_type: Literal[
+        "requirement",
+        "physical_item",
+        "system",
+        "activity",
+        "responsibility",
+        "deliverable",
+        "testing_requirement",
+        "coordination_requirement",
+        "procurement_requirement",
+        "allowance",
+        "alternate",
+        "exclusion",
+        "informational",
+    ]
+    subject: str = Field(min_length=1, max_length=300)
+    requirement_text: str | None = Field(default=None, max_length=2000)
+    responsibility_party: str | None = Field(default=None, max_length=200)
+    discipline: str | None = Field(default=None, max_length=120)
+    trade: str | None = Field(default=None, max_length=120)
+    specification_section: str | None = Field(default=None, max_length=60)
+    drawing_sheet: str | None = Field(default=None, max_length=100)
+    quantity_value: float | None = Field(default=None, ge=0, le=1_000_000_000_000)
+    quantity_unit: str | None = Field(default=None, max_length=40)
+    location_text: str | None = Field(default=None, max_length=300)
+    inclusion_state: Literal[
+        "included", "excluded", "conditional", "not_applicable", "unspecified"
+    ] = "unspecified"
+    confidence: float = Field(ge=0, le=1)
+    confidence_basis: str | None = Field(default=None, max_length=300)
+    evidence_refs: list[ProviderScopeEvidenceRef] = Field(
+        min_length=1, max_length=20
+    )
+
+
+class ProviderScopeAssertionResult(BaseModel):
+    """Strict envelope for structured scope extraction output."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: str = Field(min_length=1, max_length=100)
+    taxonomy_version: str = Field(min_length=1, max_length=100)
+    assertions: list[ProviderScopeAssertion] = Field(
+        default_factory=list, max_length=1_000
+    )
+    warnings: list[str] = Field(default_factory=list, max_length=20)
+
+
 @dataclass(frozen=True)
 class ProviderSourceDescriptor:
     source_id: int
@@ -63,6 +145,18 @@ class ProviderRequest:
     content_segments: tuple[ProviderContentSegment, ...] = ()
     total_content_characters: int = 0
     content_truncated: bool = False
+    # Scope extraction inputs. The taxonomy and the allowed enumerations are
+    # supplied by trusted code; a provider may only select from them and can
+    # never introduce a concept, category, or state of its own.
+    taxonomy_version: str = ""
+    # The scope assertion payload has its own contract version, distinct from
+    # the run envelope's ``schema_version``.
+    scope_schema_version: str = ""
+    allowed_concept_codes: tuple[str, ...] = ()
+    allowed_assertion_types: tuple[str, ...] = ()
+    allowed_inclusion_states: tuple[str, ...] = ()
+    max_assertions: int = 0
+    max_evidence_per_assertion: int = 0
 
 
 class PreconstructionAIProvider(ABC):
@@ -101,6 +195,94 @@ class DisabledPreconstructionAIProvider(PreconstructionAIProvider):
         )
 
 
+# Synthetic scope fixtures. These are invented construction statements used to
+# exercise the contract deterministically; they contain no real project data.
+_SCOPE_FIXTURES = (
+    {
+        "concept_code": "electrical.lighting_fixture",
+        "assertion_type": "physical_item",
+        "subject": "LED lighting fixtures",
+        "requirement_text": (
+            "Furnish and install LED lighting fixtures as scheduled, including "
+            "lamps, drivers, and suspension accessories."
+        ),
+        "discipline": "Electrical",
+        "trade": "Electrical",
+        "specification_section": "26 51 00",
+        "inclusion_state": "included",
+        "quantity_value": 148.0,
+        "quantity_unit": "EA",
+        "confidence": 0.82,
+        "confidence_basis": "Fixture schedule reference in prepared source text",
+    },
+    {
+        "concept_code": "equipment.food_service_equipment",
+        "assertion_type": "physical_item",
+        "subject": "Commercial kitchen equipment",
+        "requirement_text": (
+            "Provide commercial kitchen equipment including final connections "
+            "coordinated with mechanical and electrical trades."
+        ),
+        "discipline": "Food Service",
+        "trade": "Kitchen Equipment",
+        "specification_section": "11 40 00",
+        "inclusion_state": "included",
+        "confidence": 0.74,
+        "confidence_basis": "Equipment schedule reference in prepared source text",
+    },
+    {
+        "concept_code": "submittal.shop_drawings",
+        "assertion_type": "deliverable",
+        "subject": "Shop drawing submittals",
+        "requirement_text": (
+            "Submit shop drawings for review prior to fabrication of scheduled "
+            "assemblies."
+        ),
+        "inclusion_state": "included",
+        "confidence": 0.68,
+        "confidence_basis": "Submittal requirement language in prepared source text",
+    },
+    {
+        "concept_code": "testing_inspection.testing_balancing",
+        "assertion_type": "testing_requirement",
+        "subject": "Testing and balancing of air systems",
+        "requirement_text": (
+            "Perform testing, adjusting, and balancing of air distribution "
+            "systems and submit certified reports."
+        ),
+        "discipline": "Mechanical",
+        "trade": "TAB",
+        "specification_section": "23 05 93",
+        "inclusion_state": "included",
+        "confidence": 0.71,
+        "confidence_basis": "Testing requirement language in prepared source text",
+    },
+    {
+        "concept_code": "exclusion.stated_exclusion",
+        "assertion_type": "exclusion",
+        "subject": "Temporary heat excluded",
+        "requirement_text": "Temporary heat is excluded from this scope of work.",
+        "inclusion_state": "excluded",
+        "responsibility_party": "Others",
+        "confidence": 0.63,
+        "confidence_basis": "Explicit exclusion language in prepared source text",
+    },
+)
+
+_SCOPE_MODES = frozenset(
+    {
+        "scope_success",
+        "scope_warning",
+        "scope_duplicate",
+        "scope_unknown_concept",
+        "scope_invalid_evidence",
+        "scope_missing_evidence",
+        "scope_oversized",
+        "scope_malformed",
+    }
+)
+
+
 class DeterministicFakePreconstructionAIProvider(PreconstructionAIProvider):
     profile = "fake_test"
     provider_name = "deterministic_fake"
@@ -113,7 +295,115 @@ class DeterministicFakePreconstructionAIProvider(PreconstructionAIProvider):
     def available(self) -> bool:
         return True
 
+    def _evidence_for(self, request: ProviderRequest, index: int) -> list[dict[str, Any]]:
+        """Pick one real segment deterministically by position."""
+        if not request.content_segments:
+            return []
+        segment = request.content_segments[index % len(request.content_segments)]
+        return [
+            {
+                "source_id": segment.source_id,
+                "snapshot_id": segment.snapshot_id,
+                "page_number": segment.page_number,
+                "segment_index": segment.segment_index,
+                "text_hash": segment.text_hash,
+                "evidence_role": "primary",
+            }
+        ]
+
+    def _scope_assertion(
+        self,
+        request: ProviderRequest,
+        fixture: dict[str, Any],
+        index: int,
+        *,
+        key_suffix: str = "",
+    ) -> dict[str, Any]:
+        segment = (
+            request.content_segments[index % len(request.content_segments)]
+            if request.content_segments
+            else None
+        )
+        assertion = {
+            "provider_assertion_key": (
+                f"fake-{request.manifest_hash[:12]}-{index}{key_suffix}"
+            ),
+            "source_id": segment.source_id if segment else 1,
+            "evidence_refs": self._evidence_for(request, index),
+        }
+        assertion.update(
+            {key: value for key, value in fixture.items() if key != "quantity_unit"}
+        )
+        if fixture.get("quantity_unit") is not None:
+            assertion["quantity_unit"] = fixture["quantity_unit"]
+        return assertion
+
+    def _scope_payload(self, request: ProviderRequest) -> dict[str, Any]:
+        fixtures = list(_SCOPE_FIXTURES)
+        assertions = [
+            self._scope_assertion(request, fixture, index)
+            for index, fixture in enumerate(fixtures)
+        ]
+        warnings: list[str] = []
+
+        if self.mode == "scope_duplicate":
+            # Byte-identical identity inputs; the server must collapse these.
+            assertions.append(
+                self._scope_assertion(request, fixtures[0], 0, key_suffix="-dup")
+            )
+        elif self.mode == "scope_unknown_concept":
+            assertions[0] = {
+                **assertions[0],
+                "concept_code": "fabricated.not_a_real_concept",
+            }
+        elif self.mode == "scope_invalid_evidence":
+            broken = dict(assertions[0])
+            refs = [dict(ref) for ref in broken["evidence_refs"]]
+            if refs:
+                refs[0]["text_hash"] = "f" * 64
+            broken["evidence_refs"] = refs
+            assertions[0] = broken
+        elif self.mode == "scope_missing_evidence":
+            assertions[0] = {**assertions[0], "evidence_refs": []}
+        elif self.mode == "scope_oversized":
+            assertions = [
+                self._scope_assertion(
+                    request, fixtures[index % len(fixtures)], index
+                )
+                for index in range(max(request.max_assertions, 1) + 5)
+            ]
+        elif self.mode == "scope_warning":
+            warnings.append("Deterministic scope extraction warning")
+
+        return {
+            "schema_version": request.scope_schema_version,
+            "taxonomy_version": request.taxonomy_version,
+            "assertions": assertions,
+            "warnings": warnings,
+        }
+
+    def _scope_result(self, request: ProviderRequest) -> ProviderResult | dict[str, Any]:
+        if self.mode == "scope_malformed":
+            return ProviderResult(
+                status="completed",
+                schema_version=request.schema_version,
+                payload={"assertions": "not-a-list", "unexpected": True},
+            )
+        payload = self._scope_payload(request)
+        warning = self.mode in ("scope_warning", "scope_duplicate")
+        return ProviderResult(
+            status="completed_with_warnings" if warning else "completed",
+            schema_version=request.schema_version,
+            payload=payload,
+            warnings=list(payload["warnings"]),
+            provider_request_id=f"fake-scope-{request.manifest_hash[:16]}",
+            input_units=len(request.content_segments),
+            output_units=len(payload["assertions"]),
+        )
+
     def execute(self, request: ProviderRequest) -> ProviderResult | dict[str, Any]:
+        if self.mode in _SCOPE_MODES:
+            return self._scope_result(request)
         if self.mode == "retryable_failure":
             raise ProviderError(
                 "provider_temporary_failure",

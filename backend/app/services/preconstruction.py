@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import (
     PRECONSTRUCTION_PREPARATION_CONFIG,
+    PRECONSTRUCTION_SCOPE_CONFIG,
     PreconstructionAIConfig,
     PreconstructionPreparationConfig,
 )
@@ -36,6 +37,7 @@ from app.preconstruction.provider import (
 )
 from app.preconstruction.roles import (
     ANALYSIS_TYPES,
+    CONTENT_DEPENDENT_ANALYSIS_TYPES,
     DOCUMENT_ROLES,
     DOCUMENT_ROLE_BY_VALUE,
     REVIEW_PURPOSES,
@@ -47,9 +49,20 @@ from app.schemas.preconstruction import (
     ReviewSourceCreate,
     ReviewSourceUpdate,
 )
+from app.preconstruction.assertions import ASSERTION_TYPES, INCLUSION_STATES
+from app.preconstruction.taxonomy import (
+    ACTIVE_CONCEPT_CODES,
+    SUPPORTED_TAXONOMY_VERSIONS,
+)
 from app.services.preconstruction_content import (
     retrieve_snapshot_segments,
     source_preparation_states,
+)
+from app.services.preconstruction_scope import (
+    SCOPE_ANALYSIS_TYPE,
+    persist_scope_assertions,
+    scope_run_summary,
+    validate_scope_result,
 )
 
 
@@ -720,7 +733,7 @@ def _build_manifest_payload(
                 "sheet_number": source.sheet_number_snapshot,
                 "revision_code": source.revision_code_snapshot,
         }
-        if analysis_type == "content_contract_validation":
+        if analysis_type in CONTENT_DEPENDENT_ANALYSIS_TYPES:
             preparation = (preparation_states or {})[source.id]
             source_payload["content_snapshot"] = {
                 "id": preparation["content_snapshot_id"],
@@ -816,20 +829,34 @@ def review_readiness(
         elif preparation_status == "stale":
             preparation_stale += 1
             message = f"{issue_prefix} prepared content is stale."
-            (blockers if analysis_type == "content_contract_validation" else warnings).append(message)
+            (blockers if analysis_type in CONTENT_DEPENDENT_ANALYSIS_TYPES else warnings).append(message)
         elif preparation_status in ("unavailable", "failed"):
             preparation_unavailable += 1
             message = f"{issue_prefix} content preparation is {preparation_status}."
-            (blockers if analysis_type == "content_contract_validation" else warnings).append(message)
+            (blockers if analysis_type in CONTENT_DEPENDENT_ANALYSIS_TYPES else warnings).append(message)
         else:
             preparation_missing += 1
             message = f"{issue_prefix} content preparation is {preparation_status.replace('_', ' ')}."
-            (blockers if analysis_type == "content_contract_validation" else warnings).append(message)
+            (blockers if analysis_type in CONTENT_DEPENDENT_ANALYSIS_TYPES else warnings).append(message)
     blockers.extend(_composition_messages(review_set, sources))
     if review_set.status == "archived":
         blockers.append("Archived review sets cannot start analysis runs.")
     if not config.enabled or not provider.available:
         blockers.append("AI provider is disabled.")
+
+    prepared_characters = sum(
+        preparation_states[source.id]["total_character_count"] for source in sources
+    )
+    if analysis_type == SCOPE_ANALYSIS_TYPE:
+        if (
+            PRECONSTRUCTION_SCOPE_CONFIG.taxonomy_version
+            not in SUPPORTED_TAXONOMY_VERSIONS
+        ):
+            blockers.append("The configured scope taxonomy version is unavailable.")
+        if prepared_characters > PRECONSTRUCTION_SCOPE_CONFIG.request_max_content_characters:
+            blockers.append(
+                "Prepared content exceeds the configured scope analysis limit."
+            )
 
     blockers = blockers[:MAX_READINESS_MESSAGES]
     warnings = warnings[:MAX_READINESS_MESSAGES]
@@ -861,6 +888,15 @@ def review_readiness(
         "stale_preparation_source_count": preparation_stale,
         "unavailable_preparation_source_count": preparation_unavailable,
         "manifest_preview_hash": preview_hash,
+        "analysis_type": analysis_type,
+        "prepared_character_count": prepared_characters,
+        "scope_taxonomy_version": PRECONSTRUCTION_SCOPE_CONFIG.taxonomy_version,
+        "scope_extraction_available": bool(
+            config.enabled
+            and provider.available
+            and PRECONSTRUCTION_SCOPE_CONFIG.taxonomy_version
+            in SUPPORTED_TAXONOMY_VERSIONS
+        ),
         "provider": {
             "profile": config.provider,
             "available": bool(config.enabled and provider.available),
@@ -1189,14 +1225,17 @@ def _provider_request(db: Session, run: PreconstructionAnalysisRun) -> ProviderR
     content_segments = []
     total_characters = 0
     content_truncated = False
-    if run.analysis_type == "content_contract_validation":
+    is_scope_run = run.analysis_type == SCOPE_ANALYSIS_TYPE
+    content_budget = (
+        PRECONSTRUCTION_SCOPE_CONFIG.request_max_content_characters
+        if is_scope_run
+        else PRECONSTRUCTION_PREPARATION_CONFIG.content_max_response_characters
+    )
+    if run.analysis_type in CONTENT_DEPENDENT_ANALYSIS_TYPES:
         selected = []
         for source in manifest["sources"]:
             snapshot = source["content_snapshot"]
-            remaining = (
-                PRECONSTRUCTION_PREPARATION_CONFIG.content_max_response_characters
-                - total_characters
-            )
+            remaining = content_budget - total_characters
             if remaining <= 0:
                 content_truncated = True
                 break
@@ -1252,6 +1291,27 @@ def _provider_request(db: Session, run: PreconstructionAnalysisRun) -> ProviderR
         content_segments=tuple(content_segments),
         total_content_characters=total_characters,
         content_truncated=content_truncated,
+        # Taxonomy and enumerations are supplied by trusted code. A provider
+        # selects from these values and can never introduce its own.
+        taxonomy_version=(
+            PRECONSTRUCTION_SCOPE_CONFIG.taxonomy_version if is_scope_run else ""
+        ),
+        scope_schema_version=(
+            PRECONSTRUCTION_SCOPE_CONFIG.schema_version if is_scope_run else ""
+        ),
+        allowed_concept_codes=(
+            tuple(sorted(ACTIVE_CONCEPT_CODES)) if is_scope_run else ()
+        ),
+        allowed_assertion_types=tuple(ASSERTION_TYPES) if is_scope_run else (),
+        allowed_inclusion_states=tuple(INCLUSION_STATES) if is_scope_run else (),
+        max_assertions=(
+            PRECONSTRUCTION_SCOPE_CONFIG.max_assertions_per_run if is_scope_run else 0
+        ),
+        max_evidence_per_assertion=(
+            PRECONSTRUCTION_SCOPE_CONFIG.max_evidence_per_assertion
+            if is_scope_run
+            else 0
+        ),
     )
 
 
@@ -1333,19 +1393,32 @@ def process_claimed_attempt(
         )
     request = _provider_request(db, run)
     started = utc_now()
+    is_scope_run = run.analysis_type == SCOPE_ANALYSIS_TYPE
+    validated_scope = None
     try:
         raw_result = provider.execute(request)
         result = raw_result if isinstance(raw_result, ProviderResult) else ProviderResult.model_validate(raw_result)
         if result.schema_version != run.schema_version:
             raise ProviderError("invalid_provider_result", "AI provider returned an invalid result")
-        safe_summary = {
-            "status": result.status,
-            "schema_version": result.schema_version,
-            "payload": result.payload,
-            "warnings": result.warnings,
-        }
+        if is_scope_run:
+            # Structured extraction: validate strictly, then store only a
+            # compact summary. The raw assertion payload is never persisted
+            # into run/attempt history.
+            validated_scope = validate_scope_result(
+                run, request, result.payload, PRECONSTRUCTION_SCOPE_CONFIG
+            )
+            safe_summary = scope_run_summary(validated_scope)
+            result_limit = PRECONSTRUCTION_SCOPE_CONFIG.max_result_bytes
+        else:
+            safe_summary = {
+                "status": result.status,
+                "schema_version": result.schema_version,
+                "payload": result.payload,
+                "warnings": result.warnings,
+            }
+            result_limit = config.max_result_bytes
         serialized = json.dumps(safe_summary, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
-        if len(serialized.encode("utf-8")) > config.max_result_bytes:
+        if len(serialized.encode("utf-8")) > result_limit:
             raise ProviderError("result_too_large", "AI provider result exceeded configured limits")
     except ValidationError:
         return _finalize_provider_failure(
@@ -1378,6 +1451,39 @@ def process_claimed_attempt(
         db.commit()
         return "cancelled"
     now = utc_now()
+    final_status = result.status
+    if validated_scope is not None:
+        # Persist the assertion set inside this same transaction so the set,
+        # the attempt, and the run all commit together. Any failure here
+        # propagates and leaves no partial assertion set behind.
+        try:
+            assertion_set = persist_scope_assertions(
+                db, run, validated_scope, PRECONSTRUCTION_SCOPE_CONFIG
+            )
+        except (ProviderError, SQLAlchemyError) as error:
+            db.rollback()
+            return _finalize_provider_failure(
+                db,
+                claim.attempt_id,
+                claim.lease_token,
+                error
+                if isinstance(error, ProviderError)
+                else ProviderError(
+                    "scope_persistence_failed",
+                    "Scope assertions could not be persisted",
+                    retryable=True,
+                ),
+                config,
+            )
+        serialized = json.dumps(
+            scope_run_summary(validated_scope, assertion_set.id),
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=True,
+        )
+        final_status = (
+            "completed_with_warnings" if validated_scope.warnings else "completed"
+        )
     attempt.status = "completed"
     attempt.completed_at = now
     attempt.lease_token = None
@@ -1387,11 +1493,11 @@ def process_claimed_attempt(
     attempt.input_units = result.input_units
     attempt.output_units = result.output_units
     attempt.latency_ms = max(0, int((now - started).total_seconds() * 1000))
-    run.status = result.status
+    run.status = final_status
     run.completed_at = now
     run.result_summary_json = serialized
     db.commit()
-    return "warnings" if result.status == "completed_with_warnings" else "completed"
+    return "warnings" if final_status == "completed_with_warnings" else "completed"
 
 
 def process_analysis_attempts(

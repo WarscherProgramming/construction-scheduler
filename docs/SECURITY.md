@@ -815,6 +815,42 @@ retrieval must preserve that content-as-untrusted-data rule and mandatory human
 approval. See `AI_PRECONSTRUCTION.md` and
 `AI_PRECONSTRUCTION_OPERATIONS.md`.
 
+## M18.3 Scope Assertion Security Boundary
+
+Scope assertions are advisory records that cannot mutate any authoritative
+system. Ownership is enforced through `get_owned_project` before any assertion,
+assertion-set, evidence, or review identifier is resolved, and a two-user
+matrix covers taxonomy reads, listings, detail, manual creation, review, and
+supersession.
+
+Mutation schemas forbid unknown fields and reject client-supplied project
+identity, origin, lifecycle status, confidence, provider assertion keys,
+taxonomy versions, content hashes, evidence excerpts, reviewer identity, and
+review timestamps. The server computes all of them. Reviewer identity always
+comes from the session.
+
+Provider output is untrusted and strictly revalidated: sources must belong to
+the pinned manifest, concepts must be active in the pinned taxonomy, and every
+evidence coordinate must match a segment that was actually supplied in the
+request with a matching text hash. Excerpts are always derived server-side from
+stored segment text. A provider cannot set review state, accept an assertion,
+reference foreign content, or introduce taxonomy entries. Any structural or
+evidence-identity failure rejects the entire result.
+
+There is no bulk acceptance and no confidence threshold that can accept an
+assertion. Archived review sets are read-only.
+
+Logs may carry identifiers, counts, provider profile, safe failure codes,
+versions, latency, and a manifest hash prefix. They must never carry
+requirement text, evidence excerpts, segment content, prompts, provider
+response bodies, or reviewer notes.
+
+Hostile-content fixtures (instruction override, forged system messages,
+fabricated taxonomy codes, forged source and segment identifiers, HTML/script,
+SQL, shell commands, URL fetch requests, and auto-approval instructions) are
+covered by tests asserting the content stays inert or fails validation. This
+reduces risk; it does not claim prompt injection is solved.
+
 ## M18.2 Prepared Content Security Boundary
 
 Preparation routes still resolve `get_owned_project` before nested Review Set,

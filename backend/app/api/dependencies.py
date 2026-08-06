@@ -9,10 +9,12 @@ from app.core.config import (
     DOCUMENT_EXTRACTION_CONFIG,
     PRECONSTRUCTION_AI_CONFIG,
     PRECONSTRUCTION_PREPARATION_CONFIG,
+    PRECONSTRUCTION_SCOPE_CONFIG,
     AttachmentConfig,
     DocumentExtractionConfig,
     PreconstructionAIConfig,
     PreconstructionPreparationConfig,
+    PreconstructionScopeConfig,
 )
 from app.core.security import get_current_user
 from app.db.database import get_db
@@ -80,6 +82,10 @@ def get_preconstruction_config() -> PreconstructionAIConfig:
 
 def get_preconstruction_preparation_config() -> PreconstructionPreparationConfig:
     return PRECONSTRUCTION_PREPARATION_CONFIG
+
+
+def get_preconstruction_scope_config() -> PreconstructionScopeConfig:
+    return PRECONSTRUCTION_SCOPE_CONFIG
 
 
 def get_attachment_storage(

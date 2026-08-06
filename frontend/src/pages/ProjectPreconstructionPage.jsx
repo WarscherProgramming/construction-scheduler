@@ -1,7 +1,10 @@
 import { useState } from "react";
 
 import AddReviewSourceDialog from "../components/preconstruction/AddReviewSourceDialog";
+import CreateManualAssertionDialog from "../components/preconstruction/CreateManualAssertionDialog";
+import ReviewAssertionDialog from "../components/preconstruction/ReviewAssertionDialog";
 import ReviewSetDialog from "../components/preconstruction/ReviewSetDialog";
+import ScopeAssertionWorkspace from "../components/preconstruction/ScopeAssertionWorkspace";
 import SourceContentInspector from "../components/preconstruction/SourceContentInspector";
 import EmptyState from "../components/EmptyState";
 import LoadingState from "../components/LoadingState";
@@ -31,6 +34,9 @@ function ProjectPreconstructionPage({
   const [reviewDialog, setReviewDialog] = useState(null);
   const [sourceDialogOpen, setSourceDialogOpen] = useState(false);
   const [confirmation, setConfirmation] = useState(null);
+  const [reviewAssertion, setReviewAssertion] = useState(null);
+  const [manualDialogOpen, setManualDialogOpen] = useState(false);
+  const [selectedAssertionId, setSelectedAssertionId] = useState(null);
   const { detail } = preconstruction;
   const reviewSet = detail.reviewSet;
 
@@ -302,6 +308,32 @@ function ProjectPreconstructionPage({
                   </ul>
                 ) : <EmptyState title="No analysis runs" announce={false} />}
               </section>
+
+              <ScopeAssertionWorkspace
+                assertions={preconstruction.assertions}
+                query={preconstruction.assertionQuery}
+                taxonomy={preconstruction.taxonomy}
+                sources={detail.sources}
+                isLoading={preconstruction.isAssertionLoading}
+                error={preconstruction.assertionError}
+                isSaving={preconstruction.isSaving}
+                scopeAvailable={Boolean(
+                  detail.readiness?.scope_extraction_available
+                )}
+                selectedAssertionId={selectedAssertionId}
+                onSelectAssertion={setSelectedAssertionId}
+                onChangeQuery={(overrides) =>
+                  preconstruction.loadAssertions(overrides)
+                }
+                onRetry={() => preconstruction.loadAssertions()}
+                onReview={setReviewAssertion}
+                onCreateManual={() => {
+                  setManualDialogOpen(true);
+                  preconstruction.loadTaxonomy();
+                }}
+                onNavigate={onNavigate}
+                onInspect={preconstruction.inspectContent}
+              />
             </>
           ) : null}
         </section>
@@ -342,6 +374,32 @@ function ProjectPreconstructionPage({
           )}
           onClose={preconstruction.closeContent}
           onNavigate={onNavigate}
+        />
+      )}
+      {reviewAssertion && (
+        <ReviewAssertionDialog
+          assertion={reviewAssertion}
+          reasonCodes={preconstruction.taxonomy?.review_reason_codes || []}
+          busy={preconstruction.isSaving}
+          onClose={() => setReviewAssertion(null)}
+          onSubmit={(decision) =>
+            preconstruction.reviewAssertion(reviewAssertion.id, decision)
+          }
+        />
+      )}
+      {manualDialogOpen && (
+        <CreateManualAssertionDialog
+          sources={detail.sources}
+          taxonomy={preconstruction.taxonomy}
+          isTaxonomyLoading={preconstruction.isTaxonomyLoading}
+          inspector={{
+            sourceId: preconstruction.contentSourceId,
+            content: preconstruction.content,
+          }}
+          busy={preconstruction.isSaving}
+          onLoadTaxonomy={preconstruction.loadTaxonomy}
+          onClose={() => setManualDialogOpen(false)}
+          onSubmit={preconstruction.createManualAssertion}
         />
       )}
       <ConfirmDialog

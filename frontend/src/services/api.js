@@ -1352,3 +1352,130 @@ export function getPreconstructionSourceContent(
     { signal: options.signal }
   );
 }
+
+export function getPreconstructionScopeTaxonomy(projectId, options = {}) {
+  return authenticatedRequest(
+    preconstructionPath(
+      projectId,
+      `/scope-taxonomy${preconstructionQuery({
+        category: options.category,
+        scope_kind: options.scopeKind,
+        search: options.search,
+        include_deprecated: options.includeDeprecated,
+      })}`
+    ),
+    { signal: options.signal }
+  );
+}
+
+export function listPreconstructionAssertionSets(projectId, reviewSetId, options = {}) {
+  return authenticatedRequest(
+    preconstructionPath(
+      projectId,
+      `/review-sets/${encodeURIComponent(String(reviewSetId))}/assertion-sets${preconstructionQuery({
+        limit: options.limit,
+        offset: options.offset,
+      })}`
+    ),
+    { signal: options.signal }
+  );
+}
+
+export function getPreconstructionAssertionSet(projectId, assertionSetId, options = {}) {
+  return authenticatedRequest(
+    preconstructionPath(
+      projectId,
+      `/assertion-sets/${encodeURIComponent(String(assertionSetId))}`
+    ),
+    { signal: options.signal }
+  );
+}
+
+export function listPreconstructionAssertions(projectId, reviewSetId, options = {}) {
+  return authenticatedRequest(
+    preconstructionPath(
+      projectId,
+      `/review-sets/${encodeURIComponent(String(reviewSetId))}/assertions${preconstructionQuery({
+        review_status: options.reviewStatus,
+        concept_code: options.conceptCode,
+        category: options.category,
+        assertion_type: options.assertionType,
+        source_id: options.sourceId,
+        document_role: options.documentRole,
+        discipline: options.discipline,
+        trade: options.trade,
+        inclusion_state: options.inclusionState,
+        origin: options.origin,
+        confidence_min: options.confidenceMin,
+        confidence_max: options.confidenceMax,
+        search: options.search,
+        assertion_set_id: options.assertionSetId,
+        current_assertion_set_only: options.currentAssertionSetOnly,
+        limit: options.limit,
+        offset: options.offset,
+      })}`
+    ),
+    { signal: options.signal }
+  );
+}
+
+export function getPreconstructionAssertion(projectId, assertionId, options = {}) {
+  return authenticatedRequest(
+    preconstructionPath(
+      projectId,
+      `/assertions/${encodeURIComponent(String(assertionId))}`
+    ),
+    { signal: options.signal }
+  );
+}
+
+export function createPreconstructionManualAssertion(
+  projectId,
+  reviewSetId,
+  assertion,
+  options = {}
+) {
+  return jsonRequest(
+    preconstructionPath(
+      projectId,
+      `/review-sets/${encodeURIComponent(String(reviewSetId))}/assertions/manual`
+    ),
+    "POST",
+    assertion,
+    { signal: options.signal }
+  );
+}
+
+export function reviewPreconstructionAssertion(
+  projectId,
+  assertionId,
+  review,
+  options = {}
+) {
+  return jsonRequest(
+    preconstructionPath(
+      projectId,
+      `/assertions/${encodeURIComponent(String(assertionId))}/reviews`
+    ),
+    "POST",
+    review,
+    { signal: options.signal }
+  );
+}
+
+export function supersedePreconstructionAssertion(
+  projectId,
+  assertionId,
+  payload,
+  options = {}
+) {
+  return jsonRequest(
+    preconstructionPath(
+      projectId,
+      `/assertions/${encodeURIComponent(String(assertionId))}/supersede`
+    ),
+    "POST",
+    payload,
+    { signal: options.signal }
+  );
+}

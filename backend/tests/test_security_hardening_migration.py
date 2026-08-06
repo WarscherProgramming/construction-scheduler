@@ -12,6 +12,7 @@ from alembic.script import ScriptDirectory
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 PREVIOUS_REVISION = "c4d8e2f6a1b3"
+CURRENT_REVISION = "c1f7b4e28d35"
 
 
 class SecurityHardeningMigrationTests(unittest.TestCase):
@@ -136,7 +137,7 @@ class SecurityHardeningMigrationTests(unittest.TestCase):
         command.upgrade(self.config, "head")
         command.check(self.config)
         heads = ScriptDirectory.from_config(self.config).get_heads()
-        self.assertEqual(heads, ["b9e5d3f7a201"])
+        self.assertEqual(heads, [CURRENT_REVISION])
 
 
 if __name__ == "__main__":

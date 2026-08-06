@@ -39,4 +39,12 @@ ANALYSIS_TYPES = {
     "readiness_probe": "Readiness Probe",
     "provider_contract_validation": "Provider Contract Validation",
     "content_contract_validation": "Content Contract Validation",
+    "scope_assertion_extraction": "Scope Assertion Extraction",
 }
+
+# Analysis types that require every active source to have a current prepared
+# content snapshot pinned into the manifest.
+CONTENT_DEPENDENT_ANALYSIS_TYPES = (
+    "content_contract_validation",
+    "scope_assertion_extraction",
+)

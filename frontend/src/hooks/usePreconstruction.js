@@ -5,17 +5,22 @@ import {
   archivePreconstructionReviewSet,
   cancelPreconstructionPreparationRun,
   cancelPreconstructionRun,
+  createPreconstructionManualAssertion,
   createPreconstructionReviewSet,
   createPreconstructionRun,
+  getPreconstructionScopeTaxonomy,
   getPreconstructionSourceContent,
   getPreconstructionReadiness,
   getPreconstructionReviewSet,
+  listPreconstructionAssertionSets,
+  listPreconstructionAssertions,
   listPreconstructionReviewSets,
   listPreconstructionReviewSources,
   listPreconstructionRuns,
   listPreconstructionSourceCandidates,
   preparePreconstructionSource,
   removePreconstructionReviewSource,
+  reviewPreconstructionAssertion,
   retryPreconstructionRun,
   retryPreconstructionPreparationRun,
   updatePreconstructionReviewSet,
@@ -34,6 +39,32 @@ const EMPTY_DETAIL = {
   roles: [],
   readiness: null,
   runs: [],
+};
+
+
+const EMPTY_ASSERTIONS = {
+  items: [],
+  total: 0,
+  limit: 25,
+  offset: 0,
+  summary: null,
+  latestAssertionSetId: null,
+  taxonomyVersion: null,
+  sets: [],
+};
+
+
+const DEFAULT_ASSERTION_QUERY = {
+  reviewStatus: undefined,
+  category: undefined,
+  assertionType: undefined,
+  sourceId: undefined,
+  origin: undefined,
+  inclusionState: undefined,
+  search: "",
+  assertionSetId: undefined,
+  limit: 25,
+  offset: 0,
 };
 
 
@@ -59,6 +90,15 @@ function usePreconstruction({ projectId, onError }) {
   });
   const [isContentLoading, setIsContentLoading] = useState(false);
   const [contentError, setContentError] = useState(null);
+  const [assertions, setAssertions] = useState(EMPTY_ASSERTIONS);
+  const [assertionQuery, setAssertionQuery] = useState(DEFAULT_ASSERTION_QUERY);
+  const [isAssertionLoading, setIsAssertionLoading] = useState(false);
+  const [assertionError, setAssertionError] = useState(null);
+  const [taxonomy, setTaxonomy] = useState(null);
+  const [isTaxonomyLoading, setIsTaxonomyLoading] = useState(false);
+  const assertionRequestRef = useRef(null);
+  const assertionQueryRef = useRef(DEFAULT_ASSERTION_QUERY);
+  const taxonomyRequestRef = useRef(null);
   const projectRef = useRef(projectId);
   const selectedReviewSetRef = useRef(null);
   const onErrorRef = useRef(onError);
@@ -78,8 +118,11 @@ function usePreconstruction({ projectId, onError }) {
     detailRequestRef.current?.abort();
     candidateRequestRef.current?.abort();
     contentRequestRef.current?.abort();
+    assertionRequestRef.current?.abort();
+    taxonomyRequestRef.current?.abort();
     contentSourceRef.current = null;
     selectedReviewSetRef.current = null;
+    assertionQueryRef.current = DEFAULT_ASSERTION_QUERY;
     const resetTimer = window.setTimeout(() => {
       setReviewSets([]);
       setSelectedReviewSetId(null);
@@ -90,6 +133,10 @@ function usePreconstruction({ projectId, onError }) {
       setContent(null);
       setContentSourceId(null);
       setContentError(null);
+      setAssertions(EMPTY_ASSERTIONS);
+      setAssertionQuery(DEFAULT_ASSERTION_QUERY);
+      setAssertionError(null);
+      setTaxonomy(null);
     }, 0);
     return () => window.clearTimeout(resetTimer);
   }, [projectId]);
@@ -100,6 +147,8 @@ function usePreconstruction({ projectId, onError }) {
     detailRequestRef.current?.abort();
     candidateRequestRef.current?.abort();
     contentRequestRef.current?.abort();
+    assertionRequestRef.current?.abort();
+    taxonomyRequestRef.current?.abort();
   }, []);
 
   const loadReviewSets = useCallback(() => {
@@ -388,13 +437,142 @@ function usePreconstruction({ projectId, onError }) {
     });
   }, [projectId]);
 
+  // --- scope assertions -----------------------------------------------
+  const loadAssertions = useCallback((overrides = {}) => {
+    const reviewSetId = selectedReviewSetId;
+    if (!projectId || !reviewSetId) {
+      setAssertions(EMPTY_ASSERTIONS);
+      return Promise.resolve(null);
+    }
+    const query = { ...assertionQueryRef.current, ...overrides };
+    assertionQueryRef.current = query;
+    assertionRequestRef.current?.abort();
+    const controller = new AbortController();
+    const identity = { projectId, reviewSetId };
+    assertionRequestRef.current = controller;
+    setAssertionQuery(query);
+    setIsAssertionLoading(true);
+    setAssertionError(null);
+    return Promise.all([
+      listPreconstructionAssertions(projectId, reviewSetId, {
+        ...query,
+        signal: controller.signal,
+      }),
+      listPreconstructionAssertionSets(projectId, reviewSetId, {
+        limit: 50,
+        signal: controller.signal,
+      }),
+    ])
+      .then(([listing, sets]) => {
+        if (
+          projectRef.current !== identity.projectId ||
+          selectedReviewSetRef.current !== identity.reviewSetId ||
+          controller.signal.aborted
+        ) return null;
+        const next = {
+          items: listing.items,
+          total: listing.total,
+          limit: listing.limit,
+          offset: listing.offset,
+          summary: listing.summary,
+          latestAssertionSetId: listing.latest_assertion_set_id,
+          taxonomyVersion: listing.taxonomy_version,
+          sets: sets.items,
+        };
+        setAssertions(next);
+        return next;
+      })
+      .catch((error) => {
+        if (isAbortError(error) || projectRef.current !== identity.projectId) return null;
+        setAssertionError(error);
+        onErrorRef.current?.("Unable to load scope assertions", error);
+        return null;
+      })
+      .finally(() => {
+        if (assertionRequestRef.current === controller) {
+          assertionRequestRef.current = null;
+          setIsAssertionLoading(false);
+        }
+      });
+  }, [projectId, selectedReviewSetId]);
+
+  useEffect(() => {
+    if (!selectedReviewSetId) return undefined;
+    const startTimer = window.setTimeout(() => void loadAssertions(), 0);
+    return () => window.clearTimeout(startTimer);
+    // Reload only when the selected review set changes; filter changes call
+    // loadAssertions directly with explicit overrides.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId, selectedReviewSetId]);
+
+  const loadTaxonomy = useCallback((options = {}) => {
+    if (!projectId) return Promise.resolve(null);
+    taxonomyRequestRef.current?.abort();
+    const controller = new AbortController();
+    taxonomyRequestRef.current = controller;
+    setIsTaxonomyLoading(true);
+    return getPreconstructionScopeTaxonomy(projectId, {
+      ...options,
+      signal: controller.signal,
+    })
+      .then((response) => {
+        if (projectRef.current !== projectId || controller.signal.aborted) return null;
+        setTaxonomy(response);
+        return response;
+      })
+      .catch((error) => {
+        if (isAbortError(error) || projectRef.current !== projectId) return null;
+        onErrorRef.current?.("Unable to load the scope taxonomy", error);
+        return null;
+      })
+      .finally(() => {
+        if (taxonomyRequestRef.current === controller) {
+          taxonomyRequestRef.current = null;
+          setIsTaxonomyLoading(false);
+        }
+      });
+  }, [projectId]);
+
+  const reviewAssertion = useCallback((assertionId, decision) => runMutation(
+    "Unable to record the assertion review",
+    () => reviewPreconstructionAssertion(projectId, assertionId, decision),
+    "none"
+  ).then(async (result) => {
+    if (result) await loadAssertions();
+    return result;
+  }), [loadAssertions, projectId, runMutation]);
+
+  const createManualAssertion = useCallback((values) => runMutation(
+    "Unable to create the manual assertion",
+    () => createPreconstructionManualAssertion(projectId, selectedReviewSetId, values),
+    "none"
+  ).then(async (result) => {
+    if (result) await loadAssertions({ offset: 0 });
+    return result;
+  }), [loadAssertions, projectId, runMutation, selectedReviewSetId]);
+
   const selectReviewSet = useCallback((reviewSetId) => {
     closeContent();
+    assertionRequestRef.current?.abort();
+    assertionQueryRef.current = DEFAULT_ASSERTION_QUERY;
     selectedReviewSetRef.current = reviewSetId;
     setSelectedReviewSetId(reviewSetId);
+    setAssertions(EMPTY_ASSERTIONS);
+    setAssertionQuery(DEFAULT_ASSERTION_QUERY);
+    setAssertionError(null);
   }, [closeContent]);
 
   return {
+    assertions,
+    assertionQuery,
+    isAssertionLoading,
+    assertionError,
+    taxonomy,
+    isTaxonomyLoading,
+    loadAssertions,
+    loadTaxonomy,
+    reviewAssertion,
+    createManualAssertion,
     filter,
     setFilter,
     reviewSets,

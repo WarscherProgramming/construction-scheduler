@@ -137,6 +137,31 @@ is disabled, HTTP run creation is rejected while it is disabled, and the
 release gate below governs when scheduling becomes appropriate. Do not add
 that cron as part of a deployment change.
 
+## Scope Assertion Extraction
+
+M18.3 adds the `scope_assertion_extraction` analysis type. It reuses the
+existing analysis worker and command; no additional worker or cron entry is
+introduced. Because the provider remains disabled in production, scope
+extraction runs cannot be created there and the analysis cron stays
+unscheduled. Human-authored assertions and review remain fully available.
+
+The taxonomy is a versioned built-in constant with no credential, no editing
+API, and no database state. Changing `TAXONOMY_VERSION` is a code change that
+must ship with a migration-free release note; existing assertions keep the
+version they pinned.
+
+Monitor safe scope categories only: run and assertion-set identifiers,
+assertion and evidence counts, warning counts, validation failure codes
+(`invalid_scope_result`, `invalid_scope_source`, `unknown_scope_concept`,
+`invalid_scope_evidence`, `missing_scope_evidence`, `scope_result_too_large`,
+`scope_persistence_failed`), taxonomy and schema versions, and latency. Never
+log requirement text, evidence excerpts, reviewer notes, prompts, or provider
+response bodies.
+
+A structurally invalid provider result rejects the entire assertion set and
+leaves no partial rows. Re-running is safe: each run creates a new immutable
+set and never rewrites prior assertions or human decisions.
+
 ## Release Gate
 
 Before enabling any future live adapter, require project-isolation tests,

@@ -35,6 +35,7 @@ AnalysisType = Literal[
     "readiness_probe",
     "provider_contract_validation",
     "content_contract_validation",
+    "scope_assertion_extraction",
 ]
 
 
@@ -165,6 +166,10 @@ class ReadinessResponse(MutationModel):
     stale_preparation_source_count: int
     unavailable_preparation_source_count: int
     manifest_preview_hash: str | None
+    analysis_type: str
+    prepared_character_count: int
+    scope_taxonomy_version: str
+    scope_extraction_available: bool
     provider: ProviderCapabilityResponse
 
 

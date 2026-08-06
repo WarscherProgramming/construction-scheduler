@@ -325,6 +325,25 @@ class PreconstructionAIConfig:
 
 
 @dataclass(frozen=True)
+class PreconstructionScopeConfig:
+    max_assertions_per_run: int
+    max_evidence_per_assertion: int
+    max_evidence_per_result: int
+    max_subject_characters: int
+    max_requirement_characters: int
+    max_reviewer_note_characters: int
+    max_manual_assertions_per_review_set: int
+    assertion_page_size: int
+    assertion_max_page_size: int
+    taxonomy_search_limit: int
+    request_max_content_characters: int
+    max_result_bytes: int
+    evidence_excerpt_characters: int
+    taxonomy_version: str
+    schema_version: str
+
+
+@dataclass(frozen=True)
 class PreconstructionPreparationConfig:
     max_pages: int
     max_segments: int
@@ -729,6 +748,75 @@ if (
     raise RuntimeError(
         "PRECONSTRUCTION_CONTENT_MAX_RESPONSE_CHARACTERS cannot be smaller than "
         "PRECONSTRUCTION_PREPARATION_MAX_SEGMENT_CHARACTERS"
+    )
+
+PRECONSTRUCTION_SCOPE_CONFIG = PreconstructionScopeConfig(
+    max_assertions_per_run=positive_integer_environment_variable(
+        "PRECONSTRUCTION_SCOPE_MAX_ASSERTIONS_PER_RUN", 500, maximum=1_000
+    ),
+    max_evidence_per_assertion=positive_integer_environment_variable(
+        "PRECONSTRUCTION_SCOPE_MAX_EVIDENCE_PER_ASSERTION", 10, maximum=20
+    ),
+    max_evidence_per_result=positive_integer_environment_variable(
+        "PRECONSTRUCTION_SCOPE_MAX_EVIDENCE_PER_RESULT", 2_000, maximum=10_000
+    ),
+    max_subject_characters=positive_integer_environment_variable(
+        "PRECONSTRUCTION_SCOPE_MAX_SUBJECT_CHARACTERS", 300, maximum=300
+    ),
+    max_requirement_characters=positive_integer_environment_variable(
+        "PRECONSTRUCTION_SCOPE_MAX_REQUIREMENT_CHARACTERS", 2_000, maximum=2_000
+    ),
+    max_reviewer_note_characters=positive_integer_environment_variable(
+        "PRECONSTRUCTION_SCOPE_MAX_REVIEWER_NOTE_CHARACTERS", 2_000, maximum=2_000
+    ),
+    max_manual_assertions_per_review_set=positive_integer_environment_variable(
+        "PRECONSTRUCTION_SCOPE_MAX_MANUAL_ASSERTIONS", 500, maximum=5_000
+    ),
+    assertion_page_size=positive_integer_environment_variable(
+        "PRECONSTRUCTION_SCOPE_ASSERTION_PAGE_SIZE", 25, maximum=100
+    ),
+    assertion_max_page_size=positive_integer_environment_variable(
+        "PRECONSTRUCTION_SCOPE_ASSERTION_MAX_PAGE_SIZE", 100, maximum=200
+    ),
+    taxonomy_search_limit=positive_integer_environment_variable(
+        "PRECONSTRUCTION_SCOPE_TAXONOMY_SEARCH_LIMIT", 100, maximum=500
+    ),
+    request_max_content_characters=positive_integer_environment_variable(
+        "PRECONSTRUCTION_SCOPE_REQUEST_MAX_CONTENT_CHARACTERS", 100_000,
+        maximum=500_000,
+    ),
+    max_result_bytes=positive_integer_environment_variable(
+        "PRECONSTRUCTION_SCOPE_MAX_RESULT_BYTES", 1_048_576, maximum=8_388_608
+    ),
+    evidence_excerpt_characters=positive_integer_environment_variable(
+        "PRECONSTRUCTION_SCOPE_EVIDENCE_EXCERPT_CHARACTERS", 600, maximum=600
+    ),
+    taxonomy_version="construction-scope-1",
+    schema_version="scope-assertion-1",
+)
+if (
+    PRECONSTRUCTION_SCOPE_CONFIG.assertion_page_size
+    > PRECONSTRUCTION_SCOPE_CONFIG.assertion_max_page_size
+):
+    raise RuntimeError(
+        "PRECONSTRUCTION_SCOPE_ASSERTION_PAGE_SIZE cannot exceed "
+        "PRECONSTRUCTION_SCOPE_ASSERTION_MAX_PAGE_SIZE"
+    )
+if (
+    PRECONSTRUCTION_SCOPE_CONFIG.max_evidence_per_result
+    < PRECONSTRUCTION_SCOPE_CONFIG.max_evidence_per_assertion
+):
+    raise RuntimeError(
+        "PRECONSTRUCTION_SCOPE_MAX_EVIDENCE_PER_RESULT cannot be smaller than "
+        "PRECONSTRUCTION_SCOPE_MAX_EVIDENCE_PER_ASSERTION"
+    )
+if (
+    PRECONSTRUCTION_SCOPE_CONFIG.request_max_content_characters
+    > PRECONSTRUCTION_PREPARATION_CONFIG.max_total_characters
+):
+    raise RuntimeError(
+        "PRECONSTRUCTION_SCOPE_REQUEST_MAX_CONTENT_CHARACTERS cannot exceed "
+        "PRECONSTRUCTION_PREPARATION_MAX_TOTAL_CHARACTERS"
     )
 
 MAX_REQUEST_BODY_BYTES = positive_integer_environment_variable(
