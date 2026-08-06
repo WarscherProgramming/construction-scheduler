@@ -10,19 +10,26 @@ from sqlalchemy import func, or_
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from app.core.config import PreconstructionAIConfig
+from app.core.config import (
+    PRECONSTRUCTION_PREPARATION_CONFIG,
+    PreconstructionAIConfig,
+    PreconstructionPreparationConfig,
+)
 from app.models.document import Document
 from app.models.document_extraction import DocumentExtraction
 from app.models.drawing import DrawingRevision, DrawingSheet
 from app.models.preconstruction import (
     PreconstructionAnalysisAttempt,
     PreconstructionAnalysisRun,
+    PreconstructionContentPage,
+    PreconstructionPreparationRun,
     PreconstructionReviewSet,
     PreconstructionReviewSource,
 )
 from app.preconstruction.provider import (
     PreconstructionAIProvider,
     ProviderError,
+    ProviderContentSegment,
     ProviderRequest,
     ProviderResult,
     ProviderSourceDescriptor,
@@ -39,6 +46,10 @@ from app.schemas.preconstruction import (
     ReviewSetUpdate,
     ReviewSourceCreate,
     ReviewSourceUpdate,
+)
+from app.services.preconstruction_content import (
+    retrieve_snapshot_segments,
+    source_preparation_states,
 )
 
 
@@ -204,6 +215,23 @@ def archive_review_set(
     )
     if active:
         raise _conflict("Cancel active analysis runs before archiving this review set")
+    active_preparation = (
+        db.query(PreconstructionPreparationRun.id)
+        .join(
+            PreconstructionReviewSource,
+            PreconstructionReviewSource.id
+            == PreconstructionPreparationRun.review_source_id,
+        )
+        .filter(
+            PreconstructionReviewSource.review_set_id == review_set.id,
+            PreconstructionPreparationRun.status.in_(("pending", "processing")),
+        )
+        .first()
+    )
+    if active_preparation:
+        raise _conflict(
+            "Cancel active source preparation before archiving this review set"
+        )
     review_set.status = "archived"
     review_set.archived_at = utc_now()
     db.commit()
@@ -324,7 +352,10 @@ def get_review_source(
     return source
 
 
-def source_response(source: PreconstructionReviewSource) -> dict:
+def source_response(
+    source: PreconstructionReviewSource,
+    preparation_state: dict | None = None,
+) -> dict:
     role = DOCUMENT_ROLE_BY_VALUE[source.document_role]
     route_target = (
         {
@@ -339,6 +370,21 @@ def source_response(source: PreconstructionReviewSource) -> dict:
             "documentId": source.document_id,
         }
     )
+    preparation = preparation_state or {
+        "current_extraction_status": source.extraction_status,
+        "preparation_status": "not_prepared",
+        "preparation_run_id": None,
+        "content_snapshot_id": None,
+        "prepared_at": None,
+        "page_count": 0,
+        "segment_count": 0,
+        "total_character_count": 0,
+        "preparation_extraction_method": None,
+        "warning_count": 0,
+        "unavailable_reason": None,
+        "lineage_current": False,
+        "stale_reason": None,
+    }
     return {
         "id": source.id,
         "project_id": source.project_id,
@@ -362,6 +408,24 @@ def source_response(source: PreconstructionReviewSource) -> dict:
         "added_by": source.added_by,
         "added_at": source.added_at,
         "locked": source.locked_at is not None,
+        **{
+            key: preparation[key]
+            for key in (
+                "current_extraction_status",
+                "preparation_status",
+                "preparation_run_id",
+                "content_snapshot_id",
+                "prepared_at",
+                "page_count",
+                "segment_count",
+                "total_character_count",
+                "preparation_extraction_method",
+                "warning_count",
+                "unavailable_reason",
+                "lineage_current",
+                "stale_reason",
+            )
+        },
     }
 
 
@@ -634,13 +698,13 @@ def _build_manifest_payload(
         int,
         tuple[Document | None, DocumentExtraction | None],
     ] | None = None,
+    preparation_states: dict[int, dict] | None = None,
 ) -> dict:
     states = source_states or _current_source_states(db, sources)
     manifest_sources = []
     for source in sorted(sources, key=lambda item: item.id):
         document, extraction = states[source.id]
-        manifest_sources.append(
-            {
+        source_payload = {
                 "source_id": source.id,
                 "source_type": source.source_type,
                 "document_id": source.document_id,
@@ -655,8 +719,21 @@ def _build_manifest_payload(
                 "display_name": source.display_name_snapshot,
                 "sheet_number": source.sheet_number_snapshot,
                 "revision_code": source.revision_code_snapshot,
+        }
+        if analysis_type == "content_contract_validation":
+            preparation = (preparation_states or {})[source.id]
+            source_payload["content_snapshot"] = {
+                "id": preparation["content_snapshot_id"],
+                "lineage_fingerprint": preparation["lineage_fingerprint"],
+                "content_hash": preparation["content_hash"],
+                "page_count": preparation["page_count"],
+                "segment_count": preparation["segment_count"],
+                "preparation_version": preparation["preparation_version"],
+                "segmentation_policy_version": preparation["segmentation_policy_version"],
+                "extraction_method": preparation["snapshot_extraction_method"],
+                "extractor_version": preparation["snapshot_extractor_version"],
             }
-        )
+        manifest_sources.append(source_payload)
     return {
         "analysis_type": analysis_type,
         "provider_profile": config.provider,
@@ -684,6 +761,7 @@ def review_readiness(
     provider: PreconstructionAIProvider,
     *,
     analysis_type: str = "provider_contract_validation",
+    preparation_config: PreconstructionPreparationConfig = PRECONSTRUCTION_PREPARATION_CONFIG,
 ) -> dict:
     sources = list_review_sources(db, review_set.project_id, review_set.id)
     source_states = _current_source_states(db, sources)
@@ -692,6 +770,12 @@ def review_readiness(
     counts = {"requirement": 0, "coverage": 0, "context": 0}
     searchable = 0
     unavailable = 0
+    preparation_states = source_preparation_states(db, sources, preparation_config)
+    prepared = 0
+    preparation_warnings = 0
+    preparation_missing = 0
+    preparation_stale = 0
+    preparation_unavailable = 0
     if not sources:
         blockers.append("At least one review source is required.")
     for source in sources:
@@ -722,6 +806,25 @@ def review_readiness(
                 warnings.append(message)
             else:
                 blockers.append(message)
+        preparation = preparation_states[source.id]
+        preparation_status = preparation["preparation_status"]
+        if preparation_status in ("ready", "ready_with_warnings"):
+            prepared += 1
+            if preparation_status == "ready_with_warnings":
+                preparation_warnings += 1
+                warnings.append(f"{issue_prefix} preparation completed with warnings.")
+        elif preparation_status == "stale":
+            preparation_stale += 1
+            message = f"{issue_prefix} prepared content is stale."
+            (blockers if analysis_type == "content_contract_validation" else warnings).append(message)
+        elif preparation_status in ("unavailable", "failed"):
+            preparation_unavailable += 1
+            message = f"{issue_prefix} content preparation is {preparation_status}."
+            (blockers if analysis_type == "content_contract_validation" else warnings).append(message)
+        else:
+            preparation_missing += 1
+            message = f"{issue_prefix} content preparation is {preparation_status.replace('_', ' ')}."
+            (blockers if analysis_type == "content_contract_validation" else warnings).append(message)
     blockers.extend(_composition_messages(review_set, sources))
     if review_set.status == "archived":
         blockers.append("Archived review sets cannot start analysis runs.")
@@ -739,6 +842,7 @@ def review_readiness(
             config,
             analysis_type,
             source_states,
+            preparation_states,
         )
         _, preview_hash = canonical_manifest(payload, config.max_manifest_bytes)
     return {
@@ -751,6 +855,11 @@ def review_readiness(
         "context_source_count": counts["context"],
         "searchable_source_count": searchable,
         "unavailable_source_count": unavailable,
+        "prepared_source_count": prepared,
+        "preparation_warning_source_count": preparation_warnings,
+        "missing_preparation_source_count": preparation_missing,
+        "stale_preparation_source_count": preparation_stale,
+        "unavailable_preparation_source_count": preparation_unavailable,
         "manifest_preview_hash": preview_hash,
         "provider": {
             "profile": config.provider,
@@ -795,16 +904,32 @@ def create_analysis_run(
     payload: AnalysisRunCreate,
     config: PreconstructionAIConfig,
     provider: PreconstructionAIProvider,
+    preparation_config: PreconstructionPreparationConfig = PRECONSTRUCTION_PREPARATION_CONFIG,
 ) -> PreconstructionAnalysisRun:
-    readiness = review_readiness(db, review_set, config, provider, analysis_type=payload.analysis_type)
+    readiness = review_readiness(
+        db,
+        review_set,
+        config,
+        provider,
+        analysis_type=payload.analysis_type,
+        preparation_config=preparation_config,
+    )
     if not readiness["ready"]:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail={"message": "Review set is not ready", "blockers": readiness["blockers"]},
         )
     sources = list_review_sources(db, review_set.project_id, review_set.id)
+    preparation_states = source_preparation_states(db, sources, preparation_config)
     manifest, manifest_hash = canonical_manifest(
-        _build_manifest_payload(db, review_set, sources, config, payload.analysis_type),
+        _build_manifest_payload(
+            db,
+            review_set,
+            sources,
+            config,
+            payload.analysis_type,
+            preparation_states=preparation_states,
+        ),
         config.max_manifest_bytes,
     )
     run = PreconstructionAnalysisRun(
@@ -1059,8 +1184,52 @@ def claim_analysis_attempt(
     return ClaimedAnalysisAttempt(attempt.id, token)
 
 
-def _provider_request(run: PreconstructionAnalysisRun) -> ProviderRequest:
+def _provider_request(db: Session, run: PreconstructionAnalysisRun) -> ProviderRequest:
     manifest = json.loads(run.manifest_json)
+    content_segments = []
+    total_characters = 0
+    content_truncated = False
+    if run.analysis_type == "content_contract_validation":
+        selected = []
+        for source in manifest["sources"]:
+            snapshot = source["content_snapshot"]
+            remaining = (
+                PRECONSTRUCTION_PREPARATION_CONFIG.content_max_response_characters
+                - total_characters
+            )
+            if remaining <= 0:
+                content_truncated = True
+                break
+            segments = retrieve_snapshot_segments(
+                db,
+                run.project_id,
+                snapshot["id"],
+                max_characters=remaining,
+            )
+            selected.extend((source["source_id"], snapshot["id"], item) for item in segments)
+            total_characters += sum(len(item.text) for item in segments)
+            if len(segments) < snapshot["segment_count"]:
+                content_truncated = True
+        page_ids = {item.page_id for _, _, item in selected}
+        page_numbers = {
+            page.id: page.page_number
+            for page in db.query(PreconstructionContentPage).filter(
+                PreconstructionContentPage.project_id == run.project_id,
+                PreconstructionContentPage.id.in_(page_ids),
+            ).all()
+        } if page_ids else {}
+        content_segments = [
+            ProviderContentSegment(
+                segment_id=item.id,
+                source_id=source_id,
+                snapshot_id=snapshot_id,
+                page_number=page_numbers[item.page_id],
+                segment_index=item.segment_index,
+                text_hash=item.text_hash,
+                untrusted_text=item.text,
+            )
+            for source_id, snapshot_id, item in selected
+        ]
     return ProviderRequest(
         manifest_hash=run.manifest_hash,
         analysis_type=run.analysis_type,
@@ -1074,9 +1243,15 @@ def _provider_request(run: PreconstructionAnalysisRun) -> ProviderRequest:
                 document_role=source["document_role"],
                 checksum=source["checksum"],
                 extraction_status=source["extraction_status"],
+                content_snapshot_id=(source.get("content_snapshot") or {}).get("id"),
+                lineage_fingerprint=(source.get("content_snapshot") or {}).get("lineage_fingerprint"),
+                content_hash=(source.get("content_snapshot") or {}).get("content_hash"),
             )
             for source in manifest["sources"]
         ),
+        content_segments=tuple(content_segments),
+        total_content_characters=total_characters,
+        content_truncated=content_truncated,
     )
 
 
@@ -1156,7 +1331,7 @@ def process_claimed_attempt(
             db, claim.attempt_id, claim.lease_token,
             ProviderError("stale_attempt", "Analysis attempt is no longer current"), config
         )
-    request = _provider_request(run)
+    request = _provider_request(db, run)
     started = utc_now()
     try:
         raw_result = provider.execute(request)

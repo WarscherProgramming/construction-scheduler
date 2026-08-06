@@ -222,3 +222,23 @@ provider credentials, prompts, or imply that findings or scope analysis ship.
 The pending/failed test-provider captures are development evidence only and
 must be labeled as deterministic fake-provider states. Production-disabled
 readiness is the honest release state for M18.1.
+
+M18.2 creates no screenshot files. Extend the synthetic Preconstruction set
+with the following states; render all extracted examples as plainly visible
+test text and never use real project documents.
+
+| File | State to capture | Viewport | Required evidence |
+|---|---|---|---|
+| `preconstruction-unprepared.png` | Searchable source before preparation | 1440x900 | Separate extraction/preparation labels and Prepare action |
+| `preconstruction-preparing.png` | Pending or processing source | 1440x900 | Textual lifecycle and identified Cancel action |
+| `preconstruction-prepared.png` | Current completed snapshot | 1440x900 | Page/segment counts and Inspect Content action |
+| `preconstruction-preparation-warning.png` | Completed with warnings | 1440x900 | Warning state communicated in text |
+| `preconstruction-preparation-stale.png` | Extraction lineage changed | 1440x900 | Stale reason, historical Inspect action, and Reprepare |
+| `preconstruction-image-only.png` | Native text unavailable | 1440x900 | Factual OCR-disabled/unavailable explanation |
+| `preconstruction-content.png` | Content Inspector | 1440x900 | Lineage, page selector, bounded semantic segment list |
+| `preconstruction-content-pages.png` | Page filter and segment pagination | 1440x900 | One-based page identity and bounded navigation |
+| `preconstruction-content-safety.png` | Malicious synthetic text | 1440x900 | HTML, URL, shell, SQL, and prompt-like content displayed inertly |
+| `preconstruction-content-mobile.png` | Content Inspector | 390x844 | Retained source/page context, wrapping, focus, reachable controls |
+
+Do not imply OCR, bounding boxes, table/symbol recognition, scope assertions,
+findings, live AI, automatic role classification, or provider network access.

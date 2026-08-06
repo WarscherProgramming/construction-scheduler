@@ -333,3 +333,9 @@ without storing page text or `DocumentPageText` row IDs. The provider contract
 receives source descriptors only; no extracted content is retrieved in this
 phase. Lexical search remains authoritative and separate. Semantic search,
 embeddings, scope extraction, and AI findings remain deferred.
+
+M18.2 leaves this replaceable lexical index authoritative. A deliberate
+preparation run snapshots eligible current page text into immutable bounded
+segments for citation and later structured extraction. Content inspection
+uses a small project/source-scoped plain-text filter, not a second project-wide
+FTS index. Segment FTS, embeddings, and semantic retrieval remain deferred.

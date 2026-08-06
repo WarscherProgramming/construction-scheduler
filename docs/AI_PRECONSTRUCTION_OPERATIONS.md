@@ -26,6 +26,10 @@ maximum. Enabled mode cannot use the disabled provider. Production rejects the
 fake provider and its allow flag. Unknown providers fail startup validation.
 No provider credential setting exists in M18.1.
 
+M18.2 content preparation has no provider credential or network dependency.
+It snapshots current native-PDF extraction and retains production OCR as
+disabled.
+
 ## Finite Worker
 
 The worker processes a bounded batch and exits. It is not a daemon and does
@@ -83,6 +87,55 @@ and approved failure codes are sufficient for operations.
 Do not update run or attempt lifecycle fields manually except during a
 documented database incident. Do not copy production content into fake-provider
 fixtures.
+
+## Content Preparation Worker
+
+Run preparation separately from analysis:
+
+```powershell
+python -m app.commands.process_preconstruction_preparation
+python -m app.commands.process_preconstruction_preparation --batch-size 5 --max-jobs 10
+python -m app.commands.process_preconstruction_preparation --run-id 42
+python -m app.commands.process_preconstruction_preparation --retry-failed --max-jobs 5
+python -m app.commands.process_preconstruction_preparation --lease-seconds 300
+```
+
+The finite command claims only preparation runs and exits. It reads
+`DocumentPageText`, performs batched immutable snapshot/page/segment writes,
+and makes no storage, OCR, browser, or AI request. Monitor pending age,
+processing lease age, terminal safe failure codes, page/segment/character
+counts, warning counts, and command exit status. Never log segment text,
+search queries, filenames where policy forbids them, hashes beyond operational
+need, or lease material.
+
+Preparation limits and retry settings use the
+`PRECONSTRUCTION_PREPARATION_*` and `PRECONSTRUCTION_CONTENT_*` variables in
+`backend/.env.example`. Apply migration `b9e5d3f7a201` before scheduling the
+command. Expired leases recover on the next bounded invocation. Reprepare a
+stale source through the owned API; do not overwrite or delete its historical
+snapshot.
+
+## Production Schedule
+
+`backend/render.yaml` schedules preparation as
+`construction-scheduler-preconstruction-preparation`:
+
+```yaml
+schedule: "5,20,35,50 * * * *"
+startCommand: python -m app.commands.process_preconstruction_preparation --max-jobs 10
+```
+
+The cadence is offset from the every-ten-minute document-extraction cron so
+preparation observes completed extractions and the two finite jobs never
+contend for the same rows. The job carries no object-storage credential
+because preparation reads committed `DocumentPageText` rows and never opens a
+stored object. It pins the disabled provider values so a misconfigured
+environment cannot enable a provider through a background job.
+
+The analysis worker is intentionally absent from `render.yaml`. The provider
+is disabled, HTTP run creation is rejected while it is disabled, and the
+release gate below governs when scheduling becomes appropriate. Do not add
+that cron as part of a deployment change.
 
 ## Release Gate
 

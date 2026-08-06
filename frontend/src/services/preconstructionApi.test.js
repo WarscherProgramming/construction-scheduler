@@ -3,17 +3,22 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   addPreconstructionReviewSource,
   archivePreconstructionReviewSet,
+  cancelPreconstructionPreparationRun,
   cancelPreconstructionRun,
   createPreconstructionReviewSet,
   createPreconstructionRun,
   getPreconstructionReadiness,
+  getPreconstructionPreparationRun,
   getPreconstructionReviewSet,
   getPreconstructionRun,
+  getPreconstructionSourceContent,
   listPreconstructionReviewSets,
   listPreconstructionReviewSources,
   listPreconstructionRuns,
   listPreconstructionSourceCandidates,
   removePreconstructionReviewSource,
+  preparePreconstructionSource,
+  retryPreconstructionPreparationRun,
   retryPreconstructionRun,
   updatePreconstructionReviewSet,
   updatePreconstructionReviewSource,
@@ -44,17 +49,51 @@ describe("preconstruction API", () => {
     await listPreconstructionReviewSets(4, { state: "archived", limit: 20, offset: 10, signal: controller.signal });
     await getPreconstructionReviewSet(4, 8, { signal: controller.signal });
     await listPreconstructionReviewSources(4, 8, { signal: controller.signal });
-    await getPreconstructionReadiness(4, 8, { signal: controller.signal });
+    await getPreconstructionReadiness(4, 8, {
+      analysisType: "content_contract_validation",
+      signal: controller.signal,
+    });
     await listPreconstructionRuns(4, 8, { limit: 15, offset: 5, signal: controller.signal });
     await getPreconstructionRun(4, 12, { signal: controller.signal });
 
     expect(fetchMock.mock.calls[0][0]).toContain("/projects/4/preconstruction/review-sets?state=archived&limit=20&offset=10");
     expect(fetchMock.mock.calls[1][0]).toContain("/review-sets/8");
     expect(fetchMock.mock.calls[2][0]).toContain("/review-sets/8/sources");
-    expect(fetchMock.mock.calls[3][0]).toContain("/review-sets/8/readiness");
+    expect(fetchMock.mock.calls[3][0]).toContain("/review-sets/8/readiness?analysis_type=content_contract_validation");
     expect(fetchMock.mock.calls[4][0]).toContain("/review-sets/8/runs?limit=15&offset=5");
     expect(fetchMock.mock.calls[5][0]).toContain("/runs/12");
     expect(fetchMock.mock.calls.every((call) => call[1].signal === controller.signal)).toBe(true);
+  });
+
+  it("builds bounded preparation and content inspection requests", async () => {
+    const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(jsonResponse({})));
+    const controller = new AbortController();
+    vi.stubGlobal("fetch", fetchMock);
+    configureAuthentication({ token: "precon-token" });
+
+    await preparePreconstructionSource(4, 8, 3, { signal: controller.signal });
+    await getPreconstructionPreparationRun(4, 12, { signal: controller.signal });
+    await cancelPreconstructionPreparationRun(4, 12, { signal: controller.signal });
+    await retryPreconstructionPreparationRun(4, 12, { signal: controller.signal });
+    await getPreconstructionSourceContent(4, 8, 3, {
+      snapshotId: 9,
+      page: 2,
+      segmentOffset: 25,
+      segmentLimit: 25,
+      search: "shelf lighting & controls",
+      signal: controller.signal,
+    });
+
+    expect(fetchMock.mock.calls[0][0]).toContain("/review-sets/8/sources/3/prepare");
+    expect(fetchMock.mock.calls[0][1].method).toBe("POST");
+    expect(fetchMock.mock.calls[1][0]).toContain("/preparation-runs/12");
+    expect(fetchMock.mock.calls[2][0]).toContain("/preparation-runs/12/cancel");
+    expect(fetchMock.mock.calls[3][0]).toContain("/preparation-runs/12/retry");
+    expect(fetchMock.mock.calls[4][0]).toContain(
+      "snapshot_id=9&page=2&segment_offset=25&segment_limit=25&search=shelf+lighting+%26+controls"
+    );
+    expect(fetchMock.mock.calls.every((call) => call[1].signal === controller.signal)).toBe(true);
+    expect(fetchMock.mock.calls.every((call) => !call[0].includes("download"))).toBe(true);
   });
 
   it("encodes candidate search and never requests binary routes", async () => {

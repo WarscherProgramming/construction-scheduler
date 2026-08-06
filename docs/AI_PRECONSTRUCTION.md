@@ -1,7 +1,8 @@
 # AI Preconstruction Foundation
 
 M18.1 establishes FieldFlow's provider-neutral preconstruction review
-boundary. It does not extract construction scope, compare contracts, detect
+boundary. M18.2 adds immutable source-content preparation beside the
+replaceable project-search index. Neither phase extracts construction scope, compares contracts, detects
 omissions, generate findings, or call a live AI provider. Existing Documents,
 Drawing Revisions, extraction records, page text, relationships, and schedules
 remain authoritative.
@@ -183,12 +184,13 @@ dashboard resources, findings, prompts, or provider/model controls.
   exceptions, storage URLs, and hidden reasoning;
 - source count defaults to 250, candidate results to 20 (maximum 50), and
   review/run lists use existing bounded pagination;
-- prompt injection in source content is outside M18.1 because no source text
-  reaches a provider. Future retrieval must treat all document content as
-  untrusted data rather than instructions.
+- M18.2 treats extracted source content as typed untrusted data, separates it
+  from fixed instructions, and keeps tools, URLs, storage, and database access
+  outside the provider contract. This reduces risk without claiming prompt
+  injection is solved.
 
-M18.2 is deferred. It may introduce a controlled construction scope taxonomy
-and evidence identity, but must preserve immutable sources, provider
+M18.3 is deferred. It may introduce a controlled construction scope taxonomy
+and evidence-backed human review, but must preserve immutable sources, provider
 independence, mandatory human review, and authoritative existing systems.
 
 ## Migration
@@ -201,3 +203,23 @@ does not alter or backfill existing application tables. Review sets, sources,
 runs, and attempts cascade with project/domain deletion; authoritative source
 Documents and Drawing Revisions remain restricted references, while a removed
 extraction clears only the source's optional extraction pointer.
+
+## M18.2 Immutable Content Preparation
+
+M18.2 adds preparation runs and immutable snapshot, page, and segment records
+after `DocumentExtraction`. It does not replace `DocumentPageText`, project
+search, object storage, or Drawing Revision lineage. Content-dependent
+analysis manifests pin snapshot lineage and hashes without embedding text;
+provider DTOs receive only a bounded typed segment selection.
+
+Preparation, status refresh, content inspection, retry, cancellation, and
+reprepare remain deliberate actions in the existing lazy route. Source lists
+receive batched preparation summaries and never request text per row. The
+inspector returns plain text under `Cache-Control: no-store` and makes no
+binary or PDF-worker request.
+
+Alembic revision `b9e5d3f7a201` follows `a8f4c2d6e190` and adds only the four
+content-preparation tables plus the controlled content-contract analysis type.
+It performs no source backfill or automatic preparation. See
+[`AI_CONTENT_PREPARATION.md`](AI_CONTENT_PREPARATION.md) for the data model,
+lineage, sizing, citation, API, security, and M18.3 boundary.

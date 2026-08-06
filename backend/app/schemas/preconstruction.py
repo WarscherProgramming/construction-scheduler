@@ -31,7 +31,11 @@ DocumentRoleValue = Literal[
     "owner_directive",
     "other_reference",
 ]
-AnalysisType = Literal["readiness_probe", "provider_contract_validation"]
+AnalysisType = Literal[
+    "readiness_probe",
+    "provider_contract_validation",
+    "content_contract_validation",
+]
 
 
 class ReviewSetCreate(MutationModel):
@@ -113,6 +117,19 @@ class ReviewSourceResponse(MutationModel):
     added_by: int
     added_at: datetime
     locked: bool
+    current_extraction_status: str
+    preparation_status: str
+    preparation_run_id: int | None
+    content_snapshot_id: int | None
+    prepared_at: datetime | None
+    page_count: int
+    segment_count: int
+    total_character_count: int
+    preparation_extraction_method: str | None
+    warning_count: int
+    unavailable_reason: str | None
+    lineage_current: bool
+    stale_reason: str | None
 
 
 class RoleOptionResponse(MutationModel):
@@ -142,6 +159,11 @@ class ReadinessResponse(MutationModel):
     context_source_count: int
     searchable_source_count: int
     unavailable_source_count: int
+    prepared_source_count: int
+    preparation_warning_source_count: int
+    missing_preparation_source_count: int
+    stale_preparation_source_count: int
+    unavailable_preparation_source_count: int
     manifest_preview_hash: str | None
     provider: ProviderCapabilityResponse
 
@@ -197,6 +219,112 @@ class SourceCandidateResponse(MutationModel):
 class SourceCandidateListResponse(MutationModel):
     items: list[SourceCandidateResponse]
     limit: int
+
+
+class PreparationRunResponse(MutationModel):
+    run_id: int
+    source_id: int
+    status: str
+    lineage_fingerprint: str
+    source_checksum: str
+    extraction_status: str
+    extraction_method: str
+    extractor_version: str
+    preparation_version: str
+    requested_at: datetime
+    started_at: datetime | None
+    completed_at: datetime | None
+    failed_at: datetime | None
+    cancelled_at: datetime | None
+    attempt_count: int
+    max_attempts: int
+    snapshot_id: int | None
+    page_count: int
+    segment_count: int
+    total_character_count: int
+    warning_count: int
+    failure_code: str | None
+    failure_message: str | None
+    can_cancel: bool
+    can_retry: bool
+
+
+class PreparationRequest(MutationModel):
+    pass
+
+
+class ContentSourceResponse(MutationModel):
+    id: int
+    display_name: str
+    source_type: str
+    document_id: int
+    drawing_revision_id: int | None
+    sheet_number: str | None
+    revision_code: str | None
+    route_target: dict[str, Any]
+
+
+class ContentSnapshotResponse(MutationModel):
+    id: int
+    source_checksum: str
+    lineage_fingerprint: str
+    lineage_current: bool
+    content_hash: str
+    extraction_method: str
+    extractor_version: str
+    preparation_version: str
+    segmentation_policy_version: str
+    status: str
+    page_count: int
+    segment_count: int
+    total_character_count: int
+    warning_count: int
+    created_at: datetime
+    completed_at: datetime | None
+
+
+class ContentPageResponse(MutationModel):
+    id: int
+    page_number: int
+    page_label: str | None
+    sheet_number: str | None
+    character_count: int
+    page_text_hash: str
+    has_searchable_text: bool
+    has_visual_content: bool
+    extraction_method: str
+
+
+class ContentSegmentResponse(MutationModel):
+    id: int
+    page_number: int
+    segment_index: int
+    segment_type: str
+    text: str
+    text_hash: str
+    character_start: int | None
+    character_end: int | None
+    token_estimate: int | None
+    heading_path: str | None
+    bounding_box: list[float] | None
+    extraction_method: str
+    confidence: float | None
+
+
+class ContentPaginationResponse(MutationModel):
+    offset: int
+    limit: int
+    total: int
+    response_character_count: int
+    response_truncated: bool
+
+
+class ContentInspectionResponse(MutationModel):
+    source: ContentSourceResponse
+    snapshot: ContentSnapshotResponse
+    pages: list[ContentPageResponse]
+    segments: list[ContentSegmentResponse]
+    pagination: ContentPaginationResponse
 
 
 def purpose_label(value: str) -> str:

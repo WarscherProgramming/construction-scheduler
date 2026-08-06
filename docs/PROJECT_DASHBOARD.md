@@ -407,3 +407,6 @@ from the dashboard aggregate, health formula, actions, and recent updates.
 Dashboard load makes no review-set, source, readiness, candidate, run,
 provider, binary, or PDF-worker request. Analysis remains a deliberate human
 action inside `#/projects/{project_id}/preconstruction`.
+M18.2 adds no dashboard request, prepared-content count, health input, action,
+or recent update. Snapshot and segment retrieval occurs only after a user opens
+one source in the lazy Preconstruction workspace.

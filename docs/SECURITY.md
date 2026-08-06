@@ -221,6 +221,8 @@ inventory. Never copy production values into repository files.
 
 5. Confirm the Render health check returns exactly `{"status":"online"}`.
 6. Confirm the finite extraction cron uses the API's database/provider values,
+   confirm the preconstruction preparation cron uses the same database and
+   keeps the provider disabled without receiving object-storage credentials,
    and configure the separate recurring attachment-cleanup command.
 7. Deploy Vercel with `VITE_API_URL` set to the production API.
 8. Confirm Vercel serves the committed headers from `frontend/vercel.json`.
@@ -812,3 +814,27 @@ so malicious-document instructions cannot cross the provider boundary. Future
 retrieval must preserve that content-as-untrusted-data rule and mandatory human
 approval. See `AI_PRECONSTRUCTION.md` and
 `AI_PRECONSTRUCTION_OPERATIONS.md`.
+
+## M18.2 Prepared Content Security Boundary
+
+Preparation routes still resolve `get_owned_project` before nested Review Set,
+Review Source, run, snapshot, page, or segment IDs. Server code computes every
+checksum, lineage fingerprint, count, hash, status, warning, timestamp, and
+citation coordinate; optional request bodies and query parameters cannot
+mass-assign lifecycle or text fields. Inspection is source-scoped, paginated,
+character-bounded, and returned with `Cache-Control: no-store`.
+
+Extracted text is untrusted. NFKC normalization removes null and unsafe control
+characters, while React renders the result only as plain text. No HTML,
+Markdown, formula, shell, SQL, forged JSON, or URL is interpreted or fetched.
+Content-dependent provider DTOs keep a fixed instruction separate from typed
+`untrusted_text` and expose no tools, ORM objects, database session, storage,
+credentials, or arbitrary URLs. This is defense in depth, not a claim that
+prompt injection is solved.
+
+Snapshot creation is atomic and immutable after completion. Failed work rolls
+back all content rows and retains only a safe preparation-run outcome. Lease
+tokens are stored as digests; logs and responses omit document text, internal
+leases, storage metadata, signed URLs, raw exceptions, and provider secrets.
+Production OCR and live AI remain disabled. See
+`AI_CONTENT_PREPARATION.md`.

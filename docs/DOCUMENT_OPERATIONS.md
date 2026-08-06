@@ -17,7 +17,8 @@ python -m app.commands.process_document_extractions --max-jobs 25 --prune-comple
 python -m app.commands.process_attachment_cleanup --max-jobs 200 --prune-completed
 ```
 
-Render declares document extraction every ten minutes. Attachment cleanup is
+Render declares document extraction every ten minutes and preconstruction
+content preparation on an offset quarter-hour schedule. Attachment cleanup is
 not declared in the current blueprint and requires a separate recurring
 external schedule. Set scheduler timeouts above expected bounded runtime and
 keep lease duration above the time between claim and completion. Overlapping

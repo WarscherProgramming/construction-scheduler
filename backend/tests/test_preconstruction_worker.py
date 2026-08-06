@@ -266,7 +266,7 @@ class PreconstructionProviderTests(PreconstructionTestBase):
                     readiness_queries = query_count
                     self.assertTrue(readiness["ready"])
                     self.assertEqual(readiness["source_count"], count)
-                    self.assertLessEqual(readiness_queries, 5)
+                    self.assertLessEqual(readiness_queries, 8)
                     self.assertLess(len(json.dumps(readiness).encode("utf-8")), 16_384)
 
                     query_count = 0
@@ -285,7 +285,7 @@ class PreconstructionProviderTests(PreconstructionTestBase):
                     run_queries = query_count
                     event.remove(self.engine, "before_cursor_execute", count_query)
                     self.assertEqual(run.source_count, count)
-                    self.assertLessEqual(run_queries, 15)
+                    self.assertLessEqual(run_queries, 20)
                     manifest_bytes = len(run.manifest_json.encode("utf-8"))
                     self.assertLessEqual(manifest_bytes, self.config.max_manifest_bytes)
                     print(

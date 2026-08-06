@@ -8,16 +8,20 @@ import usePreconstruction from "./usePreconstruction";
 const apiMocks = vi.hoisted(() => ({
   addPreconstructionReviewSource: vi.fn(),
   archivePreconstructionReviewSet: vi.fn(),
+  cancelPreconstructionPreparationRun: vi.fn(),
   cancelPreconstructionRun: vi.fn(),
   createPreconstructionReviewSet: vi.fn(),
   createPreconstructionRun: vi.fn(),
   getPreconstructionReadiness: vi.fn(),
+  getPreconstructionSourceContent: vi.fn(),
   getPreconstructionReviewSet: vi.fn(),
   listPreconstructionReviewSets: vi.fn(),
   listPreconstructionReviewSources: vi.fn(),
   listPreconstructionRuns: vi.fn(),
   listPreconstructionSourceCandidates: vi.fn(),
   removePreconstructionReviewSource: vi.fn(),
+  preparePreconstructionSource: vi.fn(),
+  retryPreconstructionPreparationRun: vi.fn(),
   retryPreconstructionRun: vi.fn(),
   updatePreconstructionReviewSet: vi.fn(),
   updatePreconstructionReviewSource: vi.fn(),
@@ -63,6 +67,16 @@ describe("usePreconstruction", () => {
     apiMocks.addPreconstructionReviewSource.mockResolvedValue({ id: 2 });
     apiMocks.updatePreconstructionReviewSource.mockResolvedValue({ id: 2 });
     apiMocks.removePreconstructionReviewSource.mockResolvedValue({ message: "removed" });
+    apiMocks.preparePreconstructionSource.mockResolvedValue({ run_id: 6, status: "pending" });
+    apiMocks.cancelPreconstructionPreparationRun.mockResolvedValue({ run_id: 6, status: "cancelled" });
+    apiMocks.retryPreconstructionPreparationRun.mockResolvedValue({ run_id: 6, status: "pending" });
+    apiMocks.getPreconstructionSourceContent.mockResolvedValue({
+      source: { id: 2 },
+      snapshot: { id: 9 },
+      pages: [],
+      segments: [],
+      pagination: { offset: 0, limit: 25, total: 0 },
+    });
     apiMocks.createPreconstructionRun.mockResolvedValue({ id: 4, status: "pending" });
     apiMocks.cancelPreconstructionRun.mockResolvedValue({ id: 4, status: "cancelled" });
     apiMocks.retryPreconstructionRun.mockResolvedValue({ id: 4, status: "pending" });
@@ -100,6 +114,9 @@ describe("usePreconstruction", () => {
       await result.current.addSource({ document_id: 3 });
       await result.current.updateSource(2, { document_role: "drawing" });
       await result.current.removeSource(2);
+      await result.current.prepareSource(2);
+      await result.current.cancelPreparation(6);
+      await result.current.retryPreparation(6);
       await result.current.requestRun();
       await result.current.cancelRun(4);
       await result.current.retryRun(4);
@@ -108,12 +125,70 @@ describe("usePreconstruction", () => {
 
     expect(apiMocks.updatePreconstructionReviewSet).toHaveBeenCalledWith(1, 8, { description: "Updated" });
     expect(apiMocks.addPreconstructionReviewSource).toHaveBeenCalledWith(1, 8, { document_id: 3 });
-    expect(apiMocks.createPreconstructionRun).toHaveBeenCalledWith(1, 8, { analysis_type: "provider_contract_validation" });
+    expect(apiMocks.createPreconstructionRun).toHaveBeenCalledWith(1, 8, { analysis_type: "content_contract_validation" });
+    expect(apiMocks.preparePreconstructionSource).toHaveBeenCalledWith(1, 8, 2);
+    expect(apiMocks.cancelPreconstructionPreparationRun).toHaveBeenCalledWith(1, 6);
+    expect(apiMocks.retryPreconstructionPreparationRun).toHaveBeenCalledWith(1, 6);
     expect(apiMocks.listPreconstructionSourceCandidates).toHaveBeenCalledWith(
       1,
       expect.objectContaining({ sourceType: "document", search: "plans", limit: 20, signal: expect.any(AbortSignal) })
     );
     expect(result.current.candidates).toEqual([{ document_id: 3 }]);
+  });
+
+  it("loads one selected source content request and clears it on review switch", async () => {
+    const { result } = renderHook(() => usePreconstruction({ projectId: 1 }));
+    await waitFor(() => expect(result.current.isListLoading).toBe(false));
+    act(() => result.current.selectReviewSet(8));
+    await waitFor(() => expect(result.current.detail.reviewSet).toEqual(REVIEW));
+
+    await act(async () => {
+      await result.current.inspectContent(2, {
+        page: 3,
+        segmentOffset: 25,
+        segmentLimit: 25,
+        search: "lighting",
+      });
+    });
+    expect(apiMocks.getPreconstructionSourceContent).toHaveBeenCalledWith(
+      1,
+      8,
+      2,
+      expect.objectContaining({
+        page: 3,
+        segmentOffset: 25,
+        segmentLimit: 25,
+        search: "lighting",
+        signal: expect.any(AbortSignal),
+      })
+    );
+    expect(result.current.content.snapshot.id).toBe(9);
+    act(() => result.current.selectReviewSet(9));
+    expect(result.current.content).toBeNull();
+    expect(result.current.contentSourceId).toBeNull();
+  });
+
+  it("rejects stale content after a project switch", async () => {
+    const pending = deferred();
+    apiMocks.getPreconstructionSourceContent.mockReturnValue(pending.promise);
+    const hook = renderHook(
+      ({ projectId }) => usePreconstruction({ projectId }),
+      { initialProps: { projectId: 1 } }
+    );
+    await waitFor(() => expect(hook.result.current.isListLoading).toBe(false));
+    act(() => hook.result.current.selectReviewSet(8));
+    await waitFor(() => expect(hook.result.current.detail.reviewSet).toEqual(REVIEW));
+    let request;
+    act(() => { request = hook.result.current.inspectContent(2); });
+    await waitFor(() => expect(apiMocks.getPreconstructionSourceContent).toHaveBeenCalled());
+    const signal = apiMocks.getPreconstructionSourceContent.mock.calls[0][3].signal;
+    hook.rerender({ projectId: 2 });
+    expect(signal.aborted).toBe(true);
+    await act(async () => {
+      pending.resolve({ snapshot: { id: 9 } });
+      await request;
+    });
+    expect(hook.result.current.content).toBeNull();
   });
 
   it("creates, selects, archives, and filters review sets", async () => {

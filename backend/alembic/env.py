@@ -41,6 +41,10 @@ from app.models.resource_planning import (  # noqa: F401
 from app.models.preconstruction import (  # noqa: F401
     PreconstructionAnalysisAttempt,
     PreconstructionAnalysisRun,
+    PreconstructionContentPage,
+    PreconstructionContentSegment,
+    PreconstructionContentSnapshot,
+    PreconstructionPreparationRun,
     PreconstructionReviewSet,
     PreconstructionReviewSource,
 )

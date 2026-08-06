@@ -26,6 +26,16 @@ const SOURCE = {
   role_label: "Specification",
   role_category: "requirement",
   extraction_status: "completed",
+  current_extraction_status: "completed",
+  preparation_status: "not_prepared",
+  preparation_run_id: null,
+  content_snapshot_id: null,
+  page_count: 0,
+  segment_count: 0,
+  warning_count: 0,
+  lineage_current: false,
+  stale_reason: null,
+  unavailable_reason: null,
   locked: false,
   route_target: { page: "projectDocuments", projectId: 4, documentId: 20 },
 };
@@ -56,6 +66,7 @@ function makeState(overrides = {}) {
         coverage_source_count: 0,
         context_source_count: 1,
         searchable_source_count: 1,
+        prepared_source_count: 0,
         provider: { profile: "disabled", available: false },
       },
       runs: [],
@@ -78,6 +89,16 @@ function makeState(overrides = {}) {
     requestRun: vi.fn().mockResolvedValue({}),
     cancelRun: vi.fn().mockResolvedValue({}),
     retryRun: vi.fn().mockResolvedValue({}),
+    prepareSource: vi.fn().mockResolvedValue({}),
+    cancelPreparation: vi.fn().mockResolvedValue({}),
+    retryPreparation: vi.fn().mockResolvedValue({}),
+    inspectContent: vi.fn().mockResolvedValue({}),
+    closeContent: vi.fn(),
+    content: null,
+    contentSourceId: null,
+    contentQuery: { page: null, segmentOffset: 0, segmentLimit: 25, search: "" },
+    isContentLoading: false,
+    contentError: null,
     searchCandidates: vi.fn().mockResolvedValue([]),
     ...overrides,
   };
@@ -190,6 +211,43 @@ describe("ProjectPreconstructionPage", () => {
     expect(state.retryRun).toHaveBeenCalledWith(11);
     await user.click(screen.getByRole("button", { name: "Refresh" }));
     expect(state.refreshDetail).toHaveBeenCalled();
+  });
+
+  it("shows extraction and preparation separately with manual lifecycle actions", async () => {
+    const user = userEvent.setup();
+    const view = render(<ProjectPreconstructionPage {...props()} />);
+    expect(screen.getByText("Extraction")).toBeInTheDocument();
+    expect(screen.getByText("Preparation")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Prepare Electrical Specifications.pdf" }));
+    expect(state.prepareSource).toHaveBeenCalledWith(3);
+
+    state = makeState({
+      detail: {
+        ...state.detail,
+        sources: [{ ...SOURCE, preparation_status: "processing", preparation_run_id: 18 }],
+      },
+    });
+    view.rerender(<ProjectPreconstructionPage {...props()} />);
+    await user.click(screen.getByRole("button", { name: "Cancel Preparation for Electrical Specifications.pdf" }));
+    expect(state.cancelPreparation).toHaveBeenCalledWith(18);
+
+    state = makeState({
+      detail: {
+        ...state.detail,
+        sources: [{
+          ...SOURCE,
+          preparation_status: "ready",
+          content_snapshot_id: 9,
+          page_count: 2,
+          segment_count: 4,
+          lineage_current: true,
+        }],
+      },
+    });
+    view.rerender(<ProjectPreconstructionPage {...props()} />);
+    await user.click(screen.getByRole("button", { name: "Inspect Content for Electrical Specifications.pdf" }));
+    expect(state.inspectContent).toHaveBeenCalledWith(3);
+    expect(screen.getByText("4")).toBeInTheDocument();
   });
 
   it("renders list/detail loading and local retry states without hiding navigation", async () => {

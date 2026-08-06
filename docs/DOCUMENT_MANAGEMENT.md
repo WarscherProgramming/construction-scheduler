@@ -420,6 +420,16 @@ page text, search, and explicit relationships remain authoritative and are not
 mutated. The lazy Preconstruction route adds no explorer-row, relationship,
 search, attachment, PDF-worker, or dashboard request fan-out.
 
-The additive migration chain now ends at `a8f4c2d6e190`, following the M17.6
-resource-planning head `f7c5d0b3e826`. Existing document, drawing, extraction,
+The additive migration chain now ends at `b9e5d3f7a201`, following the M18.1
+preconstruction head `a8f4c2d6e190`. Existing document, drawing, extraction,
 page-text, and relationship tables are unchanged.
+
+## M18.2 Immutable Prepared Content
+
+Preconstruction preparation reads current `DocumentPageText` only after
+checksum and extraction-lineage validation, then copies bounded plain text
+into immutable snapshot, page, and segment records. Documents, versions,
+storage keys, extraction state, page-search rows, and drawing revision pointers
+remain authoritative and unchanged. No preparation is automatic and no
+existing Review Source is backfilled. See
+[`AI_CONTENT_PREPARATION.md`](AI_CONTENT_PREPARATION.md).

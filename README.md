@@ -11,7 +11,7 @@ and Punch Lists) with their supporting documents.
 ![React 19](https://img.shields.io/badge/React-19-61dafb?logo=react&logoColor=white&labelColor=20232a)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.1x-009688?logo=fastapi&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169e1?logo=postgresql&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-1009%20passing-2ea44f)
+![Tests](https://img.shields.io/badge/tests-1025%20passing-2ea44f)
 ![Vite](https://img.shields.io/badge/Vite-8-646cff?logo=vite&logoColor=white)
 
 ![FieldFlow executive dashboard](docs/screenshots/dashboard.png)
@@ -155,9 +155,11 @@ question — *"what needs my attention today?"* — has a one-screen answer.
 - **Provider-neutral AI preconstruction foundation** with project-owned review
   sets, controlled document roles, checksum- and extraction-pinned immutable
   manifests, deterministic readiness, durable leased analysis attempts, and a
-  lazy review workspace. Production defaults to a disabled provider; M18.1
-  performs no scope extraction, omission detection, finding generation, or
-  live AI call.
+  lazy review workspace. Immutable content preparation adds durable runs,
+  checksum-bound snapshots, one-based pages, bounded citeable segments,
+  lineage/stale detection, and a plain-text source inspector. Production
+  defaults to disabled OCR and AI providers; M18.1-M18.2 perform no scope
+  extraction, omission detection, finding generation, or live AI call.
 - **Accessible design system**: tokens, reusable UI primitives (Button, Card,
   Sidebar, PageHeader, Icon, ConfirmDialog, Skeleton), skip links, focus
   management, `aria-current` navigation, and screen-reader-labeled loading
@@ -167,9 +169,9 @@ question — *"what needs my attention today?"* — has a one-screen answer.
 - **Client-side onboarding**: first-run detection seeds a realistic demo
   project through the public API with visible progress — the app is never
   empty.
-- **Automated testing: 1,009 tests** — 582 frontend across 89 files (Vitest +
-  React Testing Library, behavior- and accessibility-focused) and 427 backend
-  tests plus 415 separately reported subtests (pytest,
+- **Automated testing: 1,025 tests** — 590 frontend across 90 files (Vitest +
+  React Testing Library, behavior- and accessibility-focused) and 435 backend
+  tests plus 420 separately reported subtests (pytest,
   covering the scheduling engine, critical path, services, migrations, CORS,
   and TestClient API integration).
 
@@ -565,15 +567,15 @@ job. FieldFlow does not include a built-in worker or scheduler, and
 | Backend | FastAPI, SQLAlchemy, Alembic, Pydantic |
 | Database | PostgreSQL |
 | Auth | Memory-only access JWT + rotating opaque refresh sessions |
-| Testing | Vitest + React Testing Library (582), pytest (427) |
-| Hosting | Vercel (frontend) · Render (API + migrations + finite extraction cron) |
+| Testing | Vitest + React Testing Library (590), pytest (435) |
+| Hosting | Vercel (frontend) · Render (API + migrations + finite extraction and preparation crons) |
 
 ## Testing
 
-**1,009 primary automated tests passed.** Backend subtests are reported
+**1,025 primary automated tests passed.** Backend subtests are reported
 separately rather than added to that total.
 
-- **Frontend (582 across 89 files)** — Vitest + React Testing Library. Tests
+- **Frontend (590 across 90 files)** — Vitest + React Testing Library. Tests
   target behavior and accessibility: roles and names, keyboard flows
   (Enter/Escape editing,
   grid cursor navigation, focus traps), aggregate dashboard rendering,
@@ -617,9 +619,10 @@ separately rather than added to that total.
   utilization and conflict text, stale-response rejection, and scheduler and
   look-ahead integration. Preconstruction coverage adds API encoding, lazy
   routing, review/source/run lifecycle controls, deterministic readiness,
-  stale project and review rejection, keyboard source selection, and explicit
-  no-binary/no-dashboard request assertions.
-- **Backend (427, plus 415 separately reported subtests)** — pytest. Covers the deterministic
+  preparation actions, stale project/review/content rejection, bounded
+  plain-text inspection, keyboard source selection, focus restoration, and
+  explicit no-binary/no-dashboard request assertions.
+- **Backend (435, plus 420 separately reported subtests)** — pytest. Covers the deterministic
   workday scheduling engine (persistent anchors, all four dependency types,
   multiple predecessors, signed lead/lag, milestones, constraints,
   summary predecessors, hierarchy ordering, federal holidays), critical path
@@ -662,7 +665,8 @@ separately rather than added to that total.
   task scale cases. Preconstruction coverage adds the two-user ownership
   matrix, source/extraction snapshots, immutable manifests, provider contract
   validation, leased retries and recovery, migration lifecycle, safe response
-  fields, and 10/100/250-source probes.
+  fields, immutable page/segment preparation, lineage staleness, atomic
+  rollback, bounded retrieval, and 10/100/250-source probes.
 
 ```bash
 # frontend
@@ -762,8 +766,13 @@ commit production credentials.
 - **Backend — Render.** [`backend/render.yaml`](backend/render.yaml) defines
   the web service, runs Alembic migrations on deploy, sets the health check,
   selects production mode and secure cross-site cookies, pins the exact CORS
-  origin, selects private S3-compatible storage, and runs the finite document
-  extraction command every ten minutes.
+  origin, selects private S3-compatible storage, runs the finite document
+  extraction command every ten minutes, and runs the finite preconstruction
+  content-preparation command on an offset quarter-hour schedule. The
+  preparation cron carries no object-storage credential because it reads
+  committed page text only. The preconstruction analysis worker is
+  deliberately not scheduled while the AI provider is disabled — see
+  [`docs/AI_PRECONSTRUCTION_OPERATIONS.md`](docs/AI_PRECONSTRUCTION_OPERATIONS.md).
 - **Security release gate.** Follow
   [`docs/SECURITY.md`](docs/SECURITY.md) for secret preparation, migration and
   restart order, rollback, post-deployment cookie/CORS/header checks, and
@@ -776,9 +785,9 @@ commit production credentials.
   check object existence.
 - **Cleanup scheduling.** Run
   `python -m app.commands.process_attachment_cleanup` as a recurring external
-  scheduled job. The current Render blueprint declares the API and extraction
-  cron, but not attachment cleanup, so cleanup scheduling remains an explicit
-  deployment operation. See
+  scheduled job. The current Render blueprint declares the API, the extraction
+  cron, and the preconstruction preparation cron, but not attachment cleanup,
+  so cleanup scheduling remains an explicit deployment operation. See
   [`docs/DOCUMENT_OPERATIONS.md`](docs/DOCUMENT_OPERATIONS.md).
 
 ## Roadmap
@@ -873,6 +882,10 @@ commit production credentials.
   review sets, controlled source roles, deterministic readiness, immutable
   checksum/extraction manifests, durable leased attempts, disabled/fake
   provider contracts, and a lazy review workspace with no live AI calls
+- ✅ M18.2 immutable, extraction-lineage-pinned source snapshots with bounded
+  page segments, durable preparation leases/retries, content-aware manifests,
+  source preparation/readiness states, and safe plain-text inspection without
+  production OCR, scope assertions, findings, or live AI calls
 - ✅ Branded landing page and first-run demo seeding
 - ✅ Icon system, confirmation dialogs, notifications, loading skeletons
 - ✅ Scheduler showcase: WBS numbering, inline validation, critical path +
@@ -897,7 +910,7 @@ commit production credentials.
 - Direct multipart browser uploads and bucket-wide orphan scanning
 - A built-in background worker and cleanup-job administration interface
 - Project and Daily Log parent-deletion workflows
-- M18.2 construction scope taxonomy, evidence identity, and human-reviewed
+- M18.3 construction scope taxonomy, evidence identity, and human-reviewed
   scope assertions; omission findings and provider integrations require later
   separately reviewed milestones
 

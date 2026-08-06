@@ -4146,6 +4146,122 @@ button:disabled {
   text-align: left;
 }
 
+.preconstruction-source-state {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(92px, 1fr));
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.preconstruction-source-state > div {
+  min-width: 0;
+}
+
+.preconstruction-source-state dt,
+.preconstruction-content-lineage dt {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.preconstruction-source-state dd,
+.preconstruction-content-lineage dd {
+  margin: 2px 0 0;
+  overflow-wrap: anywhere;
+}
+
+.preconstruction-source-message {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.preconstruction-source-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  justify-content: flex-end;
+}
+
+.preconstruction-content-inspector {
+  display: grid;
+  gap: var(--space-5);
+  min-width: 0;
+}
+
+.preconstruction-content-inspector section {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.preconstruction-content-lineage {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.preconstruction-content-controls {
+  display: grid;
+  grid-template-columns: minmax(110px, 0.35fr) minmax(180px, 1fr) auto;
+  gap: var(--space-3);
+  align-items: end;
+}
+
+.preconstruction-content-controls label {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.preconstruction-content-segments {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding-left: var(--space-5);
+}
+
+.preconstruction-content-segments article {
+  min-width: 0;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: var(--space-3);
+}
+
+.preconstruction-content-segments header,
+.preconstruction-content-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.preconstruction-content-segments header span,
+.preconstruction-content-pagination span {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.preconstruction-content-segments pre {
+  max-width: 100%;
+  margin: var(--space-2) 0 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font: inherit;
+  line-height: 1.5;
+}
+
+.preconstruction-content-warning {
+  margin: 0;
+  padding-left: var(--space-3);
+  border-left: 3px solid var(--amber-strong);
+  color: var(--text);
+}
+
 .preconstruction-readiness {
   display: grid;
   gap: var(--space-3);
@@ -4241,6 +4357,21 @@ button:disabled {
   .preconstruction-source-search,
   .preconstruction-readiness dl {
     grid-template-columns: 1fr;
+  }
+
+  .preconstruction-source-state,
+  .preconstruction-content-lineage,
+  .preconstruction-content-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .preconstruction-source-actions {
+    justify-content: flex-start;
+  }
+
+  .preconstruction-source-actions .button,
+  .preconstruction-content-controls .button {
+    width: 100%;
   }
 
   .preconstruction-actions .button,

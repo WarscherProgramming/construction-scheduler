@@ -1,8 +1,8 @@
 # FieldFlow — Portfolio Copy
 
 Ready-to-use descriptions for resumes, portfolio sites, and LinkedIn.
-Keep the metrics in sync with the repo (M18.1 verified **1,009 primary tests: 582
-frontend across 89 files + 427 backend**, with 415 backend subtests reported
+Keep the metrics in sync with the repo (M18.2 verified **1,025 primary tests: 590
+frontend across 90 files + 435 backend**, with 420 backend subtests reported
 separately).
 
 ---
@@ -21,7 +21,7 @@ separately).
 > types, a project document explorer, construction drawing revision
 > management with a secure PDF viewer, explicit cross-record construction
 > relationships, project-scoped PDF content search, hardened rotating-session
-> authentication, a provider-neutral preconstruction review foundation, and 1,009 automated
+> authentication, immutable preconstruction content preparation, and 1,025 automated
 > tests.
 
 ### Resume bullets
@@ -101,12 +101,15 @@ separately).
 >   project-owned review sets, controlled requirement/coverage/context roles,
 >   checksum- and extraction-pinned immutable manifests, deterministic
 >   readiness, durable leased attempts, strict untrusted-result validation,
->   and an isolated lazy React workspace. Production remains disabled and no
->   scope extraction, omission finding, or live AI provider is claimed.
+>   and an isolated lazy React workspace; added deterministic preparation into
+>   immutable checksum-bound snapshots, one-based pages, bounded citeable
+>   segments, lineage-aware manifests, and a safe plain-text inspector.
+>   Production remains disabled and no scope extraction, omission finding, or
+>   live AI provider is claimed.
 > - Hardened authentication with memory-only access JWTs, rotating opaque
 >   refresh sessions, replay-family revocation, CSRF and exact-Origin
 >   enforcement, route-wide tenant isolation, and bounded abuse controls;
->   verified the complete platform with 1,009 automated tests (Vitest/RTL +
+>   verified the complete platform with 1,025 automated tests (Vitest/RTL +
 >   pytest).
 
 ### Portfolio-site paragraph
@@ -132,7 +135,8 @@ separately).
 > attachments across six construction workflows, a responsive project
 > document explorer, construction drawing revision management with secure
 > browser viewing, explicit user-created relationships across construction
-> records and drawing context, secure project PDF content search, and 1,009
+> records and drawing context, secure project PDF content search, immutable
+> preconstruction content preparation, and 1,025
 > automated tests
 > across the stack.
 
@@ -190,8 +194,8 @@ available while preserving recoverable cleanup work.
   attachment and document APIs, models, storage abstractions, hooks, and UI
 - 25 MiB per-file limit with PDF, image, text, Word, and Excel support
 - Private authenticated delivery with no public object keys or credentials
-- 582 frontend tests across 89 files and 427 backend tests, for 1,009 primary
-  tests passed; 407 backend subtests are tracked separately
+- 590 frontend tests across 90 files and 435 backend tests, for 1,025 primary
+  tests passed; 420 backend subtests are tracked separately
 - Lazy per-record panel mounting with no dashboard attachment preloading
 - Ten allowlisted relationship entity types with bounded candidate search and
   no dashboard or table-row relationship preloading
@@ -235,7 +239,7 @@ available while preserving recoverable cleanup work.
 > revision navigation
 >
 > Under the hood: React 19 + Vite, FastAPI + SQLAlchemy + PostgreSQL, hardened
-> rotating-session auth, an accessible component design system, and 1,009
+> rotating-session auth, an accessible component design system, and 1,025
 > automated tests.
 >
 > The demo seeds a full sample project in ~10 seconds — no signup friction:
@@ -255,7 +259,7 @@ available while preserving recoverable cleanup work.
 > immutable schedule baseline comparison, Data Date and progress tracking,
 > milestones, constraints, advanced dependencies, live look-ahead planning,
 > crew and equipment resource loading, explainable schedule health and
-> executive reporting, accessible design system, 1,009
+> executive reporting, accessible design system, 1,025
 > automated tests. Live demo
 > seeds a complete sample
 > project in seconds.
@@ -307,7 +311,8 @@ available while preserving recoverable cleanup work.
    polymorphic IDs cannot use native foreign keys to every parent table.
 9. **AI as an advisory boundary, not an authority.** Preconstruction consumes
    explicit version-pinned sources through a provider-neutral DTO and durable
-   attempt lifecycle. It cannot mutate source documents, schedules,
-   relationships, contracts, or procurement. M18.1 deliberately ships only
-   readiness and provider-contract infrastructure; evidence-backed findings
-   and mandatory review workflows remain future work.
+   attempt lifecycle. M18.2 snapshots deterministic extracted text into
+   immutable pages and bounded citeable segments without replacing project
+   search. It cannot mutate source documents, schedules, relationships,
+   contracts, or procurement; evidence-backed findings and mandatory review
+   workflows remain future work.

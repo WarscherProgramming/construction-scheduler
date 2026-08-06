@@ -324,6 +324,23 @@ class PreconstructionAIConfig:
     schema_version: str
 
 
+@dataclass(frozen=True)
+class PreconstructionPreparationConfig:
+    max_pages: int
+    max_segments: int
+    max_total_characters: int
+    max_segment_characters: int
+    batch_size: int
+    lease_seconds: int
+    max_attempts: int
+    retry_base_seconds: int
+    retry_max_seconds: int
+    content_page_size: int
+    content_max_response_characters: int
+    preparation_version: str
+    segmentation_policy_version: str
+
+
 _default_attachment_root = (
     Path(__file__).resolve().parents[2] / ".attachment_storage"
 )
@@ -647,6 +664,72 @@ if APP_ENV == "production" and (
     or PRECONSTRUCTION_AI_CONFIG.fake_provider_allowed
 ):
     raise RuntimeError("The fake preconstruction provider is forbidden in production")
+
+PRECONSTRUCTION_PREPARATION_CONFIG = PreconstructionPreparationConfig(
+    max_pages=positive_integer_environment_variable(
+        "PRECONSTRUCTION_PREPARATION_MAX_PAGES", 500, maximum=2_000
+    ),
+    max_segments=positive_integer_environment_variable(
+        "PRECONSTRUCTION_PREPARATION_MAX_SEGMENTS", 5_000, maximum=50_000
+    ),
+    max_total_characters=positive_integer_environment_variable(
+        "PRECONSTRUCTION_PREPARATION_MAX_TOTAL_CHARACTERS", 2_000_000,
+        maximum=10_000_000,
+    ),
+    max_segment_characters=positive_integer_environment_variable(
+        "PRECONSTRUCTION_PREPARATION_MAX_SEGMENT_CHARACTERS", 4_000,
+        maximum=8_000,
+    ),
+    batch_size=positive_integer_environment_variable(
+        "PRECONSTRUCTION_PREPARATION_BATCH_SIZE", 5, maximum=100
+    ),
+    lease_seconds=positive_integer_environment_variable(
+        "PRECONSTRUCTION_PREPARATION_LEASE_SECONDS", 300, maximum=86_400
+    ),
+    max_attempts=positive_integer_environment_variable(
+        "PRECONSTRUCTION_PREPARATION_MAX_ATTEMPTS", 3, maximum=10
+    ),
+    retry_base_seconds=positive_integer_environment_variable(
+        "PRECONSTRUCTION_PREPARATION_RETRY_BASE_SECONDS", 30, maximum=86_400
+    ),
+    retry_max_seconds=positive_integer_environment_variable(
+        "PRECONSTRUCTION_PREPARATION_RETRY_MAX_SECONDS", 3_600,
+        maximum=86_400,
+    ),
+    content_page_size=positive_integer_environment_variable(
+        "PRECONSTRUCTION_CONTENT_PAGE_SIZE", 25, maximum=100
+    ),
+    content_max_response_characters=positive_integer_environment_variable(
+        "PRECONSTRUCTION_CONTENT_MAX_RESPONSE_CHARACTERS", 100_000,
+        maximum=500_000,
+    ),
+    preparation_version="content-preparation-1",
+    segmentation_policy_version="page-paragraph-v1",
+)
+if (
+    PRECONSTRUCTION_PREPARATION_CONFIG.retry_base_seconds
+    > PRECONSTRUCTION_PREPARATION_CONFIG.retry_max_seconds
+):
+    raise RuntimeError(
+        "PRECONSTRUCTION_PREPARATION_RETRY_BASE_SECONDS cannot exceed "
+        "PRECONSTRUCTION_PREPARATION_RETRY_MAX_SECONDS"
+    )
+if (
+    PRECONSTRUCTION_PREPARATION_CONFIG.max_total_characters
+    > DOCUMENT_EXTRACTION_CONFIG.max_chars_per_document
+):
+    raise RuntimeError(
+        "PRECONSTRUCTION_PREPARATION_MAX_TOTAL_CHARACTERS cannot exceed "
+        "DOCUMENT_EXTRACTION_MAX_CHARS_PER_DOCUMENT"
+    )
+if (
+    PRECONSTRUCTION_PREPARATION_CONFIG.content_max_response_characters
+    < PRECONSTRUCTION_PREPARATION_CONFIG.max_segment_characters
+):
+    raise RuntimeError(
+        "PRECONSTRUCTION_CONTENT_MAX_RESPONSE_CHARACTERS cannot be smaller than "
+        "PRECONSTRUCTION_PREPARATION_MAX_SEGMENT_CHARACTERS"
+    )
 
 MAX_REQUEST_BODY_BYTES = positive_integer_environment_variable(
     "MAX_REQUEST_BODY_BYTES",

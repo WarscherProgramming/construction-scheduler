@@ -93,3 +93,46 @@ services:
         value: false
       - key: DOCUMENT_OCR_PROVIDER
         value: disabled
+
+  # Preconstruction content preparation reads committed DocumentPageText rows
+  # and writes immutable snapshot/page/segment records. It makes no storage,
+  # OCR, browser, or AI request, so it carries no object-storage credential.
+  # The schedule is offset from the extraction cron so preparation observes
+  # completed extractions and the two finite jobs never contend.
+  # The preconstruction ANALYSIS worker is deliberately NOT scheduled: the
+  # provider is disabled, HTTP run creation is blocked while it is disabled,
+  # and AI_PRECONSTRUCTION_OPERATIONS.md gates scheduling behind a future
+  # separately reviewed provider milestone.
+  - type: cron
+    name: construction-scheduler-preconstruction-preparation
+    runtime: python
+    schedule: "5,20,35,50 * * * *"
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m app.commands.process_preconstruction_preparation --max-jobs 10
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: false
+      - key: DATABASE_URL
+        sync: false
+      - key: SECRET_KEY
+        sync: false
+      - key: ALLOWED_ORIGINS
+        value: https://construction-scheduler-eight.vercel.app
+      - key: REFRESH_TOKEN_SECRET
+        sync: false
+      - key: COOKIE_SECURE
+        value: true
+      - key: COOKIE_SAMESITE
+        value: none
+      - key: DOCUMENT_OCR_ENABLED
+        value: false
+      - key: DOCUMENT_OCR_PROVIDER
+        value: disabled
+      - key: PRECONSTRUCTION_AI_ENABLED
+        value: false
+      - key: PRECONSTRUCTION_AI_PROVIDER
+        value: disabled
+      - key: PRECONSTRUCTION_AI_FAKE_PROVIDER_ALLOWED
+        value: false

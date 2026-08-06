@@ -3,17 +3,21 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   addPreconstructionReviewSource,
   archivePreconstructionReviewSet,
+  cancelPreconstructionPreparationRun,
   cancelPreconstructionRun,
   createPreconstructionReviewSet,
   createPreconstructionRun,
+  getPreconstructionSourceContent,
   getPreconstructionReadiness,
   getPreconstructionReviewSet,
   listPreconstructionReviewSets,
   listPreconstructionReviewSources,
   listPreconstructionRuns,
   listPreconstructionSourceCandidates,
+  preparePreconstructionSource,
   removePreconstructionReviewSource,
   retryPreconstructionRun,
+  retryPreconstructionPreparationRun,
   updatePreconstructionReviewSet,
   updatePreconstructionReviewSource,
 } from "../services/api";
@@ -45,12 +49,24 @@ function usePreconstruction({ projectId, onError }) {
   const [detailError, setDetailError] = useState(null);
   const [candidates, setCandidates] = useState([]);
   const [isCandidateLoading, setIsCandidateLoading] = useState(false);
+  const [content, setContent] = useState(null);
+  const [contentSourceId, setContentSourceId] = useState(null);
+  const [contentQuery, setContentQuery] = useState({
+    page: null,
+    segmentOffset: 0,
+    segmentLimit: 25,
+    search: "",
+  });
+  const [isContentLoading, setIsContentLoading] = useState(false);
+  const [contentError, setContentError] = useState(null);
   const projectRef = useRef(projectId);
   const selectedReviewSetRef = useRef(null);
   const onErrorRef = useRef(onError);
   const listRequestRef = useRef(null);
   const detailRequestRef = useRef(null);
   const candidateRequestRef = useRef(null);
+  const contentRequestRef = useRef(null);
+  const contentSourceRef = useRef(null);
 
   useEffect(() => {
     onErrorRef.current = onError;
@@ -61,6 +77,8 @@ function usePreconstruction({ projectId, onError }) {
     listRequestRef.current?.abort();
     detailRequestRef.current?.abort();
     candidateRequestRef.current?.abort();
+    contentRequestRef.current?.abort();
+    contentSourceRef.current = null;
     selectedReviewSetRef.current = null;
     const resetTimer = window.setTimeout(() => {
       setReviewSets([]);
@@ -69,6 +87,9 @@ function usePreconstruction({ projectId, onError }) {
       setCandidates([]);
       setListError(null);
       setDetailError(null);
+      setContent(null);
+      setContentSourceId(null);
+      setContentError(null);
     }, 0);
     return () => window.clearTimeout(resetTimer);
   }, [projectId]);
@@ -78,6 +99,7 @@ function usePreconstruction({ projectId, onError }) {
     listRequestRef.current?.abort();
     detailRequestRef.current?.abort();
     candidateRequestRef.current?.abort();
+    contentRequestRef.current?.abort();
   }, []);
 
   const loadReviewSets = useCallback(() => {
@@ -138,7 +160,10 @@ function usePreconstruction({ projectId, onError }) {
     return Promise.all([
       getPreconstructionReviewSet(projectId, reviewSetId, { signal: controller.signal }),
       listPreconstructionReviewSources(projectId, reviewSetId, { signal: controller.signal }),
-      getPreconstructionReadiness(projectId, reviewSetId, { signal: controller.signal }),
+      getPreconstructionReadiness(projectId, reviewSetId, {
+        analysisType: "content_contract_validation",
+        signal: controller.signal,
+      }),
       listPreconstructionRuns(projectId, reviewSetId, { limit: 100, signal: controller.signal }),
     ])
       .then(([reviewSet, sources, readiness, runs]) => {
@@ -251,7 +276,7 @@ function usePreconstruction({ projectId, onError }) {
   const requestRun = useCallback(() => runMutation(
     "Unable to request preconstruction analysis run",
     () => createPreconstructionRun(projectId, selectedReviewSetId, {
-      analysis_type: "provider_contract_validation",
+      analysis_type: "content_contract_validation",
     })
   ).then(async (run) => {
     if (run) await loadReviewSets();
@@ -267,6 +292,74 @@ function usePreconstruction({ projectId, onError }) {
     "Unable to retry preconstruction analysis run",
     () => retryPreconstructionRun(projectId, runId)
   ), [projectId, runMutation]);
+
+  const prepareSource = useCallback((sourceId) => runMutation(
+    "Unable to prepare preconstruction source content",
+    () => preparePreconstructionSource(projectId, selectedReviewSetId, sourceId)
+  ), [projectId, runMutation, selectedReviewSetId]);
+
+  const cancelPreparation = useCallback((runId) => runMutation(
+    "Unable to cancel source preparation",
+    () => cancelPreconstructionPreparationRun(projectId, runId)
+  ), [projectId, runMutation]);
+
+  const retryPreparation = useCallback((runId) => runMutation(
+    "Unable to retry source preparation",
+    () => retryPreconstructionPreparationRun(projectId, runId)
+  ), [projectId, runMutation]);
+
+  const loadContent = useCallback((sourceId = contentSourceId, options = contentQuery) => {
+    if (!projectId || !selectedReviewSetId || !sourceId) return Promise.resolve(null);
+    contentRequestRef.current?.abort();
+    const controller = new AbortController();
+    const identity = { projectId, reviewSetId: selectedReviewSetId, sourceId };
+    const query = {
+      page: options.page ?? null,
+      segmentOffset: options.segmentOffset ?? 0,
+      segmentLimit: options.segmentLimit ?? 25,
+      search: options.search ?? "",
+    };
+    contentRequestRef.current = controller;
+    contentSourceRef.current = sourceId;
+    setContentSourceId(sourceId);
+    setContentQuery(query);
+    setContent(null);
+    setContentError(null);
+    setIsContentLoading(true);
+    return getPreconstructionSourceContent(projectId, selectedReviewSetId, sourceId, {
+      ...query,
+      signal: controller.signal,
+    }).then((response) => {
+      if (
+        projectRef.current !== identity.projectId ||
+        selectedReviewSetRef.current !== identity.reviewSetId ||
+        contentSourceRef.current !== identity.sourceId ||
+        controller.signal.aborted
+      ) return null;
+      setContent(response);
+      return response;
+    }).catch((error) => {
+      if (isAbortError(error) || projectRef.current !== identity.projectId) return null;
+      setContentError(error);
+      onErrorRef.current?.("Unable to load prepared source content", error);
+      return null;
+    }).finally(() => {
+      if (contentRequestRef.current === controller) {
+        contentRequestRef.current = null;
+        setIsContentLoading(false);
+      }
+    });
+  }, [contentQuery, contentSourceId, projectId, selectedReviewSetId]);
+
+  const closeContent = useCallback(() => {
+    contentRequestRef.current?.abort();
+    contentRequestRef.current = null;
+    contentSourceRef.current = null;
+    setContentSourceId(null);
+    setContent(null);
+    setContentError(null);
+    setIsContentLoading(false);
+  }, []);
 
   const searchCandidates = useCallback((sourceType, search) => {
     candidateRequestRef.current?.abort();
@@ -296,9 +389,10 @@ function usePreconstruction({ projectId, onError }) {
   }, [projectId]);
 
   const selectReviewSet = useCallback((reviewSetId) => {
+    closeContent();
     selectedReviewSetRef.current = reviewSetId;
     setSelectedReviewSetId(reviewSetId);
-  }, []);
+  }, [closeContent]);
 
   return {
     filter,
@@ -314,6 +408,11 @@ function usePreconstruction({ projectId, onError }) {
     detailError,
     candidates,
     isCandidateLoading,
+    content,
+    contentSourceId,
+    contentQuery,
+    isContentLoading,
+    contentError,
     refreshList: loadReviewSets,
     refreshDetail: loadDetail,
     createReviewSet,
@@ -325,6 +424,12 @@ function usePreconstruction({ projectId, onError }) {
     requestRun,
     cancelRun,
     retryRun,
+    prepareSource,
+    cancelPreparation,
+    retryPreparation,
+    inspectContent: loadContent,
+    refreshContent: loadContent,
+    closeContent,
     searchCandidates,
   };
 }

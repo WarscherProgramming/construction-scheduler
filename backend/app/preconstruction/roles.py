@@ -38,4 +38,5 @@ REVIEW_PURPOSES = {
 ANALYSIS_TYPES = {
     "readiness_probe": "Readiness Probe",
     "provider_contract_validation": "Provider Contract Validation",
+    "content_contract_validation": "Content Contract Validation",
 }

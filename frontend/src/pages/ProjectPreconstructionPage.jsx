@@ -2,6 +2,7 @@ import { useState } from "react";
 
 import AddReviewSourceDialog from "../components/preconstruction/AddReviewSourceDialog";
 import ReviewSetDialog from "../components/preconstruction/ReviewSetDialog";
+import SourceContentInspector from "../components/preconstruction/SourceContentInspector";
 import EmptyState from "../components/EmptyState";
 import LoadingState from "../components/LoadingState";
 import StatusBadge from "../components/StatusBadge";
@@ -166,7 +167,53 @@ function ProjectPreconstructionPage({
                           <button type="button" onClick={() => openSource(source)}>{source.display_name}</button>
                           <span>{source.role_label} · {source.role_category}</span>
                         </div>
-                        <StatusBadge value={source.extraction_status} />
+                        <dl className="preconstruction-source-state">
+                          <div>
+                            <dt>Extraction</dt>
+                            <dd><StatusBadge value={source.current_extraction_status} /></dd>
+                          </div>
+                          <div>
+                            <dt>Preparation</dt>
+                            <dd><StatusBadge value={source.preparation_status} /></dd>
+                          </div>
+                          <div><dt>Pages</dt><dd>{source.page_count}</dd></div>
+                          <div><dt>Segments</dt><dd>{source.segment_count}</dd></div>
+                        </dl>
+                        {(source.stale_reason || source.unavailable_reason) && (
+                          <p className="preconstruction-source-message">
+                            {source.stale_reason || source.unavailable_reason}
+                          </p>
+                        )}
+                        <div className="preconstruction-source-actions">
+                          {source.content_snapshot_id && (
+                            <Button
+                              size="sm"
+                              onClick={() => preconstruction.inspectContent(source.id)}
+                            >Inspect Content for {source.display_name}</Button>
+                          )}
+                          {reviewSet.status !== "archived" && ["not_prepared", "stale", "unavailable"].includes(source.preparation_status) && (
+                            <Button
+                              size="sm"
+                              variant="primary"
+                              disabled={preconstruction.isSaving}
+                              onClick={() => ignoreFailure(preconstruction.prepareSource(source.id))}
+                            >{source.preparation_status === "stale" ? "Reprepare" : "Prepare"} {source.display_name}</Button>
+                          )}
+                          {reviewSet.status !== "archived" && ["pending", "processing"].includes(source.preparation_status) && source.preparation_run_id && (
+                            <Button
+                              size="sm"
+                              disabled={preconstruction.isSaving}
+                              onClick={() => ignoreFailure(preconstruction.cancelPreparation(source.preparation_run_id))}
+                            >Cancel Preparation for {source.display_name}</Button>
+                          )}
+                          {reviewSet.status !== "archived" && source.preparation_status === "failed" && source.preparation_run_id && (
+                            <Button
+                              size="sm"
+                              disabled={preconstruction.isSaving}
+                              onClick={() => ignoreFailure(preconstruction.retryPreparation(source.preparation_run_id))}
+                            >Retry Preparation for {source.display_name}</Button>
+                          )}
+                        </div>
                         {reviewSet.status === "draft" && !source.locked && (
                           <>
                             <label>
@@ -219,6 +266,7 @@ function ProjectPreconstructionPage({
                       <div><dt>Coverage</dt><dd>{detail.readiness.coverage_source_count}</dd></div>
                       <div><dt>Context</dt><dd>{detail.readiness.context_source_count}</dd></div>
                       <div><dt>Searchable</dt><dd>{detail.readiness.searchable_source_count}</dd></div>
+                      <div><dt>Prepared</dt><dd>{detail.readiness.prepared_source_count}</dd></div>
                     </dl>
                     {detail.readiness.blockers.length > 0 && <div><h4>Blockers</h4><ul>{detail.readiness.blockers.map((item) => <li key={item}>{item}</li>)}</ul></div>}
                     {detail.readiness.warnings.length > 0 && <div><h4>Warnings</h4><ul>{detail.readiness.warnings.map((item) => <li key={item}>{item}</li>)}</ul></div>}
@@ -228,7 +276,7 @@ function ProjectPreconstructionPage({
 
               <section className="preconstruction-panel" aria-labelledby="analysis-runs-title">
                 <div className="preconstruction-section-heading">
-                  <div><h3 id="analysis-runs-title">Analysis Runs</h3><p>Provider contract validation only</p></div>
+                  <div><h3 id="analysis-runs-title">Analysis Runs</h3><p>Bounded content contract validation only</p></div>
                   <Button
                     size="sm"
                     variant="primary"
@@ -277,6 +325,23 @@ function ProjectPreconstructionPage({
           onSearch={preconstruction.searchCandidates}
           onAdd={preconstruction.addSource}
           onClose={() => setSourceDialogOpen(false)}
+        />
+      )}
+      {preconstruction.contentSourceId && detail.sources.some(
+        (source) => source.id === preconstruction.contentSourceId
+      ) && (
+        <SourceContentInspector
+          source={detail.sources.find((source) => source.id === preconstruction.contentSourceId)}
+          content={preconstruction.content}
+          query={preconstruction.contentQuery}
+          loading={preconstruction.isContentLoading}
+          error={preconstruction.contentError}
+          onLoad={(options) => preconstruction.inspectContent(
+            preconstruction.contentSourceId,
+            options
+          )}
+          onClose={preconstruction.closeContent}
+          onNavigate={onNavigate}
         />
       )}
       <ConfirmDialog

@@ -1250,7 +1250,12 @@ export function listPreconstructionSourceCandidates(projectId, options = {}) {
 
 export function getPreconstructionReadiness(projectId, reviewSetId, options = {}) {
   return authenticatedRequest(
-    preconstructionPath(projectId, `/review-sets/${encodeURIComponent(String(reviewSetId))}/readiness`),
+    preconstructionPath(
+      projectId,
+      `/review-sets/${encodeURIComponent(String(reviewSetId))}/readiness${preconstructionQuery({
+        analysis_type: options.analysisType,
+      })}`
+    ),
     { signal: options.signal }
   );
 }
@@ -1293,5 +1298,57 @@ export function retryPreconstructionRun(projectId, runId, options = {}) {
   return authenticatedRequest(
     preconstructionPath(projectId, `/runs/${encodeURIComponent(String(runId))}/retry`),
     { method: "POST", signal: options.signal }
+  );
+}
+
+export function preparePreconstructionSource(projectId, reviewSetId, sourceId, options = {}) {
+  return authenticatedRequest(
+    preconstructionPath(
+      projectId,
+      `/review-sets/${encodeURIComponent(String(reviewSetId))}/sources/${encodeURIComponent(String(sourceId))}/prepare`
+    ),
+    { method: "POST", signal: options.signal }
+  );
+}
+
+export function getPreconstructionPreparationRun(projectId, runId, options = {}) {
+  return authenticatedRequest(
+    preconstructionPath(projectId, `/preparation-runs/${encodeURIComponent(String(runId))}`),
+    { signal: options.signal }
+  );
+}
+
+export function cancelPreconstructionPreparationRun(projectId, runId, options = {}) {
+  return authenticatedRequest(
+    preconstructionPath(projectId, `/preparation-runs/${encodeURIComponent(String(runId))}/cancel`),
+    { method: "POST", signal: options.signal }
+  );
+}
+
+export function retryPreconstructionPreparationRun(projectId, runId, options = {}) {
+  return authenticatedRequest(
+    preconstructionPath(projectId, `/preparation-runs/${encodeURIComponent(String(runId))}/retry`),
+    { method: "POST", signal: options.signal }
+  );
+}
+
+export function getPreconstructionSourceContent(
+  projectId,
+  reviewSetId,
+  sourceId,
+  options = {}
+) {
+  return authenticatedRequest(
+    preconstructionPath(
+      projectId,
+      `/review-sets/${encodeURIComponent(String(reviewSetId))}/sources/${encodeURIComponent(String(sourceId))}/content${preconstructionQuery({
+        snapshot_id: options.snapshotId,
+        page: options.page,
+        segment_offset: options.segmentOffset,
+        segment_limit: options.segmentLimit,
+        search: options.search,
+      })}`
+    ),
+    { signal: options.signal }
   );
 }

@@ -224,6 +224,15 @@ classification. Explorer deletion of a referenced document returns `409`;
 sets and sheets archive; revisions are retained; issued issues are voided.
 This prevents dangling revision references and silent historical loss.
 
+## M18.2 Prepared Drawing Content
+
+Preconstruction preparation pins the exact Drawing Revision, its backing
+Document checksum, extraction generation, Review Source sheet-number snapshot,
+and one-based page coordinates. Current extraction exposes no reliable
+geometry, so bounding boxes, visual symbols, tables, and drawing layout are not
+inferred. The prepared-content inspector links to the exact owned viewer target
+and does not load a PDF or PDF worker itself.
+
 ## Limitations
 
 Drawings remain PDF-only and cannot be assigned from existing explorer

@@ -12,7 +12,7 @@ from alembic.script import ScriptDirectory
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 PREVIOUS_REVISION = "f7c5d0b3e826"
-CURRENT_REVISION = "a8f4c2d6e190"
+CURRENT_REVISION = "b9e5d3f7a201"
 
 
 class PreconstructionMigrationTests(unittest.TestCase):
