@@ -1616,6 +1616,81 @@ export function createPreconstructionManualFinding(projectId, planId, finding, o
   );
 }
 
+export function listPreconstructionFindingFollowUps(projectId, findingId, options = {}) {
+  return authenticatedRequest(
+    preconstructionPath(
+      projectId,
+      `/findings/${encodeURIComponent(String(findingId))}/follow-ups`
+    ),
+    { signal: options.signal }
+  );
+}
+
+export function createPreconstructionFollowUp(projectId, findingId, payload, options = {}) {
+  return jsonRequest(
+    preconstructionPath(
+      projectId,
+      `/findings/${encodeURIComponent(String(findingId))}/follow-ups`
+    ),
+    "POST",
+    payload,
+    { signal: options.signal }
+  );
+}
+
+export function listPreconstructionPlanFollowUps(projectId, planId, options = {}) {
+  return authenticatedRequest(
+    preconstructionPath(
+      projectId,
+      `/comparison-plans/${encodeURIComponent(String(planId))}/follow-ups${preconstructionQuery({
+        action_type: options.actionType,
+        follow_up_status: options.followUpStatus,
+        target_type: options.targetType,
+        finding_id: options.findingId,
+        limit: options.limit,
+        offset: options.offset,
+      })}`
+    ),
+    { signal: options.signal }
+  );
+}
+
+export function updatePreconstructionFollowUp(projectId, followUpId, payload, options = {}) {
+  return jsonRequest(
+    preconstructionPath(
+      projectId,
+      `/follow-ups/${encodeURIComponent(String(followUpId))}`
+    ),
+    "PUT",
+    payload,
+    { signal: options.signal }
+  );
+}
+
+export function linkPreconstructionFollowUp(projectId, followUpId, payload, options = {}) {
+  return jsonRequest(
+    preconstructionPath(
+      projectId,
+      `/follow-ups/${encodeURIComponent(String(followUpId))}/link`
+    ),
+    "POST",
+    payload,
+    { signal: options.signal }
+  );
+}
+
+export function closePreconstructionFollowUp(projectId, followUpId, payload, options = {}) {
+  return jsonRequest(
+    preconstructionPath(
+      projectId,
+      `/follow-ups/${encodeURIComponent(String(followUpId))}/close`
+    ),
+    "POST",
+    payload,
+    { signal: options.signal }
+  );
+}
+
 export function supersedePreconstructionAssertion(
   projectId,
   assertionId,

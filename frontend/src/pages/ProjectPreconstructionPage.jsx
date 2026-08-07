@@ -2,8 +2,11 @@ import { useState } from "react";
 
 import AddReviewSourceDialog from "../components/preconstruction/AddReviewSourceDialog";
 import {
+  CloseFollowUpDialog,
   CreateComparisonPlanDialog,
   CreateManualFindingDialog,
+  LinkFollowUpDialog,
+  RaiseFollowUpDialog,
   ReviewFindingDialog,
 } from "../components/preconstruction/ComparisonDialogs";
 import CreateManualAssertionDialog from "../components/preconstruction/CreateManualAssertionDialog";
@@ -61,6 +64,9 @@ function ProjectPreconstructionPage({
   const [planDialogOpen, setPlanDialogOpen] = useState(false);
   const [reviewFinding, setReviewFinding] = useState(null);
   const [manualFindingPlanId, setManualFindingPlanId] = useState(null);
+  const [raiseFollowUp, setRaiseFollowUp] = useState(null);
+  const [linkFollowUp, setLinkFollowUp] = useState(null);
+  const [closeFollowUpTarget, setCloseFollowUpTarget] = useState(null);
   const { detail } = preconstruction;
   const reviewSet = detail.reviewSet;
 
@@ -377,6 +383,15 @@ function ProjectPreconstructionPage({
                 onCreateManual={setManualFindingPlanId}
                 onNavigate={onNavigate}
                 onInspect={preconstruction.inspectContent}
+                followUps={preconstruction.followUps}
+                isFollowUpLoading={preconstruction.isFollowUpLoading}
+                onLoadFollowUps={preconstruction.loadFollowUps}
+                onCloseFollowUps={preconstruction.closeFollowUps}
+                onRaiseFollowUp={(finding, actionValue) =>
+                  setRaiseFollowUp({ finding, actionValue })
+                }
+                onLinkFollowUp={setLinkFollowUp}
+                onCloseFollowUp={setCloseFollowUpTarget}
               />
             </>
           ) : null}
@@ -475,6 +490,57 @@ function ProjectPreconstructionPage({
           onClose={() => setManualFindingPlanId(null)}
           onSubmit={(values) =>
             preconstruction.createManualFinding(manualFindingPlanId, values)
+          }
+        />
+      )}
+      {raiseFollowUp && (
+        <RaiseFollowUpDialog
+          finding={raiseFollowUp.finding}
+          projectId={projectId}
+          action={preconstruction.followUps.actions.find(
+            (item) => item.value === raiseFollowUp.actionValue
+          )}
+          draft={preconstruction.followUps.drafts.find(
+            (item) => item.action_type === raiseFollowUp.actionValue
+          )}
+          busy={preconstruction.isSaving}
+          onClose={() => setRaiseFollowUp(null)}
+          onNavigate={onNavigate}
+          onSubmit={(values) =>
+            preconstruction.createFollowUp(raiseFollowUp.finding.id, values)
+          }
+        />
+      )}
+      {linkFollowUp && (
+        <LinkFollowUpDialog
+          followUp={linkFollowUp}
+          targetType={
+            preconstruction.followUps.actions.find(
+              (item) => item.value === linkFollowUp.action_type
+            )?.target_type
+          }
+          busy={preconstruction.isSaving}
+          onClose={() => setLinkFollowUp(null)}
+          onSubmit={(values) =>
+            preconstruction.linkFollowUp(
+              linkFollowUp.finding_id,
+              linkFollowUp.id,
+              values
+            )
+          }
+        />
+      )}
+      {closeFollowUpTarget && (
+        <CloseFollowUpDialog
+          followUp={closeFollowUpTarget}
+          busy={preconstruction.isSaving}
+          onClose={() => setCloseFollowUpTarget(null)}
+          onSubmit={(values) =>
+            preconstruction.closeFollowUp(
+              closeFollowUpTarget.finding_id,
+              closeFollowUpTarget.id,
+              values
+            )
           }
         />
       )}

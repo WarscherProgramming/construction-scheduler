@@ -166,8 +166,11 @@ question — *"what needs my attention today?"* — has a one-screen answer.
   evidence-backed findings for potential coverage gaps, conflicts,
   exclusions, and revision impacts, with named comparison plans, immutable
   finding sets, append-only human review, and an intentional-exclusion
-  decision. M18.1-M18.4 perform no autonomous acceptance, no automatic RFI,
-  Change Order, procurement, or relationship creation, and no live AI call.
+  decision. A reviewer who accepts a finding can then raise a human-initiated
+  follow-up that keeps the evidence trail and links the RFI, Change Order, or
+  Submittal they created in that record's own workflow. M18.1-M18.5 perform no
+  autonomous acceptance, no automatic RFI, Change Order, procurement, or
+  relationship creation, and no live AI call.
 - **Accessible design system**: tokens, reusable UI primitives (Button, Card,
   Sidebar, PageHeader, Icon, ConfirmDialog, Skeleton), skip links, focus
   management, `aria-current` navigation, and screen-reader-labeled loading
@@ -177,8 +180,8 @@ question — *"what needs my attention today?"* — has a one-screen answer.
 - **Client-side onboarding**: first-run detection seeds a realistic demo
   project through the public API with visible progress — the app is never
   empty.
-- **Automated testing: 1,124 tests** — 627 frontend across 92 files (Vitest +
-  React Testing Library, behavior- and accessibility-focused) and 497 backend
+- **Automated testing: 1,168 tests** — 646 frontend across 93 files (Vitest +
+  React Testing Library, behavior- and accessibility-focused) and 522 backend
   tests plus 420 separately reported subtests (pytest,
   covering the scheduling engine, critical path, services, migrations, CORS,
   and TestClient API integration).
@@ -575,15 +578,15 @@ job. FieldFlow does not include a built-in worker or scheduler, and
 | Backend | FastAPI, SQLAlchemy, Alembic, Pydantic |
 | Database | PostgreSQL |
 | Auth | Memory-only access JWT + rotating opaque refresh sessions |
-| Testing | Vitest + React Testing Library (627), pytest (497) |
+| Testing | Vitest + React Testing Library (646), pytest (522) |
 | Hosting | Vercel (frontend) · Render (API + migrations + finite extraction and preparation crons) |
 
 ## Testing
 
-**1,124 primary automated tests passed.** Backend subtests are reported
+**1,168 primary automated tests passed.** Backend subtests are reported
 separately rather than added to that total.
 
-- **Frontend (590 across 90 files)** — Vitest + React Testing Library. Tests
+- **Frontend (646 across 93 files)** — Vitest + React Testing Library. Tests
   target behavior and accessibility: roles and names, keyboard flows
   (Enter/Escape editing,
   grid cursor navigation, focus traps), aggregate dashboard rendering,
@@ -630,7 +633,7 @@ separately rather than added to that total.
   preparation actions, stale project/review/content rejection, bounded
   plain-text inspection, keyboard source selection, focus restoration, and
   explicit no-binary/no-dashboard request assertions.
-- **Backend (435, plus 420 separately reported subtests)** — pytest. Covers the deterministic
+- **Backend (522, plus 723 separately reported subtests)** — pytest. Covers the deterministic
   workday scheduling engine (persistent anchors, all four dependency types,
   multiple predecessors, signed lead/lag, milestones, constraints,
   summary predecessors, hierarchy ordering, federal holidays), critical path
@@ -900,6 +903,19 @@ commit production credentials.
   append-only review history, human-authored assertions, and a bounded
   assertion review workspace without omission findings, cross-document
   comparison, or live AI calls
+- ✅ M18.4 deterministic cross-document scope comparison and evidence-backed
+  findings with twelve controlled comparison types, fourteen finding types with
+  documented default severities, named match classes with explicit reason
+  codes, named comparison plans locked by their first run, immutable finding
+  sets, append-only review with a first-class intentional-exclusion decision,
+  human-authored findings, and a bounded comparison workspace without automatic
+  record creation or live AI calls
+- ✅ M18.5 human-initiated follow-up actions from accepted findings with six
+  controlled action types, a deterministic evidence-citing draft, a pinned
+  acceptance review, linking to records created in their own workflows through
+  the existing entity resolver, terminal completion or cancellation, and a
+  bounded follow-up panel that creates no RFI, Change Order, Submittal,
+  relationship, or notification
 - ✅ Branded landing page and first-run demo seeding
 - ✅ Icon system, confirmation dialogs, notifications, loading skeletons
 - ✅ Scheduler showcase: WBS numbering, inline validation, critical path +
@@ -924,9 +940,10 @@ commit production credentials.
 - Direct multipart browser uploads and bucket-wide orphan scanning
 - A built-in background worker and cleanup-job administration interface
 - Project and Daily Log parent-deletion workflows
-- M18.5 follow-up workflows from accepted findings; automatic RFI, Change
-  Order, procurement, and relationship creation, and live provider
-  integrations, require later separately reviewed milestones
+- Automatic RFI, Change Order, procurement, and relationship creation, contract
+  and purchase-order approval, autonomous acceptance, assignees and due dates on
+  follow-ups, subcontractor notification, and live provider integrations, all of
+  which require later separately reviewed milestones
 
 ## Author
 

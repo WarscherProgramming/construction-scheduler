@@ -362,6 +362,14 @@ The production build keeps the preconstruction route lazy at 80.60 kB raw /
 313.24 kB raw / 92.47 kB gzip and CSS is 114.77 kB raw / 19.29 kB gzip. No
 other route chunk gains weight and the PDF worker is unchanged.
 
+## Follow-up actions
+
+M18.5 lets a human raise a follow-up from an accepted finding, keep the
+evidence trail, and link the record that answers it. It still creates nothing
+automatically: the human creates the RFI, Change Order, or Submittal in that
+record's own workflow and links it back. See
+[`AI_SCOPE_FOLLOW_UP.md`](AI_SCOPE_FOLLOW_UP.md).
+
 ## Deferred
 
 Automatic RFI or Change Order creation, automatic procurement actions,

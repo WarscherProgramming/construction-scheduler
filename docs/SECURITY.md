@@ -853,6 +853,54 @@ profile, safe failure and warning codes, versions, latency, and a manifest hash
 prefix. They must never carry finding summaries or rationales, assertion text,
 evidence excerpts, reviewer notes, prompts, or provider response bodies.
 
+## M18.5 Follow-Up Action Security Boundary
+
+A follow-up is advisory bookkeeping that records human intent and a link. No
+route in M18.5 creates, approves, or mutates an RFI, Change Order, Submittal,
+Task, relationship, procurement record, or notification, and a route-inventory
+test asserts there is no promote, auto-create, or bulk endpoint anywhere. A
+snapshot test captures eighteen authoritative tables — including
+`entity_relationships`, `rfis`, `change_orders`, `submittals`, `tasks`, and the
+whole M18.2-M18.4 immutable chain — before and after a full follow-up lifecycle
+and asserts byte-equality.
+
+Ownership is enforced through `get_owned_project` before any follow-up,
+finding, comparison-plan, or review-set identifier is resolved, and a two-user
+matrix covers all six routes. A follow-up reached through another user's own
+project returns 404 rather than leaking its existence.
+
+A follow-up may only be raised from a finding whose current status is
+`accepted`. `intentional_exclusion` is refused because that status is the
+recorded decision not to act. Archived plans and review sets are read-only.
+
+Link targets are resolved through the existing
+`resolve_relationship_entity(..., require_selectable=True)`, the same code that
+guards the relationship graph, so a foreign, missing, or unavailable record can
+never be linked and `target_type` must match the action's declared record type.
+The reference is deliberately untyped, so a follow-up never restricts or
+cascades into an authoritative workflow table.
+
+Mutation schemas forbid unknown fields and reject client-supplied project
+identity, finding identity, lifecycle status, the pinned acceptance review,
+target identity at creation, draft template version, actor identity, and every
+lifecycle timestamp. The server computes all of them.
+
+Drafts are assembled server-side from stored finding data, cite evidence by
+reference rather than copying it, and are plain text with no Markdown, HTML, or
+links. Import-time validation rejects the vocabulary module if breach,
+liability, entitlement, damages, negligence, default, termination, or
+warranty-claim language appears in any label, template, or notice, and tests
+assert the same over generated drafts.
+
+A partial unique index on `(finding_id, action_type)` restricted to active
+statuses means a double submission cannot produce two RFIs for one finding.
+Reversing a finding's acceptance never rewrites an existing follow-up; the
+reversal is surfaced as a derived flag and new follow-ups are refused.
+
+Logs may carry follow-up, finding, plan, and target identifiers, action type,
+status, and counts. They must never carry draft titles or bodies, closure
+notes, reviewer notes, assertion text, or evidence excerpts.
+
 ## M18.3 Scope Assertion Security Boundary
 
 Scope assertions are advisory records that cannot mutate any authoritative

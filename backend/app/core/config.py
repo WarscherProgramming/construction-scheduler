@@ -368,6 +368,19 @@ class PreconstructionComparisonConfig:
 
 
 @dataclass(frozen=True)
+class PreconstructionFollowUpConfig:
+    max_follow_ups_per_finding: int
+    max_follow_ups_per_plan: int
+    max_draft_title_characters: int
+    max_draft_body_characters: int
+    max_closure_note_characters: int
+    follow_up_page_size: int
+    follow_up_max_page_size: int
+    schema_version: str
+    template_version: str
+
+
+@dataclass(frozen=True)
 class PreconstructionPreparationConfig:
     max_pages: int
     max_segments: int
@@ -922,6 +935,48 @@ if (
     raise RuntimeError(
         "PRECONSTRUCTION_COMPARISON_MAX_FINDINGS cannot exceed "
         "PRECONSTRUCTION_COMPARISON_MAX_CANDIDATES"
+    )
+
+PRECONSTRUCTION_FOLLOW_UP_CONFIG = PreconstructionFollowUpConfig(
+    max_follow_ups_per_finding=positive_integer_environment_variable(
+        "PRECONSTRUCTION_FOLLOW_UP_MAX_PER_FINDING", 6, maximum=20
+    ),
+    max_follow_ups_per_plan=positive_integer_environment_variable(
+        "PRECONSTRUCTION_FOLLOW_UP_MAX_PER_PLAN", 500, maximum=5_000
+    ),
+    max_draft_title_characters=positive_integer_environment_variable(
+        "PRECONSTRUCTION_FOLLOW_UP_MAX_TITLE_CHARACTERS", 200, maximum=200
+    ),
+    max_draft_body_characters=positive_integer_environment_variable(
+        "PRECONSTRUCTION_FOLLOW_UP_MAX_BODY_CHARACTERS", 4_000, maximum=4_000
+    ),
+    max_closure_note_characters=positive_integer_environment_variable(
+        "PRECONSTRUCTION_FOLLOW_UP_MAX_CLOSURE_NOTE_CHARACTERS", 2_000, maximum=2_000
+    ),
+    follow_up_page_size=positive_integer_environment_variable(
+        "PRECONSTRUCTION_FOLLOW_UP_PAGE_SIZE", 25, maximum=100
+    ),
+    follow_up_max_page_size=positive_integer_environment_variable(
+        "PRECONSTRUCTION_FOLLOW_UP_MAX_PAGE_SIZE", 100, maximum=200
+    ),
+    schema_version="scope-follow-up-1",
+    template_version="scope-follow-up-draft-1",
+)
+if (
+    PRECONSTRUCTION_FOLLOW_UP_CONFIG.follow_up_page_size
+    > PRECONSTRUCTION_FOLLOW_UP_CONFIG.follow_up_max_page_size
+):
+    raise RuntimeError(
+        "PRECONSTRUCTION_FOLLOW_UP_PAGE_SIZE cannot exceed "
+        "PRECONSTRUCTION_FOLLOW_UP_MAX_PAGE_SIZE"
+    )
+if (
+    PRECONSTRUCTION_FOLLOW_UP_CONFIG.max_follow_ups_per_finding
+    > PRECONSTRUCTION_FOLLOW_UP_CONFIG.max_follow_ups_per_plan
+):
+    raise RuntimeError(
+        "PRECONSTRUCTION_FOLLOW_UP_MAX_PER_FINDING cannot exceed "
+        "PRECONSTRUCTION_FOLLOW_UP_MAX_PER_PLAN"
     )
 
 MAX_REQUEST_BODY_BYTES = positive_integer_environment_variable(

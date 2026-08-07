@@ -317,6 +317,10 @@ chunk gains weight and the PDF worker is unchanged.
 
 ## Deferred
 
+M18.5 adds human-initiated follow-up actions raised from accepted findings; see
+[`AI_SCOPE_FOLLOW_UP.md`](AI_SCOPE_FOLLOW_UP.md). Accepted assertions are never
+rewritten by a follow-up.
+
 M18.4 adds deterministic cross-document comparison and evidence-backed
 findings on top of accepted assertions; see
 [`AI_SCOPE_COMPARISON.md`](AI_SCOPE_COMPARISON.md). Automatic RFI or Change

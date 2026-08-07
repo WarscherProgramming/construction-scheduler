@@ -40,6 +40,11 @@ const apiMocks = vi.hoisted(() => ({
   retryPreconstructionRun: vi.fn(),
   updatePreconstructionReviewSet: vi.fn(),
   updatePreconstructionReviewSource: vi.fn(),
+  listPreconstructionFindingFollowUps: vi.fn(),
+  createPreconstructionFollowUp: vi.fn(),
+  updatePreconstructionFollowUp: vi.fn(),
+  linkPreconstructionFollowUp: vi.fn(),
+  closePreconstructionFollowUp: vi.fn(),
 }));
 
 const EMPTY_ASSERTION_PAGE = {
@@ -119,6 +124,98 @@ describe("usePreconstruction", () => {
     apiMocks.cancelPreconstructionRun.mockResolvedValue({ id: 4, status: "cancelled" });
     apiMocks.retryPreconstructionRun.mockResolvedValue({ id: 4, status: "pending" });
     apiMocks.listPreconstructionSourceCandidates.mockResolvedValue({ items: [{ document_id: 3 }] });
+    apiMocks.listPreconstructionFindingFollowUps.mockResolvedValue({
+      items: [],
+      total: 0,
+      actions: [{ value: "rfi", label: "Request for Information", target_type: "rfi" }],
+      available_actions: [
+        { value: "rfi", label: "Request for Information", target_type: "rfi" },
+      ],
+      drafts: [{ action_type: "rfi", draft_title: "Draft", draft_body: "Body" }],
+      finding_status: "accepted",
+      eligible: true,
+    });
+    apiMocks.createPreconstructionFollowUp.mockResolvedValue({ follow_up: { id: 12 } });
+    apiMocks.linkPreconstructionFollowUp.mockResolvedValue({ follow_up: { id: 12 } });
+    apiMocks.closePreconstructionFollowUp.mockResolvedValue({ follow_up: { id: 12 } });
+    apiMocks.reviewPreconstructionFinding.mockResolvedValue({ finding: { id: 91 } });
+  });
+
+  it("loads follow-ups for one finding at a time and clears them on close", async () => {
+    const { result } = renderHook(() => usePreconstruction({ projectId: 1 }));
+    await waitFor(() => expect(result.current.isListLoading).toBe(false));
+
+    expect(result.current.followUps.items).toEqual([]);
+    expect(apiMocks.listPreconstructionFindingFollowUps).not.toHaveBeenCalled();
+
+    await act(async () => { await result.current.loadFollowUps(91); });
+    expect(apiMocks.listPreconstructionFindingFollowUps).toHaveBeenCalledWith(
+      1,
+      91,
+      expect.objectContaining({ signal: expect.any(AbortSignal) })
+    );
+    expect(result.current.followUps.findingId).toBe(91);
+    expect(result.current.followUps.eligible).toBe(true);
+
+    act(() => result.current.closeFollowUps());
+    expect(result.current.followUps.findingId).toBeNull();
+    expect(result.current.followUps.availableActions).toEqual([]);
+  });
+
+  it("refreshes an open follow-up panel after the finding review changes", async () => {
+    const { result } = renderHook(() => usePreconstruction({ projectId: 1 }));
+    await waitFor(() => expect(result.current.isListLoading).toBe(false));
+    act(() => result.current.selectReviewSet(8));
+    await waitFor(() => expect(result.current.detail.reviewSet).toEqual(REVIEW));
+
+    await act(async () => { await result.current.loadFollowUps(91); });
+    apiMocks.listPreconstructionFindingFollowUps.mockClear();
+
+    await act(async () => {
+      await result.current.reviewFinding(91, { decision: "needs_review" });
+    });
+    expect(apiMocks.listPreconstructionFindingFollowUps).toHaveBeenCalledWith(
+      1,
+      91,
+      expect.anything()
+    );
+
+    // A review on a different finding leaves the open panel alone.
+    apiMocks.listPreconstructionFindingFollowUps.mockClear();
+    await act(async () => {
+      await result.current.reviewFinding(92, { decision: "accepted" });
+    });
+    expect(apiMocks.listPreconstructionFindingFollowUps).not.toHaveBeenCalled();
+  });
+
+  it("raises, links, and closes follow-ups without touching workflow endpoints", async () => {
+    const { result } = renderHook(() => usePreconstruction({ projectId: 1 }));
+    await waitFor(() => expect(result.current.isListLoading).toBe(false));
+
+    await act(async () => {
+      await result.current.createFollowUp(91, { action_type: "rfi" });
+    });
+    expect(apiMocks.createPreconstructionFollowUp).toHaveBeenCalledWith(1, 91, {
+      action_type: "rfi",
+    });
+
+    await act(async () => {
+      await result.current.linkFollowUp(91, 12, { target_type: "rfi", target_id: 7 });
+    });
+    expect(apiMocks.linkPreconstructionFollowUp).toHaveBeenCalledWith(1, 12, {
+      target_type: "rfi",
+      target_id: 7,
+    });
+
+    await act(async () => {
+      await result.current.closeFollowUp(91, 12, { status: "completed" });
+    });
+    expect(apiMocks.closePreconstructionFollowUp).toHaveBeenCalledWith(1, 12, {
+      status: "completed",
+    });
+
+    // Each mutation refreshes only the affected finding's panel.
+    expect(apiMocks.listPreconstructionFindingFollowUps).toHaveBeenCalledTimes(3);
   });
 
   it("loads one bounded list in Strict Mode and loads selected details", async () => {

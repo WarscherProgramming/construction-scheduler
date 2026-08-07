@@ -375,6 +375,124 @@ function FindingDetailPanel({ finding, onInspect }) {
 }
 
 
+const EMPTY_FOLLOW_UPS = {
+  findingId: null,
+  items: [],
+  actions: [],
+  availableActions: [],
+  drafts: [],
+  eligible: false,
+  findingStatus: null,
+};
+
+
+function FollowUpItem({ item, busy, onLink, onClose }) {
+  return (
+    <li className="follow-up-item">
+      <p className="follow-up-item-title">{item.draft_title}</p>
+      <p className="follow-up-item-meta">
+        {item.action_label} · Status: {item.status_label}
+        {item.target
+          ? ` · Linked to ${item.target.identifier}`
+          : item.can_link
+            ? " · Not linked yet"
+            : ""}
+      </p>
+      {item.finding_no_longer_accepted && (
+        <p className="follow-up-item-warning" role="status">
+          The finding is now {item.finding_status_label}. This follow-up is kept
+          as history and is not rewritten.
+        </p>
+      )}
+      {/* Plain text only: never rendered as HTML or Markdown. */}
+      <p className="follow-up-item-draft">{item.draft_body}</p>
+      {item.closure_note && (
+        <p className="follow-up-item-meta">Closing note: {item.closure_note}</p>
+      )}
+      <div className="follow-up-item-actions">
+        {item.can_link && (
+          <Button
+            onClick={() => onLink(item)}
+            disabled={busy}
+          >
+            Link existing record to {item.action_label}
+          </Button>
+        )}
+        {item.can_close && (
+          <Button onClick={() => onClose(item)} disabled={busy}>
+            Close {item.action_label} follow-up
+          </Button>
+        )}
+      </div>
+    </li>
+  );
+}
+
+
+function FollowUpPanel({
+  finding,
+  followUps,
+  isLoading,
+  busy,
+  onRaise,
+  onLink,
+  onClose,
+}) {
+  const forThisFinding = followUps.findingId === finding.id;
+  const items = forThisFinding ? followUps.items : [];
+  const available = forThisFinding ? followUps.availableActions : [];
+  const eligible = forThisFinding && followUps.eligible;
+
+  return (
+    <section className="follow-up-panel" aria-label={`Follow-up actions: ${finding.title}`}>
+      <h5>Follow-up actions</h5>
+      <p className="preconstruction-hint">
+        A follow-up records that you decided to act on this accepted finding.
+        FieldFlow creates no RFI, Change Order, or Submittal for you: create the
+        record in its own workflow, then link it here.
+      </p>
+
+      {isLoading && <p role="status">Loading follow-up actions…</p>}
+
+      {!isLoading && !eligible && items.length === 0 && (
+        <p className="preconstruction-empty">
+          Only an accepted finding can raise a follow-up. This finding is{" "}
+          {finding.status_label}.
+        </p>
+      )}
+
+      {items.length > 0 && (
+        <ul className="follow-up-list" aria-label="Raised follow-up actions">
+          {items.map((item) => (
+            <FollowUpItem
+              key={item.id}
+              item={item}
+              busy={busy}
+              onLink={onLink}
+              onClose={onClose}
+            />
+          ))}
+        </ul>
+      )}
+
+      {eligible && available.length > 0 && (
+        <div className="follow-up-actions">
+          {available.map((action) => (
+            <Button
+              key={action.value}
+              onClick={() => onRaise(finding, action.value)}
+              disabled={busy}
+            >
+              Raise {action.label}
+            </Button>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+
 function FindingListItem({ finding, selected, onSelect, onReview }) {
   const requirement = finding.assertions.find(
     (item) => item.side === "requirement" || item.side === "prior_revision"
@@ -435,6 +553,13 @@ function ScopeComparisonWorkspace({
   onReview,
   onCreateManual,
   onInspect,
+  followUps = EMPTY_FOLLOW_UPS,
+  isFollowUpLoading = false,
+  onLoadFollowUps,
+  onCloseFollowUps,
+  onRaiseFollowUp,
+  onLinkFollowUp,
+  onCloseFollowUp,
 }) {
   const [expandedId, setExpandedId] = useState(null);
   const { plans, selectedPlanId, readiness, findings } = comparison;
@@ -523,16 +648,30 @@ function ScopeComparisonWorkspace({
                       <FindingListItem
                         finding={finding}
                         selected={expandedId === finding.id}
-                        onSelect={(item) =>
-                          setExpandedId(expandedId === item.id ? null : item.id)
-                        }
+                        onSelect={(item) => {
+                          const next = expandedId === item.id ? null : item.id;
+                          setExpandedId(next);
+                          if (next) onLoadFollowUps?.(item.id);
+                          else onCloseFollowUps?.();
+                        }}
                         onReview={onReview}
                       />
                       {expandedId === finding.id && (
-                        <FindingDetailPanel
-                          finding={finding}
-                          onInspect={onInspect}
-                        />
+                        <>
+                          <FindingDetailPanel
+                            finding={finding}
+                            onInspect={onInspect}
+                          />
+                          <FollowUpPanel
+                            finding={finding}
+                            followUps={followUps}
+                            isLoading={isFollowUpLoading}
+                            busy={isSaving}
+                            onRaise={onRaiseFollowUp}
+                            onLink={onLinkFollowUp}
+                            onClose={onCloseFollowUp}
+                          />
+                        </>
                       )}
                     </div>
                   ))}

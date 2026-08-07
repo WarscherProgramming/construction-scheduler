@@ -4,8 +4,13 @@ import {
   addPreconstructionReviewSource,
   archivePreconstructionComparisonPlan,
   archivePreconstructionReviewSet,
+  closePreconstructionFollowUp,
   createPreconstructionComparisonPlan,
+  createPreconstructionFollowUp,
   createPreconstructionManualFinding,
+  linkPreconstructionFollowUp,
+  listPreconstructionFindingFollowUps,
+  updatePreconstructionFollowUp,
   getPreconstructionComparisonReadiness,
   listPreconstructionComparisonPlans,
   listPreconstructionFindingSets,
@@ -82,6 +87,17 @@ const EMPTY_COMPARISON = {
 };
 
 
+const EMPTY_FOLLOW_UPS = {
+  findingId: null,
+  items: [],
+  actions: [],
+  availableActions: [],
+  drafts: [],
+  eligible: false,
+  findingStatus: null,
+};
+
+
 const DEFAULT_FINDING_QUERY = {
   findingSetId: undefined,
   findingType: undefined,
@@ -140,11 +156,18 @@ function usePreconstruction({ projectId, onError }) {
   const [findingQuery, setFindingQuery] = useState(DEFAULT_FINDING_QUERY);
   const [isComparisonLoading, setIsComparisonLoading] = useState(false);
   const [comparisonError, setComparisonError] = useState(null);
+  const [followUps, setFollowUps] = useState(EMPTY_FOLLOW_UPS);
+  const [isFollowUpLoading, setIsFollowUpLoading] = useState(false);
   const assertionRequestRef = useRef(null);
   const assertionQueryRef = useRef(DEFAULT_ASSERTION_QUERY);
   const comparisonRequestRef = useRef(null);
   const findingQueryRef = useRef(DEFAULT_FINDING_QUERY);
   const selectedPlanRef = useRef(null);
+  const followUpRequestRef = useRef(null);
+  const followUpFindingRef = useRef(null);
+  // Set below once loadFollowUps exists, so the finding-review callback can
+  // refresh an open panel without depending on declaration order.
+  const loadFollowUpsRef = useRef(null);
   const taxonomyRequestRef = useRef(null);
   const projectRef = useRef(projectId);
   const selectedReviewSetRef = useRef(null);
@@ -167,10 +190,12 @@ function usePreconstruction({ projectId, onError }) {
     contentRequestRef.current?.abort();
     assertionRequestRef.current?.abort();
     comparisonRequestRef.current?.abort();
+    followUpRequestRef.current?.abort();
     taxonomyRequestRef.current?.abort();
     contentSourceRef.current = null;
     selectedReviewSetRef.current = null;
     selectedPlanRef.current = null;
+    followUpFindingRef.current = null;
     assertionQueryRef.current = DEFAULT_ASSERTION_QUERY;
     findingQueryRef.current = DEFAULT_FINDING_QUERY;
     const resetTimer = window.setTimeout(() => {
@@ -190,6 +215,7 @@ function usePreconstruction({ projectId, onError }) {
       setComparison(EMPTY_COMPARISON);
       setFindingQuery(DEFAULT_FINDING_QUERY);
       setComparisonError(null);
+      setFollowUps(EMPTY_FOLLOW_UPS);
     }, 0);
     return () => window.clearTimeout(resetTimer);
   }, [projectId]);
@@ -202,6 +228,7 @@ function usePreconstruction({ projectId, onError }) {
     contentRequestRef.current?.abort();
     assertionRequestRef.current?.abort();
     comparisonRequestRef.current?.abort();
+    followUpRequestRef.current?.abort();
     taxonomyRequestRef.current?.abort();
   }, []);
 
@@ -757,7 +784,14 @@ function usePreconstruction({ projectId, onError }) {
     () => reviewPreconstructionFinding(projectId, findingId, decision),
     "none"
   ).then(async (result) => {
-    if (result) await loadComparison();
+    if (result) {
+      await loadComparison();
+      // A review decision changes follow-up eligibility, so an open panel is
+      // refreshed rather than left showing a stale offer.
+      if (followUpFindingRef.current === findingId) {
+        await loadFollowUpsRef.current?.(findingId);
+      }
+    }
     return result;
   }), [loadComparison, projectId, runMutation]);
 
@@ -770,8 +804,107 @@ function usePreconstruction({ projectId, onError }) {
     return result;
   }), [loadComparison, projectId, runMutation]);
 
+  // --- follow-up actions --------------------------------------------------
+  // Deliberately scoped to one finding at a time. There is no bulk raise and
+  // no route here that creates an RFI, Change Order, or Submittal: the human
+  // creates those in their own workflow and links the result back.
+  const loadFollowUps = useCallback((findingId) => {
+    if (!projectId || !findingId) {
+      followUpFindingRef.current = null;
+      setFollowUps(EMPTY_FOLLOW_UPS);
+      return Promise.resolve(null);
+    }
+    followUpRequestRef.current?.abort();
+    const controller = new AbortController();
+    const identity = { projectId, findingId };
+    followUpRequestRef.current = controller;
+    followUpFindingRef.current = findingId;
+    setIsFollowUpLoading(true);
+
+    return listPreconstructionFindingFollowUps(projectId, findingId, {
+      signal: controller.signal,
+    })
+      .then((payload) => {
+        if (
+          projectRef.current !== identity.projectId ||
+          followUpFindingRef.current !== identity.findingId ||
+          controller.signal.aborted
+        ) return null;
+        const next = {
+          findingId,
+          items: payload.items,
+          actions: payload.actions,
+          availableActions: payload.available_actions,
+          drafts: payload.drafts,
+          eligible: payload.eligible,
+          findingStatus: payload.finding_status,
+        };
+        setFollowUps(next);
+        return next;
+      })
+      .catch((error) => {
+        if (isAbortError(error) || projectRef.current !== identity.projectId) return null;
+        onErrorRef.current?.("Unable to load follow-up actions", error);
+        return null;
+      })
+      .finally(() => {
+        if (followUpRequestRef.current === controller) {
+          followUpRequestRef.current = null;
+          setIsFollowUpLoading(false);
+        }
+      });
+  }, [projectId]);
+
+  useEffect(() => {
+    loadFollowUpsRef.current = loadFollowUps;
+  }, [loadFollowUps]);
+
+  const closeFollowUps = useCallback(() => {
+    followUpRequestRef.current?.abort();
+    followUpRequestRef.current = null;
+    followUpFindingRef.current = null;
+    setFollowUps(EMPTY_FOLLOW_UPS);
+  }, []);
+
+  const createFollowUp = useCallback((findingId, values) => runMutation(
+    "Unable to raise the follow-up",
+    () => createPreconstructionFollowUp(projectId, findingId, values),
+    "none"
+  ).then(async (result) => {
+    if (result) await loadFollowUps(findingId);
+    return result;
+  }), [loadFollowUps, projectId, runMutation]);
+
+  const updateFollowUp = useCallback((findingId, followUpId, values) => runMutation(
+    "Unable to update the follow-up draft",
+    () => updatePreconstructionFollowUp(projectId, followUpId, values),
+    "none"
+  ).then(async (result) => {
+    if (result) await loadFollowUps(findingId);
+    return result;
+  }), [loadFollowUps, projectId, runMutation]);
+
+  const linkFollowUp = useCallback((findingId, followUpId, values) => runMutation(
+    "Unable to link the follow-up record",
+    () => linkPreconstructionFollowUp(projectId, followUpId, values),
+    "none"
+  ).then(async (result) => {
+    if (result) await loadFollowUps(findingId);
+    return result;
+  }), [loadFollowUps, projectId, runMutation]);
+
+  const closeFollowUp = useCallback((findingId, followUpId, values) => runMutation(
+    "Unable to close the follow-up",
+    () => closePreconstructionFollowUp(projectId, followUpId, values),
+    "none"
+  ).then(async (result) => {
+    if (result) await loadFollowUps(findingId);
+    return result;
+  }), [loadFollowUps, projectId, runMutation]);
+
   const selectReviewSet = useCallback((reviewSetId) => {
     closeContent();
+    closeFollowUps();
     comparisonRequestRef.current?.abort();
     selectedPlanRef.current = null;
     findingQueryRef.current = DEFAULT_FINDING_QUERY;
@@ -785,13 +918,21 @@ function usePreconstruction({ projectId, onError }) {
     setAssertions(EMPTY_ASSERTIONS);
     setAssertionQuery(DEFAULT_ASSERTION_QUERY);
     setAssertionError(null);
-  }, [closeContent]);
+  }, [closeContent, closeFollowUps]);
 
   return {
     comparison,
     findingQuery,
     isComparisonLoading,
     comparisonError,
+    followUps,
+    isFollowUpLoading,
+    loadFollowUps,
+    closeFollowUps,
+    createFollowUp,
+    updateFollowUp,
+    linkFollowUp,
+    closeFollowUp,
     loadComparison,
     selectComparisonPlan,
     createComparisonPlan,

@@ -11,18 +11,21 @@ from app.api.dependencies import (
     get_owned_project,
     get_preconstruction_comparison_config,
     get_preconstruction_config,
+    get_preconstruction_follow_up_config,
     get_preconstruction_preparation_config,
     get_preconstruction_scope_config,
 )
 from app.core.config import (
     PreconstructionAIConfig,
     PreconstructionComparisonConfig,
+    PreconstructionFollowUpConfig,
     PreconstructionPreparationConfig,
     PreconstructionScopeConfig,
 )
 from app.core.security import get_current_user
 from app.models.project import Project
 from app.preconstruction.factory import build_preconstruction_provider
+from app.preconstruction.follow_up import FOLLOW_UP_ELIGIBLE_FINDING_STATUSES
 from app.preconstruction.provider import PreconstructionAIProvider
 from app.preconstruction.roles import DOCUMENT_ROLES, DOCUMENT_ROLE_BY_VALUE
 from app.preconstruction.taxonomy import (
@@ -134,6 +137,31 @@ from app.services.preconstruction_comparison import (
     review_finding,
     run_deterministic_comparison,
     update_comparison_plan,
+)
+from app.schemas.preconstruction_follow_up import (
+    FindingFollowUpListResponse,
+    FollowUpActionValue,
+    FollowUpCloseRequest,
+    FollowUpCreate,
+    FollowUpDetailResponse,
+    FollowUpLinkRequest,
+    FollowUpListResponse,
+    FollowUpStatusValue,
+    FollowUpTargetTypeValue,
+    FollowUpUpdate,
+)
+from app.services.preconstruction_follow_up import (
+    build_follow_up_draft,
+    close_follow_up,
+    create_follow_up,
+    follow_up_action_catalog,
+    follow_up_payloads,
+    follow_up_summary_counts,
+    get_follow_up,
+    link_follow_up,
+    list_follow_ups,
+    list_follow_ups_for_finding,
+    update_follow_up,
 )
 from app.services.preconstruction_scope import (
     assertion_payloads,
@@ -1068,6 +1096,181 @@ def create_manual_finding_route(
         "finding": finding_payloads(db, project_id, [finding])[0],
         "reviews": list_finding_reviews(db, project_id, finding.id),
     }
+
+
+# ---------------------------------------------------------------------------
+# M18.5 follow-up actions
+#
+# A follow-up records that a person decided to act on an accepted finding and,
+# once they have acted through that record's own existing workflow, which
+# record answers it. No route here creates, approves, or mutates an RFI, a
+# Change Order, a Submittal, a relationship, or any other authoritative record.
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "/findings/{finding_id}/follow-ups",
+    response_model=FindingFollowUpListResponse,
+)
+def list_finding_follow_ups_route(
+    project_id: int,
+    finding_id: PositiveId,
+    db: Session = Depends(get_db),
+    project: Project = Depends(get_owned_project),
+    config: PreconstructionFollowUpConfig = Depends(get_preconstruction_follow_up_config),
+):
+    finding = get_finding(db, project_id, finding_id)
+    plan = get_comparison_plan(db, project_id, finding.comparison_plan_id)
+    items = list_follow_ups_for_finding(db, project_id, finding.id)
+    eligible = finding.status in FOLLOW_UP_ELIGIBLE_FINDING_STATUSES
+    taken = {item.action_type for item in items if item.status in ("planned", "linked")}
+    catalog = follow_up_action_catalog()
+    available = [item for item in catalog if item["value"] not in taken]
+    return {
+        "items": follow_up_payloads(db, project_id, items),
+        "total": len(items),
+        "actions": catalog,
+        "available_actions": available if eligible else [],
+        "drafts": (
+            [
+                build_follow_up_draft(
+                    db, project_id, finding, plan, item["value"], config
+                )
+                for item in available
+            ]
+            if eligible
+            else []
+        ),
+        "finding_status": finding.status,
+        "eligible": eligible,
+    }
+
+
+@router.post(
+    "/findings/{finding_id}/follow-ups",
+    response_model=FollowUpDetailResponse,
+    status_code=201,
+)
+def create_finding_follow_up_route(
+    project_id: int,
+    finding_id: PositiveId,
+    payload: FollowUpCreate,
+    db: Session = Depends(get_db),
+    project: Project = Depends(get_owned_project),
+    current_user: dict = Depends(get_current_user),
+    config: PreconstructionFollowUpConfig = Depends(get_preconstruction_follow_up_config),
+):
+    finding = get_finding(db, project_id, finding_id)
+    plan = get_comparison_plan(db, project_id, finding.comparison_plan_id)
+    review_set = get_review_set(db, project_id, finding.review_set_id)
+    follow_up = create_follow_up(
+        db, plan, review_set, finding, current_user["id"], payload, config
+    )
+    return {"follow_up": follow_up_payloads(db, project_id, [follow_up])[0]}
+
+
+@router.get(
+    "/comparison-plans/{comparison_plan_id}/follow-ups",
+    response_model=FollowUpListResponse,
+)
+def list_plan_follow_ups_route(
+    project_id: int,
+    comparison_plan_id: PositiveId,
+    action_type: FollowUpActionValue | None = None,
+    follow_up_status: FollowUpStatusValue | None = None,
+    target_type: FollowUpTargetTypeValue | None = None,
+    finding_id: Annotated[int | None, Query(ge=1, le=2_147_483_647)] = None,
+    limit: Annotated[int | None, Query(ge=1, le=200)] = None,
+    offset: Annotated[int, Query(ge=0, le=2_147_483_647)] = 0,
+    db: Session = Depends(get_db),
+    project: Project = Depends(get_owned_project),
+    config: PreconstructionFollowUpConfig = Depends(get_preconstruction_follow_up_config),
+):
+    get_comparison_plan(db, project_id, comparison_plan_id)
+    page_size = min(limit or config.follow_up_page_size, config.follow_up_max_page_size)
+    items, total = list_follow_ups(
+        db,
+        project_id,
+        comparison_plan_id,
+        limit=page_size,
+        offset=offset,
+        action_type=action_type,
+        follow_up_status=follow_up_status,
+        target_type=target_type,
+        finding_id=finding_id,
+    )
+    return {
+        "items": follow_up_payloads(db, project_id, items),
+        "total": total,
+        "limit": page_size,
+        "offset": offset,
+        "actions": follow_up_action_catalog(),
+        "summary": follow_up_summary_counts(db, project_id, comparison_plan_id),
+    }
+
+
+@router.put("/follow-ups/{follow_up_id}", response_model=FollowUpDetailResponse)
+def update_follow_up_route(
+    project_id: int,
+    follow_up_id: PositiveId,
+    payload: FollowUpUpdate,
+    db: Session = Depends(get_db),
+    project: Project = Depends(get_owned_project),
+    config: PreconstructionFollowUpConfig = Depends(get_preconstruction_follow_up_config),
+):
+    follow_up = get_follow_up(db, project_id, follow_up_id)
+    plan = get_comparison_plan(db, project_id, follow_up.comparison_plan_id)
+    review_set = get_review_set(db, project_id, follow_up.review_set_id)
+    update_follow_up(db, plan, review_set, follow_up, payload, config)
+    return {"follow_up": follow_up_payloads(db, project_id, [follow_up])[0]}
+
+
+@router.post(
+    "/follow-ups/{follow_up_id}/link",
+    response_model=FollowUpDetailResponse,
+    status_code=201,
+)
+def link_follow_up_route(
+    project_id: int,
+    follow_up_id: PositiveId,
+    payload: FollowUpLinkRequest,
+    db: Session = Depends(get_db),
+    project: Project = Depends(get_owned_project),
+    current_user: dict = Depends(get_current_user),
+):
+    """Attach a record the human already created in its own workflow.
+
+    The target is resolved through the existing relationship entity resolver,
+    so ownership and availability are enforced by the same code that guards the
+    relationship graph. No record is created here.
+    """
+    follow_up = get_follow_up(db, project_id, follow_up_id)
+    plan = get_comparison_plan(db, project_id, follow_up.comparison_plan_id)
+    review_set = get_review_set(db, project_id, follow_up.review_set_id)
+    link_follow_up(db, plan, review_set, follow_up, current_user["id"], payload)
+    return {"follow_up": follow_up_payloads(db, project_id, [follow_up])[0]}
+
+
+@router.post(
+    "/follow-ups/{follow_up_id}/close",
+    response_model=FollowUpDetailResponse,
+    status_code=201,
+)
+def close_follow_up_route(
+    project_id: int,
+    follow_up_id: PositiveId,
+    payload: FollowUpCloseRequest,
+    db: Session = Depends(get_db),
+    project: Project = Depends(get_owned_project),
+    current_user: dict = Depends(get_current_user),
+    config: PreconstructionFollowUpConfig = Depends(get_preconstruction_follow_up_config),
+):
+    follow_up = get_follow_up(db, project_id, follow_up_id)
+    plan = get_comparison_plan(db, project_id, follow_up.comparison_plan_id)
+    review_set = get_review_set(db, project_id, follow_up.review_set_id)
+    close_follow_up(
+        db, plan, review_set, follow_up, current_user["id"], payload, config
+    )
+    return {"follow_up": follow_up_payloads(db, project_id, [follow_up])[0]}
 
 
 @router.get(

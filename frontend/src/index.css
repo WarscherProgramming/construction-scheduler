@@ -4814,6 +4814,74 @@ button:disabled {
   overflow-wrap: anywhere;
 }
 
+/* --- M18.5 follow-up actions --- */
+
+.follow-up-panel {
+  margin-top: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md, 8px);
+  background: var(--surface-subtle, transparent);
+}
+
+.follow-up-panel h5 {
+  margin: 0 0 var(--space-2);
+}
+
+.follow-up-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: var(--space-3) 0;
+  padding: 0;
+  list-style: none;
+}
+
+.follow-up-item {
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md, 8px);
+}
+
+.follow-up-item-title {
+  margin: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.follow-up-item-meta {
+  margin: var(--space-1) 0 0;
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+  overflow-wrap: anywhere;
+}
+
+.follow-up-item-warning {
+  margin: var(--space-2) 0 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.follow-up-item-draft {
+  margin: var(--space-2) 0;
+  padding: var(--space-2);
+  border-left: 3px solid var(--border);
+  font-family: var(--font-mono, monospace);
+  font-size: 0.8125rem;
+  /* Draft text is plain text: preserve the author's line structure without
+     interpreting any markup. */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.follow-up-item-actions,
+.follow-up-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
 .finding-pagination {
   display: flex;
   flex-wrap: wrap;

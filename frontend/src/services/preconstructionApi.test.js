@@ -3,6 +3,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   addPreconstructionReviewSource,
   archivePreconstructionReviewSet,
+  closePreconstructionFollowUp,
+  createPreconstructionFollowUp,
+  linkPreconstructionFollowUp,
+  listPreconstructionFindingFollowUps,
+  listPreconstructionPlanFollowUps,
+  updatePreconstructionFollowUp,
   cancelPreconstructionPreparationRun,
   archivePreconstructionComparisonPlan,
   cancelPreconstructionRun,
@@ -314,6 +320,80 @@ describe("preconstruction API", () => {
       "deterministic_match_score", "excerpt",
     ]) {
       expect(manualBody).not.toHaveProperty(forbidden);
+    }
+  });
+
+  it("builds bounded follow-up reads with allowlisted filters", async () => {
+    const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(jsonResponse()));
+    vi.stubGlobal("fetch", fetchMock);
+    configureAuthentication({ token: "precon-token" });
+
+    await listPreconstructionFindingFollowUps(4, 91);
+    expect(fetchMock.mock.calls[0][0]).toContain("/findings/91/follow-ups");
+
+    await listPreconstructionPlanFollowUps(4, 5, {
+      actionType: "rfi",
+      followUpStatus: "planned",
+      targetType: "rfi",
+      findingId: 91,
+      limit: 25,
+      offset: 25,
+    });
+    const listUrl = fetchMock.mock.calls[1][0];
+    expect(listUrl).toContain("/comparison-plans/5/follow-ups");
+    expect(listUrl).toContain("action_type=rfi");
+    expect(listUrl).toContain("follow_up_status=planned");
+    expect(listUrl).toContain("target_type=rfi");
+    expect(listUrl).toContain("finding_id=91");
+    expect(listUrl).toContain("offset=25");
+
+    // Follow-up reads never request a workflow record collection or a binary.
+    for (const call of fetchMock.mock.calls) {
+      expect(call[0]).toContain("/preconstruction/");
+      expect(call[0]).not.toContain("download");
+      expect(call[0]).not.toContain("/relationships");
+    }
+  });
+
+  it("sends follow-up mutations to preconstruction routes only", async () => {
+    const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(jsonResponse({ id: 1 }, 201)));
+    vi.stubGlobal("fetch", fetchMock);
+    configureAuthentication({ token: "precon-token" });
+
+    await createPreconstructionFollowUp(4, 91, {
+      action_type: "rfi",
+      draft_title: "Missing coverage",
+      draft_body: "Please clarify.",
+    });
+    await updatePreconstructionFollowUp(4, 12, { draft_title: "Edited" });
+    await linkPreconstructionFollowUp(4, 12, { target_type: "rfi", target_id: 7 });
+    await closePreconstructionFollowUp(4, 12, {
+      status: "completed",
+      closure_note: null,
+    });
+
+    expect(fetchMock.mock.calls.map((call) => call[1].method)).toEqual([
+      "POST", "PUT", "POST", "POST",
+    ]);
+    expect(fetchMock.mock.calls[0][0]).toContain("/findings/91/follow-ups");
+    expect(fetchMock.mock.calls[1][0]).toContain("/follow-ups/12");
+    expect(fetchMock.mock.calls[2][0]).toContain("/follow-ups/12/link");
+    expect(fetchMock.mock.calls[3][0]).toContain("/follow-ups/12/close");
+
+    // No follow-up mutation ever posts to an authoritative workflow endpoint.
+    for (const call of fetchMock.mock.calls) {
+      expect(call[0]).toContain("/preconstruction/");
+      for (const authoritative of ["/rfis", "/change-orders", "/submittals", "/relationships"]) {
+        expect(call[0]).not.toContain(authoritative);
+      }
+    }
+
+    const createBody = JSON.parse(fetchMock.mock.calls[0][1].body);
+    for (const forbidden of [
+      "status", "project_id", "finding_review_id", "target_type", "target_id",
+      "created_by", "draft_template_version",
+    ]) {
+      expect(createBody).not.toHaveProperty(forbidden);
     }
   });
 });

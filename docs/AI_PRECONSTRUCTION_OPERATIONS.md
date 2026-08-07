@@ -197,6 +197,31 @@ Findings are advisory. Accepting one records a human decision and creates no
 RFI, Change Order, procurement action, relationship, or notification. Apply
 migration `d5a3f9c14e28` before enabling comparison.
 
+## Follow-Up Actions
+
+M18.5 adds human-initiated follow-up actions raised from accepted findings. It
+introduces **no analysis type, no worker, no cron entry, no provider call, and
+no credential**. Every transition is a synchronous, bounded, authenticated
+human action, so `render.yaml` is unchanged.
+
+Apply migration `e2b8d4f7c103` before enabling follow-ups. It creates one table
+and performs no backfill, so no existing accepted finding gains a follow-up.
+
+Monitor safe follow-up categories only: follow-up, finding, comparison-plan,
+and target identifiers, action type, status counts by category, and refusal
+counts for the eligibility gate, the duplicate-action index, and the per-finding
+and per-plan limits. Never log draft titles or bodies, closure notes, reviewer
+notes, assertion text, or evidence excerpts.
+
+A follow-up is advisory bookkeeping. Raising, linking, or closing one creates
+no RFI, Change Order, Submittal, relationship, procurement action, or
+notification, and approves nothing. If a reviewer reverses a finding's
+acceptance, existing follow-ups are retained and flagged rather than rewritten;
+do not delete them to "clean up" — that history is the audit trail.
+
+Follow-up limits use the `PRECONSTRUCTION_FOLLOW_UP_*` variables in
+`backend/.env.example`.
+
 ## Release Gate
 
 Before enabling any future live adapter, require project-isolation tests,

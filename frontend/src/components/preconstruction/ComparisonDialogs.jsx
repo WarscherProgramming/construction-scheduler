@@ -318,6 +318,347 @@ export function ReviewFindingDialog({ finding, busy, onClose, onSubmit }) {
 }
 
 
+// The workflow page each action's record is created in. Nothing here posts to
+// those endpoints; the button only navigates, so the human uses the one
+// canonical creation form for that record type. No draft text is carried in
+// the route: the hash router serializes identifiers only, and draft wording
+// does not belong in a URL.
+const ACTION_WORKFLOW_PAGES = {
+  rfi: ["rfis", "RFIs"],
+  change_order: ["changeOrders", "Change Orders"],
+  submittal: ["submittals", "Submittals"],
+};
+
+
+export function RaiseFollowUpDialog({
+  finding,
+  projectId,
+  action,
+  draft,
+  busy,
+  onClose,
+  onSubmit,
+  onNavigate,
+}) {
+  const [title, setTitle] = useState(draft?.draft_title || "");
+  const [body, setBody] = useState(draft?.draft_body || "");
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const errorId = useId();
+
+  const pending = busy || submitting;
+  const workflow = ACTION_WORKFLOW_PAGES[action?.value];
+
+  const submit = async (event) => {
+    event.preventDefault();
+    if (pending) return;
+    if (!title.trim()) {
+      setError("A draft title is required.");
+      return;
+    }
+    if (!body.trim()) {
+      setError("A draft body is required.");
+      return;
+    }
+    setError("");
+    setSubmitting(true);
+    try {
+      await onSubmit({
+        action_type: action.value,
+        draft_title: title.trim(),
+        draft_body: body,
+      });
+      onClose();
+    } catch (requestError) {
+      setError(requestError.message || "Unable to raise this follow-up.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <DrawingDialog
+      title={`Raise ${action?.label || "follow-up"}`}
+      eyebrow="Follow-up action"
+      onClose={onClose}
+      busy={pending}
+      actions={
+        <>
+          <Button disabled={pending} onClick={onClose}>Cancel</Button>
+          <Button
+            variant="primary"
+            disabled={pending}
+            type="submit"
+            form="follow-up-raise-form"
+          >
+            {pending ? "Saving…" : "Save follow-up"}
+          </Button>
+        </>
+      }
+    >
+      <form id="follow-up-raise-form" className="preconstruction-dialog-form" onSubmit={submit}>
+        <dl className="assertion-review-identity">
+          <div>
+            <dt>Finding</dt>
+            <dd>{finding.title}</dd>
+          </div>
+          <div>
+            <dt>Type and severity</dt>
+            <dd>{finding.finding_type_label} · {finding.severity_label}</dd>
+          </div>
+          <div>
+            <dt>Action</dt>
+            <dd>{action?.label}</dd>
+          </div>
+        </dl>
+
+        <label className="field-group">
+          <span>Draft title</span>
+          <input
+            value={title}
+            maxLength="200"
+            onChange={(event) => setTitle(event.target.value)}
+          />
+        </label>
+
+        <label className="field-group">
+          <span>Draft text</span>
+          <textarea
+            value={body}
+            rows="12"
+            maxLength="4000"
+            aria-describedby={error ? errorId : undefined}
+            onChange={(event) => setBody(event.target.value)}
+          />
+        </label>
+
+        <p className="preconstruction-hint">
+          {action?.guidance} Saving this records your intent only. FieldFlow
+          creates no record for you and sends nothing to anyone.
+        </p>
+
+        {workflow && (
+          <p className="preconstruction-hint">
+            Save this draft first, then copy the wording into the record.
+            <Button
+              onClick={() => onNavigate(workflow[0], projectId)}
+              disabled={pending}
+            >
+              Open {workflow[1]}
+            </Button>
+          </p>
+        )}
+
+        {error && (
+          <p id={errorId} className="preconstruction-form-error" role="alert">
+            {error}
+          </p>
+        )}
+      </form>
+    </DrawingDialog>
+  );
+}
+
+
+export function LinkFollowUpDialog({
+  followUp,
+  targetType,
+  busy,
+  onClose,
+  onSubmit,
+}) {
+  const [targetId, setTargetId] = useState("");
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const errorId = useId();
+
+  const pending = busy || submitting;
+
+  const submit = async (event) => {
+    event.preventDefault();
+    if (pending) return;
+    const parsed = Number(targetId);
+    if (!Number.isInteger(parsed) || parsed < 1) {
+      setError("Enter the numeric identifier of the record you created.");
+      return;
+    }
+    setError("");
+    setSubmitting(true);
+    try {
+      await onSubmit({ target_type: targetType, target_id: parsed });
+      onClose();
+    } catch (requestError) {
+      setError(requestError.message || "Unable to link this record.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <DrawingDialog
+      title="Link existing record"
+      eyebrow="Follow-up action"
+      onClose={onClose}
+      busy={pending}
+      actions={
+        <>
+          <Button disabled={pending} onClick={onClose}>Cancel</Button>
+          <Button
+            variant="primary"
+            disabled={pending}
+            type="submit"
+            form="follow-up-link-form"
+          >
+            {pending ? "Saving…" : "Link record"}
+          </Button>
+        </>
+      }
+    >
+      <form id="follow-up-link-form" className="preconstruction-dialog-form" onSubmit={submit}>
+        <dl className="assertion-review-identity">
+          <div>
+            <dt>Follow-up</dt>
+            <dd>{followUp.draft_title}</dd>
+          </div>
+          <div>
+            <dt>Action</dt>
+            <dd>{followUp.action_label}</dd>
+          </div>
+        </dl>
+
+        <label className="field-group">
+          <span>Record identifier</span>
+          <input
+            value={targetId}
+            inputMode="numeric"
+            aria-describedby={error ? errorId : undefined}
+            onChange={(event) => setTargetId(event.target.value)}
+          />
+        </label>
+
+        <p className="preconstruction-hint">
+          The record must already exist in this project and must be a{" "}
+          {followUp.action_label} record. Linking records the connection only and
+          changes nothing about that record.
+        </p>
+
+        {error && (
+          <p id={errorId} className="preconstruction-form-error" role="alert">
+            {error}
+          </p>
+        )}
+      </form>
+    </DrawingDialog>
+  );
+}
+
+
+export function CloseFollowUpDialog({ followUp, busy, onClose, onSubmit }) {
+  const [status, setStatus] = useState("completed");
+  const [note, setNote] = useState("");
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const errorId = useId();
+
+  const pending = busy || submitting;
+  const noteRequired = status === "cancelled";
+
+  const submit = async (event) => {
+    event.preventDefault();
+    if (pending) return;
+    if (noteRequired && !note.trim()) {
+      setError("A note is required when cancelling a follow-up.");
+      return;
+    }
+    setError("");
+    setSubmitting(true);
+    try {
+      await onSubmit({ status, closure_note: note.trim() || null });
+      onClose();
+    } catch (requestError) {
+      setError(requestError.message || "Unable to close this follow-up.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <DrawingDialog
+      title="Close follow-up"
+      eyebrow="Follow-up action"
+      onClose={onClose}
+      busy={pending}
+      actions={
+        <>
+          <Button disabled={pending} onClick={onClose}>Cancel</Button>
+          <Button
+            variant="primary"
+            disabled={pending}
+            type="submit"
+            form="follow-up-close-form"
+          >
+            {pending ? "Saving…" : "Close follow-up"}
+          </Button>
+        </>
+      }
+    >
+      <form id="follow-up-close-form" className="preconstruction-dialog-form" onSubmit={submit}>
+        <dl className="assertion-review-identity">
+          <div>
+            <dt>Follow-up</dt>
+            <dd>{followUp.draft_title}</dd>
+          </div>
+          <div>
+            <dt>Current status</dt>
+            <dd>{followUp.status_label}</dd>
+          </div>
+        </dl>
+
+        <fieldset className="field-group">
+          <legend>Outcome</legend>
+          {[["completed", "Completed"], ["cancelled", "Cancelled"]].map(
+            ([value, label]) => (
+              <label key={value} className="assertion-review-option">
+                <input
+                  type="radio"
+                  name="follow-up-status"
+                  value={value}
+                  checked={status === value}
+                  onChange={() => setStatus(value)}
+                />
+                <span>{label}</span>
+              </label>
+            )
+          )}
+        </fieldset>
+
+        <label className="field-group">
+          <span>Closing note{noteRequired ? " (required)" : " (optional)"}</span>
+          <textarea
+            value={note}
+            rows="4"
+            maxLength="2000"
+            aria-describedby={error ? errorId : undefined}
+            onChange={(event) => setNote(event.target.value)}
+          />
+        </label>
+
+        <p className="preconstruction-hint">
+          Closing is final. A closed follow-up is never reopened and is kept as
+          history.
+        </p>
+
+        {error && (
+          <p id={errorId} className="preconstruction-form-error" role="alert">
+            {error}
+          </p>
+        )}
+      </form>
+    </DrawingDialog>
+  );
+}
+
+
 export function CreateManualFindingDialog({
   findings,
   assertions,

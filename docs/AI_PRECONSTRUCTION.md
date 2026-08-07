@@ -192,11 +192,17 @@ dashboard resources, findings, prompts, or provider/model controls.
 M18.3 adds the controlled construction scope taxonomy and evidence-backed
 human-reviewed scope assertions; M18.4 adds deterministic cross-document
 comparison and evidence-backed findings
-(see [`AI_SCOPE_COMPARISON.md`](AI_SCOPE_COMPARISON.md)). It preserves immutable sources, provider
-independence, mandatory human review, and every authoritative existing system.
-See [`AI_SCOPE_ASSERTIONS.md`](AI_SCOPE_ASSERTIONS.md). Omission findings and
-cross-document comparison remain deferred to later separately reviewed
-milestones.
+(see [`AI_SCOPE_COMPARISON.md`](AI_SCOPE_COMPARISON.md)); M18.5 adds
+human-initiated follow-up actions from accepted findings
+(see [`AI_SCOPE_FOLLOW_UP.md`](AI_SCOPE_FOLLOW_UP.md)). Each preserves
+immutable sources, provider independence, mandatory human review, and every
+authoritative existing system. See
+[`AI_SCOPE_ASSERTIONS.md`](AI_SCOPE_ASSERTIONS.md).
+
+M18.5 records intent and links a record a person created in that record's own
+workflow. Automatic RFI, Change Order, procurement, relationship, and
+notification creation, contract and purchase-order approval, and live provider
+adapters all remain deferred to later separately reviewed milestones.
 
 ## Migration
 
