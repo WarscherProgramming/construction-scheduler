@@ -11,7 +11,7 @@ and Punch Lists) with their supporting documents.
 ![React 19](https://img.shields.io/badge/React-19-61dafb?logo=react&logoColor=white&labelColor=20232a)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.1x-009688?logo=fastapi&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169e1?logo=postgresql&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-1071%20passing-2ea44f)
+![Tests](https://img.shields.io/badge/tests-1124%20passing-2ea44f)
 ![Vite](https://img.shields.io/badge/Vite-8-646cff?logo=vite&logoColor=white)
 
 ![FieldFlow executive dashboard](docs/screenshots/dashboard.png)
@@ -162,8 +162,12 @@ question — *"what needs my attention today?"* — has a one-screen answer.
   with immutable assertion sets, deterministic content hashes and
   deduplication, server-derived evidence excerpts, append-only human review,
   and human-authored assertions. Production defaults to disabled OCR and AI
-  providers; M18.1-M18.3 perform no omission detection, cross-document
-  comparison, autonomous acceptance, or live AI call.
+  providers. Deterministic cross-document comparison then produces
+  evidence-backed findings for potential coverage gaps, conflicts,
+  exclusions, and revision impacts, with named comparison plans, immutable
+  finding sets, append-only human review, and an intentional-exclusion
+  decision. M18.1-M18.4 perform no autonomous acceptance, no automatic RFI,
+  Change Order, procurement, or relationship creation, and no live AI call.
 - **Accessible design system**: tokens, reusable UI primitives (Button, Card,
   Sidebar, PageHeader, Icon, ConfirmDialog, Skeleton), skip links, focus
   management, `aria-current` navigation, and screen-reader-labeled loading
@@ -173,8 +177,8 @@ question — *"what needs my attention today?"* — has a one-screen answer.
 - **Client-side onboarding**: first-run detection seeds a realistic demo
   project through the public API with visible progress — the app is never
   empty.
-- **Automated testing: 1,071 tests** — 609 frontend across 91 files (Vitest +
-  React Testing Library, behavior- and accessibility-focused) and 462 backend
+- **Automated testing: 1,124 tests** — 627 frontend across 92 files (Vitest +
+  React Testing Library, behavior- and accessibility-focused) and 497 backend
   tests plus 420 separately reported subtests (pytest,
   covering the scheduling engine, critical path, services, migrations, CORS,
   and TestClient API integration).
@@ -571,12 +575,12 @@ job. FieldFlow does not include a built-in worker or scheduler, and
 | Backend | FastAPI, SQLAlchemy, Alembic, Pydantic |
 | Database | PostgreSQL |
 | Auth | Memory-only access JWT + rotating opaque refresh sessions |
-| Testing | Vitest + React Testing Library (609), pytest (462) |
+| Testing | Vitest + React Testing Library (627), pytest (497) |
 | Hosting | Vercel (frontend) · Render (API + migrations + finite extraction and preparation crons) |
 
 ## Testing
 
-**1,071 primary automated tests passed.** Backend subtests are reported
+**1,124 primary automated tests passed.** Backend subtests are reported
 separately rather than added to that total.
 
 - **Frontend (590 across 90 files)** — Vitest + React Testing Library. Tests
@@ -920,9 +924,9 @@ commit production credentials.
 - Direct multipart browser uploads and bucket-wide orphan scanning
 - A built-in background worker and cleanup-job administration interface
 - Project and Daily Log parent-deletion workflows
-- M18.4 omission findings, coverage-gap analysis, and cross-document
-  comparison; live provider integrations require later separately reviewed
-  milestones
+- M18.5 follow-up workflows from accepted findings; automatic RFI, Change
+  Order, procurement, and relationship creation, and live provider
+  integrations, require later separately reviewed milestones
 
 ## Author
 

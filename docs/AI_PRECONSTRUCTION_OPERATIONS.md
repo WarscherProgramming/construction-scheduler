@@ -162,6 +162,41 @@ A structurally invalid provider result rejects the entire assertion set and
 leaves no partial rows. Re-running is safe: each run creates a new immutable
 set and never rewrites prior assertions or human decisions.
 
+## Scope Comparison
+
+M18.4 adds two analysis types: `scope_comparison` (deterministic only) and
+`scope_comparison_validation` (deterministic candidates plus optional provider
+validation).
+
+**Deterministic comparison requires no AI provider and is available in
+production with the provider disabled.** It runs inline because candidate
+generation is bounded by configuration and touches no external system: no
+storage, no OCR, no network, no provider. Provider-validated comparison is
+refused rather than silently downgraded while the provider is disabled, so no
+additional worker or cron entry is introduced.
+
+Comparison plans are named and persistent. The first run locks a plan so
+historical results stay reproducible; archived plans are read-only. The
+comparison manifest pins exact assertion ids, the exact human review decision
+that made each assertion eligible, and evidence identity, so a later review
+change produces a new manifest instead of rewriting history.
+
+Monitor safe comparison categories only: comparison plan, run, and finding-set
+identifiers, candidate and finding counts, warning codes
+(`assertion_limit_reached`, `stale_assertion_evidence`,
+`unsupported_taxonomy_version`, `candidate_limit_reached`,
+`revision_lineage_incomplete`, `duplicate_candidates_merged`,
+`finding_limit_reached`), validation failure codes
+(`invalid_comparison_result`, `invalid_comparison_candidate`,
+`invalid_comparison_assertion`, `invalid_comparison_evidence`,
+`unknown_finding_type`, `comparison_result_too_large`), taxonomy and schema
+versions, and latency. Never log finding summaries or rationales, assertion
+text, evidence excerpts, reviewer notes, prompts, or provider response bodies.
+
+Findings are advisory. Accepting one records a human decision and creates no
+RFI, Change Order, procurement action, relationship, or notification. Apply
+migration `d5a3f9c14e28` before enabling comparison.
+
 ## Release Gate
 
 Before enabling any future live adapter, require project-isolation tests,

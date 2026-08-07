@@ -1,7 +1,13 @@
 import { useState } from "react";
 
 import AddReviewSourceDialog from "../components/preconstruction/AddReviewSourceDialog";
+import {
+  CreateComparisonPlanDialog,
+  CreateManualFindingDialog,
+  ReviewFindingDialog,
+} from "../components/preconstruction/ComparisonDialogs";
 import CreateManualAssertionDialog from "../components/preconstruction/CreateManualAssertionDialog";
+import ScopeComparisonWorkspace from "../components/preconstruction/ScopeComparisonWorkspace";
 import ReviewAssertionDialog from "../components/preconstruction/ReviewAssertionDialog";
 import ReviewSetDialog from "../components/preconstruction/ReviewSetDialog";
 import ScopeAssertionWorkspace from "../components/preconstruction/ScopeAssertionWorkspace";
@@ -15,6 +21,21 @@ import Icon from "../components/ui/Icon";
 import PageHeader from "../components/ui/PageHeader";
 import ProjectLayout from "../components/ui/ProjectLayout";
 import usePreconstruction from "../hooks/usePreconstruction";
+
+// Coverage-oriented finding types offered for human authoring. Revision
+// lineage types are produced by comparison rather than authored by hand.
+const FINDING_TYPE_OPTIONS = [
+  { value: "missing_coverage", label: "Missing coverage" },
+  { value: "partial_coverage", label: "Partial coverage" },
+  { value: "conflicting_scope", label: "Conflicting scope" },
+  { value: "explicit_exclusion", label: "Explicit exclusion" },
+  { value: "conditional_scope", label: "Conditional scope" },
+  { value: "responsibility_conflict", label: "Responsibility conflict" },
+  { value: "quantity_mismatch", label: "Quantity mismatch" },
+  { value: "location_mismatch", label: "Location mismatch" },
+  { value: "duplicate_scope", label: "Duplicate scope" },
+  { value: "informational_difference", label: "Informational difference" },
+];
 import { formatDisplayDate } from "../utils/date";
 
 
@@ -37,6 +58,9 @@ function ProjectPreconstructionPage({
   const [reviewAssertion, setReviewAssertion] = useState(null);
   const [manualDialogOpen, setManualDialogOpen] = useState(false);
   const [selectedAssertionId, setSelectedAssertionId] = useState(null);
+  const [planDialogOpen, setPlanDialogOpen] = useState(false);
+  const [reviewFinding, setReviewFinding] = useState(null);
+  const [manualFindingPlanId, setManualFindingPlanId] = useState(null);
   const { detail } = preconstruction;
   const reviewSet = detail.reviewSet;
 
@@ -334,6 +358,26 @@ function ProjectPreconstructionPage({
                 onNavigate={onNavigate}
                 onInspect={preconstruction.inspectContent}
               />
+
+              <ScopeComparisonWorkspace
+                comparison={preconstruction.comparison}
+                query={preconstruction.findingQuery}
+                isLoading={preconstruction.isComparisonLoading}
+                error={preconstruction.comparisonError}
+                isSaving={preconstruction.isSaving}
+                onChangeQuery={(overrides) =>
+                  preconstruction.loadComparison(overrides)
+                }
+                onRetry={() => preconstruction.loadComparison()}
+                onSelectPlan={preconstruction.selectComparisonPlan}
+                onCreatePlan={() => setPlanDialogOpen(true)}
+                onArchivePlan={preconstruction.archiveComparisonPlan}
+                onRunComparison={preconstruction.runComparison}
+                onReview={setReviewFinding}
+                onCreateManual={setManualFindingPlanId}
+                onNavigate={onNavigate}
+                onInspect={preconstruction.inspectContent}
+              />
             </>
           ) : null}
         </section>
@@ -400,6 +444,38 @@ function ProjectPreconstructionPage({
           onLoadTaxonomy={preconstruction.loadTaxonomy}
           onClose={() => setManualDialogOpen(false)}
           onSubmit={preconstruction.createManualAssertion}
+        />
+      )}
+      {planDialogOpen && (
+        <CreateComparisonPlanDialog
+          comparisonTypes={preconstruction.comparison.comparisonTypes}
+          assertionSets={preconstruction.assertions.sets}
+          busy={preconstruction.isSaving}
+          onClose={() => setPlanDialogOpen(false)}
+          onSubmit={preconstruction.createComparisonPlan}
+        />
+      )}
+      {reviewFinding && (
+        <ReviewFindingDialog
+          finding={reviewFinding}
+          busy={preconstruction.isSaving}
+          onClose={() => setReviewFinding(null)}
+          onSubmit={(decision) =>
+            preconstruction.reviewFinding(reviewFinding.id, decision)
+          }
+        />
+      )}
+      {manualFindingPlanId && (
+        <CreateManualFindingDialog
+          findings={FINDING_TYPE_OPTIONS}
+          assertions={preconstruction.assertions.items.filter(
+            (item) => item.status === "accepted"
+          )}
+          busy={preconstruction.isSaving}
+          onClose={() => setManualFindingPlanId(null)}
+          onSubmit={(values) =>
+            preconstruction.createManualFinding(manualFindingPlanId, values)
+          }
         />
       )}
       <ConfirmDialog

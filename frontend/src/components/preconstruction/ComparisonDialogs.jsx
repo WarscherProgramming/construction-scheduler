@@ -1,0 +1,542 @@
+import { useId, useMemo, useState } from "react";
+
+import DrawingDialog from "../drawings/DrawingDialog";
+import Button from "../ui/Button";
+
+
+const REVIEW_DECISIONS = [
+  ["accepted", "Accept"],
+  ["needs_review", "Needs further review"],
+  ["intentional_exclusion", "Intentional exclusion"],
+  ["rejected", "Reject"],
+];
+
+// Mirrors the server transition table; the server stays authoritative.
+const ALLOWED_TRANSITIONS = {
+  proposed: ["accepted", "rejected", "needs_review", "intentional_exclusion"],
+  needs_review: ["accepted", "rejected", "intentional_exclusion"],
+  accepted: ["needs_review"],
+  rejected: ["needs_review"],
+  intentional_exclusion: ["needs_review"],
+  superseded: [],
+};
+const SETTLED = ["accepted", "rejected", "intentional_exclusion"];
+const NOTE_REQUIRED_DECISIONS = ["rejected", "intentional_exclusion"];
+
+const REVIEW_REASONS = [
+  ["confirmed_gap", "Confirmed gap"],
+  ["confirmed_conflict", "Confirmed conflict"],
+  ["intentional_exclusion", "Intentional exclusion"],
+  ["covered_elsewhere", "Covered elsewhere"],
+  ["duplicate", "Duplicate"],
+  ["incorrect_match", "Incorrect match"],
+  ["insufficient_evidence", "Insufficient evidence"],
+  ["wrong_comparison_type", "Wrong comparison type"],
+  ["superseded_source", "Superseded source"],
+  ["not_applicable", "Not applicable"],
+  ["requires_trade_review", "Requires trade review"],
+  ["requires_legal_review", "Requires legal review"],
+  ["other", "Other"],
+];
+
+
+export function CreateComparisonPlanDialog({
+  comparisonTypes,
+  busy,
+  onClose,
+  onSubmit,
+}) {
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [comparisonType, setComparisonType] = useState(
+    comparisonTypes[0]?.value || "general_scope_coverage"
+  );
+  const [includeManual, setIncludeManual] = useState(true);
+  const [minimumReviewState, setMinimumReviewState] = useState("accepted");
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const errorId = useId();
+
+  const selected = useMemo(
+    () => comparisonTypes.find((item) => item.value === comparisonType),
+    [comparisonType, comparisonTypes]
+  );
+  const pending = busy || submitting;
+
+  const submit = async (event) => {
+    event.preventDefault();
+    if (pending) return;
+    if (!name.trim()) {
+      setError("A comparison plan name is required.");
+      return;
+    }
+    setError("");
+    setSubmitting(true);
+    try {
+      await onSubmit({
+        name: name.trim(),
+        description: description.trim() || null,
+        comparison_type: comparisonType,
+        include_manual_assertions: includeManual,
+        minimum_review_state: minimumReviewState,
+      });
+      onClose();
+    } catch (requestError) {
+      setError(requestError.message || "Unable to create this comparison plan.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <DrawingDialog
+      title="Create comparison plan"
+      eyebrow="Scope comparison"
+      onClose={onClose}
+      busy={pending}
+      actions={
+        <>
+          <Button disabled={pending} onClick={onClose}>Cancel</Button>
+          <Button variant="primary" disabled={pending} type="submit" form="comparison-plan-form">
+            {pending ? "Saving…" : "Create plan"}
+          </Button>
+        </>
+      }
+    >
+      <form id="comparison-plan-form" className="preconstruction-dialog-form" onSubmit={submit}>
+        <p className="preconstruction-hint">
+          A comparison plan pins which accepted assertions are compared and how.
+          The first run locks the plan so results stay reproducible.
+        </p>
+        <label className="field-group">
+          <span>Name</span>
+          <input
+            autoFocus
+            value={name}
+            maxLength="120"
+            aria-describedby={error ? errorId : undefined}
+            onChange={(event) => setName(event.target.value)}
+          />
+        </label>
+        <label className="field-group">
+          <span>Comparison type</span>
+          <select
+            value={comparisonType}
+            onChange={(event) => setComparisonType(event.target.value)}
+          >
+            {comparisonTypes.map((item) => (
+              <option key={item.value} value={item.value}>{item.label}</option>
+            ))}
+          </select>
+        </label>
+        {selected && (
+          <p className="preconstruction-hint">
+            {selected.description} Requirement roles:{" "}
+            {selected.left_roles.join(", ")}. Coverage roles:{" "}
+            {selected.right_roles.join(", ")}.
+            {selected.notes ? ` ${selected.notes}` : ""}
+          </p>
+        )}
+        <label className="field-group">
+          <span>Assertions to compare</span>
+          <select
+            value={minimumReviewState}
+            onChange={(event) => setMinimumReviewState(event.target.value)}
+          >
+            <option value="accepted">Accepted assertions only</option>
+            <option value="accepted_or_needs_review">
+              Accepted and needs-review assertions
+            </option>
+          </select>
+        </label>
+        <label className="assertion-review-option">
+          <input
+            type="checkbox"
+            checked={includeManual}
+            onChange={(event) => setIncludeManual(event.target.checked)}
+          />
+          <span>Include human-authored assertions</span>
+        </label>
+        <label className="field-group">
+          <span>Description</span>
+          <textarea
+            value={description}
+            rows="3"
+            maxLength="2000"
+            onChange={(event) => setDescription(event.target.value)}
+          />
+        </label>
+        {error && (
+          <p id={errorId} className="preconstruction-form-error" role="alert">
+            {error}
+          </p>
+        )}
+      </form>
+    </DrawingDialog>
+  );
+}
+
+
+export function ReviewFindingDialog({ finding, busy, onClose, onSubmit }) {
+  const allowed = ALLOWED_TRANSITIONS[finding.status] || [];
+  const [decision, setDecision] = useState(allowed[0] || "needs_review");
+  const [reasonCode, setReasonCode] = useState("");
+  const [note, setNote] = useState("");
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const errorId = useId();
+
+  const noteRequired =
+    NOTE_REQUIRED_DECISIONS.includes(decision) ||
+    SETTLED.includes(finding.status) ||
+    reasonCode === "other";
+  const pending = busy || submitting;
+
+  const submit = async (event) => {
+    event.preventDefault();
+    if (pending) return;
+    if (noteRequired && !note.trim()) {
+      setError("A reviewer note is required for this decision.");
+      return;
+    }
+    setError("");
+    setSubmitting(true);
+    try {
+      await onSubmit({
+        decision,
+        reason_code: reasonCode || null,
+        reviewer_note: note.trim() || null,
+      });
+      onClose();
+    } catch (requestError) {
+      setError(requestError.message || "Unable to record this review.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <DrawingDialog
+      title="Review finding"
+      eyebrow="Human review"
+      onClose={onClose}
+      busy={pending}
+      actions={
+        <>
+          <Button disabled={pending} onClick={onClose}>Cancel</Button>
+          <Button
+            variant="primary"
+            disabled={pending || allowed.length === 0}
+            type="submit"
+            form="finding-review-form"
+          >
+            {pending ? "Saving…" : "Record decision"}
+          </Button>
+        </>
+      }
+    >
+      <form id="finding-review-form" className="preconstruction-dialog-form" onSubmit={submit}>
+        <dl className="assertion-review-identity">
+          <div>
+            <dt>Finding</dt>
+            <dd>{finding.title}</dd>
+          </div>
+          <div>
+            <dt>Type and severity</dt>
+            <dd>
+              {finding.finding_type_label} · {finding.severity_label}
+            </dd>
+          </div>
+          <div>
+            <dt>Current decision</dt>
+            <dd>{finding.status_label}</dd>
+          </div>
+          <div>
+            <dt>Evidence</dt>
+            <dd>{finding.evidence_count} cited segment(s)</dd>
+          </div>
+        </dl>
+
+        {allowed.length === 0 ? (
+          <p className="preconstruction-form-error" role="alert">
+            This finding can no longer be reviewed.
+          </p>
+        ) : (
+          <fieldset className="field-group">
+            <legend>Decision</legend>
+            {REVIEW_DECISIONS.filter(([value]) => allowed.includes(value)).map(
+              ([value, label]) => (
+                <label key={value} className="assertion-review-option">
+                  <input
+                    type="radio"
+                    name="finding-decision"
+                    value={value}
+                    checked={decision === value}
+                    onChange={() => setDecision(value)}
+                  />
+                  <span>{label}</span>
+                </label>
+              )
+            )}
+          </fieldset>
+        )}
+
+        <label className="field-group">
+          <span>Reason</span>
+          <select value={reasonCode} onChange={(event) => setReasonCode(event.target.value)}>
+            <option value="">No reason selected</option>
+            {REVIEW_REASONS.map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </select>
+        </label>
+
+        <label className="field-group">
+          <span>Reviewer note{noteRequired ? " (required)" : " (optional)"}</span>
+          <textarea
+            value={note}
+            rows="4"
+            maxLength="2000"
+            aria-describedby={error ? errorId : undefined}
+            onChange={(event) => setNote(event.target.value)}
+          />
+        </label>
+
+        <p className="preconstruction-hint">
+          Accepting a finding records a human decision. It remains advisory and
+          does not create an RFI, change order, procurement action, or contract
+          obligation.
+        </p>
+        {error && (
+          <p id={errorId} className="preconstruction-form-error" role="alert">
+            {error}
+          </p>
+        )}
+      </form>
+    </DrawingDialog>
+  );
+}
+
+
+export function CreateManualFindingDialog({
+  findings,
+  assertions,
+  busy,
+  onClose,
+  onSubmit,
+}) {
+  const [findingType, setFindingType] = useState("missing_coverage");
+  const [severity, setSeverity] = useState("");
+  const [title, setTitle] = useState("");
+  const [summary, setSummary] = useState("");
+  const [rationale, setRationale] = useState("");
+  const [selectedAssertions, setSelectedAssertions] = useState([]);
+  const [selectedEvidence, setSelectedEvidence] = useState([]);
+  const [note, setNote] = useState("");
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const errorId = useId();
+
+  const pending = busy || submitting;
+  const evidenceOptions = useMemo(
+    () =>
+      assertions
+        .filter((item) => selectedAssertions.some((link) => link.id === item.id))
+        .flatMap((item) =>
+          (item.evidence || []).map((evidence) => ({
+            ...evidence,
+            assertionSubject: item.subject,
+          }))
+        ),
+    [assertions, selectedAssertions]
+  );
+
+  const toggleAssertion = (assertion, side) => {
+    setSelectedAssertions((current) => {
+      const existing = current.find((item) => item.id === assertion.id);
+      if (existing) return current.filter((item) => item.id !== assertion.id);
+      return [...current, { id: assertion.id, side }];
+    });
+  };
+
+  const submit = async (event) => {
+    event.preventDefault();
+    if (pending) return;
+    if (!title.trim()) return setError("A title is required.");
+    if (selectedAssertions.length === 0) {
+      return setError("Link at least one accepted assertion.");
+    }
+    setError("");
+    setSubmitting(true);
+    try {
+      await onSubmit({
+        finding_type: findingType,
+        severity: severity || null,
+        title: title.trim(),
+        summary: summary.trim() || null,
+        rationale: rationale.trim() || null,
+        assertions: selectedAssertions.map((item) => ({
+          assertion_id: item.id,
+          side: item.side,
+        })),
+        evidence_ids: selectedEvidence,
+        reviewer_note: note.trim() || null,
+      });
+      onClose();
+    } catch (requestError) {
+      setError(requestError.message || "Unable to create this finding.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <DrawingDialog
+      title="Add a human-authored finding"
+      eyebrow="Manual scope comparison"
+      onClose={onClose}
+      busy={pending}
+      actions={
+        <>
+          <Button disabled={pending} onClick={onClose}>Cancel</Button>
+          <Button variant="primary" disabled={pending} type="submit" form="manual-finding-form">
+            {pending ? "Saving…" : "Create finding"}
+          </Button>
+        </>
+      }
+    >
+      <form id="manual-finding-form" className="preconstruction-dialog-form" onSubmit={submit}>
+        <p className="preconstruction-hint">
+          This finding is authored by you, not produced by comparison or a
+          model. It is recorded as accepted with your name on the review history.
+        </p>
+
+        <div className="assertion-form-grid">
+          <label className="field-group">
+            <span>Finding type</span>
+            <select
+              value={findingType}
+              onChange={(event) => setFindingType(event.target.value)}
+            >
+              {findings.map((item) => (
+                <option key={item.value} value={item.value}>{item.label}</option>
+              ))}
+            </select>
+          </label>
+          <label className="field-group">
+            <span>Severity</span>
+            <select value={severity} onChange={(event) => setSeverity(event.target.value)}>
+              <option value="">Use the documented default</option>
+              <option value="critical">Critical</option>
+              <option value="high">High</option>
+              <option value="medium">Medium</option>
+              <option value="low">Low</option>
+              <option value="informational">Informational</option>
+            </select>
+          </label>
+        </div>
+
+        <label className="field-group">
+          <span>Title</span>
+          <input
+            value={title}
+            maxLength="200"
+            onChange={(event) => setTitle(event.target.value)}
+          />
+        </label>
+        <label className="field-group">
+          <span>Summary</span>
+          <textarea
+            value={summary}
+            rows="2"
+            maxLength="600"
+            onChange={(event) => setSummary(event.target.value)}
+          />
+        </label>
+        <label className="field-group">
+          <span>Rationale</span>
+          <textarea
+            value={rationale}
+            rows="3"
+            maxLength="2000"
+            onChange={(event) => setRationale(event.target.value)}
+          />
+        </label>
+
+        <fieldset className="field-group">
+          <legend>Linked assertions</legend>
+          {assertions.length === 0 ? (
+            <p className="preconstruction-hint">
+              No accepted assertions are available to link.
+            </p>
+          ) : (
+            <ul className="finding-assertion-picker">
+              {assertions.map((item) => (
+                <li key={item.id}>
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={selectedAssertions.some((link) => link.id === item.id)}
+                      onChange={() => toggleAssertion(item, "requirement")}
+                    />
+                    <span>
+                      {item.subject} — {item.source?.display_name || "Source unavailable"}
+                    </span>
+                  </label>
+                </li>
+              ))}
+            </ul>
+          )}
+        </fieldset>
+
+        {evidenceOptions.length > 0 && (
+          <fieldset className="field-group">
+            <legend>Evidence</legend>
+            <ul className="assertion-evidence-picker">
+              {evidenceOptions.map((item) => (
+                <li key={item.id}>
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={selectedEvidence.includes(item.id)}
+                      onChange={() =>
+                        setSelectedEvidence((current) =>
+                          current.includes(item.id)
+                            ? current.filter((value) => value !== item.id)
+                            : [...current, item.id]
+                        )
+                      }
+                    />
+                    <span>
+                      Page {item.page_number}, segment {item.segment_index}
+                    </span>
+                  </label>
+                  <p className="assertion-evidence-preview">
+                    {item.excerpt.slice(0, 200)}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          </fieldset>
+        )}
+
+        <label className="field-group">
+          <span>Note</span>
+          <textarea
+            value={note}
+            rows="2"
+            maxLength="2000"
+            aria-describedby={error ? errorId : undefined}
+            onChange={(event) => setNote(event.target.value)}
+          />
+        </label>
+
+        {error && (
+          <p id={errorId} className="preconstruction-form-error" role="alert">
+            {error}
+          </p>
+        )}
+      </form>
+    </DrawingDialog>
+  );
+}

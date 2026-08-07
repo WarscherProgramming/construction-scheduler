@@ -4,8 +4,18 @@ import {
   addPreconstructionReviewSource,
   archivePreconstructionReviewSet,
   cancelPreconstructionPreparationRun,
+  archivePreconstructionComparisonPlan,
   cancelPreconstructionRun,
+  createPreconstructionComparisonPlan,
   createPreconstructionManualAssertion,
+  createPreconstructionManualFinding,
+  getPreconstructionComparisonReadiness,
+  getPreconstructionFinding,
+  listPreconstructionComparisonPlans,
+  listPreconstructionFindingSets,
+  listPreconstructionFindings,
+  reviewPreconstructionFinding,
+  runPreconstructionComparison,
   createPreconstructionReviewSet,
   createPreconstructionRun,
   getPreconstructionAssertion,
@@ -214,6 +224,94 @@ describe("preconstruction API", () => {
     for (const forbidden of [
       "origin", "confidence", "status", "project_id", "assertion_set_id",
       "provider_assertion_key", "taxonomy_version", "reviewed_by",
+    ]) {
+      expect(manualBody).not.toHaveProperty(forbidden);
+    }
+  });
+
+  it("builds bounded, allowlisted comparison and finding requests", async () => {
+    const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(jsonResponse({ items: [] })));
+    vi.stubGlobal("fetch", fetchMock);
+    configureAuthentication({ token: "precon-token" });
+
+    await listPreconstructionComparisonPlans(4, 8, { limit: 50 });
+    expect(fetchMock.mock.calls[0][0]).toContain("/review-sets/8/comparison-plans");
+
+    await getPreconstructionComparisonReadiness(4, 5);
+    expect(fetchMock.mock.calls[1][0]).toContain("/comparison-plans/5/readiness");
+
+    await listPreconstructionFindings(4, 5, {
+      findingType: "missing_coverage",
+      severity: "high",
+      reviewStatus: "proposed",
+      origin: "deterministic",
+      findingSetId: 3,
+      search: "lighting",
+      limit: 25,
+      offset: 50,
+    });
+    const listUrl = fetchMock.mock.calls[2][0];
+    expect(listUrl).toContain("/comparison-plans/5/findings");
+    expect(listUrl).toContain("finding_type=missing_coverage");
+    expect(listUrl).toContain("severity=high");
+    expect(listUrl).toContain("review_status=proposed");
+    expect(listUrl).toContain("origin=deterministic");
+    expect(listUrl).toContain("finding_set_id=3");
+    expect(listUrl).toContain("offset=50");
+
+    await listPreconstructionFindingSets(4, 5, { limit: 50 });
+    expect(fetchMock.mock.calls[3][0]).toContain("/comparison-plans/5/finding-sets");
+
+    await getPreconstructionFinding(4, 91);
+    expect(fetchMock.mock.calls[4][0]).toContain("/findings/91");
+
+    // Comparison reads never request binary content or a dashboard aggregate.
+    for (const call of fetchMock.mock.calls) {
+      expect(call[0]).not.toContain("download");
+      expect(call[0]).not.toContain("/attachments");
+      expect(call[0]).not.toContain("/dashboard");
+    }
+  });
+
+  it("sends comparison mutations as strict JSON without client-controlled state", async () => {
+    const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(jsonResponse({ id: 1 }, 201)));
+    vi.stubGlobal("fetch", fetchMock);
+    configureAuthentication({ token: "precon-token" });
+
+    await createPreconstructionComparisonPlan(4, 8, {
+      name: "Bid coverage",
+      comparison_type: "general_scope_coverage",
+      minimum_review_state: "accepted",
+    });
+    await runPreconstructionComparison(4, 5, {});
+    await reviewPreconstructionFinding(4, 91, {
+      decision: "accepted",
+      reason_code: "confirmed_gap",
+      reviewer_note: null,
+    });
+    await createPreconstructionManualFinding(4, 5, {
+      finding_type: "missing_coverage",
+      title: "Uncovered scope",
+      assertions: [{ assertion_id: 51, side: "requirement" }],
+      evidence_ids: [70],
+    });
+    await archivePreconstructionComparisonPlan(4, 5);
+
+    expect(fetchMock.mock.calls.map((call) => call[1].method)).toEqual([
+      "POST", "POST", "POST", "POST", "POST",
+    ]);
+    expect(fetchMock.mock.calls[1][0]).toContain("/comparison-plans/5/runs");
+    expect(fetchMock.mock.calls[2][0]).toContain("/findings/91/reviews");
+    expect(fetchMock.mock.calls[3][0]).toContain("/comparison-plans/5/findings/manual");
+
+    const planBody = JSON.parse(fetchMock.mock.calls[0][1].body);
+    const manualBody = JSON.parse(fetchMock.mock.calls[3][1].body);
+    for (const forbidden of ["status", "project_id", "configuration_hash", "locked_at"]) {
+      expect(planBody).not.toHaveProperty(forbidden);
+    }
+    for (const forbidden of [
+      "origin", "provider_confidence", "status", "finding_set_id",
+      "deterministic_match_score", "excerpt",
     ]) {
       expect(manualBody).not.toHaveProperty(forbidden);
     }

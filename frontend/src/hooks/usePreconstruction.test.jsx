@@ -10,6 +10,16 @@ const apiMocks = vi.hoisted(() => ({
   archivePreconstructionReviewSet: vi.fn(),
   cancelPreconstructionPreparationRun: vi.fn(),
   cancelPreconstructionRun: vi.fn(),
+  archivePreconstructionComparisonPlan: vi.fn(),
+  createPreconstructionComparisonPlan: vi.fn(),
+  createPreconstructionManualFinding: vi.fn(),
+  getPreconstructionComparisonReadiness: vi.fn(),
+  listPreconstructionComparisonPlans: vi.fn(),
+  listPreconstructionFindingSets: vi.fn(),
+  listPreconstructionFindings: vi.fn(),
+  reviewPreconstructionFinding: vi.fn(),
+  runPreconstructionComparison: vi.fn(),
+  updatePreconstructionComparisonPlan: vi.fn(),
   createPreconstructionManualAssertion: vi.fn(),
   createPreconstructionReviewSet: vi.fn(),
   createPreconstructionRun: vi.fn(),
@@ -79,6 +89,9 @@ function deferred() {
 describe("usePreconstruction", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    apiMocks.listPreconstructionComparisonPlans.mockResolvedValue({
+      items: [], total: 0, comparison_types: [],
+    });
     apiMocks.listPreconstructionAssertions.mockResolvedValue(EMPTY_ASSERTION_PAGE);
     apiMocks.listPreconstructionAssertionSets.mockResolvedValue({ items: [], total: 0 });
     apiMocks.listPreconstructionReviewSets.mockResolvedValue({ items: [REVIEW], total: 1 });

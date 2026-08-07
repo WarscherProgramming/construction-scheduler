@@ -1463,6 +1463,159 @@ export function reviewPreconstructionAssertion(
   );
 }
 
+export function listPreconstructionComparisonPlans(projectId, reviewSetId, options = {}) {
+  return authenticatedRequest(
+    preconstructionPath(
+      projectId,
+      `/review-sets/${encodeURIComponent(String(reviewSetId))}/comparison-plans${preconstructionQuery({
+        limit: options.limit,
+        offset: options.offset,
+      })}`
+    ),
+    { signal: options.signal }
+  );
+}
+
+export function createPreconstructionComparisonPlan(
+  projectId,
+  reviewSetId,
+  plan,
+  options = {}
+) {
+  return jsonRequest(
+    preconstructionPath(
+      projectId,
+      `/review-sets/${encodeURIComponent(String(reviewSetId))}/comparison-plans`
+    ),
+    "POST",
+    plan,
+    { signal: options.signal }
+  );
+}
+
+export function getPreconstructionComparisonPlan(projectId, planId, options = {}) {
+  return authenticatedRequest(
+    preconstructionPath(
+      projectId,
+      `/comparison-plans/${encodeURIComponent(String(planId))}`
+    ),
+    { signal: options.signal }
+  );
+}
+
+export function updatePreconstructionComparisonPlan(projectId, planId, plan, options = {}) {
+  return jsonRequest(
+    preconstructionPath(
+      projectId,
+      `/comparison-plans/${encodeURIComponent(String(planId))}`
+    ),
+    "PUT",
+    plan,
+    { signal: options.signal }
+  );
+}
+
+export function archivePreconstructionComparisonPlan(projectId, planId, options = {}) {
+  return jsonRequest(
+    preconstructionPath(
+      projectId,
+      `/comparison-plans/${encodeURIComponent(String(planId))}/archive`
+    ),
+    "POST",
+    {},
+    { signal: options.signal }
+  );
+}
+
+export function getPreconstructionComparisonReadiness(projectId, planId, options = {}) {
+  return authenticatedRequest(
+    preconstructionPath(
+      projectId,
+      `/comparison-plans/${encodeURIComponent(String(planId))}/readiness`
+    ),
+    { signal: options.signal }
+  );
+}
+
+export function runPreconstructionComparison(projectId, planId, request = {}, options = {}) {
+  return jsonRequest(
+    preconstructionPath(
+      projectId,
+      `/comparison-plans/${encodeURIComponent(String(planId))}/runs`
+    ),
+    "POST",
+    request,
+    { signal: options.signal }
+  );
+}
+
+export function listPreconstructionFindingSets(projectId, planId, options = {}) {
+  return authenticatedRequest(
+    preconstructionPath(
+      projectId,
+      `/comparison-plans/${encodeURIComponent(String(planId))}/finding-sets${preconstructionQuery({
+        limit: options.limit,
+        offset: options.offset,
+      })}`
+    ),
+    { signal: options.signal }
+  );
+}
+
+export function listPreconstructionFindings(projectId, planId, options = {}) {
+  return authenticatedRequest(
+    preconstructionPath(
+      projectId,
+      `/comparison-plans/${encodeURIComponent(String(planId))}/findings${preconstructionQuery({
+        finding_set_id: options.findingSetId,
+        finding_type: options.findingType,
+        severity: options.severity,
+        review_status: options.reviewStatus,
+        origin: options.origin,
+        search: options.search,
+        current_finding_set_only: options.currentFindingSetOnly,
+        limit: options.limit,
+        offset: options.offset,
+      })}`
+    ),
+    { signal: options.signal }
+  );
+}
+
+export function getPreconstructionFinding(projectId, findingId, options = {}) {
+  return authenticatedRequest(
+    preconstructionPath(
+      projectId,
+      `/findings/${encodeURIComponent(String(findingId))}`
+    ),
+    { signal: options.signal }
+  );
+}
+
+export function reviewPreconstructionFinding(projectId, findingId, review, options = {}) {
+  return jsonRequest(
+    preconstructionPath(
+      projectId,
+      `/findings/${encodeURIComponent(String(findingId))}/reviews`
+    ),
+    "POST",
+    review,
+    { signal: options.signal }
+  );
+}
+
+export function createPreconstructionManualFinding(projectId, planId, finding, options = {}) {
+  return jsonRequest(
+    preconstructionPath(
+      projectId,
+      `/comparison-plans/${encodeURIComponent(String(planId))}/findings/manual`
+    ),
+    "POST",
+    finding,
+    { signal: options.signal }
+  );
+}
+
 export function supersedePreconstructionAssertion(
   projectId,
   assertionId,

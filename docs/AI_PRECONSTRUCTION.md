@@ -190,7 +190,9 @@ dashboard resources, findings, prompts, or provider/model controls.
   injection is solved.
 
 M18.3 adds the controlled construction scope taxonomy and evidence-backed
-human-reviewed scope assertions. It preserves immutable sources, provider
+human-reviewed scope assertions; M18.4 adds deterministic cross-document
+comparison and evidence-backed findings
+(see [`AI_SCOPE_COMPARISON.md`](AI_SCOPE_COMPARISON.md)). It preserves immutable sources, provider
 independence, mandatory human review, and every authoritative existing system.
 See [`AI_SCOPE_ASSERTIONS.md`](AI_SCOPE_ASSERTIONS.md). Omission findings and
 cross-document comparison remain deferred to later separately reviewed

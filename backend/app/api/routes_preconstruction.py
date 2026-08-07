@@ -9,12 +9,14 @@ from app.api.dependencies import (
     get_collection_page,
     get_db,
     get_owned_project,
+    get_preconstruction_comparison_config,
     get_preconstruction_config,
     get_preconstruction_preparation_config,
     get_preconstruction_scope_config,
 )
 from app.core.config import (
     PreconstructionAIConfig,
+    PreconstructionComparisonConfig,
     PreconstructionPreparationConfig,
     PreconstructionScopeConfig,
 )
@@ -92,6 +94,46 @@ from app.services.preconstruction_content import (
     request_source_preparation,
     retry_preparation_run,
     source_preparation_states,
+)
+from app.schemas.preconstruction_comparison import (
+    ComparisonPlanCreate,
+    ComparisonPlanListResponse,
+    ComparisonPlanResponse,
+    ComparisonPlanUpdate,
+    ComparisonReadinessResponse,
+    ComparisonRunRequest,
+    FindingDetailResponse,
+    FindingListResponse,
+    FindingOriginValue,
+    FindingReviewCreate,
+    FindingSetListResponse,
+    FindingSetResponse,
+    FindingStatusValue,
+    FindingTypeValue,
+    ManualFindingCreate,
+    SeverityValue,
+)
+from app.services.preconstruction_comparison import (
+    archive_comparison_plan,
+    comparison_plan_response,
+    comparison_readiness,
+    comparison_type_catalog,
+    create_comparison_plan,
+    create_manual_finding,
+    finding_payloads,
+    finding_set_response,
+    finding_summary_counts,
+    get_comparison_plan,
+    get_finding,
+    get_finding_set,
+    latest_finding_set_id,
+    list_comparison_plans,
+    list_finding_reviews,
+    list_finding_sets,
+    list_findings,
+    review_finding,
+    run_deterministic_comparison,
+    update_comparison_plan,
 )
 from app.services.preconstruction_scope import (
     assertion_payloads,
@@ -695,6 +737,336 @@ def supersede_assertion_route(
     return {
         "assertion": assertion_payloads(db, project_id, [assertion])[0],
         "reviews": list_assertion_reviews(db, project_id, assertion.id),
+    }
+
+
+@router.post(
+    "/review-sets/{review_set_id}/comparison-plans",
+    response_model=ComparisonPlanResponse,
+    status_code=201,
+)
+def create_comparison_plan_route(
+    project_id: int,
+    review_set_id: PositiveId,
+    payload: ComparisonPlanCreate,
+    db: Session = Depends(get_db),
+    project: Project = Depends(get_owned_project),
+    current_user: dict = Depends(get_current_user),
+    config: PreconstructionComparisonConfig = Depends(get_preconstruction_comparison_config),
+):
+    review_set = get_review_set(db, project_id, review_set_id)
+    return comparison_plan_response(
+        create_comparison_plan(db, review_set, current_user["id"], payload, config)
+    )
+
+
+@router.get(
+    "/review-sets/{review_set_id}/comparison-plans",
+    response_model=ComparisonPlanListResponse,
+)
+def list_comparison_plans_route(
+    project_id: int,
+    review_set_id: PositiveId,
+    db: Session = Depends(get_db),
+    project: Project = Depends(get_owned_project),
+    page: CollectionPage = Depends(get_collection_page),
+    config: PreconstructionComparisonConfig = Depends(get_preconstruction_comparison_config),
+):
+    get_review_set(db, project_id, review_set_id)
+    limit = min(page.limit, config.plan_page_size)
+    items, total = list_comparison_plans(
+        db, project_id, review_set_id, limit=limit, offset=page.offset
+    )
+    return {
+        "items": [comparison_plan_response(item) for item in items],
+        "total": total,
+        "limit": limit,
+        "offset": page.offset,
+        "comparison_types": comparison_type_catalog(),
+    }
+
+
+@router.get(
+    "/comparison-plans/{comparison_plan_id}",
+    response_model=ComparisonPlanResponse,
+)
+def get_comparison_plan_route(
+    project_id: int,
+    comparison_plan_id: PositiveId,
+    db: Session = Depends(get_db),
+    project: Project = Depends(get_owned_project),
+):
+    return comparison_plan_response(
+        get_comparison_plan(db, project_id, comparison_plan_id)
+    )
+
+
+@router.put(
+    "/comparison-plans/{comparison_plan_id}",
+    response_model=ComparisonPlanResponse,
+)
+def update_comparison_plan_route(
+    project_id: int,
+    comparison_plan_id: PositiveId,
+    payload: ComparisonPlanUpdate,
+    db: Session = Depends(get_db),
+    project: Project = Depends(get_owned_project),
+):
+    plan = get_comparison_plan(db, project_id, comparison_plan_id)
+    review_set = get_review_set(db, project_id, plan.review_set_id)
+    return comparison_plan_response(
+        update_comparison_plan(db, review_set, plan, payload)
+    )
+
+
+@router.post(
+    "/comparison-plans/{comparison_plan_id}/archive",
+    response_model=ComparisonPlanResponse,
+)
+def archive_comparison_plan_route(
+    project_id: int,
+    comparison_plan_id: PositiveId,
+    db: Session = Depends(get_db),
+    project: Project = Depends(get_owned_project),
+):
+    plan = get_comparison_plan(db, project_id, comparison_plan_id)
+    return comparison_plan_response(archive_comparison_plan(db, plan))
+
+
+@router.get(
+    "/comparison-plans/{comparison_plan_id}/readiness",
+    response_model=ComparisonReadinessResponse,
+)
+def comparison_readiness_route(
+    project_id: int,
+    comparison_plan_id: PositiveId,
+    db: Session = Depends(get_db),
+    project: Project = Depends(get_owned_project),
+    config: PreconstructionComparisonConfig = Depends(get_preconstruction_comparison_config),
+    ai_config: PreconstructionAIConfig = Depends(get_preconstruction_config),
+    provider: PreconstructionAIProvider = Depends(get_preconstruction_provider),
+):
+    plan = get_comparison_plan(db, project_id, comparison_plan_id)
+    review_set = get_review_set(db, project_id, plan.review_set_id)
+    return comparison_readiness(
+        db,
+        plan,
+        review_set,
+        config,
+        provider_available=bool(ai_config.enabled and provider.available),
+        provider_profile=ai_config.provider,
+    )
+
+
+@router.post(
+    "/comparison-plans/{comparison_plan_id}/runs",
+    response_model=FindingSetResponse,
+    status_code=201,
+)
+def run_comparison_route(
+    project_id: int,
+    comparison_plan_id: PositiveId,
+    payload: ComparisonRunRequest | None = None,
+    db: Session = Depends(get_db),
+    project: Project = Depends(get_owned_project),
+    config: PreconstructionComparisonConfig = Depends(get_preconstruction_comparison_config),
+    ai_config: PreconstructionAIConfig = Depends(get_preconstruction_config),
+    provider: PreconstructionAIProvider = Depends(get_preconstruction_provider),
+):
+    """Deterministic comparison runs inline and needs no AI provider.
+
+    Provider validation is opt-in and only available where a provider is
+    configured and available; it is refused rather than silently downgraded.
+    """
+    plan = get_comparison_plan(db, project_id, comparison_plan_id)
+    review_set = get_review_set(db, project_id, plan.review_set_id)
+    readiness = comparison_readiness(
+        db,
+        plan,
+        review_set,
+        config,
+        provider_available=bool(ai_config.enabled and provider.available),
+        provider_profile=ai_config.provider,
+    )
+    if not readiness["ready"]:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "message": "Comparison plan is not ready",
+                "blockers": readiness["blockers"],
+            },
+        )
+    if payload and payload.provider_validation:
+        if not readiness["provider_validation_available"]:
+            raise HTTPException(
+                status_code=422,
+                detail="Provider validation is unavailable in this environment",
+            )
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "Provider-validated comparison must be queued through the "
+                "analysis worker; it is not executed inline"
+            ),
+        )
+    return finding_set_response(run_deterministic_comparison(db, plan, config))
+
+
+@router.get(
+    "/comparison-plans/{comparison_plan_id}/finding-sets",
+    response_model=FindingSetListResponse,
+)
+def list_finding_sets_route(
+    project_id: int,
+    comparison_plan_id: PositiveId,
+    db: Session = Depends(get_db),
+    project: Project = Depends(get_owned_project),
+    page: CollectionPage = Depends(get_collection_page),
+):
+    get_comparison_plan(db, project_id, comparison_plan_id)
+    items, total = list_finding_sets(
+        db, project_id, comparison_plan_id, limit=page.limit, offset=page.offset
+    )
+    return {
+        "items": [finding_set_response(item) for item in items],
+        "total": total,
+        "limit": page.limit,
+        "offset": page.offset,
+        "latest_finding_set_id": latest_finding_set_id(
+            db, project_id, comparison_plan_id
+        ),
+    }
+
+
+@router.get("/finding-sets/{finding_set_id}", response_model=FindingSetResponse)
+def get_finding_set_route(
+    project_id: int,
+    finding_set_id: PositiveId,
+    db: Session = Depends(get_db),
+    project: Project = Depends(get_owned_project),
+):
+    return finding_set_response(get_finding_set(db, project_id, finding_set_id))
+
+
+@router.get(
+    "/comparison-plans/{comparison_plan_id}/findings",
+    response_model=FindingListResponse,
+)
+def list_findings_route(
+    project_id: int,
+    comparison_plan_id: PositiveId,
+    finding_set_id: Annotated[int | None, Query(ge=1, le=2_147_483_647)] = None,
+    finding_type: FindingTypeValue | None = None,
+    severity: SeverityValue | None = None,
+    review_status: FindingStatusValue | None = None,
+    origin: FindingOriginValue | None = None,
+    search: Annotated[str, Query(max_length=200)] = "",
+    current_finding_set_only: bool = False,
+    limit: Annotated[int | None, Query(ge=1, le=200)] = None,
+    offset: Annotated[int, Query(ge=0, le=2_147_483_647)] = 0,
+    db: Session = Depends(get_db),
+    project: Project = Depends(get_owned_project),
+    config: PreconstructionComparisonConfig = Depends(get_preconstruction_comparison_config),
+):
+    get_comparison_plan(db, project_id, comparison_plan_id)
+    page_size = min(limit or config.finding_page_size, config.finding_max_page_size)
+    items, total = list_findings(
+        db,
+        project_id,
+        comparison_plan_id,
+        limit=page_size,
+        offset=offset,
+        finding_set_id=finding_set_id,
+        finding_type=finding_type,
+        severity=severity,
+        review_status=review_status,
+        origin=origin,
+        search=search,
+        current_finding_set_only=current_finding_set_only,
+    )
+    return {
+        "items": finding_payloads(db, project_id, items),
+        "total": total,
+        "limit": page_size,
+        "offset": offset,
+        "summary": finding_summary_counts(db, project_id, comparison_plan_id),
+        "latest_finding_set_id": latest_finding_set_id(
+            db, project_id, comparison_plan_id
+        ),
+        "taxonomy_version": TAXONOMY_VERSION,
+    }
+
+
+@router.get("/findings/{finding_id}", response_model=FindingDetailResponse)
+def get_finding_route(
+    project_id: int,
+    finding_id: PositiveId,
+    db: Session = Depends(get_db),
+    project: Project = Depends(get_owned_project),
+):
+    finding = get_finding(db, project_id, finding_id)
+    return {
+        "finding": finding_payloads(db, project_id, [finding])[0],
+        "reviews": list_finding_reviews(db, project_id, finding.id),
+    }
+
+
+@router.post(
+    "/findings/{finding_id}/reviews",
+    response_model=FindingDetailResponse,
+    status_code=201,
+)
+def review_finding_route(
+    project_id: int,
+    finding_id: PositiveId,
+    payload: FindingReviewCreate,
+    db: Session = Depends(get_db),
+    project: Project = Depends(get_owned_project),
+    current_user: dict = Depends(get_current_user),
+    config: PreconstructionComparisonConfig = Depends(get_preconstruction_comparison_config),
+):
+    finding = get_finding(db, project_id, finding_id)
+    plan = get_comparison_plan(db, project_id, finding.comparison_plan_id)
+    review_set = get_review_set(db, project_id, finding.review_set_id)
+    review_finding(
+        db,
+        plan,
+        review_set,
+        finding,
+        current_user["id"],
+        decision=payload.decision,
+        reason_code=payload.reason_code,
+        reviewer_note=payload.reviewer_note,
+        config=config,
+    )
+    return {
+        "finding": finding_payloads(db, project_id, [finding])[0],
+        "reviews": list_finding_reviews(db, project_id, finding.id),
+    }
+
+
+@router.post(
+    "/comparison-plans/{comparison_plan_id}/findings/manual",
+    response_model=FindingDetailResponse,
+    status_code=201,
+)
+def create_manual_finding_route(
+    project_id: int,
+    comparison_plan_id: PositiveId,
+    payload: ManualFindingCreate,
+    db: Session = Depends(get_db),
+    project: Project = Depends(get_owned_project),
+    current_user: dict = Depends(get_current_user),
+    config: PreconstructionComparisonConfig = Depends(get_preconstruction_comparison_config),
+):
+    plan = get_comparison_plan(db, project_id, comparison_plan_id)
+    review_set = get_review_set(db, project_id, plan.review_set_id)
+    finding = create_manual_finding(
+        db, plan, review_set, current_user["id"], payload, config
+    )
+    return {
+        "finding": finding_payloads(db, project_id, [finding])[0],
+        "reviews": list_finding_reviews(db, project_id, finding.id),
     }
 
 

@@ -166,7 +166,8 @@ class PreconstructionAnalysisRun(Base):
         ),
         CheckConstraint(
             "analysis_type IN ('readiness_probe', 'provider_contract_validation', "
-            "'content_contract_validation', 'scope_assertion_extraction')",
+            "'content_contract_validation', 'scope_assertion_extraction', "
+            "'scope_comparison', 'scope_comparison_validation')",
             name="ck_preconstruction_analysis_runs_type",
         ),
         CheckConstraint(

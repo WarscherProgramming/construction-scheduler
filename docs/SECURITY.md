@@ -815,6 +815,44 @@ retrieval must preserve that content-as-untrusted-data rule and mandatory human
 approval. See `AI_PRECONSTRUCTION.md` and
 `AI_PRECONSTRUCTION_OPERATIONS.md`.
 
+## M18.4 Scope Comparison Security Boundary
+
+Findings are advisory records that cannot mutate any authoritative system.
+Ownership is enforced through `get_owned_project` before any comparison plan,
+run, finding set, finding, assertion link, evidence, or review identifier is
+resolved, and a two-user matrix covers plan CRUD, archive, readiness, runs,
+finding listing and detail, review, and manual creation.
+
+Comparison operates only on human-accepted assertions. The comparison manifest
+pins exact assertion ids and the exact review decision that made each eligible,
+so a later review change cannot rewrite a historical finding set.
+
+Mutation schemas forbid unknown fields and reject client-supplied project
+identity, manifest and content hashes, lifecycle status, origin, provider
+profile and confidence, match scores and reasons, evidence excerpts, reviewer
+identity, and review timestamps. The server computes all of them.
+
+Provider validation can only keep, reject, or escalate candidates that trusted
+code already generated. It cannot introduce a candidate, an assertion, or
+evidence; cannot accept a finding; cannot create project records; and cannot
+change the manifest. Any structural failure — unknown candidate key, unknown or
+disallowed finding type, forged assertion or evidence id, repeated candidate,
+version mismatch, or oversized result — rejects the entire result.
+
+Severity proposed by a provider is clamped to one step from the documented
+default. There is no bulk acceptance, no confidence threshold that accepts a
+finding, and no one-click RFI or Change Order action. Archived plans and review
+sets are read-only.
+
+The controlled vocabulary deliberately contains no legal-conclusion terms;
+tests assert that breach, liability, entitlement, and damages never appear in
+finding types or review reason codes.
+
+Logs may carry plan, run, and finding-set identifiers, counts, provider
+profile, safe failure and warning codes, versions, latency, and a manifest hash
+prefix. They must never carry finding summaries or rationales, assertion text,
+evidence excerpts, reviewer notes, prompts, or provider response bodies.
+
 ## M18.3 Scope Assertion Security Boundary
 
 Scope assertions are advisory records that cannot mutate any authoritative

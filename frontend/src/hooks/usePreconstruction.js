@@ -2,7 +2,17 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
   addPreconstructionReviewSource,
+  archivePreconstructionComparisonPlan,
   archivePreconstructionReviewSet,
+  createPreconstructionComparisonPlan,
+  createPreconstructionManualFinding,
+  getPreconstructionComparisonReadiness,
+  listPreconstructionComparisonPlans,
+  listPreconstructionFindingSets,
+  listPreconstructionFindings,
+  reviewPreconstructionFinding,
+  runPreconstructionComparison,
+  updatePreconstructionComparisonPlan,
   cancelPreconstructionPreparationRun,
   cancelPreconstructionRun,
   createPreconstructionManualAssertion,
@@ -54,6 +64,36 @@ const EMPTY_ASSERTIONS = {
 };
 
 
+const EMPTY_COMPARISON = {
+  plans: [],
+  comparisonTypes: [],
+  selectedPlanId: null,
+  readiness: null,
+  findings: {
+    items: [],
+    total: 0,
+    limit: 25,
+    offset: 0,
+    summary: null,
+    latestFindingSetId: null,
+    taxonomyVersion: null,
+    sets: [],
+  },
+};
+
+
+const DEFAULT_FINDING_QUERY = {
+  findingSetId: undefined,
+  findingType: undefined,
+  severity: undefined,
+  reviewStatus: undefined,
+  origin: undefined,
+  search: "",
+  limit: 25,
+  offset: 0,
+};
+
+
 const DEFAULT_ASSERTION_QUERY = {
   reviewStatus: undefined,
   category: undefined,
@@ -96,8 +136,15 @@ function usePreconstruction({ projectId, onError }) {
   const [assertionError, setAssertionError] = useState(null);
   const [taxonomy, setTaxonomy] = useState(null);
   const [isTaxonomyLoading, setIsTaxonomyLoading] = useState(false);
+  const [comparison, setComparison] = useState(EMPTY_COMPARISON);
+  const [findingQuery, setFindingQuery] = useState(DEFAULT_FINDING_QUERY);
+  const [isComparisonLoading, setIsComparisonLoading] = useState(false);
+  const [comparisonError, setComparisonError] = useState(null);
   const assertionRequestRef = useRef(null);
   const assertionQueryRef = useRef(DEFAULT_ASSERTION_QUERY);
+  const comparisonRequestRef = useRef(null);
+  const findingQueryRef = useRef(DEFAULT_FINDING_QUERY);
+  const selectedPlanRef = useRef(null);
   const taxonomyRequestRef = useRef(null);
   const projectRef = useRef(projectId);
   const selectedReviewSetRef = useRef(null);
@@ -119,10 +166,13 @@ function usePreconstruction({ projectId, onError }) {
     candidateRequestRef.current?.abort();
     contentRequestRef.current?.abort();
     assertionRequestRef.current?.abort();
+    comparisonRequestRef.current?.abort();
     taxonomyRequestRef.current?.abort();
     contentSourceRef.current = null;
     selectedReviewSetRef.current = null;
+    selectedPlanRef.current = null;
     assertionQueryRef.current = DEFAULT_ASSERTION_QUERY;
+    findingQueryRef.current = DEFAULT_FINDING_QUERY;
     const resetTimer = window.setTimeout(() => {
       setReviewSets([]);
       setSelectedReviewSetId(null);
@@ -137,6 +187,9 @@ function usePreconstruction({ projectId, onError }) {
       setAssertionQuery(DEFAULT_ASSERTION_QUERY);
       setAssertionError(null);
       setTaxonomy(null);
+      setComparison(EMPTY_COMPARISON);
+      setFindingQuery(DEFAULT_FINDING_QUERY);
+      setComparisonError(null);
     }, 0);
     return () => window.clearTimeout(resetTimer);
   }, [projectId]);
@@ -148,6 +201,7 @@ function usePreconstruction({ projectId, onError }) {
     candidateRequestRef.current?.abort();
     contentRequestRef.current?.abort();
     assertionRequestRef.current?.abort();
+    comparisonRequestRef.current?.abort();
     taxonomyRequestRef.current?.abort();
   }, []);
 
@@ -551,8 +605,179 @@ function usePreconstruction({ projectId, onError }) {
     return result;
   }), [loadAssertions, projectId, runMutation, selectedReviewSetId]);
 
+  // --- scope comparison -------------------------------------------------
+  const loadComparison = useCallback((overrides = {}) => {
+    const reviewSetId = selectedReviewSetId;
+    if (!projectId || !reviewSetId) {
+      setComparison(EMPTY_COMPARISON);
+      return Promise.resolve(null);
+    }
+    const planId = overrides.planId ?? selectedPlanRef.current;
+    const query = { ...findingQueryRef.current, ...overrides };
+    delete query.planId;
+    findingQueryRef.current = query;
+    comparisonRequestRef.current?.abort();
+    const controller = new AbortController();
+    const identity = { projectId, reviewSetId };
+    comparisonRequestRef.current = controller;
+    setFindingQuery(query);
+    setIsComparisonLoading(true);
+    setComparisonError(null);
+
+    return listPreconstructionComparisonPlans(projectId, reviewSetId, {
+      limit: 50,
+      signal: controller.signal,
+    })
+      .then(async (plans) => {
+        if (
+          projectRef.current !== identity.projectId ||
+          selectedReviewSetRef.current !== identity.reviewSetId ||
+          controller.signal.aborted
+        ) return null;
+        const active = plans.items.find((item) => item.id === planId)
+          || plans.items.find((item) => item.status !== "archived")
+          || plans.items[0]
+          || null;
+        selectedPlanRef.current = active?.id ?? null;
+        if (!active) {
+          const empty = {
+            ...EMPTY_COMPARISON,
+            plans: plans.items,
+            comparisonTypes: plans.comparison_types,
+          };
+          setComparison(empty);
+          return empty;
+        }
+        const [readiness, findings, sets] = await Promise.all([
+          getPreconstructionComparisonReadiness(projectId, active.id, {
+            signal: controller.signal,
+          }),
+          listPreconstructionFindings(projectId, active.id, {
+            ...query,
+            signal: controller.signal,
+          }),
+          listPreconstructionFindingSets(projectId, active.id, {
+            limit: 50,
+            signal: controller.signal,
+          }),
+        ]);
+        if (
+          projectRef.current !== identity.projectId ||
+          selectedReviewSetRef.current !== identity.reviewSetId ||
+          controller.signal.aborted
+        ) return null;
+        const next = {
+          plans: plans.items,
+          comparisonTypes: plans.comparison_types,
+          selectedPlanId: active.id,
+          readiness,
+          findings: {
+            items: findings.items,
+            total: findings.total,
+            limit: findings.limit,
+            offset: findings.offset,
+            summary: findings.summary,
+            latestFindingSetId: findings.latest_finding_set_id,
+            taxonomyVersion: findings.taxonomy_version,
+            sets: sets.items,
+          },
+        };
+        setComparison(next);
+        return next;
+      })
+      .catch((error) => {
+        if (isAbortError(error) || projectRef.current !== identity.projectId) return null;
+        setComparisonError(error);
+        onErrorRef.current?.("Unable to load scope comparison", error);
+        return null;
+      })
+      .finally(() => {
+        if (comparisonRequestRef.current === controller) {
+          comparisonRequestRef.current = null;
+          setIsComparisonLoading(false);
+        }
+      });
+  }, [projectId, selectedReviewSetId]);
+
+  useEffect(() => {
+    if (!selectedReviewSetId) return undefined;
+    const startTimer = window.setTimeout(() => void loadComparison(), 0);
+    return () => window.clearTimeout(startTimer);
+    // Filter changes call loadComparison directly with explicit overrides.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId, selectedReviewSetId]);
+
+  const selectComparisonPlan = useCallback((planId) => {
+    selectedPlanRef.current = planId;
+    findingQueryRef.current = DEFAULT_FINDING_QUERY;
+    return loadComparison({ ...DEFAULT_FINDING_QUERY, planId });
+  }, [loadComparison]);
+
+  const createComparisonPlan = useCallback((values) => runMutation(
+    "Unable to create the comparison plan",
+    () => createPreconstructionComparisonPlan(projectId, selectedReviewSetId, values),
+    "none"
+  ).then(async (plan) => {
+    if (plan) {
+      selectedPlanRef.current = plan.id;
+      await loadComparison({ planId: plan.id });
+    }
+    return plan;
+  }), [loadComparison, projectId, runMutation, selectedReviewSetId]);
+
+  const updateComparisonPlan = useCallback((planId, values) => runMutation(
+    "Unable to update the comparison plan",
+    () => updatePreconstructionComparisonPlan(projectId, planId, values),
+    "none"
+  ).then(async (plan) => {
+    if (plan) await loadComparison({ planId });
+    return plan;
+  }), [loadComparison, projectId, runMutation]);
+
+  const archiveComparisonPlan = useCallback((planId) => runMutation(
+    "Unable to archive the comparison plan",
+    () => archivePreconstructionComparisonPlan(projectId, planId),
+    "none"
+  ).then(async (plan) => {
+    if (plan) await loadComparison({ planId });
+    return plan;
+  }), [loadComparison, projectId, runMutation]);
+
+  const runComparison = useCallback((planId) => runMutation(
+    "Unable to run the scope comparison",
+    () => runPreconstructionComparison(projectId, planId, {}),
+    "none"
+  ).then(async (findingSet) => {
+    if (findingSet) await loadComparison({ planId, offset: 0 });
+    return findingSet;
+  }), [loadComparison, projectId, runMutation]);
+
+  const reviewFinding = useCallback((findingId, decision) => runMutation(
+    "Unable to record the finding review",
+    () => reviewPreconstructionFinding(projectId, findingId, decision),
+    "none"
+  ).then(async (result) => {
+    if (result) await loadComparison();
+    return result;
+  }), [loadComparison, projectId, runMutation]);
+
+  const createManualFinding = useCallback((planId, values) => runMutation(
+    "Unable to create the manual finding",
+    () => createPreconstructionManualFinding(projectId, planId, values),
+    "none"
+  ).then(async (result) => {
+    if (result) await loadComparison({ planId, offset: 0 });
+    return result;
+  }), [loadComparison, projectId, runMutation]);
+
   const selectReviewSet = useCallback((reviewSetId) => {
     closeContent();
+    comparisonRequestRef.current?.abort();
+    selectedPlanRef.current = null;
+    findingQueryRef.current = DEFAULT_FINDING_QUERY;
+    setComparison(EMPTY_COMPARISON);
+    setFindingQuery(DEFAULT_FINDING_QUERY);
+    setComparisonError(null);
     assertionRequestRef.current?.abort();
     assertionQueryRef.current = DEFAULT_ASSERTION_QUERY;
     selectedReviewSetRef.current = reviewSetId;
@@ -563,6 +788,18 @@ function usePreconstruction({ projectId, onError }) {
   }, [closeContent]);
 
   return {
+    comparison,
+    findingQuery,
+    isComparisonLoading,
+    comparisonError,
+    loadComparison,
+    selectComparisonPlan,
+    createComparisonPlan,
+    updateComparisonPlan,
+    archiveComparisonPlan,
+    runComparison,
+    reviewFinding,
+    createManualFinding,
     assertions,
     assertionQuery,
     isAssertionLoading,

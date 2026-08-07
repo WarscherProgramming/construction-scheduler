@@ -9,10 +9,12 @@ from app.core.config import (
     DOCUMENT_EXTRACTION_CONFIG,
     PRECONSTRUCTION_AI_CONFIG,
     PRECONSTRUCTION_PREPARATION_CONFIG,
+    PRECONSTRUCTION_COMPARISON_CONFIG,
     PRECONSTRUCTION_SCOPE_CONFIG,
     AttachmentConfig,
     DocumentExtractionConfig,
     PreconstructionAIConfig,
+    PreconstructionComparisonConfig,
     PreconstructionPreparationConfig,
     PreconstructionScopeConfig,
 )
@@ -86,6 +88,10 @@ def get_preconstruction_preparation_config() -> PreconstructionPreparationConfig
 
 def get_preconstruction_scope_config() -> PreconstructionScopeConfig:
     return PRECONSTRUCTION_SCOPE_CONFIG
+
+
+def get_preconstruction_comparison_config() -> PreconstructionComparisonConfig:
+    return PRECONSTRUCTION_COMPARISON_CONFIG
 
 
 def get_attachment_storage(

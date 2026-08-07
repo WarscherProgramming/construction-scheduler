@@ -344,6 +344,30 @@ class PreconstructionScopeConfig:
 
 
 @dataclass(frozen=True)
+class PreconstructionComparisonConfig:
+    max_assertions_per_comparison: int
+    max_candidates_per_run: int
+    max_findings_per_set: int
+    max_assertion_links_per_finding: int
+    max_evidence_per_finding: int
+    max_manual_findings_per_plan: int
+    max_comparison_plans_per_review_set: int
+    request_max_content_characters: int
+    max_result_bytes: int
+    max_title_characters: int
+    max_summary_characters: int
+    max_rationale_characters: int
+    max_reviewer_note_characters: int
+    finding_page_size: int
+    finding_max_page_size: int
+    plan_page_size: int
+    covered_minimum_match_class: str
+    schema_version: str
+    manifest_version: str
+    template_version: str
+
+
+@dataclass(frozen=True)
 class PreconstructionPreparationConfig:
     max_pages: int
     max_segments: int
@@ -817,6 +841,87 @@ if (
     raise RuntimeError(
         "PRECONSTRUCTION_SCOPE_REQUEST_MAX_CONTENT_CHARACTERS cannot exceed "
         "PRECONSTRUCTION_PREPARATION_MAX_TOTAL_CHARACTERS"
+    )
+
+_comparison_covered_minimum = os.getenv(
+    "PRECONSTRUCTION_COMPARISON_COVERED_MINIMUM_MATCH_CLASS",
+    "strong",
+).strip().lower()
+if _comparison_covered_minimum not in {"exact", "strong", "partial"}:
+    raise RuntimeError(
+        "PRECONSTRUCTION_COMPARISON_COVERED_MINIMUM_MATCH_CLASS must be "
+        "exact, strong, or partial"
+    )
+
+PRECONSTRUCTION_COMPARISON_CONFIG = PreconstructionComparisonConfig(
+    max_assertions_per_comparison=positive_integer_environment_variable(
+        "PRECONSTRUCTION_COMPARISON_MAX_ASSERTIONS", 2_000, maximum=10_000
+    ),
+    max_candidates_per_run=positive_integer_environment_variable(
+        "PRECONSTRUCTION_COMPARISON_MAX_CANDIDATES", 500, maximum=2_000
+    ),
+    max_findings_per_set=positive_integer_environment_variable(
+        "PRECONSTRUCTION_COMPARISON_MAX_FINDINGS", 500, maximum=2_000
+    ),
+    max_assertion_links_per_finding=positive_integer_environment_variable(
+        "PRECONSTRUCTION_COMPARISON_MAX_ASSERTION_LINKS", 20, maximum=50
+    ),
+    max_evidence_per_finding=positive_integer_environment_variable(
+        "PRECONSTRUCTION_COMPARISON_MAX_EVIDENCE_PER_FINDING", 20, maximum=50
+    ),
+    max_manual_findings_per_plan=positive_integer_environment_variable(
+        "PRECONSTRUCTION_COMPARISON_MAX_MANUAL_FINDINGS", 500, maximum=5_000
+    ),
+    max_comparison_plans_per_review_set=positive_integer_environment_variable(
+        "PRECONSTRUCTION_COMPARISON_MAX_PLANS", 50, maximum=500
+    ),
+    request_max_content_characters=positive_integer_environment_variable(
+        "PRECONSTRUCTION_COMPARISON_REQUEST_MAX_CHARACTERS", 100_000, maximum=500_000
+    ),
+    max_result_bytes=positive_integer_environment_variable(
+        "PRECONSTRUCTION_COMPARISON_MAX_RESULT_BYTES", 1_048_576, maximum=8_388_608
+    ),
+    max_title_characters=positive_integer_environment_variable(
+        "PRECONSTRUCTION_COMPARISON_MAX_TITLE_CHARACTERS", 200, maximum=200
+    ),
+    max_summary_characters=positive_integer_environment_variable(
+        "PRECONSTRUCTION_COMPARISON_MAX_SUMMARY_CHARACTERS", 600, maximum=600
+    ),
+    max_rationale_characters=positive_integer_environment_variable(
+        "PRECONSTRUCTION_COMPARISON_MAX_RATIONALE_CHARACTERS", 2_000, maximum=2_000
+    ),
+    max_reviewer_note_characters=positive_integer_environment_variable(
+        "PRECONSTRUCTION_COMPARISON_MAX_REVIEWER_NOTE_CHARACTERS", 2_000, maximum=2_000
+    ),
+    finding_page_size=positive_integer_environment_variable(
+        "PRECONSTRUCTION_COMPARISON_FINDING_PAGE_SIZE", 25, maximum=100
+    ),
+    finding_max_page_size=positive_integer_environment_variable(
+        "PRECONSTRUCTION_COMPARISON_FINDING_MAX_PAGE_SIZE", 100, maximum=200
+    ),
+    plan_page_size=positive_integer_environment_variable(
+        "PRECONSTRUCTION_COMPARISON_PLAN_PAGE_SIZE", 50, maximum=200
+    ),
+    covered_minimum_match_class=_comparison_covered_minimum,
+    schema_version="scope-comparison-1",
+    manifest_version="scope-comparison-manifest-1",
+    template_version="scope-comparison-1",
+)
+if (
+    PRECONSTRUCTION_COMPARISON_CONFIG.finding_page_size
+    > PRECONSTRUCTION_COMPARISON_CONFIG.finding_max_page_size
+):
+    raise RuntimeError(
+        "PRECONSTRUCTION_COMPARISON_FINDING_PAGE_SIZE cannot exceed "
+        "PRECONSTRUCTION_COMPARISON_FINDING_MAX_PAGE_SIZE"
+    )
+if (
+    PRECONSTRUCTION_COMPARISON_CONFIG.max_findings_per_set
+    > PRECONSTRUCTION_COMPARISON_CONFIG.max_candidates_per_run
+):
+    raise RuntimeError(
+        "PRECONSTRUCTION_COMPARISON_MAX_FINDINGS cannot exceed "
+        "PRECONSTRUCTION_COMPARISON_MAX_CANDIDATES"
     )
 
 MAX_REQUEST_BODY_BYTES = positive_integer_environment_variable(

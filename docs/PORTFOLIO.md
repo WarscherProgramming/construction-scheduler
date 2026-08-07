@@ -1,8 +1,8 @@
 # FieldFlow — Portfolio Copy
 
 Ready-to-use descriptions for resumes, portfolio sites, and LinkedIn.
-Keep the metrics in sync with the repo (M18.3 verified **1,071 primary tests: 609
-frontend across 91 files + 462 backend**, with 500 backend subtests reported
+Keep the metrics in sync with the repo (M18.4 verified **1,124 primary tests: 627
+frontend across 92 files + 497 backend**, with 601 backend subtests reported
 separately).
 
 ---
@@ -21,7 +21,7 @@ separately).
 > types, a project document explorer, construction drawing revision
 > management with a secure PDF viewer, explicit cross-record construction
 > relationships, project-scoped PDF content search, hardened rotating-session
-> authentication, immutable preconstruction content preparation, and 1,071 automated
+> authentication, immutable preconstruction content preparation, and 1,124 automated
 > tests.
 
 ### Resume bullets
@@ -109,7 +109,7 @@ separately).
 > - Hardened authentication with memory-only access JWTs, rotating opaque
 >   refresh sessions, replay-family revocation, CSRF and exact-Origin
 >   enforcement, route-wide tenant isolation, and bounded abuse controls;
->   verified the complete platform with 1,071 automated tests (Vitest/RTL +
+>   verified the complete platform with 1,124 automated tests (Vitest/RTL +
 >   pytest).
 
 ### Portfolio-site paragraph
@@ -136,7 +136,7 @@ separately).
 > document explorer, construction drawing revision management with secure
 > browser viewing, explicit user-created relationships across construction
 > records and drawing context, secure project PDF content search, immutable
-> preconstruction scope assertions, and 1,071
+> preconstruction scope comparison, and 1,124
 > automated tests
 > across the stack.
 
@@ -194,7 +194,7 @@ available while preserving recoverable cleanup work.
   attachment and document APIs, models, storage abstractions, hooks, and UI
 - 25 MiB per-file limit with PDF, image, text, Word, and Excel support
 - Private authenticated delivery with no public object keys or credentials
-- 609 frontend tests across 91 files and 462 backend tests, for 1,071 primary
+- 627 frontend tests across 92 files and 497 backend tests, for 1,124 primary
   tests passed; 420 backend subtests are tracked separately
 - Lazy per-record panel mounting with no dashboard attachment preloading
 - Ten allowlisted relationship entity types with bounded candidate search and

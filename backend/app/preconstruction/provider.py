@@ -107,6 +107,97 @@ class ProviderScopeAssertionResult(BaseModel):
     warnings: list[str] = Field(default_factory=list, max_length=20)
 
 
+class ProviderComparisonEvidenceRef(BaseModel):
+    """A provider citation into evidence already attached to a pinned assertion."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    assertion_id: int = Field(ge=1, le=2_147_483_647)
+    assertion_evidence_id: int = Field(ge=1, le=2_147_483_647)
+    evidence_role: Literal[
+        "primary", "supporting", "contextual", "contradictory"
+    ] = "primary"
+
+
+class ProviderComparisonCandidateResult(BaseModel):
+    """One provider disposition for one deterministic candidate.
+
+    A provider may keep, reject, or escalate a candidate the server already
+    generated. It cannot introduce a candidate, an assertion, or evidence of
+    its own, and there is deliberately no field for review state or project
+    identity.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    candidate_key: str = Field(min_length=1, max_length=200)
+    disposition: Literal["retain", "reject", "needs_human_review"]
+    finding_type: str | None = Field(default=None, max_length=40)
+    severity: str | None = Field(default=None, max_length=20)
+    title: str | None = Field(default=None, max_length=200)
+    summary: str | None = Field(default=None, max_length=600)
+    rationale: str | None = Field(default=None, max_length=2000)
+    requirement_assertion_ids: list[int] = Field(default_factory=list, max_length=20)
+    coverage_assertion_ids: list[int] = Field(default_factory=list, max_length=20)
+    evidence_refs: list[ProviderComparisonEvidenceRef] = Field(
+        default_factory=list, max_length=20
+    )
+    confidence: float | None = Field(default=None, ge=0, le=1)
+    confidence_basis: str | None = Field(default=None, max_length=300)
+
+
+class ProviderComparisonResult(BaseModel):
+    """Strict envelope for bounded comparison validation output."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: str = Field(min_length=1, max_length=100)
+    taxonomy_version: str = Field(min_length=1, max_length=100)
+    comparison_type: str = Field(min_length=1, max_length=60)
+    candidates: list[ProviderComparisonCandidateResult] = Field(
+        default_factory=list, max_length=1_000
+    )
+    warnings: list[str] = Field(default_factory=list, max_length=20)
+
+
+@dataclass(frozen=True)
+class ProviderComparisonCandidate:
+    """One deterministic candidate handed to a provider for validation."""
+
+    candidate_key: str
+    finding_type: str
+    default_severity: str
+    match_class: str
+    match_score: int
+    match_reasons: tuple[str, ...]
+    title: str
+    summary: str
+    requirement_assertion_ids: tuple[int, ...]
+    coverage_assertion_ids: tuple[int, ...]
+
+
+@dataclass(frozen=True)
+class ProviderComparisonAssertion:
+    """Bounded assertion metadata plus its citable evidence excerpts."""
+
+    assertion_id: int
+    side: str
+    document_role: str
+    concept_code: str
+    assertion_type: str
+    inclusion_state: str
+    untrusted_subject: str
+    untrusted_requirement: str
+    responsibility_party: str | None
+    discipline: str | None
+    trade: str | None
+    specification_section: str | None
+    drawing_sheet: str | None
+    quantity: str | None
+    location_text: str | None
+    evidence: tuple[tuple[int, str], ...] = ()
+
+
 @dataclass(frozen=True)
 class ProviderSourceDescriptor:
     source_id: int
@@ -157,6 +248,15 @@ class ProviderRequest:
     allowed_inclusion_states: tuple[str, ...] = ()
     max_assertions: int = 0
     max_evidence_per_assertion: int = 0
+    # Comparison validation inputs. Candidates are generated deterministically
+    # by trusted code; the provider only dispositions what it is given.
+    comparison_type: str = ""
+    comparison_manifest_hash: str = ""
+    comparison_schema_version: str = ""
+    allowed_finding_types: tuple[str, ...] = ()
+    allowed_severities: tuple[str, ...] = ()
+    comparison_candidates: tuple[ProviderComparisonCandidate, ...] = ()
+    comparison_assertions: tuple[ProviderComparisonAssertion, ...] = ()
 
 
 class PreconstructionAIProvider(ABC):
@@ -282,6 +382,19 @@ _SCOPE_MODES = frozenset(
     }
 )
 
+_COMPARISON_MODES = frozenset(
+    {
+        "comparison_success",
+        "comparison_warning",
+        "comparison_reject_candidate",
+        "comparison_unknown_finding_type",
+        "comparison_forged_assertion",
+        "comparison_forged_evidence",
+        "comparison_oversized",
+        "comparison_malformed",
+    }
+)
+
 
 class DeterministicFakePreconstructionAIProvider(PreconstructionAIProvider):
     profile = "fake_test"
@@ -401,7 +514,78 @@ class DeterministicFakePreconstructionAIProvider(PreconstructionAIProvider):
             output_units=len(payload["assertions"]),
         )
 
+    def _comparison_payload(self, request: ProviderRequest) -> dict[str, Any]:
+        candidates: list[dict[str, Any]] = []
+        warnings: list[str] = []
+        source = list(request.comparison_candidates)
+
+        if self.mode == "comparison_oversized":
+            source = source * 400
+
+        for index, candidate in enumerate(source):
+            entry: dict[str, Any] = {
+                "candidate_key": candidate.candidate_key,
+                "disposition": "retain",
+                "finding_type": candidate.finding_type,
+                "severity": candidate.default_severity,
+                "confidence": 0.7,
+                "confidence_basis": "Deterministic candidate corroborated by cited evidence",
+                "requirement_assertion_ids": list(candidate.requirement_assertion_ids),
+                "coverage_assertion_ids": list(candidate.coverage_assertion_ids),
+                "evidence_refs": [],
+            }
+            if self.mode == "comparison_reject_candidate" and index == 0:
+                entry["disposition"] = "reject"
+                entry["rationale"] = "Deterministic candidate appears covered elsewhere"
+            if self.mode == "comparison_unknown_finding_type" and index == 0:
+                entry["finding_type"] = "fabricated_finding_type"
+            if self.mode == "comparison_forged_assertion" and index == 0:
+                entry["requirement_assertion_ids"] = [999_999]
+            if self.mode == "comparison_forged_evidence" and index == 0:
+                entry["evidence_refs"] = [
+                    {
+                        "assertion_id": 999_999,
+                        "assertion_evidence_id": 999_999,
+                        "evidence_role": "primary",
+                    }
+                ]
+            candidates.append(entry)
+
+        if self.mode == "comparison_warning":
+            warnings.append("Deterministic comparison validation warning")
+
+        return {
+            "schema_version": request.comparison_schema_version,
+            "taxonomy_version": request.taxonomy_version,
+            "comparison_type": request.comparison_type,
+            "candidates": candidates,
+            "warnings": warnings,
+        }
+
+    def _comparison_result(
+        self, request: ProviderRequest
+    ) -> ProviderResult | dict[str, Any]:
+        if self.mode == "comparison_malformed":
+            return ProviderResult(
+                status="completed",
+                schema_version=request.schema_version,
+                payload={"candidates": "not-a-list", "unexpected": True},
+            )
+        payload = self._comparison_payload(request)
+        warning = self.mode in ("comparison_warning", "comparison_reject_candidate")
+        return ProviderResult(
+            status="completed_with_warnings" if warning else "completed",
+            schema_version=request.schema_version,
+            payload=payload,
+            warnings=list(payload["warnings"]),
+            provider_request_id=f"fake-comparison-{request.manifest_hash[:16]}",
+            input_units=len(request.comparison_candidates),
+            output_units=len(payload["candidates"]),
+        )
+
     def execute(self, request: ProviderRequest) -> ProviderResult | dict[str, Any]:
+        if self.mode in _COMPARISON_MODES:
+            return self._comparison_result(request)
         if self.mode in _SCOPE_MODES:
             return self._scope_result(request)
         if self.mode == "retryable_failure":

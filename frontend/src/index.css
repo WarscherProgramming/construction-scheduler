@@ -4588,6 +4588,261 @@ button:disabled {
   }
 }
 
+/* ---------------------------------------------------------------------------
+   M18.4 scope comparison workspace
+   Severity, review status, and origin are always conveyed as text; colour is
+   never the only signal.
+   --------------------------------------------------------------------------- */
+
+.comparison-workspace {
+  margin-top: var(--space-5);
+}
+
+.comparison-workspace-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+  justify-content: space-between;
+}
+
+.comparison-workspace-actions,
+.comparison-plan-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.comparison-plan-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: flex-end;
+  justify-content: space-between;
+  margin: var(--space-4) 0;
+}
+
+.comparison-plan-controls .field-group {
+  flex: 1 1 320px;
+}
+
+.comparison-readiness {
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-4);
+}
+
+.comparison-readiness-metrics,
+.finding-summary-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: var(--space-2);
+  margin: var(--space-3) 0;
+}
+
+.comparison-readiness-metrics dt,
+.finding-summary-metrics dt {
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+}
+
+.comparison-readiness-metrics dd,
+.finding-summary-metrics dd {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.comparison-blockers,
+.comparison-warnings {
+  margin: var(--space-2) 0;
+  padding-left: var(--space-4);
+  font-size: 0.875rem;
+}
+
+.comparison-blockers {
+  color: var(--danger);
+}
+
+.comparison-warnings {
+  color: var(--text-muted);
+}
+
+.finding-summary {
+  display: grid;
+  gap: var(--space-3);
+  margin: var(--space-4) 0;
+}
+
+.finding-filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.finding-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-3);
+}
+
+.finding-item {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.finding-item.is-selected {
+  border-color: var(--accent);
+}
+
+.finding-item-main {
+  flex: 1 1 320px;
+  min-width: 0;
+}
+
+.finding-item-type {
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+  margin: 0;
+}
+
+.finding-item-title {
+  margin: var(--space-1) 0;
+  font-size: 1rem;
+}
+
+.finding-item-summary,
+.finding-item-meta {
+  margin: var(--space-1) 0;
+  font-size: 0.875rem;
+  overflow-wrap: anywhere;
+}
+
+.finding-item-meta {
+  color: var(--text-muted);
+}
+
+.finding-item-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.finding-detail {
+  margin: var(--space-2) 0 var(--space-4);
+}
+
+.finding-detail-summary,
+.finding-detail-rationale {
+  margin: var(--space-2) 0;
+  overflow-wrap: anywhere;
+}
+
+.finding-detail-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-3);
+  margin: var(--space-3) 0;
+}
+
+.finding-detail-fields dt {
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+}
+
+.finding-detail-fields dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.finding-match-reasons,
+.finding-assertion-list,
+.finding-evidence-list,
+.finding-assertion-picker {
+  list-style: none;
+  margin: 0 0 var(--space-3);
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.finding-assertion-picker {
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.finding-assertion-picker label {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.finding-assertion-subject {
+  margin: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.finding-assertion-meta,
+.finding-evidence-meta {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+  overflow-wrap: anywhere;
+}
+
+.finding-evidence-excerpt {
+  margin: var(--space-1) 0;
+  padding: var(--space-2);
+  border-left: 3px solid var(--border);
+  font-family: var(--font-mono, monospace);
+  font-size: 0.8125rem;
+  /* Assertion and source text is untrusted plain text: preserve wrapping
+     without interpreting any markup. */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.finding-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+  justify-content: space-between;
+  margin-top: var(--space-4);
+}
+
+.finding-pagination div {
+  display: flex;
+  gap: var(--space-2);
+}
+
+@media (max-width: 640px) {
+  .finding-item {
+    flex-direction: column;
+  }
+
+  .finding-item-actions {
+    width: 100%;
+  }
+
+  .finding-summary-metrics,
+  .comparison-readiness-metrics {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
 @media (max-width: 900px) {
   .preconstruction-workspace {
     grid-template-columns: 1fr;

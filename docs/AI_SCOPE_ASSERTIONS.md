@@ -317,9 +317,9 @@ chunk gains weight and the PDF worker is unchanged.
 
 ## Deferred
 
-Omission findings, coverage-gap analysis, drawing-versus-proposal comparison,
-proposal-versus-contract comparison, procurement comparison, automatic RFI or
-Change Order creation, automatic relationship creation, embeddings, semantic
-search, cross-run assertion comparison, revision-impact analysis, live provider
-adapters, production OCR, and autonomous acceptance are all out of scope for
-M18.3 and require later separately reviewed milestones.
+M18.4 adds deterministic cross-document comparison and evidence-backed
+findings on top of accepted assertions; see
+[`AI_SCOPE_COMPARISON.md`](AI_SCOPE_COMPARISON.md). Automatic RFI or Change
+Order creation, automatic relationship creation, embeddings, semantic search,
+live provider adapters, production OCR, and autonomous acceptance remain out of
+scope and require later separately reviewed milestones.
