@@ -270,6 +270,23 @@ case means documented engine behaviour changed and the change must be either
 reverted or documented. See
 [`AI_PRECONSTRUCTION_PERFORMANCE.md`](AI_PRECONSTRUCTION_PERFORMANCE.md).
 
+## Release Closeout
+
+M18.7 reviewed every M18 subsystem and recorded the result in
+[`AI_PRECONSTRUCTION_RELEASE.md`](AI_PRECONSTRUCTION_RELEASE.md): data,
+request, and worker flows; ownership, provider, and immutability boundaries;
+the 49-route API inventory; the 20-table data model; the six-migration chain;
+deployment requirements; and the known limitations at release. The manual test
+plan and screenshot checklist are in
+[`AI_PRECONSTRUCTION_QA.md`](AI_PRECONSTRUCTION_QA.md).
+
+A release test now asserts that every controlled value the database permits has
+a display label, that all 49 routes are ownership-gated, that no route commits,
+that no preconstruction service constructs an authoritative record, and that
+every setting declared in `config.py` appears in `backend/.env.example`. Run
+the backend suite before any release; those guards fail loudly rather than
+surfacing as a production 500.
+
 ## Release Gate
 
 Before enabling any future live adapter, require project-isolation tests,

@@ -853,6 +853,41 @@ profile, safe failure and warning codes, versions, latency, and a manifest hash
 prefix. They must never carry finding summaries or rationales, assertion text,
 evidence excerpts, reviewer notes, prompts, or provider response bodies.
 
+## M18.7 AI Preconstruction Release Security Review
+
+M18.7 re-verified every M18 security boundary and recorded the result in
+[`AI_PRECONSTRUCTION_RELEASE.md`](AI_PRECONSTRUCTION_RELEASE.md). Automated
+guards now assert each one on every backend run rather than relying on review:
+
+- all 49 preconstruction routes resolve `get_owned_project` before any nested
+  identifier, and no route commits or rolls back its own transaction;
+- no preconstruction service constructs an `RFI`, `ChangeOrder`, `Submittal`,
+  `PunchItem`, `EntityRelationship`, `Task`, `DrawingRevision`, or `Document`,
+  scanned across all six service modules;
+- the provider factory contains no dynamic import, class path, `eval`, `exec`,
+  or `getattr`, so no live SDK is reachable;
+- `.env.example` pins the disabled provider, disabled fake provider, and
+  disabled OCR;
+- every setting declared in `config.py` appears in the deployment contract, so
+  the two cannot drift;
+- cited evidence, snapshots, pages, and segments are `RESTRICT`-protected, and
+  the three append-only tables carry no `updated_at`;
+- the migration chain is linear with a single head and no branch.
+
+One production defect was found and fixed during closeout. The
+`preconstruction_analysis_runs` type CHECK permitted `scope_comparison` and
+`scope_comparison_validation`, but the display-label map omitted both, so a
+stored row of either type would have made the run listing and run detail routes
+fail for the entire review set. The label map is now total with respect to its
+own CHECK, and a test asserts that property for all eleven controlled
+vocabularies. Labeling did not make either type creatable: the request literal
+still refuses both.
+
+Four high-severity npm advisories remain in dev-only transitive packages
+(`brace-expansion`, `nanoid`, `postcss`, `undici`). `npm audit --omit=dev`
+reports zero vulnerabilities; none of these packages reaches the browser
+bundle. Remediation requires a dependency bump and is deferred.
+
 ## M18.6 Execution Metrics Security Boundary
 
 Execution metrics are measurement, not analysis. The metrics route is

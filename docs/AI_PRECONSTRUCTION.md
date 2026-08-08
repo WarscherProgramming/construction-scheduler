@@ -199,6 +199,12 @@ immutable sources, provider independence, mandatory human review, and every
 authoritative existing system. See
 [`AI_SCOPE_ASSERTIONS.md`](AI_SCOPE_ASSERTIONS.md).
 
+M18.7 is the release closeout: the full architecture, flow, boundary, API,
+data-model, migration, deployment, and operations review lives in
+[`AI_PRECONSTRUCTION_RELEASE.md`](AI_PRECONSTRUCTION_RELEASE.md), with the
+manual test plan and screenshot checklist in
+[`AI_PRECONSTRUCTION_QA.md`](AI_PRECONSTRUCTION_QA.md).
+
 M18.5 records intent and links a record a person created in that record's own
 workflow. M18.6 adds bounded execution budgets, execution metrics and cost
 accounting, an offline deterministic evaluation suite, and query, batching, and

@@ -11,7 +11,7 @@ and Punch Lists) with their supporting documents.
 ![React 19](https://img.shields.io/badge/React-19-61dafb?logo=react&logoColor=white&labelColor=20232a)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.1x-009688?logo=fastapi&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169e1?logo=postgresql&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-1207%20passing-2ea44f)
+![Tests](https://img.shields.io/badge/tests-1220%20passing-2ea44f)
 ![Vite](https://img.shields.io/badge/Vite-8-646cff?logo=vite&logoColor=white)
 
 ![FieldFlow executive dashboard](docs/screenshots/dashboard.png)
@@ -180,8 +180,8 @@ question — *"what needs my attention today?"* — has a one-screen answer.
 - **Client-side onboarding**: first-run detection seeds a realistic demo
   project through the public API with visible progress — the app is never
   empty.
-- **Automated testing: 1,207 tests** — 656 frontend across 94 files (Vitest +
-  React Testing Library, behavior- and accessibility-focused) and 551 backend
+- **Automated testing: 1,220 tests** — 656 frontend across 94 files (Vitest +
+  React Testing Library, behavior- and accessibility-focused) and 564 backend
   tests plus 420 separately reported subtests (pytest,
   covering the scheduling engine, critical path, services, migrations, CORS,
   and TestClient API integration).
@@ -578,12 +578,12 @@ job. FieldFlow does not include a built-in worker or scheduler, and
 | Backend | FastAPI, SQLAlchemy, Alembic, Pydantic |
 | Database | PostgreSQL |
 | Auth | Memory-only access JWT + rotating opaque refresh sessions |
-| Testing | Vitest + React Testing Library (656), pytest (551) |
+| Testing | Vitest + React Testing Library (656), pytest (564) |
 | Hosting | Vercel (frontend) · Render (API + migrations + finite extraction and preparation crons) |
 
 ## Testing
 
-**1,207 primary automated tests passed.** Backend subtests are reported
+**1,220 primary automated tests passed.** Backend subtests are reported
 separately rather than added to that total.
 
 - **Frontend (656 across 94 files)** — Vitest + React Testing Library. Tests
@@ -633,7 +633,7 @@ separately rather than added to that total.
   preparation actions, stale project/review/content rejection, bounded
   plain-text inspection, keyboard source selection, focus restoration, and
   explicit no-binary/no-dashboard request assertions.
-- **Backend (551, plus 787 separately reported subtests)** — pytest. Covers the deterministic
+- **Backend (564, plus 944 separately reported subtests)** — pytest. Covers the deterministic
   workday scheduling engine (persistent anchors, all four dependency types,
   multiple predecessors, signed lead/lag, milestones, constraints,
   summary predecessors, hierarchy ordering, federal holidays), critical path
@@ -800,6 +800,15 @@ commit production credentials.
   cron, and the preconstruction preparation cron, but not attachment cleanup,
   so cleanup scheduling remains an explicit deployment operation. See
   [`docs/DOCUMENT_OPERATIONS.md`](docs/DOCUMENT_OPERATIONS.md).
+- **AI Preconstruction release review.**
+  [`docs/AI_PRECONSTRUCTION_RELEASE.md`](docs/AI_PRECONSTRUCTION_RELEASE.md) is
+  the single document to read before deploying, operating, or extending the
+  preconstruction platform: data, request, and worker flows; ownership,
+  provider, and immutability boundaries; the 49-route API inventory; the
+  20-table data model; the six-migration chain; production configuration and
+  deployment requirements; operational and maintenance procedures; and the
+  known limitations at release. The manual test plan and screenshot checklist
+  are in [`docs/AI_PRECONSTRUCTION_QA.md`](docs/AI_PRECONSTRUCTION_QA.md).
 
 ## Roadmap
 
@@ -922,6 +931,12 @@ commit production credentials.
   rather than truncates, opt-in manifest reuse, worker runtime budgets, a
   bounded read-only execution-metrics surface with absent-not-zero cost, and
   an offline deterministic evaluation suite and release command
+- ✅ M18.7 AI Preconstruction release closeout with a full production-readiness
+  and security review, documented data/request/worker flows, ownership,
+  provider and immutability boundaries, final 49-route API and 20-table data
+  model inventories, the six-migration chain, deployment and operational
+  runbooks, a manual QA plan and screenshot checklist, and automated release
+  guards for vocabulary totality, route ownership, and configuration drift
 - ✅ Branded landing page and first-run demo seeding
 - ✅ Icon system, confirmation dialogs, notifications, loading skeletons
 - ✅ Scheduler showcase: WBS numbering, inline validation, critical path +

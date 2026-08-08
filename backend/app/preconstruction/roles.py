@@ -35,11 +35,20 @@ REVIEW_PURPOSES = {
     "general_scope_review": "General Scope Review",
 }
 
+# Display labels for every analysis type the database permits. This map must
+# stay total with respect to the ``preconstruction_analysis_runs`` type CHECK:
+# ``run_response`` looks a run's type up here directly, so a stored value with
+# no label would make the run listing and run detail routes fail for the whole
+# review set. The two comparison types are labeled for that reason only —
+# creating them over HTTP is still refused by the ``AnalysisType`` request
+# literal, which deliberately does not list them.
 ANALYSIS_TYPES = {
     "readiness_probe": "Readiness Probe",
     "provider_contract_validation": "Provider Contract Validation",
     "content_contract_validation": "Content Contract Validation",
     "scope_assertion_extraction": "Scope Assertion Extraction",
+    "scope_comparison": "Scope Comparison",
+    "scope_comparison_validation": "Scope Comparison Validation",
 }
 
 # Analysis types that require every active source to have a current prepared

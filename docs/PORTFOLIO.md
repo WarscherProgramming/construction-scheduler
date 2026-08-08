@@ -1,8 +1,8 @@
 # FieldFlow — Portfolio Copy
 
 Ready-to-use descriptions for resumes, portfolio sites, and LinkedIn.
-Keep the metrics in sync with the repo (M18.6 verified **1,207 primary tests: 656
-frontend across 94 files + 551 backend**, with 787 backend subtests reported
+Keep the metrics in sync with the repo (M18.7 verified **1,220 primary tests: 656
+frontend across 94 files + 564 backend**, with 944 backend subtests reported
 separately).
 
 ---
@@ -21,7 +21,7 @@ separately).
 > types, a project document explorer, construction drawing revision
 > management with a secure PDF viewer, explicit cross-record construction
 > relationships, project-scoped PDF content search, hardened rotating-session
-> authentication, immutable preconstruction content preparation, and 1,207 automated
+> authentication, immutable preconstruction content preparation, and 1,220 automated
 > tests.
 
 ### Resume bullets
@@ -106,10 +106,20 @@ separately).
 >   segments, lineage-aware manifests, and a safe plain-text inspector.
 >   Production remains disabled and no scope extraction, omission finding, or
 >   live AI provider is claimed.
+> - Completed the AI preconstruction platform across seven reviewed milestones:
+>   a 96-concept construction scope taxonomy with evidence-backed, human-reviewed
+>   assertions; deterministic cross-document comparison producing advisory
+>   findings via named match classes and documented weights rather than
+>   embeddings; append-only review with a first-class intentional-exclusion
+>   decision; human-initiated follow-ups that link records created in their own
+>   workflows; bounded execution budgets, execution metrics with
+>   absent-not-fabricated cost accounting, and an offline deterministic
+>   evaluation suite. 49 ownership-gated routes, 20 tables, six linear
+>   migrations, no automatic construction decision anywhere.
 > - Hardened authentication with memory-only access JWTs, rotating opaque
 >   refresh sessions, replay-family revocation, CSRF and exact-Origin
 >   enforcement, route-wide tenant isolation, and bounded abuse controls;
->   verified the complete platform with 1,207 automated tests (Vitest/RTL +
+>   verified the complete platform with 1,220 automated tests (Vitest/RTL +
 >   pytest).
 
 ### Portfolio-site paragraph
@@ -194,8 +204,8 @@ available while preserving recoverable cleanup work.
   attachment and document APIs, models, storage abstractions, hooks, and UI
 - 25 MiB per-file limit with PDF, image, text, Word, and Excel support
 - Private authenticated delivery with no public object keys or credentials
-- 656 frontend tests across 94 files and 551 backend tests, for 1,207 primary
-  tests passed; 787 backend subtests are tracked separately
+- 656 frontend tests across 94 files and 564 backend tests, for 1,220 primary
+  tests passed; 944 backend subtests are tracked separately
 - Lazy per-record panel mounting with no dashboard attachment preloading
 - Ten allowlisted relationship entity types with bounded candidate search and
   no dashboard or table-row relationship preloading
