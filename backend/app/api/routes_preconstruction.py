@@ -11,6 +11,7 @@ from app.api.dependencies import (
     get_owned_project,
     get_preconstruction_comparison_config,
     get_preconstruction_config,
+    get_preconstruction_execution_config,
     get_preconstruction_follow_up_config,
     get_preconstruction_preparation_config,
     get_preconstruction_scope_config,
@@ -18,6 +19,7 @@ from app.api.dependencies import (
 from app.core.config import (
     PreconstructionAIConfig,
     PreconstructionComparisonConfig,
+    PreconstructionExecutionConfig,
     PreconstructionFollowUpConfig,
     PreconstructionPreparationConfig,
     PreconstructionScopeConfig,
@@ -134,6 +136,7 @@ from app.services.preconstruction_comparison import (
     list_finding_reviews,
     list_finding_sets,
     list_findings,
+    resolve_population,
     review_finding,
     run_deterministic_comparison,
     update_comparison_plan,
@@ -149,6 +152,15 @@ from app.schemas.preconstruction_follow_up import (
     FollowUpStatusValue,
     FollowUpTargetTypeValue,
     FollowUpUpdate,
+)
+from app.schemas.preconstruction_execution import (
+    ExecutionKindValue,
+    ExecutionMetricListResponse,
+)
+from app.services.preconstruction_execution import (
+    execution_metrics_summary,
+    list_execution_metrics,
+    metric_payload,
 )
 from app.services.preconstruction_follow_up import (
     build_follow_up_draft,
@@ -873,6 +885,9 @@ def comparison_readiness_route(
     config: PreconstructionComparisonConfig = Depends(get_preconstruction_comparison_config),
     ai_config: PreconstructionAIConfig = Depends(get_preconstruction_config),
     provider: PreconstructionAIProvider = Depends(get_preconstruction_provider),
+    execution_config: PreconstructionExecutionConfig = Depends(
+        get_preconstruction_execution_config
+    ),
 ):
     plan = get_comparison_plan(db, project_id, comparison_plan_id)
     review_set = get_review_set(db, project_id, plan.review_set_id)
@@ -883,6 +898,7 @@ def comparison_readiness_route(
         config,
         provider_available=bool(ai_config.enabled and provider.available),
         provider_profile=ai_config.provider,
+        execution_config=execution_config,
     )
 
 
@@ -900,6 +916,9 @@ def run_comparison_route(
     config: PreconstructionComparisonConfig = Depends(get_preconstruction_comparison_config),
     ai_config: PreconstructionAIConfig = Depends(get_preconstruction_config),
     provider: PreconstructionAIProvider = Depends(get_preconstruction_provider),
+    execution_config: PreconstructionExecutionConfig = Depends(
+        get_preconstruction_execution_config
+    ),
 ):
     """Deterministic comparison runs inline and needs no AI provider.
 
@@ -908,6 +927,9 @@ def run_comparison_route(
     """
     plan = get_comparison_plan(db, project_id, comparison_plan_id)
     review_set = get_review_set(db, project_id, plan.review_set_id)
+    # Resolve the eligible population once and hand it to both readiness and
+    # candidate generation; the manifest is identical either way.
+    population = resolve_population(db, plan, config)
     readiness = comparison_readiness(
         db,
         plan,
@@ -915,6 +937,8 @@ def run_comparison_route(
         config,
         provider_available=bool(ai_config.enabled and provider.available),
         provider_profile=ai_config.provider,
+        population=population,
+        execution_config=execution_config,
     )
     if not readiness["ready"]:
         raise HTTPException(
@@ -937,7 +961,17 @@ def run_comparison_route(
                 "analysis worker; it is not executed inline"
             ),
         )
-    return finding_set_response(run_deterministic_comparison(db, plan, config))
+    finding_set, reused = run_deterministic_comparison(
+        db,
+        plan,
+        config,
+        population=population,
+        execution_config=execution_config,
+        reuse_identical_manifest=bool(payload and payload.reuse_identical_manifest),
+    )
+    response = finding_set_response(finding_set)
+    response["manifest_reused"] = reused
+    return response
 
 
 @router.get(
@@ -990,14 +1024,26 @@ def list_findings_route(
     origin: FindingOriginValue | None = None,
     search: Annotated[str, Query(max_length=200)] = "",
     current_finding_set_only: bool = False,
+    evidence_limit: Annotated[int | None, Query(ge=0, le=50)] = None,
     limit: Annotated[int | None, Query(ge=1, le=200)] = None,
     offset: Annotated[int, Query(ge=0, le=2_147_483_647)] = 0,
     db: Session = Depends(get_db),
     project: Project = Depends(get_owned_project),
     config: PreconstructionComparisonConfig = Depends(get_preconstruction_comparison_config),
+    execution_config: PreconstructionExecutionConfig = Depends(
+        get_preconstruction_execution_config
+    ),
 ):
     get_comparison_plan(db, project_id, comparison_plan_id)
     page_size = min(limit or config.finding_page_size, config.finding_max_page_size)
+    # Evidence dominates a finding page's byte size. The cap is configurable
+    # and a caller may request fewer rows per finding, or none at all.
+    evidence_cap = min(
+        execution_config.finding_evidence_limit
+        if evidence_limit is None
+        else evidence_limit,
+        execution_config.finding_max_evidence_limit,
+    )
     items, total = list_findings(
         db,
         project_id,
@@ -1013,10 +1059,13 @@ def list_findings_route(
         current_finding_set_only=current_finding_set_only,
     )
     return {
-        "items": finding_payloads(db, project_id, items),
+        "items": finding_payloads(
+            db, project_id, items, evidence_limit=evidence_cap
+        ),
         "total": total,
         "limit": page_size,
         "offset": offset,
+        "evidence_limit": evidence_cap,
         "summary": finding_summary_counts(db, project_id, comparison_plan_id),
         "latest_finding_set_id": latest_finding_set_id(
             db, project_id, comparison_plan_id
@@ -1095,6 +1144,45 @@ def create_manual_finding_route(
     return {
         "finding": finding_payloads(db, project_id, [finding])[0],
         "reviews": list_finding_reviews(db, project_id, finding.id),
+    }
+
+
+@router.get(
+    "/execution-metrics",
+    response_model=ExecutionMetricListResponse,
+)
+def list_execution_metrics_route(
+    project_id: int,
+    execution_kind: ExecutionKindValue | None = None,
+    limit: Annotated[int | None, Query(ge=1, le=200)] = None,
+    offset: Annotated[int, Query(ge=0, le=2_147_483_647)] = 0,
+    db: Session = Depends(get_db),
+    project: Project = Depends(get_owned_project),
+    execution_config: PreconstructionExecutionConfig = Depends(
+        get_preconstruction_execution_config
+    ),
+):
+    """Bounded, project-owned execution metrics for operational monitoring.
+
+    Counts, milliseconds, units, and cost only. This route creates nothing and
+    mutates nothing; metric rows are written by the services that do the work.
+    """
+    page_size = min(limit or 50, 200)
+    items, total = list_execution_metrics(
+        db,
+        project_id,
+        limit=page_size,
+        offset=offset,
+        execution_kind=execution_kind,
+    )
+    return {
+        "items": [metric_payload(item) for item in items],
+        "total": total,
+        "limit": page_size,
+        "offset": offset,
+        "summary": execution_metrics_summary(db, project_id, execution_kind),
+        "metrics_enabled": execution_config.metrics_enabled,
+        "metrics_version": execution_config.metrics_version,
     }
 
 

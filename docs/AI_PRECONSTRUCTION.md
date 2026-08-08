@@ -200,9 +200,14 @@ authoritative existing system. See
 [`AI_SCOPE_ASSERTIONS.md`](AI_SCOPE_ASSERTIONS.md).
 
 M18.5 records intent and links a record a person created in that record's own
-workflow. Automatic RFI, Change Order, procurement, relationship, and
-notification creation, contract and purchase-order approval, and live provider
-adapters all remain deferred to later separately reviewed milestones.
+workflow. M18.6 adds bounded execution budgets, execution metrics and cost
+accounting, an offline deterministic evaluation suite, and query, batching, and
+response-size optimizations that change cost and nothing else; see
+[`AI_PRECONSTRUCTION_PERFORMANCE.md`](AI_PRECONSTRUCTION_PERFORMANCE.md).
+
+Automatic RFI, Change Order, procurement, relationship, and notification
+creation, contract and purchase-order approval, and live provider adapters all
+remain deferred to later separately reviewed milestones.
 
 ## Migration
 

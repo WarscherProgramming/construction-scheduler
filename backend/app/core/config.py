@@ -53,6 +53,31 @@ def positive_integer_environment_variable(
     return value
 
 
+def nonnegative_integer_environment_variable(
+    name: str,
+    default: int,
+    *,
+    maximum: int | None = None,
+) -> int:
+    """Bounded integer that may legitimately be zero.
+
+    Cost rates use this: zero means "no rate configured", which is reported as
+    an absent cost rather than as a free execution.
+    """
+    raw_value = os.getenv(name, str(default))
+    try:
+        value = int(raw_value)
+    except ValueError as error:
+        raise RuntimeError(f"{name} must be an integer") from error
+
+    if value < 0:
+        raise RuntimeError(f"{name} cannot be negative")
+    if maximum is not None and value > maximum:
+        raise RuntimeError(f"{name} must be at most {maximum}")
+
+    return value
+
+
 def boolean_environment_variable(
     name: str,
     default: bool,
@@ -365,6 +390,23 @@ class PreconstructionComparisonConfig:
     schema_version: str
     manifest_version: str
     template_version: str
+
+
+@dataclass(frozen=True)
+class PreconstructionExecutionConfig:
+    """Bounded execution, batching, cost accounting, and diagnostics."""
+
+    max_comparison_pairs: int
+    persist_chunk_size: int
+    worker_max_runtime_seconds: int
+    finding_evidence_limit: int
+    finding_max_evidence_limit: int
+    metrics_retention_rows: int
+    cost_input_micros_per_unit: int
+    cost_output_micros_per_unit: int
+    metrics_enabled: bool
+    diagnostics_enabled: bool
+    metrics_version: str
 
 
 @dataclass(frozen=True)
@@ -935,6 +977,88 @@ if (
     raise RuntimeError(
         "PRECONSTRUCTION_COMPARISON_MAX_FINDINGS cannot exceed "
         "PRECONSTRUCTION_COMPARISON_MAX_CANDIDATES"
+    )
+
+PRECONSTRUCTION_EXECUTION_CONFIG = PreconstructionExecutionConfig(
+    max_comparison_pairs=positive_integer_environment_variable(
+        "PRECONSTRUCTION_EXECUTION_MAX_COMPARISON_PAIRS", 1_000_000,
+        maximum=25_000_000,
+    ),
+    persist_chunk_size=positive_integer_environment_variable(
+        "PRECONSTRUCTION_EXECUTION_PERSIST_CHUNK_SIZE", 500, maximum=5_000
+    ),
+    worker_max_runtime_seconds=positive_integer_environment_variable(
+        "PRECONSTRUCTION_EXECUTION_WORKER_MAX_RUNTIME_SECONDS", 240, maximum=3_600
+    ),
+    finding_evidence_limit=positive_integer_environment_variable(
+        "PRECONSTRUCTION_EXECUTION_FINDING_EVIDENCE_LIMIT", 10, maximum=50
+    ),
+    finding_max_evidence_limit=positive_integer_environment_variable(
+        "PRECONSTRUCTION_EXECUTION_FINDING_MAX_EVIDENCE_LIMIT", 20, maximum=50
+    ),
+    metrics_retention_rows=positive_integer_environment_variable(
+        "PRECONSTRUCTION_EXECUTION_METRICS_RETENTION_ROWS", 500, maximum=10_000
+    ),
+    # Zero means no rate is configured; cost is then reported as absent rather
+    # than as zero, so an operator never sees a fabricated figure.
+    cost_input_micros_per_unit=nonnegative_integer_environment_variable(
+        "PRECONSTRUCTION_EXECUTION_COST_INPUT_MICROS_PER_UNIT", 0,
+        maximum=1_000_000,
+    ),
+    cost_output_micros_per_unit=nonnegative_integer_environment_variable(
+        "PRECONSTRUCTION_EXECUTION_COST_OUTPUT_MICROS_PER_UNIT", 0,
+        maximum=1_000_000,
+    ),
+    metrics_enabled=boolean_environment_variable(
+        "PRECONSTRUCTION_EXECUTION_METRICS_ENABLED", True
+    ),
+    diagnostics_enabled=boolean_environment_variable(
+        "PRECONSTRUCTION_EXECUTION_DIAGNOSTICS_ENABLED", True
+    ),
+    metrics_version="preconstruction-execution-1",
+)
+if (
+    PRECONSTRUCTION_EXECUTION_CONFIG.finding_evidence_limit
+    > PRECONSTRUCTION_EXECUTION_CONFIG.finding_max_evidence_limit
+):
+    raise RuntimeError(
+        "PRECONSTRUCTION_EXECUTION_FINDING_EVIDENCE_LIMIT cannot exceed "
+        "PRECONSTRUCTION_EXECUTION_FINDING_MAX_EVIDENCE_LIMIT"
+    )
+if (
+    PRECONSTRUCTION_EXECUTION_CONFIG.max_comparison_pairs
+    < PRECONSTRUCTION_COMPARISON_CONFIG.max_candidates_per_run
+):
+    raise RuntimeError(
+        "PRECONSTRUCTION_EXECUTION_MAX_COMPARISON_PAIRS cannot be smaller than "
+        "PRECONSTRUCTION_COMPARISON_MAX_CANDIDATES"
+    )
+if (
+    PRECONSTRUCTION_EXECUTION_CONFIG.persist_chunk_size
+    > PRECONSTRUCTION_COMPARISON_CONFIG.max_findings_per_set * 4
+):
+    raise RuntimeError(
+        "PRECONSTRUCTION_EXECUTION_PERSIST_CHUNK_SIZE is larger than the "
+        "largest finding set it could ever write"
+    )
+# A batch that runs longer than one lease could still be processing an attempt
+# whose lease has expired and been recovered by another worker. Keeping the
+# runtime budget inside the lease window makes that impossible.
+if (
+    PRECONSTRUCTION_EXECUTION_CONFIG.worker_max_runtime_seconds
+    > PRECONSTRUCTION_AI_CONFIG.lease_seconds
+):
+    raise RuntimeError(
+        "PRECONSTRUCTION_EXECUTION_WORKER_MAX_RUNTIME_SECONDS cannot exceed "
+        "PRECONSTRUCTION_AI_LEASE_SECONDS"
+    )
+if (
+    PRECONSTRUCTION_EXECUTION_CONFIG.worker_max_runtime_seconds
+    > PRECONSTRUCTION_PREPARATION_CONFIG.lease_seconds
+):
+    raise RuntimeError(
+        "PRECONSTRUCTION_EXECUTION_WORKER_MAX_RUNTIME_SECONDS cannot exceed "
+        "PRECONSTRUCTION_PREPARATION_LEASE_SECONDS"
     )
 
 PRECONSTRUCTION_FOLLOW_UP_CONFIG = PreconstructionFollowUpConfig(

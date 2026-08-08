@@ -853,6 +853,43 @@ profile, safe failure and warning codes, versions, latency, and a manifest hash
 prefix. They must never carry finding summaries or rationales, assertion text,
 evidence excerpts, reviewer notes, prompts, or provider response bodies.
 
+## M18.6 Execution Metrics Security Boundary
+
+Execution metrics are measurement, not analysis. The metrics route is
+read-only: there is no create, update, or delete endpoint, and a test asserts
+POST, PUT, and DELETE all return 405. Ownership is enforced through
+`get_owned_project`, so a foreign project returns 403 and an anonymous request
+401.
+
+Metric payloads carry identifiers, counts, milliseconds, billable units, and
+cost only. A test asserts assertion text, evidence excerpts, reviewer notes,
+prompts, and rationales never appear in the serialized response.
+
+Cost is reported as absent when no rate is configured rather than as zero, so
+an operator is never shown a fabricated figure, and the stored micro-units
+imply no currency.
+
+The `execution_id` reference is deliberately untyped, so a metric never
+restricts or cascades into the record it measures; project deletion still
+cascades metrics with the rest of the graph. Recording runs inside a SAVEPOINT
+and swallows failures, so measurement can never roll back the work being
+measured.
+
+Readiness diagnostics contain no measured duration, preserving the documented
+determinism of the readiness response; a test asserts two consecutive calls are
+byte-identical.
+
+A pair-budget breach blocks readiness and refuses the run with 422 rather than
+silently comparing a truncated population, so a reviewer is never shown a
+partial comparison presented as complete. Manifest reuse is opt-in, returns an
+existing set without writing, and declines as soon as a human review changes
+the pinned manifest.
+
+The evaluation framework is pure and offline: no ORM, session, network,
+provider, database write, or project data, asserted by a test that records zero
+SQL statements during a full command run. No evaluation outcome can accept,
+reject, or escalate anything.
+
 ## M18.5 Follow-Up Action Security Boundary
 
 A follow-up is advisory bookkeeping that records human intent and a link. No

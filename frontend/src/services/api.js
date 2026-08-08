@@ -1574,6 +1574,21 @@ export function listPreconstructionFindings(projectId, planId, options = {}) {
         origin: options.origin,
         search: options.search,
         current_finding_set_only: options.currentFindingSetOnly,
+        evidence_limit: options.evidenceLimit,
+        limit: options.limit,
+        offset: options.offset,
+      })}`
+    ),
+    { signal: options.signal }
+  );
+}
+
+export function listPreconstructionExecutionMetrics(projectId, options = {}) {
+  return authenticatedRequest(
+    preconstructionPath(
+      projectId,
+      `/execution-metrics${preconstructionQuery({
+        execution_kind: options.executionKind,
         limit: options.limit,
         offset: options.offset,
       })}`

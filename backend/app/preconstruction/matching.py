@@ -13,6 +13,7 @@ required for anything higher.
 
 from dataclasses import dataclass, field
 from decimal import Decimal
+from functools import lru_cache
 import unicodedata
 
 from app.preconstruction.comparison import (
@@ -27,6 +28,14 @@ from app.preconstruction.comparison import (
 # Tokens shorter than this carry no discriminating value and are dropped so
 # that "a", "of", and stray punctuation do not inflate overlap.
 MINIMUM_TOKEN_LENGTH = 2
+
+# Coverage matching is O(requirements x coverages), so each assertion's subject
+# and requirement text is tokenized once per distinct string instead of once
+# per pair. Tokenization is a pure function of its argument, so memoizing it is
+# transparent: identical inputs still produce identical token sets and
+# identical scores. The cache is bounded and holds only normalized token sets
+# for the current process.
+TOKEN_CACHE_SIZE = 4096
 SUBJECT_OVERLAP_FLOOR = 0.34
 REQUIREMENT_OVERLAP_FLOOR = 0.25
 
@@ -114,8 +123,14 @@ def _normalize(value: str | None) -> str:
     return " ".join(unicodedata.normalize("NFKC", value).casefold().split())
 
 
+@lru_cache(maxsize=TOKEN_CACHE_SIZE)
 def tokenize(value: str | None) -> frozenset[str]:
-    """Deterministic token set: NFKC, case-folded, punctuation-split."""
+    """Deterministic token set: NFKC, case-folded, punctuation-split.
+
+    Memoized because coverage matching tokenizes the same subject text once per
+    candidate pair. The result depends only on ``value``, so the cache changes
+    cost and nothing else.
+    """
     normalized = _normalize(value)
     if not normalized:
         return frozenset()

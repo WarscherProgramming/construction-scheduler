@@ -175,12 +175,18 @@ class ComparisonReadinessResponse(MutationModel):
     provider_validation_available: bool
     provider_profile: str
     taxonomy_version: str
+    # Bounded counts and milliseconds only; never text.
+    diagnostics: dict | None = None
 
 
 class ComparisonRunRequest(MutationModel):
     """Deterministic comparison by default; provider validation is opt-in."""
 
     provider_validation: bool = False
+    # Return the existing finding set when the pinned manifest is identical
+    # instead of writing a byte-identical duplicate. Off by default so a
+    # re-run keeps producing a new immutable set.
+    reuse_identical_manifest: bool = False
 
 
 # --- finding sets and findings ---------------------------------------------
@@ -204,6 +210,7 @@ class FindingSetResponse(MutationModel):
     content_hash: str
     created_at: datetime
     completed_at: datetime | None
+    manifest_reused: bool = False
 
 
 class FindingSetListResponse(MutationModel):
@@ -316,6 +323,7 @@ class FindingListResponse(MutationModel):
     total: int
     limit: int
     offset: int
+    evidence_limit: int
     summary: FindingSummaryResponse
     latest_finding_set_id: int | None
     taxonomy_version: str

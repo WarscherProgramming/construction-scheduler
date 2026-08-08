@@ -10,12 +10,14 @@ from app.core.config import (
     PRECONSTRUCTION_AI_CONFIG,
     PRECONSTRUCTION_PREPARATION_CONFIG,
     PRECONSTRUCTION_COMPARISON_CONFIG,
+    PRECONSTRUCTION_EXECUTION_CONFIG,
     PRECONSTRUCTION_FOLLOW_UP_CONFIG,
     PRECONSTRUCTION_SCOPE_CONFIG,
     AttachmentConfig,
     DocumentExtractionConfig,
     PreconstructionAIConfig,
     PreconstructionComparisonConfig,
+    PreconstructionExecutionConfig,
     PreconstructionFollowUpConfig,
     PreconstructionPreparationConfig,
     PreconstructionScopeConfig,
@@ -98,6 +100,10 @@ def get_preconstruction_comparison_config() -> PreconstructionComparisonConfig:
 
 def get_preconstruction_follow_up_config() -> PreconstructionFollowUpConfig:
     return PRECONSTRUCTION_FOLLOW_UP_CONFIG
+
+
+def get_preconstruction_execution_config() -> PreconstructionExecutionConfig:
+    return PRECONSTRUCTION_EXECUTION_CONFIG
 
 
 def get_attachment_storage(

@@ -11,7 +11,7 @@ and Punch Lists) with their supporting documents.
 ![React 19](https://img.shields.io/badge/React-19-61dafb?logo=react&logoColor=white&labelColor=20232a)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.1x-009688?logo=fastapi&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169e1?logo=postgresql&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-1124%20passing-2ea44f)
+![Tests](https://img.shields.io/badge/tests-1207%20passing-2ea44f)
 ![Vite](https://img.shields.io/badge/Vite-8-646cff?logo=vite&logoColor=white)
 
 ![FieldFlow executive dashboard](docs/screenshots/dashboard.png)
@@ -180,8 +180,8 @@ question — *"what needs my attention today?"* — has a one-screen answer.
 - **Client-side onboarding**: first-run detection seeds a realistic demo
   project through the public API with visible progress — the app is never
   empty.
-- **Automated testing: 1,168 tests** — 646 frontend across 93 files (Vitest +
-  React Testing Library, behavior- and accessibility-focused) and 522 backend
+- **Automated testing: 1,207 tests** — 656 frontend across 94 files (Vitest +
+  React Testing Library, behavior- and accessibility-focused) and 551 backend
   tests plus 420 separately reported subtests (pytest,
   covering the scheduling engine, critical path, services, migrations, CORS,
   and TestClient API integration).
@@ -578,15 +578,15 @@ job. FieldFlow does not include a built-in worker or scheduler, and
 | Backend | FastAPI, SQLAlchemy, Alembic, Pydantic |
 | Database | PostgreSQL |
 | Auth | Memory-only access JWT + rotating opaque refresh sessions |
-| Testing | Vitest + React Testing Library (646), pytest (522) |
+| Testing | Vitest + React Testing Library (656), pytest (551) |
 | Hosting | Vercel (frontend) · Render (API + migrations + finite extraction and preparation crons) |
 
 ## Testing
 
-**1,168 primary automated tests passed.** Backend subtests are reported
+**1,207 primary automated tests passed.** Backend subtests are reported
 separately rather than added to that total.
 
-- **Frontend (646 across 93 files)** — Vitest + React Testing Library. Tests
+- **Frontend (656 across 94 files)** — Vitest + React Testing Library. Tests
   target behavior and accessibility: roles and names, keyboard flows
   (Enter/Escape editing,
   grid cursor navigation, focus traps), aggregate dashboard rendering,
@@ -633,7 +633,7 @@ separately rather than added to that total.
   preparation actions, stale project/review/content rejection, bounded
   plain-text inspection, keyboard source selection, focus restoration, and
   explicit no-binary/no-dashboard request assertions.
-- **Backend (522, plus 723 separately reported subtests)** — pytest. Covers the deterministic
+- **Backend (551, plus 787 separately reported subtests)** — pytest. Covers the deterministic
   workday scheduling engine (persistent anchors, all four dependency types,
   multiple predecessors, signed lead/lag, milestones, constraints,
   summary predecessors, hierarchy ordering, federal holidays), critical path
@@ -916,6 +916,12 @@ commit production credentials.
   the existing entity resolver, terminal completion or cancellation, and a
   bounded follow-up panel that creates no RFI, Change Order, Submittal,
   relationship, or notification
+- ✅ M18.6 preconstruction performance, evaluation, and cost accounting with
+  memoized tokenization, single-resolution comparison requests, one-scan
+  summary aggregates, chunked persistence, an exact pair budget that refuses
+  rather than truncates, opt-in manifest reuse, worker runtime budgets, a
+  bounded read-only execution-metrics surface with absent-not-zero cost, and
+  an offline deterministic evaluation suite and release command
 - ✅ Branded landing page and first-run demo seeding
 - ✅ Icon system, confirmation dialogs, notifications, loading skeletons
 - ✅ Scheduler showcase: WBS numbering, inline validation, critical path +

@@ -13,6 +13,7 @@ import {
   updatePreconstructionFollowUp,
   getPreconstructionComparisonReadiness,
   listPreconstructionComparisonPlans,
+  listPreconstructionExecutionMetrics,
   listPreconstructionFindingSets,
   listPreconstructionFindings,
   reviewPreconstructionFinding,
@@ -82,8 +83,10 @@ const EMPTY_COMPARISON = {
     summary: null,
     latestFindingSetId: null,
     taxonomyVersion: null,
+    evidenceLimit: null,
     sets: [],
   },
+  execution: null,
 };
 
 
@@ -675,7 +678,7 @@ function usePreconstruction({ projectId, onError }) {
           setComparison(empty);
           return empty;
         }
-        const [readiness, findings, sets] = await Promise.all([
+        const [readiness, findings, sets, execution] = await Promise.all([
           getPreconstructionComparisonReadiness(projectId, active.id, {
             signal: controller.signal,
           }),
@@ -685,6 +688,11 @@ function usePreconstruction({ projectId, onError }) {
           }),
           listPreconstructionFindingSets(projectId, active.id, {
             limit: 50,
+            signal: controller.signal,
+          }),
+          listPreconstructionExecutionMetrics(projectId, {
+            executionKind: "scope_comparison",
+            limit: 10,
             signal: controller.signal,
           }),
         ]);
@@ -706,8 +714,10 @@ function usePreconstruction({ projectId, onError }) {
             summary: findings.summary,
             latestFindingSetId: findings.latest_finding_set_id,
             taxonomyVersion: findings.taxonomy_version,
+            evidenceLimit: findings.evidence_limit,
             sets: sets.items,
           },
+          execution,
         };
         setComparison(next);
         return next;
@@ -770,9 +780,11 @@ function usePreconstruction({ projectId, onError }) {
     return plan;
   }), [loadComparison, projectId, runMutation]);
 
-  const runComparison = useCallback((planId) => runMutation(
+  const runComparison = useCallback((planId, options = {}) => runMutation(
     "Unable to run the scope comparison",
-    () => runPreconstructionComparison(projectId, planId, {}),
+    () => runPreconstructionComparison(projectId, planId, {
+      reuse_identical_manifest: Boolean(options.reuseIdenticalManifest),
+    }),
     "none"
   ).then(async (findingSet) => {
     if (findingSet) await loadComparison({ planId, offset: 0 });

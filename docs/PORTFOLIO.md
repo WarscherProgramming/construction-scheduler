@@ -1,8 +1,8 @@
 # FieldFlow — Portfolio Copy
 
 Ready-to-use descriptions for resumes, portfolio sites, and LinkedIn.
-Keep the metrics in sync with the repo (M18.5 verified **1,168 primary tests: 646
-frontend across 93 files + 522 backend**, with 723 backend subtests reported
+Keep the metrics in sync with the repo (M18.6 verified **1,207 primary tests: 656
+frontend across 94 files + 551 backend**, with 787 backend subtests reported
 separately).
 
 ---
@@ -21,7 +21,7 @@ separately).
 > types, a project document explorer, construction drawing revision
 > management with a secure PDF viewer, explicit cross-record construction
 > relationships, project-scoped PDF content search, hardened rotating-session
-> authentication, immutable preconstruction content preparation, and 1,168 automated
+> authentication, immutable preconstruction content preparation, and 1,207 automated
 > tests.
 
 ### Resume bullets
@@ -109,7 +109,7 @@ separately).
 > - Hardened authentication with memory-only access JWTs, rotating opaque
 >   refresh sessions, replay-family revocation, CSRF and exact-Origin
 >   enforcement, route-wide tenant isolation, and bounded abuse controls;
->   verified the complete platform with 1,168 automated tests (Vitest/RTL +
+>   verified the complete platform with 1,207 automated tests (Vitest/RTL +
 >   pytest).
 
 ### Portfolio-site paragraph
@@ -194,8 +194,8 @@ available while preserving recoverable cleanup work.
   attachment and document APIs, models, storage abstractions, hooks, and UI
 - 25 MiB per-file limit with PDF, image, text, Word, and Excel support
 - Private authenticated delivery with no public object keys or credentials
-- 646 frontend tests across 93 files and 522 backend tests, for 1,168 primary
-  tests passed; 723 backend subtests are tracked separately
+- 656 frontend tests across 94 files and 551 backend tests, for 1,207 primary
+  tests passed; 787 backend subtests are tracked separately
 - Lazy per-record panel mounting with no dashboard attachment preloading
 - Ten allowlisted relationship entity types with bounded candidate search and
   no dashboard or table-row relationship preloading

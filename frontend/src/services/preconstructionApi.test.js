@@ -6,6 +6,7 @@ import {
   closePreconstructionFollowUp,
   createPreconstructionFollowUp,
   linkPreconstructionFollowUp,
+  listPreconstructionExecutionMetrics,
   listPreconstructionFindingFollowUps,
   listPreconstructionPlanFollowUps,
   updatePreconstructionFollowUp,
@@ -320,6 +321,33 @@ describe("preconstruction API", () => {
       "deterministic_match_score", "excerpt",
     ]) {
       expect(manualBody).not.toHaveProperty(forbidden);
+    }
+  });
+
+  it("builds bounded execution-metric reads and trims finding evidence", async () => {
+    const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(jsonResponse()));
+    vi.stubGlobal("fetch", fetchMock);
+    configureAuthentication({ token: "precon-token" });
+
+    await listPreconstructionExecutionMetrics(4, {
+      executionKind: "scope_comparison",
+      limit: 10,
+      offset: 20,
+    });
+    const metricsUrl = fetchMock.mock.calls[0][0];
+    expect(metricsUrl).toContain("/preconstruction/execution-metrics");
+    expect(metricsUrl).toContain("execution_kind=scope_comparison");
+    expect(metricsUrl).toContain("limit=10");
+    expect(metricsUrl).toContain("offset=20");
+
+    await listPreconstructionFindings(4, 5, { evidenceLimit: 0 });
+    expect(fetchMock.mock.calls[1][0]).toContain("evidence_limit=0");
+
+    // The metrics surface is read-only and never requests project text.
+    expect(fetchMock.mock.calls[0][1].method ?? "GET").toBe("GET");
+    for (const call of fetchMock.mock.calls) {
+      expect(call[0]).not.toContain("download");
+      expect(call[0]).not.toContain("/content");
     }
   });
 

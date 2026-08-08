@@ -11,21 +11,20 @@ from alembic.script import ScriptDirectory
 
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
-PREVIOUS_REVISION = "d5a3f9c14e28"
+PREVIOUS_REVISION = "e2b8d4f7c103"
 CURRENT_REVISION = "f3d6a8b2c517"
 
-FOLLOW_UP_TABLE = "preconstruction_finding_follow_ups"
+METRICS_TABLE = "preconstruction_execution_metrics"
 
-# Historical M18.1-M18.4 tables that a follow-up must never rewrite.
+# M18.1-M18.5 tables a metrics row must never rewrite or restate.
 IMMUTABLE_TABLES = (
+    "preconstruction_content_snapshots",
     "preconstruction_scope_assertions",
     "preconstruction_assertion_evidence",
-    "preconstruction_assertion_reviews",
     "preconstruction_finding_sets",
     "preconstruction_findings",
-    "preconstruction_finding_assertions",
-    "preconstruction_finding_evidence",
     "preconstruction_finding_reviews",
+    "preconstruction_finding_follow_ups",
 )
 
 HASH_A = "a" * 64
@@ -33,7 +32,7 @@ HASH_B = "b" * 64
 HASH_C = "c" * 64
 
 
-class FindingFollowUpMigrationTests(unittest.TestCase):
+class ExecutionMetricsMigrationTests(unittest.TestCase):
     def setUp(self):
         handle, database_path = tempfile.mkstemp(suffix=".db")
         os.close(handle)
@@ -41,7 +40,7 @@ class FindingFollowUpMigrationTests(unittest.TestCase):
         self.previous_database_url = os.environ.get("DATABASE_URL")
         self.previous_secret_key = os.environ.get("SECRET_KEY")
         os.environ["DATABASE_URL"] = f"sqlite:///{self.database_path.as_posix()}"
-        os.environ["SECRET_KEY"] = "follow-up-migration-test-secret-value"
+        os.environ["SECRET_KEY"] = "execution-metrics-migration-test-secret"
         self.config = Config(str(BACKEND_DIR / "alembic.ini"))
         self.config.set_main_option("script_location", str(BACKEND_DIR / "alembic"))
 
@@ -57,12 +56,12 @@ class FindingFollowUpMigrationTests(unittest.TestCase):
         self.database_path.unlink(missing_ok=True)
 
     def seed(self, connection):
-        """A complete M18.1-M18.4 graph with one accepted finding."""
+        """A complete M18.1-M18.5 graph, so nothing here can be a fresh install."""
         connection.executescript(
             f"""
             INSERT INTO users (id, email, hashed_password)
-            VALUES (1, 'follow@example.com', 'hash');
-            INSERT INTO projects (id, name, user_id) VALUES (1, 'Follow', 1);
+            VALUES (1, 'metrics@example.com', 'hash');
+            INSERT INTO projects (id, name, user_id) VALUES (1, 'Metrics', 1);
             INSERT INTO documents (
                 id, project_id, original_filename, display_name, extension,
                 mime_type, size_bytes, checksum_sha256, storage_provider,
@@ -77,10 +76,6 @@ class FindingFollowUpMigrationTests(unittest.TestCase):
                 page_count, pages_processed, text_character_count, searchable,
                 language, extractor_version, source_checksum
             ) VALUES (1, 1, 1, 'completed', 'embedded_text', 1, 1, 5, 1, 'eng', 'v1', '{HASH_A}');
-            INSERT INTO rfis (
-                id, project_id, number, subject, question, submitted_date, status
-            ) VALUES (1, 1, 'RFI-001', 'Lighting scope', 'Please clarify.',
-                      '2026-08-06', 'Open');
             INSERT INTO preconstruction_review_sets (
                 id, project_id, name, normalized_name, purpose, status, created_by
             ) VALUES (1, 1, 'Review', 'review', 'bid_scope_review', 'ready', 1);
@@ -97,6 +92,12 @@ class FindingFollowUpMigrationTests(unittest.TestCase):
                 current_attempt_count, max_attempts
             ) VALUES (1, 1, 1, 'completed', 'fake_test', 'scope_assertion_extraction',
                       '{HASH_B}', '{{}}', 1, 't1', 's1', 1, 1, 3);
+            INSERT INTO preconstruction_analysis_attempts (
+                id, project_id, run_id, attempt_number, provider_profile,
+                provider_name, model_name, status, input_manifest_hash,
+                output_schema_version, latency_ms, input_units, output_units
+            ) VALUES (1, 1, 1, 1, 'fake_test', 'fake', 'fake-1', 'completed',
+                      '{HASH_B}', 's1', 120, 400, 200);
             INSERT INTO preconstruction_preparation_runs (
                 id, project_id, review_source_id, status, source_checksum,
                 lineage_fingerprint, extraction_id, extraction_method,
@@ -163,21 +164,16 @@ class FindingFollowUpMigrationTests(unittest.TestCase):
             ) VALUES (1, 1, 1, 1, 1, 'missing_coverage:1|', 'missing_coverage',
                       'high', 'Potential missing coverage', 'deterministic',
                       'none', 'accepted');
-            INSERT INTO preconstruction_finding_assertions (
-                id, project_id, finding_id, assertion_id, assertion_review_id,
-                side, link_role, match_class
-            ) VALUES (1, 1, 1, 1, 1, 'requirement', 'primary', 'none');
-            INSERT INTO preconstruction_finding_evidence (
-                id, project_id, finding_id, assertion_id, assertion_evidence_id,
-                source_id, content_snapshot_id, content_page_id,
-                content_segment_id, page_number, segment_index, text_hash,
-                excerpt, evidence_role
-            ) VALUES (1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, '{HASH_B}',
-                      'Provide LED fixtures', 'primary');
             INSERT INTO preconstruction_finding_reviews (
                 id, project_id, finding_id, decision, reason_code,
                 reviewer_note, reviewed_by
             ) VALUES (1, 1, 1, 'accepted', 'confirmed_gap', 'Confirmed', 1);
+            INSERT INTO preconstruction_finding_follow_ups (
+                id, project_id, finding_id, review_set_id, comparison_plan_id,
+                finding_review_id, action_type, status, draft_title, draft_body,
+                draft_template_version, created_by
+            ) VALUES (1, 1, 1, 1, 1, 1, 'rfi', 'planned', 'Draft RFI',
+                      'Please clarify.', 'scope-follow-up-draft-1', 1);
             """
         )
         connection.commit()
@@ -190,7 +186,7 @@ class FindingFollowUpMigrationTests(unittest.TestCase):
             for table in tables
         }
 
-    def test_table_constraints_indexes_no_backfill_and_history_preserved(self):
+    def test_table_constraints_no_backfill_and_history_preserved(self):
         command.upgrade(self.config, PREVIOUS_REVISION)
         with closing(sqlite3.connect(self.database_path)) as connection:
             connection.execute("PRAGMA foreign_keys = ON")
@@ -201,7 +197,7 @@ class FindingFollowUpMigrationTests(unittest.TestCase):
                     "SELECT name FROM sqlite_master WHERE type = 'table'"
                 )
             }
-            self.assertNotIn(FOLLOW_UP_TABLE, existing)
+            self.assertNotIn(METRICS_TABLE, existing)
             before = self.snapshot(connection, IMMUTABLE_TABLES)
 
         command.upgrade(self.config, CURRENT_REVISION)
@@ -215,17 +211,15 @@ class FindingFollowUpMigrationTests(unittest.TestCase):
                     "SELECT name FROM sqlite_master WHERE type = 'table'"
                 )
             }
-            self.assertIn(FOLLOW_UP_TABLE, tables)
+            self.assertIn(METRICS_TABLE, tables)
 
-            # No backfill: no accepted finding silently gains a follow-up.
+            # No backfill: an existing execution gains no synthesized metric.
             self.assertEqual(
-                connection.execute(
-                    f"SELECT COUNT(*) FROM {FOLLOW_UP_TABLE}"
-                ).fetchone()[0],
+                connection.execute(f"SELECT COUNT(*) FROM {METRICS_TABLE}").fetchone()[0],
                 0,
             )
 
-            # Every historical M18.1-M18.4 row is byte-identical.
+            # Every historical M18.1-M18.5 row is byte-identical.
             after = self.snapshot(connection, IMMUTABLE_TABLES)
             for table in IMMUTABLE_TABLES:
                 with self.subTest(unchanged=table):
@@ -233,128 +227,83 @@ class FindingFollowUpMigrationTests(unittest.TestCase):
 
             index_names = {
                 row[1]
-                for row in connection.execute(f"PRAGMA index_list({FOLLOW_UP_TABLE})")
+                for row in connection.execute(f"PRAGMA index_list({METRICS_TABLE})")
             }
-            for expected in (
-                "uq_preconstruction_finding_follow_ups_active_action",
-                "ix_preconstruction_finding_follow_ups_plan_listing",
-                "ix_preconstruction_finding_follow_ups_finding_order",
-                "ix_preconstruction_finding_follow_ups_target",
-            ):
-                with self.subTest(index=expected):
-                    self.assertIn(expected, index_names)
+            self.assertIn(
+                "ix_preconstruction_execution_metrics_project_listing", index_names
+            )
 
             ddl = connection.execute(
                 "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?",
-                (FOLLOW_UP_TABLE,),
+                (METRICS_TABLE,),
             ).fetchone()[0]
             for constraint in (
-                "ck_preconstruction_finding_follow_ups_action",
-                "ck_preconstruction_finding_follow_ups_status",
-                "ck_preconstruction_finding_follow_ups_target_type",
-                "ck_preconstruction_finding_follow_ups_target_pair",
-                "ck_preconstruction_finding_follow_ups_planned_has_no_target",
-                "ck_preconstruction_finding_follow_ups_linked_has_target",
-                "ck_preconstruction_finding_follow_ups_title_nonblank",
-                "ck_preconstruction_finding_follow_ups_note_length",
-                "ck_preconstruction_finding_follow_ups_closure_identity",
+                "ck_preconstruction_execution_metrics_kind",
+                "ck_preconstruction_execution_metrics_positive",
+                "ck_preconstruction_execution_metrics_query_count",
+                "ck_preconstruction_execution_metrics_response_bytes",
+                "ck_preconstruction_execution_metrics_input_units",
+                "ck_preconstruction_execution_metrics_output_units",
+                "ck_preconstruction_execution_metrics_cost",
+                "ck_preconstruction_execution_metrics_budget_reason",
+                "uq_preconstruction_execution_metrics_execution",
             ):
                 with self.subTest(constraint=constraint):
                     self.assertIn(constraint, ddl)
 
             connection.executescript(
                 f"""
-                INSERT INTO {FOLLOW_UP_TABLE} (
-                    id, project_id, finding_id, review_set_id, comparison_plan_id,
-                    finding_review_id, action_type, status, draft_title, draft_body,
-                    draft_template_version, created_by
-                ) VALUES (1, 1, 1, 1, 1, 1, 'rfi', 'planned', 'Draft RFI',
-                          'Please clarify.', 'scope-follow-up-draft-1', 1);
-                INSERT INTO {FOLLOW_UP_TABLE} (
-                    id, project_id, finding_id, review_set_id, comparison_plan_id,
-                    finding_review_id, action_type, status, target_type, target_id,
-                    draft_title, draft_body, draft_template_version, created_by,
-                    linked_by, linked_at
-                ) VALUES (2, 1, 1, 1, 1, 1, 'change_order', 'linked', 'change_order',
-                          1, 'Draft CO', 'Scope difference.',
-                          'scope-follow-up-draft-1', 1, 1, '2026-08-06 00:00:00');
+                INSERT INTO {METRICS_TABLE} (
+                    id, project_id, execution_kind, execution_id, metrics_version,
+                    duration_ms, phase_durations_json, input_units, output_units,
+                    estimated_cost_micros, manifest_reused
+                ) VALUES (1, 1, 'scope_comparison', 1, 'preconstruction-execution-1',
+                          42, '{{"total":42}}', NULL, NULL, NULL, 0);
+                INSERT INTO {METRICS_TABLE} (
+                    id, project_id, execution_kind, execution_id, metrics_version,
+                    duration_ms, input_units, output_units, estimated_cost_micros
+                ) VALUES (2, 1, 'analysis_attempt', 1, 'preconstruction-execution-1',
+                          120, 400, 200, 6000);
                 """
             )
             connection.commit()
 
             invalid = {
-                "action type": f"""
-                    INSERT INTO {FOLLOW_UP_TABLE} (
-                        id, project_id, finding_id, review_set_id,
-                        comparison_plan_id, action_type, status, draft_title,
-                        draft_body, draft_template_version, created_by
-                    ) VALUES (90, 1, 1, 1, 1, 'invented', 'planned', 'T', 'B',
-                              'v1', 1)
+                "execution kind": f"""
+                    INSERT INTO {METRICS_TABLE} (
+                        id, project_id, execution_kind, execution_id,
+                        metrics_version, duration_ms
+                    ) VALUES (90, 1, 'invented', 1, 'v1', 1)
                 """,
-                "status": f"""
-                    INSERT INTO {FOLLOW_UP_TABLE} (
-                        id, project_id, finding_id, review_set_id,
-                        comparison_plan_id, action_type, status, draft_title,
-                        draft_body, draft_template_version, created_by
-                    ) VALUES (91, 1, 1, 1, 1, 'submittal', 'invented', 'T', 'B',
-                              'v1', 1)
+                "negative duration": f"""
+                    INSERT INTO {METRICS_TABLE} (
+                        id, project_id, execution_kind, execution_id,
+                        metrics_version, duration_ms
+                    ) VALUES (91, 1, 'scope_comparison', 2, 'v1', -1)
                 """,
-                "target type": f"""
-                    INSERT INTO {FOLLOW_UP_TABLE} (
-                        id, project_id, finding_id, review_set_id,
-                        comparison_plan_id, action_type, status, target_type,
-                        target_id, draft_title, draft_body,
-                        draft_template_version, created_by, linked_by, linked_at
-                    ) VALUES (92, 1, 1, 1, 1, 'submittal', 'linked', 'daily_log',
-                              1, 'T', 'B', 'v1', 1, 1, '2026-08-06 00:00:00')
+                "negative cost": f"""
+                    INSERT INTO {METRICS_TABLE} (
+                        id, project_id, execution_kind, execution_id,
+                        metrics_version, duration_ms, estimated_cost_micros
+                    ) VALUES (92, 1, 'scope_comparison', 3, 'v1', 1, -5)
                 """,
-                "half a target": f"""
-                    INSERT INTO {FOLLOW_UP_TABLE} (
-                        id, project_id, finding_id, review_set_id,
-                        comparison_plan_id, action_type, status, target_type,
-                        draft_title, draft_body, draft_template_version, created_by
-                    ) VALUES (93, 1, 1, 1, 1, 'submittal', 'linked', 'rfi', 'T',
-                              'B', 'v1', 1)
+                "budget reason": f"""
+                    INSERT INTO {METRICS_TABLE} (
+                        id, project_id, execution_kind, execution_id,
+                        metrics_version, duration_ms, budget_stop_reason
+                    ) VALUES (93, 1, 'scope_comparison', 4, 'v1', 1, 'invented')
                 """,
-                "planned row carries a target": f"""
-                    INSERT INTO {FOLLOW_UP_TABLE} (
-                        id, project_id, finding_id, review_set_id,
-                        comparison_plan_id, action_type, status, target_type,
-                        target_id, draft_title, draft_body,
-                        draft_template_version, created_by
-                    ) VALUES (94, 1, 1, 1, 1, 'submittal', 'planned', 'rfi', 1,
-                              'T', 'B', 'v1', 1)
+                "duplicate execution": f"""
+                    INSERT INTO {METRICS_TABLE} (
+                        id, project_id, execution_kind, execution_id,
+                        metrics_version, duration_ms
+                    ) VALUES (94, 1, 'scope_comparison', 1, 'v1', 1)
                 """,
-                "linked row without a target": f"""
-                    INSERT INTO {FOLLOW_UP_TABLE} (
-                        id, project_id, finding_id, review_set_id,
-                        comparison_plan_id, action_type, status, draft_title,
-                        draft_body, draft_template_version, created_by
-                    ) VALUES (95, 1, 1, 1, 1, 'submittal', 'linked', 'T', 'B',
-                              'v1', 1)
-                """,
-                "blank draft title": f"""
-                    INSERT INTO {FOLLOW_UP_TABLE} (
-                        id, project_id, finding_id, review_set_id,
-                        comparison_plan_id, action_type, status, draft_title,
-                        draft_body, draft_template_version, created_by
-                    ) VALUES (96, 1, 1, 1, 1, 'submittal', 'planned', '   ', 'B',
-                              'v1', 1)
-                """,
-                "closed row without a closer": f"""
-                    INSERT INTO {FOLLOW_UP_TABLE} (
-                        id, project_id, finding_id, review_set_id,
-                        comparison_plan_id, action_type, status, draft_title,
-                        draft_body, draft_template_version, created_by
-                    ) VALUES (97, 1, 1, 1, 1, 'submittal', 'completed', 'T', 'B',
-                              'v1', 1)
-                """,
-                "duplicate active action for one finding": f"""
-                    INSERT INTO {FOLLOW_UP_TABLE} (
-                        id, project_id, finding_id, review_set_id,
-                        comparison_plan_id, action_type, status, draft_title,
-                        draft_body, draft_template_version, created_by
-                    ) VALUES (98, 1, 1, 1, 1, 'rfi', 'planned', 'T', 'B', 'v1', 1)
+                "zero execution id": f"""
+                    INSERT INTO {METRICS_TABLE} (
+                        id, project_id, execution_kind, execution_id,
+                        metrics_version, duration_ms
+                    ) VALUES (95, 1, 'scope_comparison', 0, 'v1', 1)
                 """,
             }
             for label, statement in invalid.items():
@@ -363,52 +312,23 @@ class FindingFollowUpMigrationTests(unittest.TestCase):
                         connection.execute(statement)
                     connection.rollback()
 
-            # A cancelled row frees the action for a genuinely new round.
-            connection.execute(
-                f"""
-                UPDATE {FOLLOW_UP_TABLE}
-                SET status = 'cancelled', closed_by = 1,
-                    closed_at = '2026-08-06 01:00:00', closure_note = 'Not needed'
-                WHERE id = 1
-                """
-            )
-            connection.execute(
-                f"""
-                INSERT INTO {FOLLOW_UP_TABLE} (
-                    id, project_id, finding_id, review_set_id, comparison_plan_id,
-                    action_type, status, draft_title, draft_body,
-                    draft_template_version, created_by
-                ) VALUES (3, 1, 1, 1, 1, 'rfi', 'planned', 'Second RFI', 'B',
-                          'v1', 1)
-                """
-            )
-            connection.commit()
-
-            # A follow-up never restricts the record it points at: the link is
-            # an untyped reference, so deleting the RFI leaves history intact.
-            connection.execute("DELETE FROM rfis WHERE id = 1")
+            # A metric never restricts the execution it measures: deleting the
+            # measured finding set leaves the metric row intact.
+            connection.execute("DELETE FROM preconstruction_finding_sets WHERE id = 1")
             connection.commit()
             self.assertEqual(
                 connection.execute(
-                    f"SELECT COUNT(*) FROM {FOLLOW_UP_TABLE} WHERE target_type = 'change_order'"
+                    f"SELECT COUNT(*) FROM {METRICS_TABLE} "
+                    "WHERE execution_kind = 'scope_comparison'"
                 ).fetchone()[0],
                 1,
             )
 
-            # Findings still cannot lose their cited evidence.
-            with self.assertRaises(sqlite3.IntegrityError):
-                connection.execute(
-                    "DELETE FROM preconstruction_assertion_evidence WHERE id = 1"
-                )
-            connection.rollback()
-
-            # Project deletion cascades the advisory graph including follow-ups.
+            # Project deletion cascades metrics with the rest of the graph.
             connection.execute("DELETE FROM projects WHERE id = 1")
             connection.commit()
             self.assertEqual(
-                connection.execute(
-                    f"SELECT COUNT(*) FROM {FOLLOW_UP_TABLE}"
-                ).fetchone()[0],
+                connection.execute(f"SELECT COUNT(*) FROM {METRICS_TABLE}").fetchone()[0],
                 0,
             )
 
@@ -423,8 +343,9 @@ class FindingFollowUpMigrationTests(unittest.TestCase):
                     "SELECT name FROM sqlite_master WHERE type = 'table'"
                 )
             }
-            self.assertNotIn(FOLLOW_UP_TABLE, tables)
-            # The M18.4 comparison tables survive the downgrade untouched.
+            self.assertNotIn(METRICS_TABLE, tables)
+            # M18.5 and earlier survive the downgrade untouched.
+            self.assertIn("preconstruction_finding_follow_ups", tables)
             self.assertIn("preconstruction_findings", tables)
 
         command.upgrade(self.config, "head")
@@ -435,7 +356,7 @@ class FindingFollowUpMigrationTests(unittest.TestCase):
                     "SELECT name FROM sqlite_master WHERE type = 'table'"
                 )
             }
-            self.assertIn(FOLLOW_UP_TABLE, tables)
+            self.assertIn(METRICS_TABLE, tables)
 
         script = ScriptDirectory.from_config(self.config)
         heads = list(script.get_heads())

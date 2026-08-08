@@ -362,6 +362,14 @@ The production build keeps the preconstruction route lazy at 80.60 kB raw /
 313.24 kB raw / 92.47 kB gzip and CSS is 114.77 kB raw / 19.29 kB gzip. No
 other route chunk gains weight and the PDF worker is unchanged.
 
+## Performance and measurement
+
+M18.6 makes comparison measurable at project scale without changing a single
+analytical result: memoized tokenization, one population resolution per
+request, one grouped summary scan, chunked persistence, an exact pair budget
+that refuses rather than truncates, and opt-in manifest reuse. See
+[`AI_PRECONSTRUCTION_PERFORMANCE.md`](AI_PRECONSTRUCTION_PERFORMANCE.md).
+
 ## Follow-up actions
 
 M18.5 lets a human raise a follow-up from an accepted finding, keep the

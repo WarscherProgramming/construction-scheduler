@@ -65,6 +65,9 @@ from app.models.scope_comparison import (  # noqa: F401
 from app.models.scope_follow_up import (  # noqa: F401
     PreconstructionFindingFollowUp,
 )
+from app.models.preconstruction_metrics import (  # noqa: F401
+    PreconstructionExecutionMetric,
+)
 from app.models.note_delay import NoteDelay  # noqa: F401
 from app.models.project import Project  # noqa: F401
 from app.models.project_schedule_settings import (  # noqa: F401

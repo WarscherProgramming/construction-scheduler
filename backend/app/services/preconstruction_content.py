@@ -2,15 +2,21 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from hashlib import sha256
 import json
+from time import perf_counter
 import unicodedata
 import uuid
 
 from fastapi import HTTPException, status
 from sqlalchemy import func, insert
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from app.core.config import PreconstructionPreparationConfig
+from app.core.config import (
+    PRECONSTRUCTION_EXECUTION_CONFIG,
+    PreconstructionExecutionConfig,
+    PreconstructionPreparationConfig,
+)
+from app.preconstruction.execution import ExecutionMetrics
 from app.extraction.pdf import SUPPORTED_EXTRACTION_MIME_TYPES
 from app.models.document import Document
 from app.models.document_extraction import DocumentExtraction, DocumentPageText
@@ -23,6 +29,7 @@ from app.models.preconstruction import (
     PreconstructionReviewSet,
     PreconstructionReviewSource,
 )
+from app.services.preconstruction_execution import record_execution_metrics
 
 
 SEARCHABLE_EXTRACTION_STATUSES = ("completed", "completed_with_warnings")
@@ -354,6 +361,8 @@ class PreparationProcessingResult:
     failed: int = 0
     cancelled: int = 0
     skipped: int = 0
+    # True when the batch stopped claiming new work inside its runtime budget.
+    runtime_budget_reached: bool = False
 
 
 class PreparationError(RuntimeError):
@@ -695,11 +704,23 @@ def process_preparation_runs(
     max_jobs: int | None = None,
     run_id: int | None = None,
     lease_seconds: int | None = None,
+    execution_config: PreconstructionExecutionConfig | None = None,
 ) -> PreparationProcessingResult:
+    """Claim and prepare a finite batch, stopping inside the runtime budget.
+
+    The budget stops the loop claiming *new* work; a claimed run always
+    finishes. Keeping it inside one lease window means this process can never
+    still be preparing a run whose lease has expired elsewhere.
+    """
+    execution_config = execution_config or PRECONSTRUCTION_EXECUTION_CONFIG
     result = PreparationProcessingResult()
     recover_expired_preparation_runs(db, config)
     limit = max_jobs or batch_size or config.batch_size
+    deadline = perf_counter() + execution_config.worker_max_runtime_seconds
     for _ in range(limit):
+        if perf_counter() >= deadline:
+            result.runtime_budget_reached = True
+            break
         claim = claim_preparation_run(
             db,
             run_id=run_id,
@@ -708,11 +729,45 @@ def process_preparation_runs(
         if claim is None:
             break
         result.claimed += 1
+        started = perf_counter()
         outcome = process_preparation_claim(db, claim, config)
         setattr(result, outcome, getattr(result, outcome) + 1)
+        _record_preparation_metrics(db, claim, started, execution_config)
         if run_id is not None:
             break
     return result
+
+
+def _record_preparation_metrics(
+    db: Session,
+    claim,
+    started: float,
+    execution_config: PreconstructionExecutionConfig,
+) -> None:
+    """Append one metric row for a prepared run. Never fails the batch."""
+    run = (
+        db.query(PreconstructionPreparationRun)
+        .filter(PreconstructionPreparationRun.id == claim.run_id)
+        .first()
+    )
+    if run is None:
+        return
+    elapsed = int(max(0.0, perf_counter() - started) * 1000)
+    try:
+        record_execution_metrics(
+            db,
+            run.project_id,
+            ExecutionMetrics(
+                execution_kind="preparation_run",
+                execution_id=run.id,
+                phase_durations={"persist": elapsed},
+                duration_ms=elapsed,
+            ),
+            execution_config,
+            commit=True,
+        )
+    except SQLAlchemyError:
+        db.rollback()
 
 
 def _state_for_source(

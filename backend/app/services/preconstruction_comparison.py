@@ -18,6 +18,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from hashlib import sha256
 import json
+from time import perf_counter
 
 from fastapi import HTTPException, status
 from pydantic import ValidationError
@@ -25,7 +26,11 @@ from sqlalchemy import case, func, insert, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.core.config import PreconstructionComparisonConfig
+from app.core.config import (
+    PRECONSTRUCTION_EXECUTION_CONFIG,
+    PreconstructionComparisonConfig,
+    PreconstructionExecutionConfig,
+)
 from app.models.preconstruction import (
     PreconstructionAnalysisRun,
     PreconstructionReviewSet,
@@ -69,6 +74,11 @@ from app.preconstruction.comparison import (
     normalize_provider_severity,
     resolve_comparison_type,
 )
+from app.preconstruction.execution import (
+    ExecutionMetrics,
+    PhaseTimer,
+    estimate_pair_budget,
+)
 from app.preconstruction.matching import (
     Candidate,
     ComparableAssertion,
@@ -82,6 +92,7 @@ from app.preconstruction.provider import (
     ProviderError,
     ProviderRequest,
 )
+from app.services.preconstruction_execution import record_execution_metrics
 from app.services.preconstruction_scope import (
     normalized_comparison_text,
     sanitize_text,
@@ -512,6 +523,37 @@ def _comparable(
     )
 
 
+@dataclass(frozen=True)
+class ResolvedPopulation:
+    """One resolution of a plan's eligible assertions, safe to reuse.
+
+    A comparison request previously resolved the same population twice: once
+    for readiness and once for candidate generation. Resolving once and passing
+    the result through is purely a cost change — the inputs, ordering, and
+    resulting manifest are identical either way.
+    """
+
+    left: list[EligibleAssertion]
+    right: list[EligibleAssertion]
+    warnings: list[str]
+    resolve_ms: int = 0
+
+
+def resolve_population(
+    db: Session,
+    plan: PreconstructionComparisonPlan,
+    config: PreconstructionComparisonConfig,
+) -> ResolvedPopulation:
+    started = perf_counter()
+    left, right, warnings = resolve_eligible_assertions(db, plan, config)
+    return ResolvedPopulation(
+        left=left,
+        right=right,
+        warnings=warnings,
+        resolve_ms=int(max(0.0, perf_counter() - started) * 1000),
+    )
+
+
 def resolve_eligible_assertions(
     db: Session,
     plan: PreconstructionComparisonPlan,
@@ -691,13 +733,25 @@ def comparison_readiness(
     *,
     provider_available: bool,
     provider_profile: str,
+    population: "ResolvedPopulation | None" = None,
+    execution_config: PreconstructionExecutionConfig | None = None,
 ) -> dict:
-    """Deterministic readiness. Never executes a provider."""
+    """Deterministic readiness. Never executes a provider.
+
+    ``population`` lets a caller that has already resolved the plan's eligible
+    assertions pass that result in rather than resolving it a second time.
+    """
     comparison_type = resolve_comparison_type(plan.comparison_type)
     blockers: list[str] = []
     warnings: list[str] = []
 
-    left, right, resolution_warnings = resolve_eligible_assertions(db, plan, config)
+    if population is None:
+        population = resolve_population(db, plan, config)
+    left, right, resolution_warnings = (
+        population.left,
+        population.right,
+        population.warnings,
+    )
     for warning in resolution_warnings:
         if warning.startswith("stale_assertion_evidence"):
             warnings.append(
@@ -746,6 +800,18 @@ def comparison_readiness(
             "available."
         )
 
+    execution_config = execution_config or PRECONSTRUCTION_EXECUTION_CONFIG
+    budget = estimate_pair_budget(
+        len(left),
+        0 if (comparison_type and comparison_type.revision_lineage) else len(right),
+        execution_config.max_comparison_pairs,
+    )
+    if not budget.within_budget:
+        blockers.append(
+            "The comparison exceeds the configured pair budget; narrow the plan's "
+            "role or assertion-set filters."
+        )
+
     return {
         "ready": not blockers,
         "blockers": blockers[:50],
@@ -774,6 +840,20 @@ def comparison_readiness(
         ),
         "provider_profile": provider_profile,
         "taxonomy_version": taxonomy.TAXONOMY_VERSION,
+        # Bounded, text-free execution diagnostics. Deliberately free of any
+        # measured duration: readiness is deterministic, so identical inputs
+        # must produce a byte-identical response. Timings live on the execution
+        # metric record instead.
+        "diagnostics": (
+            {
+                "pair_budget": budget.payload(),
+                "persist_chunk_size": execution_config.persist_chunk_size,
+                "finding_evidence_limit": execution_config.finding_evidence_limit,
+                "metrics_enabled": execution_config.metrics_enabled,
+            }
+            if execution_config.diagnostics_enabled
+            else None
+        ),
     }
 
 
@@ -789,6 +869,8 @@ class ComparisonExecution:
     candidates: list[Candidate]
     warnings: list[str]
     by_assertion: dict[int, EligibleAssertion]
+    timer: PhaseTimer | None = None
+    budget_stop_reason: str | None = None
 
 
 def generate_candidates(
@@ -796,27 +878,59 @@ def generate_candidates(
     plan: PreconstructionComparisonPlan,
     config: PreconstructionComparisonConfig,
     provider_profile: str,
+    *,
+    population: ResolvedPopulation | None = None,
+    execution_config: PreconstructionExecutionConfig | None = None,
+    timer: PhaseTimer | None = None,
 ) -> ComparisonExecution:
     comparison_type = resolve_comparison_type(plan.comparison_type)
-    left, right, warnings = resolve_eligible_assertions(db, plan, config)
-    manifest, manifest_hash = build_comparison_manifest(
-        plan, left, right, provider_profile, config
-    )
+    execution_config = execution_config or PRECONSTRUCTION_EXECUTION_CONFIG
+    timer = timer or PhaseTimer()
+
+    if population is None:
+        with timer.measure("resolve"):
+            population = resolve_population(db, plan, config)
+    else:
+        timer.record("resolve", population.resolve_ms / 1000)
+    left, right, warnings = population.left, population.right, list(population.warnings)
+
+    with timer.measure("manifest"):
+        manifest, manifest_hash = build_comparison_manifest(
+            plan, left, right, provider_profile, config
+        )
     by_assertion = {item.assertion.id: item for item in (*left, *right)}
 
-    if comparison_type and comparison_type.revision_lineage:
-        candidates, generation_warnings = generate_revision_candidates(
-            [item.comparable for item in left],
-            [item.comparable for item in right],
-            maximum_candidates=config.max_candidates_per_run,
+    revision_lineage = bool(comparison_type and comparison_type.revision_lineage)
+    budget_stop_reason: str | None = None
+    if not revision_lineage:
+        budget = estimate_pair_budget(
+            len(left), len(right), execution_config.max_comparison_pairs
         )
-    else:
-        candidates, generation_warnings = generate_coverage_candidates(
-            [item.comparable for item in left],
-            [item.comparable for item in right],
-            covered_minimum=config.covered_minimum_match_class,
-            maximum_candidates=config.max_candidates_per_run,
-        )
+        if not budget.within_budget:
+            # Refuse rather than silently truncating a population the operator
+            # believes was compared in full.
+            raise _unprocessable(
+                "The comparison exceeds the configured pair budget "
+                f"({budget.estimated_pairs} pairs > {budget.maximum_pairs})"
+            )
+
+    with timer.measure("match"):
+        if revision_lineage:
+            candidates, generation_warnings = generate_revision_candidates(
+                [item.comparable for item in left],
+                [item.comparable for item in right],
+                maximum_candidates=config.max_candidates_per_run,
+            )
+        else:
+            candidates, generation_warnings = generate_coverage_candidates(
+                [item.comparable for item in left],
+                [item.comparable for item in right],
+                covered_minimum=config.covered_minimum_match_class,
+                maximum_candidates=config.max_candidates_per_run,
+            )
+
+    if "candidate_limit_reached" in generation_warnings:
+        budget_stop_reason = "candidate_limit_reached"
 
     filtered = [
         candidate
@@ -833,6 +947,8 @@ def generate_candidates(
         candidates=_deduplicate(filtered, generation_warnings),
         warnings=[*warnings, *generation_warnings],
         by_assertion=by_assertion,
+        timer=timer,
+        budget_stop_reason=budget_stop_reason,
     )
 
 
@@ -1109,8 +1225,13 @@ def persist_finding_set(
     analysis_run_id: int | None,
     dispositions: dict[str, dict] | None = None,
     extra_warnings: list[str] | None = None,
+    execution_config: PreconstructionExecutionConfig | None = None,
 ) -> PreconstructionFindingSet:
-    """Persist one immutable finding set inside the caller's transaction."""
+    """Persist one immutable finding set inside the caller's transaction.
+
+    Rows are written in bounded chunks so a large finding set never builds one
+    unbounded statement.
+    """
     now = utc_now()
     warnings = [*execution.warnings, *(extra_warnings or [])]
     origin = "provider_validated" if dispositions is not None else "deterministic"
@@ -1247,32 +1368,39 @@ def persist_finding_set(
     if not finding_rows:
         return finding_set
 
-    inserted = db.execute(
-        insert(PreconstructionFinding).returning(
-            PreconstructionFinding.id, PreconstructionFinding.finding_key
-        ),
-        [
-            {**row, "finding_set_id": finding_set.id}
-            for row in finding_rows
-        ],
-    ).all()
+    chunk_size = (execution_config or PRECONSTRUCTION_EXECUTION_CONFIG).persist_chunk_size
+    inserted: list = []
+    for start in range(0, len(finding_rows), chunk_size):
+        inserted.extend(
+            db.execute(
+                insert(PreconstructionFinding).returning(
+                    PreconstructionFinding.id, PreconstructionFinding.finding_key
+                ),
+                [
+                    {**row, "finding_set_id": finding_set.id}
+                    for row in finding_rows[start : start + chunk_size]
+                ],
+            ).all()
+        )
     id_by_key = {key: finding_id for finding_id, key in inserted}
     if len(id_by_key) != len(finding_rows):
         raise _reject("invalid_comparison_result", "Finding persistence was inconsistent")
 
     if link_rows:
-        db.execute(
-            insert(PreconstructionFindingAssertion),
-            [
-                {
-                    key: value
-                    for key, value in {**row, "finding_id": id_by_key[row["finding_key"]]}.items()
-                    if key != "finding_key"
-                }
-                for row in link_rows
-                if row["finding_key"] in id_by_key
-            ],
-        )
+        resolved_links = [
+            {
+                key: value
+                for key, value in {**row, "finding_id": id_by_key[row["finding_key"]]}.items()
+                if key != "finding_key"
+            }
+            for row in link_rows
+            if row["finding_key"] in id_by_key
+        ]
+        for start in range(0, len(resolved_links), chunk_size):
+            db.execute(
+                insert(PreconstructionFindingAssertion),
+                resolved_links[start : start + chunk_size],
+            )
     if evidence_rows:
         seen: set[tuple] = set()
         deduped = []
@@ -1297,8 +1425,11 @@ def persist_finding_set(
                     if key != "finding_key"
                 }
             )
-        if deduped:
-            db.execute(insert(PreconstructionFindingEvidence), deduped)
+        for start in range(0, len(deduped), chunk_size):
+            db.execute(
+                insert(PreconstructionFindingEvidence),
+                deduped[start : start + chunk_size],
+            )
     return finding_set
 
 
@@ -1343,31 +1474,119 @@ def comparison_run_summary(
     }
 
 
+def find_reusable_finding_set(
+    db: Session, plan: PreconstructionComparisonPlan, manifest_hash: str
+) -> PreconstructionFindingSet | None:
+    """The most recent completed set produced from an identical manifest.
+
+    The comparison manifest already pins the plan, its configuration hash, the
+    exact assertion ids, and the exact review that made each eligible. An
+    identical hash therefore means identical inputs, so re-running would
+    reproduce the same findings byte for byte. Reuse is opt-in and never
+    rewrites, supersedes, or deletes the set it returns.
+    """
+    return (
+        db.query(PreconstructionFindingSet)
+        .filter(
+            PreconstructionFindingSet.project_id == plan.project_id,
+            PreconstructionFindingSet.comparison_plan_id == plan.id,
+            PreconstructionFindingSet.comparison_manifest_hash == manifest_hash,
+            PreconstructionFindingSet.status.in_(
+                ("completed", "completed_with_warnings")
+            ),
+        )
+        .order_by(
+            PreconstructionFindingSet.created_at.desc(),
+            PreconstructionFindingSet.id.desc(),
+        )
+        .first()
+    )
+
+
 def run_deterministic_comparison(
     db: Session,
     plan: PreconstructionComparisonPlan,
     config: PreconstructionComparisonConfig,
-) -> PreconstructionFindingSet:
+    *,
+    population: ResolvedPopulation | None = None,
+    execution_config: PreconstructionExecutionConfig | None = None,
+    reuse_identical_manifest: bool = False,
+) -> tuple[PreconstructionFindingSet, bool]:
     """Deterministic comparison with no provider involvement whatsoever.
 
     Runs in one transaction and locks the plan so later runs stay reproducible.
+    Returns the finding set and whether an identical prior manifest was reused.
     """
     _require_active_plan(plan)
-    execution = generate_candidates(db, plan, config, "deterministic")
-    finding_set = persist_finding_set(
+    execution_config = execution_config or PRECONSTRUCTION_EXECUTION_CONFIG
+    timer = PhaseTimer()
+    execution = generate_candidates(
         db,
-        execution,
+        plan,
         config,
-        provider_profile="deterministic",
-        analysis_run_id=None,
+        "deterministic",
+        population=population,
+        execution_config=execution_config,
+        timer=timer,
     )
+
+    reused = False
+    if reuse_identical_manifest:
+        existing = find_reusable_finding_set(db, plan, execution.manifest_hash)
+        if existing is not None:
+            reused = True
+            _record_comparison_metrics(
+                db, plan, existing, execution, timer, execution_config, reused=True
+            )
+            db.commit()
+            db.refresh(existing)
+            return existing, True
+
+    with timer.measure("persist"):
+        finding_set = persist_finding_set(
+            db,
+            execution,
+            config,
+            provider_profile="deterministic",
+            analysis_run_id=None,
+            execution_config=execution_config,
+        )
     if plan.status != "locked":
         plan.status = "locked"
         plan.locked_at = utc_now()
         plan.updated_at = utc_now()
+    _record_comparison_metrics(
+        db, plan, finding_set, execution, timer, execution_config, reused=False
+    )
     db.commit()
     db.refresh(finding_set)
-    return finding_set
+    return finding_set, reused
+
+
+def _record_comparison_metrics(
+    db: Session,
+    plan: PreconstructionComparisonPlan,
+    finding_set: PreconstructionFindingSet,
+    execution: ComparisonExecution,
+    timer: PhaseTimer,
+    execution_config: PreconstructionExecutionConfig,
+    *,
+    reused: bool,
+) -> None:
+    """Append one metric row. Never restates counts the finding set owns."""
+    record_execution_metrics(
+        db,
+        plan.project_id,
+        ExecutionMetrics(
+            execution_kind="scope_comparison",
+            execution_id=finding_set.id,
+            phase_durations=timer.payload(),
+            duration_ms=timer.total_ms(),
+            manifest_reused=reused,
+            budget_stop_reason=execution.budget_stop_reason,
+        ),
+        execution_config,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -1757,44 +1976,37 @@ def finding_payloads(
 
 
 def finding_summary_counts(db: Session, project_id: int, plan_id: int) -> dict:
-    status_rows = (
-        db.query(PreconstructionFinding.status, func.count(PreconstructionFinding.id))
-        .filter(
-            PreconstructionFinding.project_id == project_id,
-            PreconstructionFinding.comparison_plan_id == plan_id,
-        )
-        .group_by(PreconstructionFinding.status)
-        .all()
-    )
-    type_rows = (
+    """Status, type, and origin counts in one grouped scan.
+
+    Three separate aggregate queries previously walked the same rows three
+    times. Grouping by the three columns together and folding the result in
+    Python produces identical numbers from one scan.
+    """
+    rows = (
         db.query(
-            PreconstructionFinding.finding_type, func.count(PreconstructionFinding.id)
+            PreconstructionFinding.status,
+            PreconstructionFinding.finding_type,
+            PreconstructionFinding.origin,
+            func.count(PreconstructionFinding.id),
         )
         .filter(
             PreconstructionFinding.project_id == project_id,
             PreconstructionFinding.comparison_plan_id == plan_id,
         )
-        .group_by(PreconstructionFinding.finding_type)
-        .all()
-    )
-    origin_rows = (
-        db.query(PreconstructionFinding.origin, func.count(PreconstructionFinding.id))
-        .filter(
-            PreconstructionFinding.project_id == project_id,
-            PreconstructionFinding.comparison_plan_id == plan_id,
+        .group_by(
+            PreconstructionFinding.status,
+            PreconstructionFinding.finding_type,
+            PreconstructionFinding.origin,
         )
-        .group_by(PreconstructionFinding.origin)
         .all()
     )
     statuses = {key: 0 for key in FINDING_STATUSES}
-    for value, count in status_rows:
-        statuses[value] = count
     types = {key: 0 for key in FINDING_TYPES}
-    for value, count in type_rows:
-        types[value] = count
     origins = {key: 0 for key in FINDING_ORIGINS}
-    for value, count in origin_rows:
-        origins[value] = count
+    for status_value, type_value, origin_value, count in rows:
+        statuses[status_value] = statuses.get(status_value, 0) + count
+        types[type_value] = types.get(type_value, 0) + count
+        origins[origin_value] = origins.get(origin_value, 0) + count
     revision_impacts = (
         types["revision_added_scope"]
         + types["revision_removed_scope"]

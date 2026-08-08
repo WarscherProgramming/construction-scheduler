@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from hashlib import sha256
 import json
+from time import perf_counter
 import uuid
 
 from fastapi import HTTPException, status
@@ -11,9 +12,11 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.core.config import (
+    PRECONSTRUCTION_EXECUTION_CONFIG,
     PRECONSTRUCTION_PREPARATION_CONFIG,
     PRECONSTRUCTION_SCOPE_CONFIG,
     PreconstructionAIConfig,
+    PreconstructionExecutionConfig,
     PreconstructionPreparationConfig,
 )
 from app.models.document import Document
@@ -54,10 +57,12 @@ from app.preconstruction.taxonomy import (
     ACTIVE_CONCEPT_CODES,
     SUPPORTED_TAXONOMY_VERSIONS,
 )
+from app.preconstruction.execution import ExecutionMetrics
 from app.services.preconstruction_content import (
     retrieve_snapshot_segments,
     source_preparation_states,
 )
+from app.services.preconstruction_execution import record_execution_metrics
 from app.services.preconstruction_scope import (
     SCOPE_ANALYSIS_TYPE,
     persist_scope_assertions,
@@ -1123,6 +1128,8 @@ class AnalysisProcessingResult:
     unavailable: int = 0
     cancelled: int = 0
     skipped: int = 0
+    # True when the batch stopped claiming new work inside its runtime budget.
+    runtime_budget_reached: bool = False
 
 
 def _retry_delay(config: PreconstructionAIConfig, attempt_number: int) -> int:
@@ -1509,22 +1516,79 @@ def process_analysis_attempts(
     max_jobs: int | None = None,
     run_id: int | None = None,
     lease_seconds: int | None = None,
+    execution_config: PreconstructionExecutionConfig | None = None,
 ) -> AnalysisProcessingResult:
+    """Claim and process a finite batch, stopping inside the runtime budget.
+
+    The budget stops the loop claiming *new* work; an attempt already claimed
+    always finishes. Keeping the budget inside one lease window means this
+    process can never still be working on an attempt whose lease has expired
+    and been recovered elsewhere.
+    """
+    execution_config = execution_config or PRECONSTRUCTION_EXECUTION_CONFIG
     result = AnalysisProcessingResult()
     recover_expired_attempts(db, config)
     target = min(batch_size or config.batch_size, config.batch_size)
     if max_jobs is not None:
         target = min(target, max_jobs)
+    deadline = perf_counter() + execution_config.worker_max_runtime_seconds
     for _ in range(target):
+        if perf_counter() >= deadline:
+            result.runtime_budget_reached = True
+            break
         claim = claim_analysis_attempt(
             db, run_id=run_id, lease_seconds=lease_seconds or config.lease_seconds
         )
         if claim is None:
             break
         result.claimed += 1
+        started = perf_counter()
         outcome = process_claimed_attempt(db, claim, provider, config)
         setattr(result, outcome, getattr(result, outcome) + 1)
+        _record_attempt_metrics(
+            db, claim, started, execution_config, result.runtime_budget_reached
+        )
     return result
+
+
+def _record_attempt_metrics(
+    db: Session,
+    claim,
+    started: float,
+    execution_config: PreconstructionExecutionConfig,
+    budget_reached: bool,
+) -> None:
+    """Append one metric row for a processed attempt. Never fails the batch."""
+    attempt = (
+        db.query(PreconstructionAnalysisAttempt)
+        .filter(PreconstructionAnalysisAttempt.id == claim.attempt_id)
+        .first()
+    )
+    if attempt is None:
+        return
+    try:
+        record_execution_metrics(
+            db,
+            attempt.project_id,
+            ExecutionMetrics(
+                execution_kind="analysis_attempt",
+                execution_id=attempt.id,
+                phase_durations={
+                    "provider": int(max(0.0, perf_counter() - started) * 1000)
+                },
+                duration_ms=attempt.latency_ms
+                or int(max(0.0, perf_counter() - started) * 1000),
+                input_units=attempt.input_units,
+                output_units=attempt.output_units,
+                budget_stop_reason=(
+                    "runtime_budget_exceeded" if budget_reached else None
+                ),
+            ),
+            execution_config,
+            commit=True,
+        )
+    except SQLAlchemyError:
+        db.rollback()
 
 
 def retry_failed_runs(

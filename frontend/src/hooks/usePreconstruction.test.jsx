@@ -40,6 +40,7 @@ const apiMocks = vi.hoisted(() => ({
   retryPreconstructionRun: vi.fn(),
   updatePreconstructionReviewSet: vi.fn(),
   updatePreconstructionReviewSource: vi.fn(),
+  listPreconstructionExecutionMetrics: vi.fn(),
   listPreconstructionFindingFollowUps: vi.fn(),
   createPreconstructionFollowUp: vi.fn(),
   updatePreconstructionFollowUp: vi.fn(),
@@ -139,6 +140,40 @@ describe("usePreconstruction", () => {
     apiMocks.linkPreconstructionFollowUp.mockResolvedValue({ follow_up: { id: 12 } });
     apiMocks.closePreconstructionFollowUp.mockResolvedValue({ follow_up: { id: 12 } });
     apiMocks.reviewPreconstructionFinding.mockResolvedValue({ finding: { id: 91 } });
+    apiMocks.listPreconstructionExecutionMetrics.mockResolvedValue({
+      items: [],
+      total: 0,
+      limit: 50,
+      offset: 0,
+      summary: {
+        total_executions: 0,
+        total_duration_ms: 0,
+        estimated_cost_micros: null,
+        estimated_cost_display: null,
+        cost_rate_configured: false,
+        by_kind: [],
+      },
+      metrics_enabled: true,
+      metrics_version: "preconstruction-execution-1",
+    });
+    apiMocks.runPreconstructionComparison.mockResolvedValue({ id: 3 });
+  });
+
+  it("passes the manifest-reuse choice explicitly and defaults it off", async () => {
+    const { result } = renderHook(() => usePreconstruction({ projectId: 1 }));
+    await waitFor(() => expect(result.current.isListLoading).toBe(false));
+
+    await act(async () => { await result.current.runComparison(5); });
+    expect(apiMocks.runPreconstructionComparison).toHaveBeenCalledWith(1, 5, {
+      reuse_identical_manifest: false,
+    });
+
+    await act(async () => {
+      await result.current.runComparison(5, { reuseIdenticalManifest: true });
+    });
+    expect(apiMocks.runPreconstructionComparison).toHaveBeenLastCalledWith(1, 5, {
+      reuse_identical_manifest: true,
+    });
   });
 
   it("loads follow-ups for one finding at a time and clears them on close", async () => {

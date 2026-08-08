@@ -12,7 +12,7 @@ from alembic.script import ScriptDirectory
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 PREVIOUS_REVISION = "b9e5d3f7a201"
-CURRENT_REVISION = "e2b8d4f7c103"
+CURRENT_REVISION = "f3d6a8b2c517"
 
 SCOPE_TABLES = (
     "preconstruction_scope_assertion_sets",

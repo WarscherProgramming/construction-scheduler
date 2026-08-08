@@ -222,6 +222,54 @@ do not delete them to "clean up" — that history is the audit trail.
 Follow-up limits use the `PRECONSTRUCTION_FOLLOW_UP_*` variables in
 `backend/.env.example`.
 
+## Execution Metrics and Cost
+
+M18.6 adds bounded execution metrics, cost accounting, evaluation, and runtime
+budgets. It introduces **no analysis type, no worker, no cron entry, no
+provider call, and no credential**, so `render.yaml` is unchanged.
+
+Apply migration `f3d6a8b2c517` before enabling metrics. It creates one table
+and performs no backfill, so no historical execution gains a synthesized
+metric.
+
+Both finite workers now stop claiming new work at
+`PRECONSTRUCTION_EXECUTION_WORKER_MAX_RUNTIME_SECONDS`; work already claimed
+always finishes. Startup refuses a budget longer than either lease window.
+Watch `runtime_budget_reached` on the command result: sustained truthiness
+means the cron cadence or batch size needs revisiting, not that the budget is
+wrong.
+
+Monitor safe execution categories only: execution kind and id, duration and
+per-phase milliseconds, query and byte counts, billable units, cost micro-units,
+manifest-reuse rate, and budget stop reasons (`pair_budget_exceeded`,
+`assertion_budget_exceeded`, `runtime_budget_exceeded`,
+`candidate_limit_reached`, `finding_limit_reached`). Never log draft or finding
+text, assertion text, evidence excerpts, reviewer notes, prompts, or provider
+response bodies.
+
+**Cost is absent, not zero, when no rate is configured.** Set
+`PRECONSTRUCTION_EXECUTION_COST_*_MICROS_PER_UNIT` only from a real contracted
+rate; leaving them at zero reports cost as unconfigured, which is the honest
+default. No currency is implied by the stored micro-units.
+
+A pair budget breach blocks readiness and refuses the run rather than comparing
+a truncated population. Treat it as a signal to narrow the plan's role or
+assertion-set filters, never as a reason to raise the limit blindly.
+
+Run the evaluation suite as a release check. It is finite, opens no database
+session, reads no project data, calls no provider, and exits non-zero on
+regression:
+
+```powershell
+python -m app.commands.run_preconstruction_evaluation
+python -m app.commands.run_preconstruction_evaluation --json
+```
+
+A changed digest with a passing suite means the case set changed; a failing
+case means documented engine behaviour changed and the change must be either
+reverted or documented. See
+[`AI_PRECONSTRUCTION_PERFORMANCE.md`](AI_PRECONSTRUCTION_PERFORMANCE.md).
+
 ## Release Gate
 
 Before enabling any future live adapter, require project-isolation tests,

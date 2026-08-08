@@ -94,6 +94,73 @@ function ComparisonReadinessPanel({ readiness, onRun, busy, archived }) {
 }
 
 
+function ExecutionPanel({ diagnostics, execution }) {
+  if (!diagnostics && !execution) return null;
+  const budget = diagnostics?.pair_budget;
+  const latest = execution?.items?.[0];
+  const summary = execution?.summary;
+  return (
+    <section className="comparison-execution" aria-label="Execution diagnostics">
+      <h4>Execution</h4>
+      <dl
+        className="comparison-execution-metrics"
+        role="group"
+        aria-label="Execution diagnostics metrics"
+      >
+        {budget && (
+          <>
+            <div>
+              <dt>Comparisons to perform</dt>
+              <dd>{budget.estimated_pairs}</dd>
+            </div>
+            <div>
+              <dt>Pair budget</dt>
+              <dd>
+                {budget.maximum_pairs}
+                {budget.within_budget ? " · Within budget" : " · Exceeded"}
+              </dd>
+            </div>
+          </>
+        )}
+        {latest && (
+          <>
+            <div>
+              <dt>Last run duration</dt>
+              <dd>{latest.duration_ms} ms</dd>
+            </div>
+            <div>
+              <dt>Last run reused</dt>
+              <dd>{latest.manifest_reused ? "Yes" : "No"}</dd>
+            </div>
+          </>
+        )}
+        {summary && (
+          <div>
+            <dt>Recorded executions</dt>
+            <dd>{summary.total_executions}</dd>
+          </div>
+        )}
+        {summary && (
+          <div>
+            <dt>Estimated cost</dt>
+            <dd>
+              {summary.cost_rate_configured
+                ? summary.estimated_cost_display
+                : "No rate configured"}
+            </dd>
+          </div>
+        )}
+      </dl>
+      {latest?.budget_stop_label && (
+        <p className="preconstruction-hint">
+          Last run stopped early: {latest.budget_stop_label}.
+        </p>
+      )}
+    </section>
+  );
+}
+
+
 function FindingSummary({ summary, sets, selectedSetId, taxonomyVersion, onSelectSet }) {
   if (!summary) return null;
   const metrics = [
@@ -562,7 +629,7 @@ function ScopeComparisonWorkspace({
   onCloseFollowUp,
 }) {
   const [expandedId, setExpandedId] = useState(null);
-  const { plans, selectedPlanId, readiness, findings } = comparison;
+  const { plans, selectedPlanId, readiness, findings, execution } = comparison;
   const { items, total, limit, offset, summary, sets } = findings;
   const selectedPlan = plans.find((item) => item.id === selectedPlanId);
   const archived = selectedPlan?.status === "archived";
@@ -621,6 +688,11 @@ function ScopeComparisonWorkspace({
                 busy={isSaving || isLoading}
                 archived={archived}
                 onRun={() => onRunComparison(selectedPlanId)}
+              />
+
+              <ExecutionPanel
+                diagnostics={readiness?.diagnostics}
+                execution={execution}
               />
 
               <FindingSummary
